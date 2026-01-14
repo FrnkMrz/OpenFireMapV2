@@ -20,9 +20,19 @@
 
         .hydrant-dot { background-color: #ef4444; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .tank-dot { background-color: #3b82f6; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
-        .station-square { background-color: #991b1b; border: 1px solid white; width: 8px; height: 8px; }
+        /* Farbe auf #ef4444 geändert (gleiches Rot wie Hydranten) */
+        .station-square { background-color: #ef4444; border: 1px solid white; width: 10px; height: 10px; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
 
-        .leaflet-tooltip { background: #0f172a; color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-size: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        /* Tooltip Style angepasst für Listen */
+        .leaflet-tooltip { 
+            background: #0f172a; 
+            color: white; 
+            border: 1px solid rgba(255,255,255,0.15); 
+            border-radius: 8px; 
+            font-size: 12px; 
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6); 
+            padding: 0; /* Padding im HTML kontrolliert */
+        }
         
         .layer-btn.active { color: #3b82f6; background: rgba(59, 130, 246, 0.1); font-weight: bold; }
 
@@ -341,7 +351,8 @@
             default:            char = '';
         }
 
-        if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="#991b1b" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
+        // --- Station auch auf das neue Rot geändert ---
+        if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="#ef4444" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
     }
 
@@ -353,47 +364,78 @@
         elements.forEach(el => {
             const tags = el.tags || {};
             
+            // --- 1. Grenzen erst ab Zoom 14 und dünner ---
             if (tags.boundary === 'administrative' && el.geometry) {
+                if (zoom < 14) return; // Zoom Check
                 const latlngs = el.geometry.map(p => [p.lat, p.lon]);
                 L.polyline(latlngs, {
-                    color: '#333333', // Dunkelgrau
-                    weight: 2,
+                    color: '#333333',
+                    weight: 1, // Dünnere Linie
                     dashArray: '10, 10',
                     opacity: 0.7
                 }).addTo(boundaryLayer);
                 return; 
             }
 
+            // --- POI Setup ---
             const lat = el.lat || el.center?.lat;
             const lon = el.lon || el.center?.lon;
             if (!lat || !lon) return;
 
             const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
+            const type = isStation ? 'station' : (tags['fire_hydrant:type'] || tags.emergency);
+
+            // --- 2. Sichtbarkeits-Regeln (Zoom Levels) ---
+            if (isStation && zoom < 12) return;
+            if (!isStation && zoom < 15) return;
+
+
+            // --- 3. Rendering Logic ---
+            const alreadyDrawn = renderedLocations.some(loc => 
+                Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001
+            );
+            if (isStation && alreadyDrawn) return;
+            if (isStation) renderedLocations.push({lat, lon});
+
             
             if (isStation) {
-                const alreadyDrawn = renderedLocations.some(loc => 
-                    Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001
-                );
-                if (alreadyDrawn) return;
-                renderedLocations.push({lat, lon});
-            }
-
-            const type = isStation ? 'station' : (tags['fire_hydrant:type'] || tags.emergency);
-            
-            if (type === 'station' && zoom < 13) {
-                L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [8,8] }) }).addTo(markerLayer);
-            } else if (zoom < 17 && type !== 'station') {
-                const color = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type) ? 'tank-dot' : 'hydrant-dot';
-                L.marker([lat, lon], { icon: L.divIcon({ className: color, iconSize: [10,10] }) }).addTo(markerLayer);
+                if (zoom < 14) {
+                     L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10,10] }) }).addTo(markerLayer);
+                } else {
+                     const iconHtml = getSVGContent(type);
+                     const size = 32;
+                     L.marker([lat, lon], { 
+                        icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [size, size] }), 
+                        zIndexOffset: 1000 
+                    }).addTo(markerLayer).bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
+                }
             } else {
-                const iconHtml = getSVGContent(type);
-                const size = type === 'station' ? 32 : 28;
-                L.marker([lat, lon], { 
-                    icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [size, size] }), 
-                    zIndexOffset: type === 'station' ? 1000 : 0 
-                }).addTo(markerLayer).bindTooltip(tags.name || "Details", { sticky: true });
+                if (zoom < 17) {
+                    const color = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type) ? 'tank-dot' : 'hydrant-dot';
+                    L.marker([lat, lon], { icon: L.divIcon({ className: color, iconSize: [10,10] }) }).addTo(markerLayer);
+                } else {
+                    const iconHtml = getSVGContent(type);
+                    const size = 28;
+                    L.marker([lat, lon], { 
+                        icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [size, size] }), 
+                        zIndexOffset: 0 
+                    }).addTo(markerLayer).bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
+                }
             }
         });
+    }
+
+    // Helper für Tooltip Generation (ausgelagert für Übersichtlichkeit)
+    function generateTooltip(tags) {
+        const tooltipTitle = tags.name || "Details";
+        let html = `<div class="p-2 min-w-[180px]">
+            <div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div>
+            <div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
+        for (const [key, val] of Object.entries(tags)) {
+            html += `<div class="text-slate-400 text-right">${key}:</div><div class="text-slate-200 break-words">${val}</div>`;
+        }
+        html += `</div></div>`;
+        return html;
     }
 
     function toggleExportMenu() { document.getElementById('export-menu').classList.toggle('hidden'); resetExportUI(); }
@@ -467,7 +509,7 @@
         ctx.translate(-x1 * 256, -y1 * 256);
         
         ctx.strokeStyle = "#333333"; 
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 2; // Dünnere Linie auch im Export
         ctx.setLineDash([20, 20]); 
         ctx.lineCap = "round";
 
@@ -557,5 +599,4 @@
     window.onload = initMap;
 </script>
 </body>
-</html>
 </html>
