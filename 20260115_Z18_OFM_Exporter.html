@@ -2,46 +2,52 @@
     PROJEKT: OpenFireMap V2 - High-Res Exporter
     BESCHREIBUNG:
     Diese Single-Page-Application (SPA) visualisiert Feuerwehr-Infrastruktur (Hydranten, Saugstellen, Wachen)
-    basierend auf OpenStreetMap-Daten. Kernfunktion ist der Export von hochauflösenden PNG-Karten
-    für Einsatzpläne, inklusive automatischer Kachel-Aggregation und Rendering auf einem HTML5 Canvas.
+    basierend auf Live-Daten der OpenStreetMap (OSM) via Overpass API.
+    
+    HAUPTFUNKTIONEN:
+    1. Interaktive Karte (Leaflet) mit verschiedenen Basis-Layern (Karte, Satellit, Topo).
+    2. Intelligentes Rendering: Zoom-abhängige Darstellung von Objekten (Punkte vs. Icons).
+    3. Export-Engine: Erstellt hochauflösende PNG-Dateien für Einsatzpläne durch Stitching von Kartenkacheln.
+    4. Geodaten-Verarbeitung: Automatische Titelgenerierung basierend auf Gemeindegrenzen.
 
-    TECHNOLOGISCHER STACK:
-    - Frontend: Reines HTML5/JS (Kein Build-Step nötig)
-    - Map Engine: Leaflet.js 1.9.4
-    - Styling: Tailwind CSS (via CDN) + Custom CSS
-    - Datenquellen: 
-      1. Overpass API (Infrastruktur-Daten)
-      2. Nominatim API (Geocoding/Reverse Geocoding)
-      3. Verschiedene Tile-Server (CartoDB, OSM, Esri)
+    TECHNISCHE DETAILS:
+    - Frontend: Vanilla JS (ES6+), keine Framework-Abhängigkeiten für maximale Portabilität.
+    - Styling: Tailwind CSS für Utility-First Design + Custom CSS für Karten-Overlays.
+    - Asynchronität: Nutzung von Promises und Async/Await für nicht-blockierende API-Calls.
+    - Parallelisierung: Custom Queue-System für beschleunigten Kachel-Download beim Export.
 
-    AUTOR: Gemini (im Auftrag von User)
+    AUTOR: Gemini (im Auftrag von frnkmrz)
     DATUM: 2026-01-15
 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport für mobile Optimierung setzen -->
+    <!-- Viewport Meta-Tag für responsive Darstellung auf mobilen Endgeräten -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenFireMap V2 - Ausschnitt-Pro</title>
     
     <!-- 
-        EXTERNE BIBLIOTHEKEN
+        EXTERNE BIBLIOTHEKEN (CDN)
+        Leaflet: Die De-Facto-Standard Open-Source Library für mobile-freundliche interaktive Karten.
+        Tailwind: CSS Framework, das Klassen direkt im HTML nutzt, um Kontext-Wechsel zu sparen.
     -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
-        /* GLOBALES STYLING
-           Dunkles Theme (#0f172a / slate-900) für geringe Augenbelastung und hohen Kontrast.
+        /* GLOBALES LAYOUT
+           Setzt einen dunklen Hintergrund (#0f172a), der Augenbelastung bei Nachtarbeit reduziert 
+           und Kontraste für Overlay-Elemente erhöht.
         */
         body { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; background: #0f172a; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; background: #1e293b; }
         
-        /* GLASSMORPHISM UI KOMPONENTEN
-           Erzeugt den "Milchglas"-Effekt für Overlay-Menüs.
-           backdrop-filter ist performant, kann aber auf sehr alten Mobiles fallbacken.
+        /* GLASSMORPHISM UI
+           Erzeugt moderne, halbtransparente Bedienfelder.
+           backdrop-filter: blur(12px) sorgt dafür, dass die Karte darunter unscharf durchscheint,
+           was die Lesbarkeit des Textes auf dem Panel verbessert.
         */
         .glass-panel { 
             background: rgba(15, 23, 42, 0.85); 
@@ -49,9 +55,10 @@
             border: 1px solid rgba(255, 255, 255, 0.1); 
         }
         
-        /* MARKER & ICON STYLING
-           SVG-Container Logik. Hover-Z-Index Erhöhung ist wichtig, damit überlappende
-           Icons bedienbar bleiben.
+        /* ICON INTERAKTION
+           Container für SVG-Icons auf der Karte.
+           Der Hover-Effekt (Scale 1.15) und z-index Boost stellt sicher, dass Icons in dichten 
+           Gebieten präzise ausgewählt werden können.
         */
         .icon-container { 
             display: flex; align-items: center; justify-content: center; 
@@ -60,15 +67,18 @@
         }
         .icon-container:hover { transform: scale(1.15); z-index: 1000 !important; }
 
-        /* PUNKT-DARSTELLUNG (ZOOM LEVEL LOGIK)
-           Für Zoomstufen 15 & 16 nutzen wir einfache CSS-Shapes statt komplexer SVGs,
-           um die Render-Performance hochzuhalten und visuelles Cluttering zu vermeiden.
+        /* ZOOM-ABHÄNGIGE DARSTELLUNG (Low Detail)
+           In mittleren Zoomstufen (15-16) werden Hydranten nur als farbige Punkte (Dots) dargestellt,
+           um die Karte nicht mit Symbolen zu überfrachten.
+           Rot (#ef4444) = Druckleitung, Blau (#3b82f6) = Saugstelle.
         */
         .hydrant-dot { background-color: #ef4444; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .tank-dot { background-color: #3b82f6; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .station-square { background-color: #ef4444; border: 1px solid white; width: 10px; height: 10px; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
 
-        /* Leaflet Tooltip Override für Dark Mode */
+        /* TOOLTIP STYLING
+           Überschreibt das Standard-Leaflet Design für Tooltips, um es an den Dark Mode anzupassen.
+        */
         .leaflet-tooltip { 
             background: #0f172a; 
             color: white; 
@@ -79,21 +89,23 @@
             padding: 0; 
         }
 
-        /* Label für den 100m Kreis (NEU) */
+        /* RADIUS LABEL (100m)
+           Spezielles Styling für die Entfernungsanzeige beim Klick auf einen Hydranten.
+           Text-Shadow erzeugt eine weiße Outline (Halo), damit der Text auf jedem Kartenhintergrund lesbar ist.
+        */
         .range-label {
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
-            color: #f97316 !important; /* Orange passend zum Kreis */
+            color: #333333 !important; /* Dunkelgrau wie Grenzlinien */
             font-weight: bold;
             font-size: 14px;
-            text-shadow: 1px 1px 2px black; /* Damit man es auf der Karte gut sieht */
+            text-shadow: -1px -1px 0 rgba(255,255,255,0.8), 1px -1px 0 rgba(255,255,255,0.8), -1px 1px 0 rgba(255,255,255,0.8), 1px 1px 0 rgba(255,255,255,0.8);
         }
         
-        /* UI State Klassen */
         .layer-btn.active { color: #3b82f6; background: rgba(59, 130, 246, 0.1); font-weight: bold; }
         
-        /* Visuelles Feedback während des Exports */
+        /* Feedback-Animation beim Export-Vorgang */
         @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .exporting-active { animation: pulse-red 2s infinite; }
 
@@ -109,17 +121,17 @@
 </head>
 <body>
 
-<!-- Map Mount Point -->
+<!-- Container für die Leaflet Karte -->
 <div id="map"></div>
-<!-- Notification Layer -->
+<!-- Container für Popup-Nachrichten -->
 <div id="notification-box"></div>
 
 <!-- 
-    TOP LEFT CONTROL PANEL
-    Zentraler Zugriffspunkt für Suche, Ortung, Layer und Export.
+    HAUPT-STEUERLEISTE (Oben Links)
+    Zentrales Element für die Benutzerinteraktion.
 -->
 <div class="absolute top-5 left-5 z-[1000] flex gap-3">
-    <!-- Suchleiste -->
+    <!-- Suchleiste (Nominatim) -->
     <div class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5">
         <input type="text" id="search-input" placeholder="Ort suchen..." class="bg-transparent px-4 py-2 text-sm text-white outline-none w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-500">
         <button onclick="searchLocation()" class="p-2 text-slate-400 hover:text-white transition-colors">
@@ -127,7 +139,7 @@
         </button>
     </div>
     
-    <!-- Geolocation Button -->
+    <!-- Geolocation Button (GPS) -->
     <button onclick="locateUser()" id="locate-btn" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95" title="Mein Standort">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -135,7 +147,7 @@
         </svg>
     </button>
     
-    <!-- Layer Switcher Toggle -->
+    <!-- Layer Toggle Button -->
     <button onclick="toggleLayerMenu()" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95" title="Karte wechseln">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -151,8 +163,8 @@
 </div>
 
 <!-- 
-    LAYER MENÜ (Overlay)
-    Ermöglicht Umschaltung zwischen verschiedenen Basis-Karten.
+    LAYER-AUSWAHL MENÜ
+    Verstecktes Overlay zur Auswahl des Kartenhintergrunds (Basemap).
 -->
 <div id="layer-menu" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center">Hintergrund</h3>
@@ -182,8 +194,8 @@
 </div>
 
 <!-- 
-    EXPORT MENÜ (Overlay)
-    Steuert Format, Zoom-Level und den eigentlichen Export-Prozess.
+    EXPORT MENÜ & PROZESS STEUERUNG
+    Steuert Formatwahl, Detailgrad (Zoom) und den eigentlichen Rendervorgang.
 -->
 <div id="export-menu" class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
     <div id="export-setup" class="space-y-5">
@@ -192,7 +204,7 @@
             <button onclick="toggleExportMenu()" class="text-slate-500 hover:text-white">&times;</button>
         </div>
         
-        <!-- Format Auswahl (Ratio Constraints) -->
+        <!-- Format Wahl -->
         <div class="space-y-2">
             <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Format-Vorlage (Verhältnis)</label>
             <div class="grid grid-cols-3 gap-2">
@@ -202,7 +214,7 @@
             </div>
         </div>
 
-        <!-- Zoom Level Auswahl für Export (Detailgrad) -->
+        <!-- Zoom Level Wahl -->
         <div class="space-y-2">
             <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Detail-Grad (Zoom)</label>
             <div class="grid grid-cols-4 gap-2">
@@ -213,7 +225,6 @@
             </div>
         </div>
 
-        <!-- Selektions-Button -->
         <button onclick="startSelection()" id="select-btn" class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
             Ausschnitt auf Karte wählen
@@ -223,13 +234,12 @@
             Ausschnitt fixiert ✓
         </div>
 
-        <!-- Export Trigger Button -->
         <button id="png-btn" onclick="exportAsPNG()" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
             Hydrantenplan erzeugen
         </button>
     </div>
     
-    <!-- Ladebalken Overlay während des Exports -->
+    <!-- Ladeanzeige (Progress Bar) -->
     <div id="export-progress" class="hidden">
         <div class="flex justify-between items-center mb-4">
             <h3 class="font-bold text-lg exporting-active text-blue-400">Export wird erstellt...</h3>
@@ -251,7 +261,7 @@
     </div>
 </div>
 
-<!-- Info-Box unten rechts (Zoom & Status) -->
+<!-- Info-Box unten rechts -->
 <div class="absolute bottom-10 right-10 z-[1000] glass-panel p-4 rounded-2xl text-[10px] text-slate-400 font-mono border border-white/5">
     <div class="flex justify-between gap-4"><span>ZOOM</span><span id="zoom-val" class="text-white font-bold">14.0</span></div>
     <div class="flex justify-between gap-4"><span>DATEN</span><span id="data-status" class="text-green-400">AKTUELL</span></div>
@@ -259,32 +269,33 @@
 
 <script>
     /* =========================================================================
-       1. GLOBALE VARIABLEN & KONFIGURATION
+       1. APPLIKATIONS-ZUSTAND & VARIABLEN
        ========================================================================= */
+    let map;                    // Leaflet Instanz
+    let markerLayer;            // Layer für Icons (Feuerwachen, Hydranten)
+    let boundaryLayer;          // Layer für Vektorgrafiken (Gemeindegrenzen)
+    let rangeLayerGroup;        // Layer für interaktive Distanzkreise
+    let activeRangeCenter = null; // Koordinaten des aktuell geklickten Hydranten
     
-    // Core Leaflet Instanzen
-    let map;                    // Die Leaflet Karten-Instanz
-    let markerLayer;            // Layer-Gruppe für Hydranten/Wachen (Vordergrund)
-    let boundaryLayer;          // Layer-Gruppe für Gemeindegrenzen (Hintergrund)
-    let rangeCircle = null;     // Kreis für 100m Radius
+    // AbortController ermöglichen das Abbrechen von laufenden HTTP Requests
+    let currentRequestController; 
+    let exportAbortController;  
     
-    // Asynchrone Controller (für Abbruch von Requests)
-    let currentRequestController; // Zum Abbrechen laufender Overpass-Abfragen bei Kartenbewegung
-    let exportAbortController;  // Zum Abbrechen des PNG Exports durch den User
+    let cachedElements = [];    // Lokaler Cache der Overpass-API Daten für den Export
+    let activeLayerConfig = 'voyager'; // Aktueller Kartenstil
+    let exportFormat = 'free';  // 'free', 'a4l', 'a4p'
+    let exportZoomLevel = 18;   // Standard-Export-Zoom
     
-    // App State
-    let cachedElements = [];    // Speichert die von der API geladenen Rohdaten (Nodes/Ways) für den Export
-    let activeLayerConfig = 'voyager'; // Aktuell ausgewählter Kartenstil
-    let exportFormat = 'free';  // Export Format: 'free', 'a4l' (landscape), 'a4p' (portrait)
-    let exportZoomLevel = 18;   // Standard Export Zoom (wird im Menü angepasst)
-    
-    // Auswahl-Logik (Rechteck ziehen)
-    let isSelecting = false;    // Modus-Flag
-    let selectionRect = null;   // Das Leaflet Rechteck-Objekt
-    let startPoint = null;      // Startkoordinate des Maus-Clicks
-    let finalBounds = null;     // Das finale BoundingBox Objekt für den Export
+    // Auswahl-Rechteck Status
+    let isSelecting = false;
+    let selectionRect = null;
+    let startPoint = null;
+    let finalBounds = null;
 
-    /* TILE SERVER KONFIGURATION */
+    /* TILE SERVER URLs
+       Definition der Endpunkte für verschiedene Kartenstile.
+       {s}: Subdomain, {z}: Zoom, {x}/{y}: Koordinaten
+    */
     const layerUrls = {
         voyager: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
         positron: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
@@ -295,18 +306,17 @@
         osmde: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png'
     };
 
-    // Maximale Zoomstufen (Wichtig: TopoMaps oft nur bis Z17 verfügbar, rest meist Z18/Z19)
+    // Limits für Zoomstufen (TopoMaps oft nur bis 17 verfügbar)
     const layerMaxZoom = {
         voyager: 18, positron: 18, dark: 18, satellite: 18, topo: 16, osm: 18, osmde: 18
     };
 
-    // Overpass API Endpunkte (Liste für Failover bei Serverlast)
+    // Redundante Overpass-Server für Ausfallsicherheit
     const overpassEndpoints = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
     /* =========================================================================
-       2. UI & HELPER FUNKTIONEN
+       2. UI-HELPER & NOTIFICATION SYSTEM
        ========================================================================= */
-    
     function showNotification(msg) {
         const box = document.getElementById('notification-box');
         if (!box) return;
@@ -316,58 +326,96 @@
     }
 
     /* =========================================================================
-       3. KARTEN INITIALISIERUNG
+       3. MAP INITIALISIERUNG & EVENT HANDLING
        ========================================================================= */
     function initMap() {
         markerLayer = L.layerGroup();
         boundaryLayer = L.layerGroup(); 
+        rangeLayerGroup = L.layerGroup(); 
         
+        // Karte zentrieren (Schnaittach/Rollhofen Region)
         map = L.map('map', { zoomControl: false, center: [49.555, 11.350], zoom: 14 });
         
         setBaseLayer('voyager');
         
+        // Layer-Reihenfolge: Grenzen (unten) -> Radius (mitte) -> Marker (oben)
         boundaryLayer.addTo(map); 
+        rangeLayerGroup.addTo(map); 
         markerLayer.addTo(map);   
         
+        // Live-Daten nachladen beim Bewegen der Karte
         map.on('moveend zoomend', fetchOSMData);
+        map.on('zoomend', updateRangeCircle); // Radius-Anzeige aktualisieren bei Zoom
         map.on('zoom', () => document.getElementById('zoom-val').innerText = map.getZoom().toFixed(1));
         
+        // Maus-Events für das Auswahlrechteck
         map.on('mousedown', onMouseDown);
         map.on('mousemove', onMouseMove);
         map.on('mouseup', onMouseUp);
         
-        // Klick auf die Karte entfernt den Radius-Kreis (wenn nicht gerade gezeichnet wird)
+        // Reset des Radius-Kreises bei Klick auf freie Fläche
         map.on('click', () => {
-            if (rangeCircle && !isSelecting) {
-                map.removeLayer(rangeCircle);
-                rangeCircle = null;
+            if (activeRangeCenter && !isSelecting) {
+                activeRangeCenter = null;
+                updateRangeCircle();
             }
         });
 
         fetchOSMData();
     }
 
-    /* HELPER: Radius-Kreis zeichnen */
+    /* Zeigt einen 100m Radius um einen Hydranten an.
+       Wird beim Klick auf ein Icon ausgelöst.
+    */
     function showRangeCircle(lat, lon) {
-        if (rangeCircle) map.removeLayer(rangeCircle);
-        rangeCircle = L.circle([lat, lon], {
-            color: '#f97316', // Orange
-            fillColor: '#f97316',
-            fillOpacity: 0.15,
-            radius: 100, // 100 Meter
-            weight: 2,
-            dashArray: '5, 8' // Gestrichelte Linie
-        }).addTo(map);
-        
-        // Label hinzufügen
-        rangeCircle.bindTooltip("100 m", { 
-            permanent: true, 
-            direction: 'center', 
-            className: 'range-label'
-        }).openTooltip();
+        activeRangeCenter = {lat, lon};
+        updateRangeCircle();
     }
 
-    /* GEOLOCATION */
+    /* Zeichnet den Radius-Kreis und das Label neu.
+       Passt Sichtbarkeit basierend auf Zoom-Level an.
+    */
+    function updateRangeCircle() {
+        rangeLayerGroup.clearLayers();
+        if (!activeRangeCenter) return;
+
+        const zoom = map.getZoom();
+        if (zoom < 16) return; // Unter Zoom 16 ausblenden
+
+        // 1. Oranger Kreis (100m)
+        L.circle([activeRangeCenter.lat, activeRangeCenter.lon], {
+            color: '#f97316', 
+            fillColor: '#f97316',
+            fillOpacity: 0.15,
+            radius: 100, 
+            weight: 2,
+            dashArray: '5, 8',
+            interactive: false 
+        }).addTo(rangeLayerGroup);
+
+        // 2. Text-Label (nur ab Zoom 17 sichtbar)
+        if (zoom >= 17) {
+            // Berechnung der Position: 50m östlich vom Zentrum auf der Radius-Linie
+            const latRad = activeRangeCenter.lat * Math.PI / 180;
+            // Umrechnung Grad Longitude in km (abhängig vom Breitengrad)
+            const kmPerDegLon = 111.32 * Math.cos(latRad);
+            const offsetLon = 0.05 / kmPerDegLon; // 0.05 km = 50m
+
+            const labelPos = [activeRangeCenter.lat, activeRangeCenter.lon + offsetLon];
+            
+            // Unsichtbarer Marker als Anker für das Label
+            const labelMarker = L.marker(labelPos, {opacity: 0, interactive: false}).addTo(rangeLayerGroup);
+            
+            labelMarker.bindTooltip("100 m", { 
+                permanent: true, 
+                direction: 'center', 
+                className: 'range-label', // Custom CSS Klasse
+                offset: [0, 0]
+            }).openTooltip();
+        }
+    }
+
+    /* GEOLOCATION: Ermittelt User-Standort */
     function locateUser() {
         if (!navigator.geolocation) {
             showNotification("Geolokalisierung nicht unterstützt.");
@@ -398,7 +446,7 @@
     }
 
     /* =========================================================================
-       4. EXPORT KONFIGURATION & SELEKTION
+       4. EXPORT MENU & AUSWAHL LOGIK
        ========================================================================= */
     
     function setExportFormat(fmt) {
@@ -444,6 +492,7 @@
         document.getElementById('selection-info').classList.add('hidden');
     }
 
+    // Rechteck ziehen: Mouse Down (Start)
     function onMouseDown(e) {
         if (!isSelecting) return;
         startPoint = e.latlng;
@@ -452,12 +501,15 @@
         }).addTo(map);
     }
 
+    // Rechteck ziehen: Mouse Move (Größe ändern)
     function onMouseMove(e) {
         if (!isSelecting || !startPoint || !selectionRect) return;
         let current = e.latlng;
         
+        // Seitenverhältnis erzwingen (falls A4 gewählt)
         if (exportFormat !== 'free') {
             const ratio = (exportFormat === 'a4l') ? 1.4142 : 0.7071;
+            // Mercator Korrektur für Längengrade
             const lngScale = Math.cos(startPoint.lat * Math.PI / 180);
             const dy = Math.abs(current.lat - startPoint.lat);
             const dx = (dy * ratio) / lngScale;
@@ -469,6 +521,7 @@
         selectionRect.setBounds([startPoint, current]);
     }
 
+    // Rechteck ziehen: Mouse Up (Ende)
     function onMouseUp(e) {
         if (!isSelecting || !startPoint) return;
         finalBounds = selectionRect.getBounds();
@@ -485,12 +538,14 @@
     function setBaseLayer(key) {
         activeLayerConfig = key;
         map.eachLayer(layer => { if (layer instanceof L.TileLayer) map.removeLayer(layer); });
+        // 'crossOrigin: anonymous' ist essentiell für den Canvas-Export
         L.tileLayer(layerUrls[key], { attribution: '&copy; OSM', crossOrigin: 'anonymous' }).addTo(map);
         
         document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.getElementById(`btn-${key}`);
         if(activeBtn) activeBtn.classList.add('active');
 
+        // Topo-Karte Logik (Max Zoom 17)
         const btn18 = document.getElementById('zoom-18');
         if (key === 'topo') {
             btn18.disabled = true;
@@ -506,6 +561,7 @@
     async function fetchWithRetry(query) {
         for (let endpoint of overpassEndpoints) {
             try {
+                // Signal zum Abbrechen alter Requests
                 const res = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, { signal: currentRequestController.signal });
                 if (!res.ok) continue;
                 const text = await res.text();
@@ -529,6 +585,7 @@
         if (currentRequestController) currentRequestController.abort();
         currentRequestController = new AbortController();
         
+        /* Overpass Query: Holt Feuerwachen (nodes/ways/relations) und Wasserquellen */
         let q = `[out:json][timeout:90];
         (
           nwr["amenity"="fire_station"](${bbox});
@@ -557,6 +614,7 @@
         const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
         const color = isWater ? '#3b82f6' : '#ef4444'; 
         
+        // Spezielles Icon für Wandhydranten (Quadrat)
         if (type === 'wall') {
              return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
@@ -569,7 +627,7 @@
         switch(type) {
             case 'underground': char = 'U'; break; 
             case 'pillar':      char = 'O'; break; 
-            case 'pipe':        char = 'I'; break; // Einspeisung (Inlet)
+            case 'pipe':        char = 'I'; break; // Inlet/Einspeisung
             case 'dry_barrel':  char = 'Ø'; break; 
             default:            char = '';
         }
@@ -590,6 +648,7 @@
         elements.forEach(el => {
             const tags = el.tags || {};
             
+            // --- GRENZEN (Ab Zoom 14) ---
             if (tags.boundary === 'administrative' && el.geometry) {
                 if (zoom < 14) return;
                 const latlngs = el.geometry.map(p => [p.lat, p.lon]);
@@ -609,6 +668,7 @@
             const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
             const type = isStation ? 'station' : (tags['fire_hydrant:type'] || tags.emergency);
 
+            // Sichtbarkeits-Filter
             if (isStation && zoom < 12) return; 
             if (!isStation && zoom < 15) return; 
 
@@ -618,15 +678,21 @@
             if (isStation && alreadyDrawn) return;
             if (isStation) renderedLocations.push({lat, lon});
 
+            // Marker erstellen
             if (isStation) {
                 if (zoom < 14) {
                      L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10,10] }) }).addTo(markerLayer);
                 } else {
                      const iconHtml = getSVGContent(type);
-                     L.marker([lat, lon], { 
+                     const marker = L.marker([lat, lon], { 
                         icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [32, 32] }), 
                         zIndexOffset: 1000 
-                    }).addTo(markerLayer).bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
+                    }).addTo(markerLayer);
+                    
+                    // TOOLTIP LOGIK: Nur bei Zoom 18
+                    if (zoom === 18) {
+                        marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
+                    }
                 }
             } else {
                 if (zoom < 17) {
@@ -637,11 +703,16 @@
                     const marker = L.marker([lat, lon], { 
                         icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), 
                         zIndexOffset: 0 
-                    }).addTo(markerLayer).bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
+                    }).addTo(markerLayer);
+                    
+                    // TOOLTIP LOGIK: Nur bei Zoom 18
+                    if (zoom === 18) {
+                        marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
+                    }
 
-                    // --- NEU: Klick-Event für 100m Radius ---
+                    // Klick-Event für 100m Radius
                     marker.on('click', (e) => {
-                        L.DomEvent.stopPropagation(e); // Verhindert Map-Klick Event
+                        L.DomEvent.stopPropagation(e);
                         showRangeCircle(lat, lon);
                     });
                 }
@@ -707,13 +778,14 @@
                 displayTitle = centerLoc.suburb ? `${centerLoc.city} - ${centerLoc.suburb}` : centerLoc.city;
             }
 
-            // 2. Erweiterter Check für Zoom 14 & 15
+            // Erweiterter Check für Übersichtskarten (Zoom 14 & 15)
+            // Wenn 3 verschiedene Gemeinden im Bild sind -> Neutraler Titel
             if (targetZoom === 14 || targetZoom === 15) {
                 const pointsToCheck = [
-                    {lat: nw.lat, lon: nw.lng}, // Oben Links
-                    {lat: nw.lat, lon: se.lng}, // Oben Rechts
-                    {lat: se.lat, lon: se.lng}, // Unten Rechts
-                    {lat: se.lat, lon: nw.lng}  // Unten Links
+                    {lat: nw.lat, lon: nw.lng}, 
+                    {lat: nw.lat, lon: se.lng}, 
+                    {lat: se.lat, lon: se.lng}, 
+                    {lat: se.lat, lon: nw.lng}  
                 ];
 
                 const promises = pointsToCheck.map(p => fetchAddress(p.lat, p.lon));
@@ -734,7 +806,7 @@
             console.error("Titel Generierung Fehler:", e);
         }
 
-        // --- KACHEL BERECHNUNG (WEB MERCATOR) ---
+        // Kachel-Berechnung (Web Mercator)
         const worldSize = (z) => Math.pow(2, z);
         const lat2tile = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * worldSize(z);
         const lon2tile = (lon, z) => (lon + 180) / 360 * worldSize(z);
@@ -748,6 +820,7 @@
         canvas.width = (x2 - x1 + 1) * 256; 
         canvas.height = (y2 - y1 + 1) * 256;
         
+        // Limitierung auf ca. 200 Megapixel
         if (canvas.width > 14000 || canvas.height > 14000) { 
             showNotification(`Ausschnitt zu groß für Zoom ${targetZoom}! (Limit ~14000px)`); 
             toggleExportMenu(); 
@@ -761,6 +834,7 @@
 
         progressLabel.innerText = `Sammle Kacheln (Z${targetZoom})...`;
         
+        // Queue für parallelen Download
         const tileQueue = [];
         for (let x = x1; x <= x2; x++) {
             for (let y = y1; y <= y2; y++) {
@@ -768,7 +842,7 @@
             }
         }
 
-        const CONCURRENCY = 8; // 8 parallele Downloads
+        const CONCURRENCY = 8; 
         
         const processQueue = async () => {
             while (tileQueue.length > 0 && !signal.aborted) {
@@ -784,6 +858,7 @@
                     };
                     
                     img.onerror = () => {
+                        // Fallback: Niedrigeren Zoomlevel hochskalieren
                         const zFallback_x = Math.floor(x/2);
                         const zFallback_y = Math.floor(y/2);
                         const off_x = (x % 2) * 128;
@@ -823,7 +898,7 @@
 
         for (let el of cachedElements) {
             if (el.tags && el.tags.boundary === 'administrative' && el.geometry) {
-                if (targetZoom < 14) continue; // Grenzen auch im Export erst ab Z14
+                if (targetZoom < 14) continue; 
                 ctx.beginPath();
                 let first = true;
                 for (let p of el.geometry) {
