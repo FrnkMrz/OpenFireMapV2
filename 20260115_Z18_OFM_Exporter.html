@@ -46,6 +46,9 @@
         }
 
         .selection-mode { cursor: crosshair !important; }
+        
+        /* Disabled Button Style */
+        .zoom-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: transparent; }
     </style>
 </head>
 <body>
@@ -118,6 +121,16 @@
             </div>
         </div>
 
+        <div class="space-y-2">
+            <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Detail-Grad (Zoom)</label>
+            <div class="grid grid-cols-4 gap-2">
+                <button onclick="setExportZoom(15)" id="zoom-15" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">Z15</button>
+                <button onclick="setExportZoom(16)" id="zoom-16" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">Z16</button>
+                <button onclick="setExportZoom(17)" id="zoom-17" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">Z17</button>
+                <button onclick="setExportZoom(18)" id="zoom-18" class="zoom-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active">Z18</button>
+            </div>
+        </div>
+
         <button onclick="startSelection()" id="select-btn" class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
             Ausschnitt auf Karte wählen
@@ -163,6 +176,7 @@
     let cachedElements = [];
     let activeLayerConfig = 'voyager';
     let exportFormat = 'free'; 
+    let exportZoomLevel = 18; // Default Export Zoom
     
     let isSelecting = false;
     let selectionRect = null;
@@ -224,6 +238,24 @@
         clearSelection();
     }
 
+    function setExportZoom(z) {
+        // Bei Topo Max Zoom 17 erzwingen
+        if (activeLayerConfig === 'topo' && z > 17) return;
+        
+        exportZoomLevel = z;
+        document.querySelectorAll('.zoom-btn').forEach(b => {
+            b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
+            b.classList.add('bg-white/5');
+        });
+        const activeBtn = document.getElementById(`zoom-${z}`);
+        if(activeBtn) {
+            activeBtn.classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
+            activeBtn.classList.remove('bg-white/5');
+        }
+        // Selection clearen, da sich die Auflösung ändert? Nicht zwingend, aber sauberer.
+        // clearSelection(); 
+    }
+
     function startSelection() {
         isSelecting = true;
         clearSelection();
@@ -282,6 +314,15 @@
         document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.getElementById(`btn-${key}`);
         if(activeBtn) activeBtn.classList.add('active');
+
+        // Logic für Topo-Karte: Max Zoom 17
+        const btn18 = document.getElementById('zoom-18');
+        if (key === 'topo') {
+            btn18.disabled = true;
+            if (exportZoomLevel > 17) setExportZoom(17);
+        } else {
+            btn18.disabled = false;
+        }
     }
 
     async function fetchWithRetry(query) {
@@ -454,26 +495,56 @@
         document.getElementById('export-progress').classList.remove('hidden');
         const progressBar = document.getElementById('progress-bar'), progressPercent = document.getElementById('progress-percent'), progressLabel = document.getElementById('progress-label');
         
-        const targetZoom = layerMaxZoom[activeLayerConfig] || 18;
+        // Nutze gewählten Export Zoom
+        const targetZoom = exportZoomLevel;
         const fallbackZoom = targetZoom - 1;
         const bounds = finalBounds || map.getBounds();
         const nw = bounds.getNorthWest(), se = bounds.getSouthEast();
 
         progressLabel.innerText = "Lokalisiere Gebiet...";
-        let cityName = "Unbekannt", suburbName = "";
+        
+        // Multi-Location Check (Mitte, NW, SE)
+        let displayTitle = "";
         try {
-            const locRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${bounds.getCenter().lat}&lon=${bounds.getCenter().lng}&zoom=18`);
-            const locData = await locRes.json();
-            cityName = locData.address.city || locData.address.town || locData.address.village || "Gebiet";
-            suburbName = locData.address.suburb || locData.address.neighbourhood || "";
-        } catch (e) {}
+            const fetchLoc = async (lat, lon) => {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14`);
+                const d = await res.json();
+                return d.address.city || d.address.town || d.address.village || "";
+            };
+
+            const [locCenter, locNW, locSE] = await Promise.all([
+                fetchLoc(bounds.getCenter().lat, bounds.getCenter().lng),
+                fetchLoc(nw.lat, nw.lng),
+                fetchLoc(se.lat, se.lng)
+            ]);
+
+            // Wenn Orte unterschiedlich sind, generischer Titel
+            if (locNW && locSE && locNW !== locSE) {
+                displayTitle = "OpenFireMap.org";
+            } else {
+                // Sonst normaler Ortsname (mit Ortsteil wenn verfügbar)
+                const centerRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${bounds.getCenter().lat}&lon=${bounds.getCenter().lng}&zoom=18`);
+                const centerData = await centerRes.json();
+                const city = centerData.address.city || centerData.address.town || centerData.address.village || "Gebiet";
+                const suburb = centerData.address.suburb || centerData.address.neighbourhood || "";
+                displayTitle = suburb ? `${city} - ${suburb}` : city;
+            }
+        } catch (e) {
+            displayTitle = "OpenFireMap.org"; // Fallback bei API Fehler
+        }
 
         const worldSize = (z) => Math.pow(2, z), lat2tile = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * worldSize(z), lon2tile = (lon, z) => (lon + 180) / 360 * worldSize(z);
         const x1 = Math.floor(lon2tile(nw.lng, targetZoom)), y1 = Math.floor(lat2tile(nw.lat, targetZoom)), x2 = Math.floor(lon2tile(se.lng, targetZoom)), y2 = Math.floor(lat2tile(se.lat, targetZoom));
 
         const canvas = document.createElement('canvas');
         canvas.width = (x2 - x1 + 1) * 256; canvas.height = (y2 - y1 + 1) * 256;
-        if (canvas.width > 15000 || canvas.height > 15000) { showNotification("Ausschnitt zu groß!"); toggleExportMenu(); return; }
+        
+        // Limitierung der Größe
+        if (canvas.width > 14000 || canvas.height > 14000) { 
+            showNotification(`Ausschnitt zu groß für Zoom ${targetZoom}! (Limit ~14000px)`); 
+            toggleExportMenu(); 
+            return; 
+        }
 
         const ctx = canvas.getContext('2d');
         const totalTiles = (x2 - x1 + 1) * (y2 - y1 + 1);
@@ -481,24 +552,49 @@
         const baseUrlTpl = layerUrls[activeLayerConfig].replace('{s}', 'a').replace('{r}', '');
 
         progressLabel.innerText = `Sammle Kacheln (Z${targetZoom})...`;
+        
+        // --- PARALLEL QUEUE IMPLEMENTIERUNG START ---
+        const tileQueue = [];
         for (let x = x1; x <= x2; x++) {
             for (let y = y1; y <= y2; y++) {
-                if(signal.aborted) { toggleExportMenu(); return; }
+                tileQueue.push({x, y});
+            }
+        }
+
+        const CONCURRENCY = 8; // 8 Downloads gleichzeitig
+        
+        const processQueue = async () => {
+            while (tileQueue.length > 0 && !signal.aborted) {
+                const {x, y} = tileQueue.shift();
                 await new Promise(resolve => {
                     const img = new Image(); img.crossOrigin = "anonymous";
                     const zTargetUrl = baseUrlTpl.replace('{z}', targetZoom).replace('{x}', x).replace('{y}', y);
-                    img.onload = () => { ctx.drawImage(img, (x - x1) * 256, (y - y1) * 256); loaded++; updateProgress(); resolve(); };
+                    img.onload = () => { 
+                        ctx.drawImage(img, (x - x1) * 256, (y - y1) * 256); 
+                        loaded++; updateProgress(); resolve(); 
+                    };
                     img.onerror = () => {
+                        // Fallback logic
                         const zFallback_x = Math.floor(x/2), zFallback_y = Math.floor(y/2), off_x = (x % 2) * 128, off_y = (y % 2) * 128;
                         const zFallbackUrl = baseUrlTpl.replace('{z}', fallbackZoom).replace('{x}', zFallback_x).replace('{y}', zFallback_y);
                         const fImg = new Image(); fImg.crossOrigin = "anonymous"; fImg.src = zFallbackUrl;
-                        fImg.onload = () => { ctx.drawImage(fImg, off_x, off_y, 128, 128, (x - x1) * 256, (y - y1) * 256, 256, 256); loaded++; updateProgress(); resolve(); };
-                        fImg.onerror = () => { loaded++; resolve(); };
+                        fImg.onload = () => { 
+                            ctx.drawImage(fImg, off_x, off_y, 128, 128, (x - x1) * 256, (y - y1) * 256, 256, 256); 
+                            loaded++; updateProgress(); resolve(); 
+                        };
+                        fImg.onerror = () => { loaded++; resolve(); }; // Skip on double fail
                     };
                     img.src = zTargetUrl;
                 });
             }
+        };
+
+        const workers = [];
+        for (let i = 0; i < CONCURRENCY; i++) {
+            workers.push(processQueue());
         }
+        await Promise.all(workers);
+        // --- PARALLEL QUEUE IMPLEMENTIERUNG END ---
 
         function updateProgress() { const p = Math.round((loaded / totalTiles) * 80); progressBar.style.width = p + "%"; progressPercent.innerText = p + "%"; }
 
@@ -515,6 +611,7 @@
 
         for (let el of cachedElements) {
             if (el.tags && el.tags.boundary === 'administrative' && el.geometry) {
+                if (targetZoom < 14) continue; // Grenzen im Export auch erst ab 14
                 ctx.beginPath();
                 let first = true;
                 for (let p of el.geometry) {
@@ -551,17 +648,52 @@
 
             const type = isStation ? 'station' : (tags['fire_hydrant:type'] || tags.emergency);
             const tx = lon2tile(lon, targetZoom) * 256, ty = lat2tile(lat, targetZoom) * 256;
+            
+            // Check visibility based on Zoom (Export)
+            if (isStation && targetZoom < 12) continue;
+            if (!isStation && targetZoom < 15) continue;
+
             if (tx < x1*256 || tx > (x2+1)*256 || ty < y1*256 || ty > (y2+1)*256) continue;
 
-            if (!iconCache[type]) {
-                const svgB = new Blob([getSVGContent(type)], {type: 'image/svg+xml;charset=utf-8'}), url = URL.createObjectURL(svgB), img = new Image();
-                img.src = url; await new Promise(res => img.onload = res); iconCache[type] = img;
+            // --- NEUE RENDER LOGIK FÜR EXPORT (Zoom-Abhängig) ---
+            
+            // Fall 1: Punkte (Dots) bei Zoom 15/16 (außer Stationen ab Z14)
+            const drawAsDot = !isStation && targetZoom < 17;
+            const drawAsStationSquare = isStation && targetZoom < 14;
+
+            if (drawAsDot || drawAsStationSquare) {
+                const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
+                const color = isStation ? '#ef4444' : (isWater ? '#3b82f6' : '#ef4444');
+                
+                ctx.beginPath();
+                // Größe: StationSquare 10px (5px radius), Dot 10px (5px radius)
+                if (drawAsStationSquare) {
+                    ctx.rect(tx - 5, ty - 5, 10, 10);
+                } else {
+                    ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
+                }
+                
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = "white";
+                ctx.stroke();
+                
+                // Optionaler Schatten wie in CSS
+                // ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 5; ... (Canvas shadow is expensive, skipped for dots)
+            } 
+            // Fall 2: Volle Icons bei Zoom 17+ (oder Station ab Z14)
+            else {
+                if (!iconCache[type]) {
+                    const svgB = new Blob([getSVGContent(type)], {type: 'image/svg+xml;charset=utf-8'}), url = URL.createObjectURL(svgB), img = new Image();
+                    img.src = url; await new Promise(res => img.onload = res); iconCache[type] = img;
+                }
+                ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
+                const iconScale = targetZoom < 17 ? 0.8 : 1.0; 
+                const size = (type === 'station' ? 38 : 34) * iconScale;
+                ctx.drawImage(iconCache[type], tx - size/2, ty - size/2, size, size);
+                ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
             }
-            ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
-            const iconScale = targetZoom === 16 ? 0.8 : 1.0;
-            const size = (type === 'station' ? 38 : 34) * iconScale;
-            ctx.drawImage(iconCache[type], tx - size/2, ty - size/2, size, size);
-            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
         }
         ctx.restore();
 
@@ -569,8 +701,11 @@
         const bannerH = 150; ctx.fillStyle = "rgba(255, 255, 255, 0.98)"; ctx.fillRect(0, 0, canvas.width, bannerH);
         ctx.strokeStyle = "rgba(15, 23, 42, 0.2)"; ctx.lineWidth = 3; ctx.strokeRect(0, 0, canvas.width, bannerH);
         ctx.fillStyle = "#0f172a"; ctx.textAlign = "center";
-        const displayT = suburbName ? `${cityName} - ${suburbName}` : cityName;
-        ctx.font = "bold 44px Arial, sans-serif"; ctx.fillText(`Orts- und Hydrantenplan ${displayT}`, canvas.width / 2, 60);
+        
+        // Titelwahl basierend auf Multi-Location-Check
+        const finalTitle = displayTitle === "OpenFireMap.org" ? "OpenFireMap.org" : `Orts- und Hydrantenplan ${displayTitle}`;
+        
+        ctx.font = "bold 44px Arial, sans-serif"; ctx.fillText(finalTitle, canvas.width / 2, 60);
         const now = new Date();
         const mPerPx = (Math.cos(bounds.getCenter().lat * Math.PI / 180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, targetZoom));
         ctx.font = "24px Arial, sans-serif"; ctx.fillStyle = "#334155";
@@ -584,7 +719,7 @@
         ctx.fillStyle = "#0f172a"; ctx.font = "bold 18px Arial"; ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
 
         progressBar.style.width = "100%";
-        const link = document.createElement('a'); link.download = `Hydrantenplan_${displayT.replace(/\s/g, '_')}_${now.toISOString().slice(0,10)}.png`; link.href = canvas.toDataURL("image/png"); link.click();
+        const link = document.createElement('a'); link.download = `Hydrantenplan_${finalTitle.replace(/[\s\.]/g, '_')}_${now.toISOString().slice(0,10)}.png`; link.href = canvas.toDataURL("image/png"); link.click();
         Object.values(iconCache).forEach(img => URL.revokeObjectURL(img.src)); setTimeout(toggleExportMenu, 800);
     }
 
