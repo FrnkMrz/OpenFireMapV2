@@ -1,53 +1,50 @@
 <!-- 
-    PROJEKT: OpenFireMap V2 - High-Res Exporter
-    BESCHREIBUNG:
-    Diese Single-Page-Application (SPA) visualisiert Feuerwehr-Infrastruktur (Hydranten, Saugstellen, Wachen)
-    basierend auf Live-Daten der OpenStreetMap (OSM) via Overpass API.
+    PROJEKT: OpenFireMap V2 - High-Res Exporter (Dokumentierte Version)
     
-    HAUPTFUNKTIONEN:
-    1. Interaktive Karte (Leaflet) mit verschiedenen Basis-Layern (Karte, Satellit, Topo).
-    2. Intelligentes Rendering: Zoom-abhängige Darstellung von Objekten (Punkte vs. Icons).
-    3. Export-Engine: Erstellt hochauflösende PNG-Dateien für Einsatzpläne durch Stitching von Kartenkacheln.
-    4. Geodaten-Verarbeitung: Automatische Titelgenerierung basierend auf Gemeindegrenzen.
-
-    TECHNISCHE DETAILS:
-    - Frontend: Vanilla JS (ES6+), keine Framework-Abhängigkeiten für maximale Portabilität.
-    - Styling: Tailwind CSS für Utility-First Design + Custom CSS für Karten-Overlays.
-    - Asynchronität: Nutzung von Promises und Async/Await für nicht-blockierende API-Calls.
-    - Parallelisierung: Custom Queue-System für beschleunigten Kachel-Download beim Export.
+    HINWEIS FÜR EINSTEIGER:
+    Dieser Code ist eine "Single Page Application" (SPA). Das bedeutet, die gesamte 
+    Anwendung läuft in einer einzigen Datei. Es gibt drei Hauptbereiche:
+    1. HTML: Das Gerüst der Seite (Was ist zu sehen?).
+    2. CSS: Das Design (Wie sieht es aus? Farben, Positionen).
+    3. JavaScript (JS): Die Logik (Was passiert, wenn ich klicke? Wie werden Daten geladen?).
 
     AUTOR: Gemini (im Auftrag von frnkmrz)
-    DATUM: 2026-01-15
+    DATUM: 2026-01-16
 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport Meta-Tag für responsive Darstellung auf mobilen Endgeräten -->
+    <!-- Wichtig für Handys: Damit die Seite nicht winzig klein angezeigt wird -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenFireMap V2 - Ausschnitt-Pro</title>
+    <title>OpenFireMap V2 - Smart Load</title>
     
     <!-- 
-        EXTERNE BIBLIOTHEKEN (CDN)
-        Leaflet: Die De-Facto-Standard Open-Source Library für mobile-freundliche interaktive Karten.
-        Tailwind: CSS Framework, das Klassen direkt im HTML nutzt, um Kontext-Wechsel zu sparen.
+        EXTERNE BIBLIOTHEKEN (Werkzeugkisten)
+        Wir laden hier Code von anderen Servern, damit wir ihn nicht selbst schreiben müssen.
+        - Leaflet: Eine Bibliothek, um interaktive Landkarten anzuzeigen.
+        - Tailwind CSS: Ein Werkzeug für schnelles Design (macht z.B. Text fett oder Hintergründe blau).
     -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- CSS (Cascading Style Sheets) - Hier bestimmen wir das Aussehen -->
     <style>
-        /* GLOBALES LAYOUT
-           Setzt einen dunklen Hintergrund (#0f172a), der Augenbelastung bei Nachtarbeit reduziert 
-           und Kontraste für Overlay-Elemente erhöht.
-        */
-        body { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; background: #0f172a; }
+        /* Grundeinstellungen für die ganze Seite */
+        body { 
+            margin: 0; padding: 0; 
+            overflow: hidden; /* Verhindert Scrollbalken am Rand */
+            font-family: sans-serif; 
+            background: #0f172a; /* Dunkelblauer Hintergrund */
+        }
+        
+        /* Der Container für die Karte füllt den ganzen Bildschirm */
         #map { position: absolute; top: 0; bottom: 0; width: 100%; background: #1e293b; }
         
-        /* GLASSMORPHISM UI
-           Erzeugt moderne, halbtransparente Bedienfelder.
-           backdrop-filter: blur(12px) sorgt dafür, dass die Karte darunter unscharf durchscheint,
-           was die Lesbarkeit des Textes auf dem Panel verbessert.
+        /* "Glassmorphism" Design:
+           Das sind die halbtransparenten Menüs. 
+           backdrop-filter: blur(12px) sorgt für den Milchglas-Effekt.
         */
         .glass-panel { 
             background: rgba(15, 23, 42, 0.85); 
@@ -55,30 +52,21 @@
             border: 1px solid rgba(255, 255, 255, 0.1); 
         }
         
-        /* ICON INTERAKTION
-           Container für SVG-Icons auf der Karte.
-           Der Hover-Effekt (Scale 1.15) und z-index Boost stellt sicher, dass Icons in dichten 
-           Gebieten präzise ausgewählt werden können.
-        */
+        /* Styling für die Icons auf der Karte */
         .icon-container { 
             display: flex; align-items: center; justify-content: center; 
-            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); 
-            transition: transform 0.1s ease; 
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); /* Kleiner Schatten */
+            transition: transform 0.1s ease; /* Weiche Animation beim Vergrößern */
         }
+        /* Wenn man mit der Maus drüber fährt (hover), wird das Icon größer */
         .icon-container:hover { transform: scale(1.15); z-index: 1000 !important; }
 
-        /* ZOOM-ABHÄNGIGE DARSTELLUNG (Low Detail)
-           In mittleren Zoomstufen (15-16) werden Hydranten nur als farbige Punkte (Dots) dargestellt,
-           um die Karte nicht mit Symbolen zu überfrachten.
-           Rot (#ef4444) = Druckleitung, Blau (#3b82f6) = Saugstelle.
-        */
+        /* Kleine Punkte für niedrige Zoomstufen (weniger Details) */
         .hydrant-dot { background-color: #ef4444; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .tank-dot { background-color: #3b82f6; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .station-square { background-color: #ef4444; border: 1px solid white; width: 10px; height: 10px; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
 
-        /* TOOLTIP STYLING
-           Überschreibt das Standard-Leaflet Design für Tooltips, um es an den Dark Mode anzupassen.
-        */
+        /* Anpassung der Popups (Tooltips), die erscheinen, wenn man über einen Marker fährt */
         .leaflet-tooltip { 
             background: #0f172a; 
             color: white; 
@@ -89,23 +77,21 @@
             padding: 0; 
         }
 
-        /* RADIUS LABEL (100m)
-           Spezielles Styling für die Entfernungsanzeige beim Klick auf einen Hydranten.
-           Text-Shadow erzeugt eine weiße Outline (Halo), damit der Text auf jedem Kartenhintergrund lesbar ist.
-        */
+        /* Das Label "100m", das am Radius-Kreis steht */
         .range-label {
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
-            color: #333333 !important; /* Dunkelgrau wie Grenzlinien */
+            color: #333333 !important;
             font-weight: bold;
             font-size: 14px;
+            /* Ein weißer Rand um den Text, damit man ihn überall lesen kann */
             text-shadow: -1px -1px 0 rgba(255,255,255,0.8), 1px -1px 0 rgba(255,255,255,0.8), -1px 1px 0 rgba(255,255,255,0.8), 1px 1px 0 rgba(255,255,255,0.8);
         }
         
         .layer-btn.active { color: #3b82f6; background: rgba(59, 130, 246, 0.1); font-weight: bold; }
         
-        /* Feedback-Animation beim Export-Vorgang */
+        /* Animation für den Export-Text (Pulsieren) */
         @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .exporting-active { animation: pulse-red 2s infinite; }
 
@@ -121,25 +107,29 @@
 </head>
 <body>
 
-<!-- Container für die Leaflet Karte -->
+<!-- HTML STRUKTUR -->
+
+<!-- Hier wird die Karte von Leaflet "rein gemalt" -->
 <div id="map"></div>
-<!-- Container für Popup-Nachrichten -->
+<!-- Box für Fehlermeldungen oben rechts -->
 <div id="notification-box"></div>
 
 <!-- 
-    HAUPT-STEUERLEISTE (Oben Links)
-    Zentrales Element für die Benutzerinteraktion.
+    STEUERLEISTE (Oben Links)
+    z-[1000] bedeutet: Das Element liegt ganz weit oben (über der Karte).
+    absolute top-5 left-5: Fixiert das Element 5 Einheiten vom oberen und linken Rand.
 -->
 <div class="absolute top-5 left-5 z-[1000] flex gap-3">
-    <!-- Suchleiste (Nominatim) -->
+    <!-- Suchleiste -->
     <div class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5">
         <input type="text" id="search-input" placeholder="Ort suchen..." class="bg-transparent px-4 py-2 text-sm text-white outline-none w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-500">
         <button onclick="searchLocation()" class="p-2 text-slate-400 hover:text-white transition-colors">
+            <!-- Das <svg> ist das Lupen-Icon -->
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </button>
     </div>
     
-    <!-- Geolocation Button (GPS) -->
+    <!-- GPS Button -->
     <button onclick="locateUser()" id="locate-btn" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95" title="Mein Standort">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -147,14 +137,14 @@
         </svg>
     </button>
     
-    <!-- Layer Toggle Button -->
+    <!-- Layer Button (Kartenwechsel) -->
     <button onclick="toggleLayerMenu()" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95" title="Karte wechseln">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
         </svg>
     </button>
 
-    <!-- Export Menu Toggle -->
+    <!-- Export Button (Drucker Icon) -->
     <button onclick="toggleExportMenu()" class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95" title="Export">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -162,13 +152,11 @@
     </button>
 </div>
 
-<!-- 
-    LAYER-AUSWAHL MENÜ
-    Verstecktes Overlay zur Auswahl des Kartenhintergrunds (Basemap).
--->
+<!-- LAYER MENU (Versteckt: class="hidden") -->
 <div id="layer-menu" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center">Hintergrund</h3>
     <div class="grid grid-cols-1 gap-1">
+        <!-- Jeder Button ruft 'setBaseLayer' mit einem anderen Namen auf -->
         <button onclick="setBaseLayer('voyager')" id="btn-voyager" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
             <div class="w-3 h-3 rounded-full bg-blue-500"></div> Standard (Voyager)
         </button>
@@ -193,18 +181,16 @@
     </div>
 </div>
 
-<!-- 
-    EXPORT MENÜ & PROZESS STEUERUNG
-    Steuert Formatwahl, Detailgrad (Zoom) und den eigentlichen Rendervorgang.
--->
+<!-- EXPORT MENU (Versteckt) -->
 <div id="export-menu" class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
+    <!-- Ansicht 1: Einstellungen -->
     <div id="export-setup" class="space-y-5">
         <div class="flex justify-between items-center">
             <h3 class="font-bold text-lg">Export-Eigenschaften</h3>
             <button onclick="toggleExportMenu()" class="text-slate-500 hover:text-white">&times;</button>
         </div>
         
-        <!-- Format Wahl -->
+        <!-- Format Auswahl -->
         <div class="space-y-2">
             <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Format-Vorlage (Verhältnis)</label>
             <div class="grid grid-cols-3 gap-2">
@@ -214,7 +200,7 @@
             </div>
         </div>
 
-        <!-- Zoom Level Wahl -->
+        <!-- Zoom Level Auswahl -->
         <div class="space-y-2">
             <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Detail-Grad (Zoom)</label>
             <div class="grid grid-cols-4 gap-2">
@@ -239,7 +225,7 @@
         </button>
     </div>
     
-    <!-- Ladeanzeige (Progress Bar) -->
+    <!-- Ansicht 2: Ladebalken (wird angezeigt während des Exports) -->
     <div id="export-progress" class="hidden">
         <div class="flex justify-between items-center mb-4">
             <h3 class="font-bold text-lg exporting-active text-blue-400">Export wird erstellt...</h3>
@@ -250,7 +236,9 @@
                     <span id="progress-label">Lade Kacheln...</span>
                     <span id="progress-percent">0%</span>
                 </div>
+                <!-- Der graue Hintergrundbalken -->
                 <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <!-- Der blaue Fortschrittsbalken, der wächst (width wird geändert) -->
                     <div id="progress-bar" class="h-full bg-blue-500 w-0 transition-all duration-300"></div>
                 </div>
             </div>
@@ -261,41 +249,41 @@
     </div>
 </div>
 
-<!-- Info-Box unten rechts -->
+<!-- INFO BOX (Unten Rechts) -->
 <div class="absolute bottom-10 right-10 z-[1000] glass-panel p-4 rounded-2xl text-[10px] text-slate-400 font-mono border border-white/5">
     <div class="flex justify-between gap-4"><span>ZOOM</span><span id="zoom-val" class="text-white font-bold">14.0</span></div>
     <div class="flex justify-between gap-4"><span>DATEN</span><span id="data-status" class="text-green-400">AKTUELL</span></div>
 </div>
 
+<!-- JAVASCRIPT LOGIK -->
 <script>
     /* =========================================================================
-       1. APPLIKATIONS-ZUSTAND & VARIABLEN
+       1. HAUPT-VARIABLEN
+       Hier definieren wir die "Gedächtnis-Speicher" unserer App.
        ========================================================================= */
-    let map;                    // Leaflet Instanz
-    let markerLayer;            // Layer für Icons (Feuerwachen, Hydranten)
-    let boundaryLayer;          // Layer für Vektorgrafiken (Gemeindegrenzen)
-    let rangeLayerGroup;        // Layer für interaktive Distanzkreise
-    let activeRangeCenter = null; // Koordinaten des aktuell geklickten Hydranten
+    let map;                    // Die Variable für die Karte selbst
+    let markerLayer;            // Eine Schicht für Hydranten und Wachen (Punkte)
+    let boundaryLayer;          // Eine Schicht für Gemeindegrenzen (Linien)
+    let rangeLayerGroup;        // Eine Schicht für den 100m Kreis
+    let activeRangeCenter = null; // Speichert, welcher Hydrant gerade angeklickt ist
     
-    // AbortController ermöglichen das Abbrechen von laufenden HTTP Requests
+    // "Controller" zum Abbrechen von Netzwerk-Anfragen (wenn man wild zoomt, brechen wir alte Ladevorgänge ab)
     let currentRequestController; 
-    let exportAbortController;  
+    let exportAbortController;
     
-    let cachedElements = [];    // Lokaler Cache der Overpass-API Daten für den Export
-    let activeLayerConfig = 'voyager'; // Aktueller Kartenstil
-    let exportFormat = 'free';  // 'free', 'a4l', 'a4p'
-    let exportZoomLevel = 18;   // Standard-Export-Zoom
+    let cachedElements = [];    // Hier speichern wir die heruntergeladenen Hydranten-Daten zwischen
+    let activeLayerConfig = 'voyager'; // Welcher Kartenstil ist gerade aktiv?
+    let exportFormat = 'free';  // Welches Format? 'free' (frei), 'a4l' (A4 Quer), 'a4p' (A4 Hoch)
+    let exportZoomLevel = 18;   // Wie detailliert soll der Export sein?
     
-    // Auswahl-Rechteck Status
+    // Variablen für das Rechteck-Auswahl-Werkzeug
     let isSelecting = false;
     let selectionRect = null;
     let startPoint = null;
     let finalBounds = null;
 
-    /* TILE SERVER URLs
-       Definition der Endpunkte für verschiedene Kartenstile.
-       {s}: Subdomain, {z}: Zoom, {x}/{y}: Koordinaten
-    */
+    // Adressen der Karten-Server (Woher kommen die Bilder?)
+    // {z} = Zoomlevel, {x}/{y} = Koordinaten der Kachel
     const layerUrls = {
         voyager: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
         positron: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
@@ -306,54 +294,53 @@
         osmde: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png'
     };
 
-    // Limits für Zoomstufen (TopoMaps oft nur bis 17 verfügbar)
-    const layerMaxZoom = {
-        voyager: 18, positron: 18, dark: 18, satellite: 18, topo: 16, osm: 18, osmde: 18
-    };
-
-    // Redundante Overpass-Server für Ausfallsicherheit
+    // Maximale Zoomstufen pro Karte (Manche gehen nicht tiefer als 16)
+    const layerMaxZoom = { voyager: 18, positron: 18, dark: 18, satellite: 18, topo: 16, osm: 18, osmde: 18 };
+    
+    // Server für die Hydranten-Daten (Backup-Server falls einer ausfällt)
     const overpassEndpoints = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
     /* =========================================================================
-       2. UI-HELPER & NOTIFICATION SYSTEM
+       2. UI HELFER & KARTEN START
        ========================================================================= */
+    
+    // Zeigt die rote Fehlermeldung oben rechts an
     function showNotification(msg) {
         const box = document.getElementById('notification-box');
         if (!box) return;
         box.innerText = msg;
         box.style.display = 'block';
-        setTimeout(() => box.style.display = 'none', 3000);
+        setTimeout(() => box.style.display = 'none', 3000); // Verschwindet nach 3 Sekunden
     }
 
-    /* =========================================================================
-       3. MAP INITIALISIERUNG & EVENT HANDLING
-       ========================================================================= */
+    // Die Start-Funktion: Wird ausgeführt, wenn die Seite fertig geladen hat
     function initMap() {
+        // Wir erstellen die Gruppen-Layer (wie Overhead-Folien, die man übereinander legt)
         markerLayer = L.layerGroup();
         boundaryLayer = L.layerGroup(); 
         rangeLayerGroup = L.layerGroup(); 
         
-        // Karte zentrieren (Schnaittach/Rollhofen Region)
+        // Erstelle die Karte im HTML-Element 'map', starte bei Schnaittach (Koordinaten), Zoom 14
         map = L.map('map', { zoomControl: false, center: [49.555, 11.350], zoom: 14 });
         
-        setBaseLayer('voyager');
+        setBaseLayer('voyager'); // Setze den Standard-Hintergrund
         
-        // Layer-Reihenfolge: Grenzen (unten) -> Radius (mitte) -> Marker (oben)
+        // Füge die Folien zur Karte hinzu
         boundaryLayer.addTo(map); 
         rangeLayerGroup.addTo(map); 
         markerLayer.addTo(map);   
         
-        // Live-Daten nachladen beim Bewegen der Karte
-        map.on('moveend zoomend', fetchOSMData);
-        map.on('zoomend', updateRangeCircle); // Radius-Anzeige aktualisieren bei Zoom
-        map.on('zoom', () => document.getElementById('zoom-val').innerText = map.getZoom().toFixed(1));
+        // Event Listener: "Hör zu", was auf der Karte passiert
+        map.on('moveend zoomend', fetchOSMData); // Wenn Karte bewegt -> Neue Daten laden
+        map.on('zoomend', updateRangeCircle);    // Wenn Zoom geändert -> Radius prüfen
+        map.on('zoom', () => document.getElementById('zoom-val').innerText = map.getZoom().toFixed(1)); // Anzeige updaten
         
-        // Maus-Events für das Auswahlrechteck
+        // Maus-Events für das Auswahl-Rechteck
         map.on('mousedown', onMouseDown);
         map.on('mousemove', onMouseMove);
         map.on('mouseup', onMouseUp);
         
-        // Reset des Radius-Kreises bei Klick auf freie Fläche
+        // Wenn man ins Leere klickt, soll der Radius-Kreis verschwinden
         map.on('click', () => {
             if (activeRangeCenter && !isSelecting) {
                 activeRangeCenter = null;
@@ -361,260 +348,109 @@
             }
         });
 
+        // Lade sofort Daten
         fetchOSMData();
     }
 
-    /* Zeigt einen 100m Radius um einen Hydranten an.
-       Wird beim Klick auf ein Icon ausgelöst.
-    */
-    function showRangeCircle(lat, lon) {
-        activeRangeCenter = {lat, lon};
-        updateRangeCircle();
-    }
-
-    /* Zeichnet den Radius-Kreis und das Label neu.
-       Passt Sichtbarkeit basierend auf Zoom-Level an.
-    */
-    function updateRangeCircle() {
-        rangeLayerGroup.clearLayers();
-        if (!activeRangeCenter) return;
-
-        const zoom = map.getZoom();
-        if (zoom < 16) return; // Unter Zoom 16 ausblenden
-
-        // 1. Oranger Kreis (100m)
-        L.circle([activeRangeCenter.lat, activeRangeCenter.lon], {
-            color: '#f97316', 
-            fillColor: '#f97316',
-            fillOpacity: 0.15,
-            radius: 100, 
-            weight: 2,
-            dashArray: '5, 8',
-            interactive: false 
-        }).addTo(rangeLayerGroup);
-
-        // 2. Text-Label (nur ab Zoom 17 sichtbar)
-        if (zoom >= 17) {
-            // Berechnung der Position: 50m östlich vom Zentrum auf der Radius-Linie
-            const latRad = activeRangeCenter.lat * Math.PI / 180;
-            // Umrechnung Grad Longitude in km (abhängig vom Breitengrad)
-            const kmPerDegLon = 111.32 * Math.cos(latRad);
-            const offsetLon = 0.05 / kmPerDegLon; // 0.05 km = 50m
-
-            const labelPos = [activeRangeCenter.lat, activeRangeCenter.lon + offsetLon];
-            
-            // Unsichtbarer Marker als Anker für das Label
-            const labelMarker = L.marker(labelPos, {opacity: 0, interactive: false}).addTo(rangeLayerGroup);
-            
-            labelMarker.bindTooltip("100 m", { 
-                permanent: true, 
-                direction: 'center', 
-                className: 'range-label', // Custom CSS Klasse
-                offset: [0, 0]
-            }).openTooltip();
-        }
-    }
-
-    /* GEOLOCATION: Ermittelt User-Standort */
-    function locateUser() {
-        if (!navigator.geolocation) {
-            showNotification("Geolokalisierung nicht unterstützt.");
-            return;
-        }
-        
-        const btn = document.getElementById('locate-btn');
-        const icon = btn ? btn.querySelector('svg') : null;
-        if(icon) icon.classList.add('animate-spin');
-
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const { latitude, longitude } = pos.coords;
-                map.flyTo([latitude, longitude], 18, {
-                    animate: true,
-                    duration: 1.5
-                });
-                if(icon) icon.classList.remove('animate-spin');
-                showNotification("Standort gefunden!");
-            },
-            (err) => {
-                console.warn("Geolocation Fehler:", err.message || err);
-                if(icon) icon.classList.remove('animate-spin');
-                showNotification("Standort konnte nicht ermittelt werden.");
-            },
-            { enableHighAccuracy: true, timeout: 5000 }
-        );
-    }
-
     /* =========================================================================
-       4. EXPORT MENU & AUSWAHL LOGIK
+       3. DATEN LADEN (Hier liegt die Logik der Optimierung!)
        ========================================================================= */
     
-    function setExportFormat(fmt) {
-        exportFormat = fmt;
-        document.querySelectorAll('.fmt-btn').forEach(b => {
-            b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
-            b.classList.add('bg-white/5');
-        });
-        const activeBtn = document.getElementById(`fmt-${fmt}`);
-        activeBtn.classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
-        clearSelection(); 
-    }
-
-    function setExportZoom(z) {
-        if (activeLayerConfig === 'topo' && z > 17) return;
-        
-        exportZoomLevel = z;
-        document.querySelectorAll('.zoom-btn').forEach(b => {
-            b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
-            b.classList.add('bg-white/5');
-        });
-        const activeBtn = document.getElementById(`zoom-${z}`);
-        if(activeBtn) {
-            activeBtn.classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
-            activeBtn.classList.remove('bg-white/5');
-        }
-    }
-
-    function startSelection() {
-        isSelecting = true;
-        clearSelection();
-        map.dragging.disable(); 
-        map.getContainer().classList.add('selection-mode'); 
-        showNotification("Klicken und ziehen, um Bereich zu wählen");
-    }
-
-    function clearSelection() {
-        if (selectionRect) {
-            map.removeLayer(selectionRect);
-            selectionRect = null;
-        }
-        finalBounds = null;
-        document.getElementById('selection-info').classList.add('hidden');
-    }
-
-    // Rechteck ziehen: Mouse Down (Start)
-    function onMouseDown(e) {
-        if (!isSelecting) return;
-        startPoint = e.latlng;
-        selectionRect = L.rectangle([startPoint, startPoint], {
-            color: '#3b82f6', weight: 2, fillOpacity: 0.2, interactive: false
-        }).addTo(map);
-    }
-
-    // Rechteck ziehen: Mouse Move (Größe ändern)
-    function onMouseMove(e) {
-        if (!isSelecting || !startPoint || !selectionRect) return;
-        let current = e.latlng;
-        
-        // Seitenverhältnis erzwingen (falls A4 gewählt)
-        if (exportFormat !== 'free') {
-            const ratio = (exportFormat === 'a4l') ? 1.4142 : 0.7071;
-            // Mercator Korrektur für Längengrade
-            const lngScale = Math.cos(startPoint.lat * Math.PI / 180);
-            const dy = Math.abs(current.lat - startPoint.lat);
-            const dx = (dy * ratio) / lngScale;
-            
-            const latDir = current.lat > startPoint.lat ? 1 : -1;
-            const lngDir = current.lng > startPoint.lng ? 1 : -1;
-            current = L.latLng(startPoint.lat + (latDir * dy), startPoint.lng + (lngDir * dx));
-        }
-        selectionRect.setBounds([startPoint, current]);
-    }
-
-    // Rechteck ziehen: Mouse Up (Ende)
-    function onMouseUp(e) {
-        if (!isSelecting || !startPoint) return;
-        finalBounds = selectionRect.getBounds();
-        isSelecting = false;
-        startPoint = null;
-        map.dragging.enable(); 
-        map.getContainer().classList.remove('selection-mode');
-        document.getElementById('selection-info').classList.remove('hidden');
-    }
-
-    /* =========================================================================
-       5. LAYER LOGIK
-       ========================================================================= */
-    function setBaseLayer(key) {
-        activeLayerConfig = key;
-        map.eachLayer(layer => { if (layer instanceof L.TileLayer) map.removeLayer(layer); });
-        // 'crossOrigin: anonymous' ist essentiell für den Canvas-Export
-        L.tileLayer(layerUrls[key], { attribution: '&copy; OSM', crossOrigin: 'anonymous' }).addTo(map);
-        
-        document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = document.getElementById(`btn-${key}`);
-        if(activeBtn) activeBtn.classList.add('active');
-
-        // Topo-Karte Logik (Max Zoom 17)
-        const btn18 = document.getElementById('zoom-18');
-        if (key === 'topo') {
-            btn18.disabled = true;
-            if (exportZoomLevel > 17) setExportZoom(17);
-        } else {
-            btn18.disabled = false;
-        }
-    }
-
-    /* =========================================================================
-       6. DATEN ABFRAGE (OVERPASS API)
-       ========================================================================= */
+    // Hilfsfunktion: Versucht Server 1, wenn kaputt, dann Server 2
     async function fetchWithRetry(query) {
         for (let endpoint of overpassEndpoints) {
             try {
-                // Signal zum Abbrechen alter Requests
+                // Sende Anfrage an Server
                 const res = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, { signal: currentRequestController.signal });
-                if (!res.ok) continue;
+                if (!res.ok) continue; // Wenn Fehler, nächster Server
                 const text = await res.text();
+                // Check ob Antwort Müll ist (passiert manchmal bei Überlastung)
                 if (text.trim().startsWith('<?xml') || text.trim().startsWith('<html')) continue;
-                return JSON.parse(text);
-            } catch (e) { if (e.name === 'AbortError') throw e; }
+                return JSON.parse(text); // Wandle Text in JSON-Daten um
+            } catch (e) { if (e.name === 'AbortError') throw e; } // Wenn wir selbst abgebrochen haben, Fehler werfen
         }
         throw new Error("API Fehler");
     }
 
+    // Die Haupt-Logik: Was wird wann geladen?
     async function fetchOSMData() {
         const zoom = map.getZoom();
+        
+        // --- OPTIMIERUNG 1: ZOOM FILTER ---
+        // Wenn wir zu weit weg sind (Zoom < 12), laden wir NICHTS.
+        // Das spart Datenvolumen, da man Hydranten aus dem Weltraum eh nicht sieht.
+        if (zoom < 12) {
+            document.getElementById('data-status').innerText = "STANDBY (Zoom < 12)";
+            cachedElements = [];
+            markerLayer.clearLayers();
+            boundaryLayer.clearLayers();
+            return; // Abbruch der Funktion
+        }
+        
+        // Berechne die Koordinaten des sichtbaren Bereichs (Bounding Box)
         const b = map.getBounds();
         const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
-        
-        if (zoom < 10) return;
         
         const status = document.getElementById('data-status');
         status.innerText = "LÄDT...";
         
+        // Breche alte laufende Anfragen ab (wenn User schnell scrollt)
         if (currentRequestController) currentRequestController.abort();
         currentRequestController = new AbortController();
         
-        /* Overpass Query: Holt Feuerwachen (nodes/ways/relations) und Wasserquellen */
+        // --- OPTIMIERUNG 2: DYNAMISCHE ABFRAGE ---
+        // Wir bauen den Text für die Datenbank-Abfrage zusammen.
+        
+        let queryParts = [];
+        
+        // STUFE 1: FEUERWEHRHÄUSER (Ab Zoom 12)
+        // Wachen sind wichtig, die zeigen wir schon früh an.
+        if (zoom >= 12) {
+            queryParts.push(`nwr["amenity"="fire_station"](${bbox});`);
+            queryParts.push(`nwr["building"="fire_station"](${bbox});`);
+        }
+
+        // STUFE 2: HYDRANTEN (Ab Zoom 15)
+        // Hydranten gibt es tausende. Die laden wir erst, wenn man nah dran ist (Zoom 15).
+        if (zoom >= 15) {
+            queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});`);
+        }
+
+        // STUFE 3: GRENZEN (Ab Zoom 14)
+        let boundaryQuery = '';
+        if (zoom >= 14) {
+            boundaryQuery = `(way["boundary"="administrative"]["admin_level"="8"](${bbox});)->.boundaries; .boundaries out geom;`;
+        }
+
+        if (queryParts.length === 0 && boundaryQuery === '') return;
+
+        // Der finale Abfrage-Text für die Overpass API
         let q = `[out:json][timeout:90];
         (
-          nwr["amenity"="fire_station"](${bbox});
-          nwr["building"="fire_station"](${bbox});
-          nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});
+          ${queryParts.join('\n')}
         )->.pois;
         .pois out center;
-        
-        (
-          way["boundary"="administrative"]["admin_level"="8"](${bbox});
-        )->.boundaries;
-        .boundaries out geom;`;
+        ${boundaryQuery}`;
         
         try {
+            // Warten auf Antwort (await)...
             const data = await fetchWithRetry(q);
-            cachedElements = data.elements; 
-            renderMarkers(data.elements, zoom);
+            cachedElements = data.elements; // Daten speichern
+            renderMarkers(data.elements, zoom); // Marker auf Karte malen
             status.innerText = "AKTUELL";
         } catch (e) { if (e.name !== 'AbortError') status.innerText = "FEHLER"; }
     }
 
     /* =========================================================================
-       7. ICON GENERIERUNG (SVG)
+       4. DARSTELLUNG (Marker & Icons)
        ========================================================================= */
+    
+    // Erzeugt den SVG-Code (das Bild) für das Icon
     function getSVGContent(type) {
         const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-        const color = isWater ? '#3b82f6' : '#ef4444'; 
+        const color = isWater ? '#3b82f6' : '#ef4444'; // Blau für Saugstellen, Rot für Hydranten
         
-        // Spezielles Icon für Wandhydranten (Quadrat)
+        // Wandhydrant (Spezial-Symbol)
         if (type === 'wall') {
              return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
@@ -623,44 +459,43 @@
             </svg>`;
         }
         
+        // Buchstaben im Kreis (U = Unterflur, O = Oberflur)
         let char = '';
         switch(type) {
             case 'underground': char = 'U'; break; 
             case 'pillar':      char = 'O'; break; 
-            case 'pipe':        char = 'I'; break; // Inlet/Einspeisung
+            case 'pipe':        char = 'I'; break;
             case 'dry_barrel':  char = 'Ø'; break; 
             default:            char = '';
         }
 
+        // Feuerwehrhaus Icon
         if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="#ef4444" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
         
+        // Standard Hydrant Icon (Kreis mit Buchstabe)
         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
     }
 
-    /* =========================================================================
-       8. RENDERING LOGIK (KARTE)
-       ========================================================================= */
+    // Diese Funktion malt die Marker auf die Karte
     function renderMarkers(elements, zoom) {
-        markerLayer.clearLayers();
+        markerLayer.clearLayers(); // Erstmal alles alte löschen
         boundaryLayer.clearLayers(); 
-        const renderedLocations = [];
+        const renderedLocations = []; // Liste um Doppelte zu vermeiden
         
         elements.forEach(el => {
             const tags = el.tags || {};
             
-            // --- GRENZEN (Ab Zoom 14) ---
+            // --- GRENZEN (Linien) ---
             if (tags.boundary === 'administrative' && el.geometry) {
-                if (zoom < 14) return;
+                if (zoom < 14) return; // Unter Zoom 14 keine Grenzen malen
                 const latlngs = el.geometry.map(p => [p.lat, p.lon]);
                 L.polyline(latlngs, {
-                    color: '#333333', 
-                    weight: 1,        
-                    dashArray: '10, 10', 
-                    opacity: 0.7
+                    color: '#333333', weight: 1, dashArray: '10, 10', opacity: 0.7
                 }).addTo(boundaryLayer);
                 return; 
             }
 
+            // Koordinaten holen
             const lat = el.lat || el.center?.lat;
             const lon = el.lon || el.center?.lon;
             if (!lat || !lon) return;
@@ -668,51 +503,55 @@
             const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
             const type = isStation ? 'station' : (tags['fire_hydrant:type'] || tags.emergency);
 
-            // Sichtbarkeits-Filter
+            // Sicherheits-Check: Falls alte Daten im Cache sind, aber wir rausgezoomt haben
             if (isStation && zoom < 12) return; 
             if (!isStation && zoom < 15) return; 
 
+            // Verhindern, dass Marker genau übereinander gemalt werden
             const alreadyDrawn = renderedLocations.some(loc => 
                 Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001
             );
             if (isStation && alreadyDrawn) return;
             if (isStation) renderedLocations.push({lat, lon});
 
-            // Marker erstellen
+            // --- DARSTELLUNG LOGIK ---
             if (isStation) {
                 if (zoom < 14) {
+                     // Zoom 12-13: Wache ist nur ein kleines Quadrat
                      L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10,10] }) }).addTo(markerLayer);
                 } else {
+                     // Ab Zoom 14: Wache ist ein richtiges Icon
                      const iconHtml = getSVGContent(type);
                      const marker = L.marker([lat, lon], { 
                         icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [32, 32] }), 
-                        zIndexOffset: 1000 
+                        zIndexOffset: 1000 // Wachen liegen immer oben auf
                     }).addTo(markerLayer);
                     
-                    // TOOLTIP LOGIK: Nur bei Zoom 18
                     if (zoom === 18) {
                         marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
                     }
                 }
             } else {
+                // Hydranten
                 if (zoom < 17) {
+                    // Zoom 15-16: Hydrant ist nur ein kleiner Punkt (Dot)
                     const color = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type) ? 'tank-dot' : 'hydrant-dot';
                     L.marker([lat, lon], { icon: L.divIcon({ className: color, iconSize: [10,10] }) }).addTo(markerLayer);
                 } else {
+                    // Ab Zoom 17: Hydrant ist ein Icon (U/O)
                     const iconHtml = getSVGContent(type);
                     const marker = L.marker([lat, lon], { 
                         icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), 
                         zIndexOffset: 0 
                     }).addTo(markerLayer);
                     
-                    // TOOLTIP LOGIK: Nur bei Zoom 18
                     if (zoom === 18) {
                         marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
                     }
 
-                    // Klick-Event für 100m Radius
+                    // Klick-Event für den 100m Kreis
                     marker.on('click', (e) => {
-                        L.DomEvent.stopPropagation(e);
+                        L.DomEvent.stopPropagation(e); // Verhindert, dass der Klick auf die Karte durchgeht
                         showRangeCircle(lat, lon);
                     });
                 }
@@ -720,6 +559,7 @@
         });
     }
 
+    // Baut den HTML-Text für das Popup (Name, Details)
     function generateTooltip(tags) {
         const tooltipTitle = tags.name || "Details";
         let html = `<div class="p-2 min-w-[180px]">
@@ -732,6 +572,170 @@
         return html;
     }
 
+    // Zeigt den orangenen 100m Kreis an
+    function showRangeCircle(lat, lon) {
+        activeRangeCenter = {lat, lon};
+        updateRangeCircle();
+    }
+
+    function updateRangeCircle() {
+        rangeLayerGroup.clearLayers();
+        if (!activeRangeCenter) return;
+
+        const zoom = map.getZoom();
+        if (zoom < 16) return; // Unter Zoom 16 zeigen wir keinen Kreis
+
+        // Der Kreis selbst
+        L.circle([activeRangeCenter.lat, activeRangeCenter.lon], {
+            color: '#f97316', fillColor: '#f97316', fillOpacity: 0.15, radius: 100, weight: 2, dashArray: '5, 8', interactive: false 
+        }).addTo(rangeLayerGroup);
+
+        // Das "100 m" Schildchen (nur bei sehr hohem Zoom)
+        if (zoom >= 17) {
+            // Mathe: Wir rechnen aus, wo das Schildchen stehen muss (50m rechts vom Punkt)
+            const latRad = activeRangeCenter.lat * Math.PI / 180;
+            const kmPerDegLon = 111.32 * Math.cos(latRad);
+            const offsetLon = 0.05 / kmPerDegLon; 
+
+            const labelPos = [activeRangeCenter.lat, activeRangeCenter.lon + offsetLon];
+            
+            const labelMarker = L.marker(labelPos, {opacity: 0, interactive: false}).addTo(rangeLayerGroup);
+            
+            labelMarker.bindTooltip("100 m", { 
+                permanent: true, direction: 'center', className: 'range-label', offset: [0, 0]
+            }).openTooltip();
+        }
+    }
+
+    // Geolocation API: Fragt den Browser nach GPS Position
+    function locateUser() {
+        if (!navigator.geolocation) { showNotification("Geolokalisierung nicht unterstützt."); return; }
+        const btn = document.getElementById('locate-btn');
+        const icon = btn ? btn.querySelector('svg') : null;
+        if(icon) icon.classList.add('animate-spin'); // Icon drehen lassen
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const { latitude, longitude } = pos.coords;
+                map.flyTo([latitude, longitude], 18, { animate: true, duration: 1.5 });
+                if(icon) icon.classList.remove('animate-spin');
+                showNotification("Standort gefunden!");
+            },
+            (err) => {
+                console.warn("Geolocation Fehler:", err);
+                if(icon) icon.classList.remove('animate-spin');
+                showNotification("Standort fehlerhaft.");
+            },
+            { enableHighAccuracy: true, timeout: 5000 }
+        );
+    }
+
+    /* =========================================================================
+       5. EXPORT & MENÜ FUNKTIONEN
+       ========================================================================= */
+    
+    // Wählt das Format (A4 Quer, A4 Hoch, Frei)
+    function setExportFormat(fmt) {
+        exportFormat = fmt;
+        // Buttons umschalten (visuell)
+        document.querySelectorAll('.fmt-btn').forEach(b => {
+            b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
+            b.classList.add('bg-white/5');
+        });
+        document.getElementById(`fmt-${fmt}`).classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
+        clearSelection(); 
+    }
+
+    // Wählt den Zoom Level für den Export
+    function setExportZoom(z) {
+        if (activeLayerConfig === 'topo' && z > 17) return; // Topo Maps gehen nur bis Z16/17
+        exportZoomLevel = z;
+        document.querySelectorAll('.zoom-btn').forEach(b => {
+            b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
+            b.classList.add('bg-white/5');
+        });
+        const activeBtn = document.getElementById(`zoom-${z}`);
+        if(activeBtn) {
+            activeBtn.classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
+            activeBtn.classList.remove('bg-white/5');
+        }
+    }
+
+    // Startet den Modus zum Rechteck ziehen
+    function startSelection() {
+        isSelecting = true;
+        clearSelection();
+        map.dragging.disable(); // Karte einfrieren, damit man nicht verschiebt beim Ziehen
+        map.getContainer().classList.add('selection-mode'); // Mauszeiger ändern
+        showNotification("Bereich ziehen");
+    }
+
+    function clearSelection() {
+        if (selectionRect) { map.removeLayer(selectionRect); selectionRect = null; }
+        finalBounds = null;
+        document.getElementById('selection-info').classList.add('hidden');
+    }
+
+    // MOUSE EVENTS für das Ziehen
+    function onMouseDown(e) {
+        if (!isSelecting) return;
+        startPoint = e.latlng;
+        // Starte Rechteck an Klickposition
+        selectionRect = L.rectangle([startPoint, startPoint], {
+            color: '#3b82f6', weight: 2, fillOpacity: 0.2, interactive: false
+        }).addTo(map);
+    }
+
+    function onMouseMove(e) {
+        if (!isSelecting || !startPoint || !selectionRect) return;
+        let current = e.latlng;
+        // Wenn Format A4 fixiert ist, müssen wir das Rechteck zwingen, das Verhältnis zu halten
+        if (exportFormat !== 'free') {
+            const ratio = (exportFormat === 'a4l') ? 1.4142 : 0.7071; // Seitenverhältnis
+            const lngScale = Math.cos(startPoint.lat * Math.PI / 180);
+            const dy = Math.abs(current.lat - startPoint.lat);
+            const dx = (dy * ratio) / lngScale;
+            // Berechne neue Ecke basierend auf Mausrichtung
+            const latDir = current.lat > startPoint.lat ? 1 : -1;
+            const lngDir = current.lng > startPoint.lng ? 1 : -1;
+            current = L.latLng(startPoint.lat + (latDir * dy), startPoint.lng + (lngDir * dx));
+        }
+        selectionRect.setBounds([startPoint, current]);
+    }
+
+    function onMouseUp(e) {
+        if (!isSelecting || !startPoint) return;
+        finalBounds = selectionRect.getBounds(); // Speichere den gewählten Bereich
+        isSelecting = false; startPoint = null;
+        map.dragging.enable(); // Karte wieder bewegbar machen
+        map.getContainer().classList.remove('selection-mode');
+        document.getElementById('selection-info').classList.remove('hidden');
+    }
+
+    // Ändert den Hintergrund (Layer)
+    function setBaseLayer(key) {
+        activeLayerConfig = key;
+        // Lösche alle alten Kachel-Layer
+        map.eachLayer(layer => { if (layer instanceof L.TileLayer) map.removeLayer(layer); });
+        // Füge neuen hinzu
+        L.tileLayer(layerUrls[key], { attribution: '&copy; OSM', crossOrigin: 'anonymous' }).addTo(map);
+        
+        // Buttons updaten
+        document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById(`btn-${key}`);
+        if(activeBtn) activeBtn.classList.add('active');
+
+        // Spezialfall: Topo Karte hat weniger Zoomstufen
+        const btn18 = document.getElementById('zoom-18');
+        if (key === 'topo') {
+            btn18.disabled = true;
+            if (exportZoomLevel > 17) setExportZoom(17);
+        } else {
+            btn18.disabled = false;
+        }
+    }
+
+    // Menüs Ein/Ausblenden
     function toggleExportMenu() { document.getElementById('export-menu').classList.toggle('hidden'); resetExportUI(); }
     function toggleLayerMenu() { document.getElementById('layer-menu').classList.toggle('hidden'); }
     function resetExportUI() {
@@ -741,29 +745,41 @@
     }
     function cancelExport() { if(exportAbortController) exportAbortController.abort(); }
 
+    // Suchfunktion (Nominatim API)
+    function searchLocation() {
+        const q = document.getElementById('search-input').value;
+        if (!q) return;
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`).then(r => r.json()).then(d => { if(d.length) map.flyTo([d[0].lat, d[0].lon], 18); });
+    }
+
     /* =========================================================================
-       9. EXPORT ENGINE (CANVAS & PARALLEL DOWNLOAD)
+       6. EXPORT ENGINE (Das "Herzstück" für den Download)
+       Hier passiert die Magie: Wir bauen ein riesiges Bild aus vielen kleinen
+       Kacheln zusammen.
        ========================================================================= */
     async function exportAsPNG() {
         exportAbortController = new AbortController();
         const signal = exportAbortController.signal;
         
+        // UI umschalten auf "Ladebalken"
         document.getElementById('export-setup').classList.add('hidden');
         document.getElementById('export-progress').classList.remove('hidden');
         const progressBar = document.getElementById('progress-bar'), progressPercent = document.getElementById('progress-percent'), progressLabel = document.getElementById('progress-label');
         
         const targetZoom = exportZoomLevel;
-        const fallbackZoom = targetZoom - 1;
-        const bounds = finalBounds || map.getBounds();
+        const fallbackZoom = targetZoom - 1; // Falls eine Kachel fehlt, nehmen wir die unschärfere
+        const bounds = finalBounds || map.getBounds(); // Bereich: Auswahl oder aktueller Bildschirm
         const nw = bounds.getNorthWest(), se = bounds.getSouthEast();
 
         progressLabel.innerText = "Lokalisiere Gebiet...";
         
+        // --- Titel Generierung ---
         let displayTitle = "OpenFireMap.org";
         const centerLat = bounds.getCenter().lat;
         const centerLon = bounds.getCenter().lng;
 
         try {
+            // Wir fragen OSM: "Wie heißt der Ort an Koordinate XY?"
             const fetchAddress = async (lat, lon) => {
                 const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`); 
                 const d = await res.json();
@@ -778,53 +794,41 @@
                 displayTitle = centerLoc.suburb ? `${centerLoc.city} - ${centerLoc.suburb}` : centerLoc.city;
             }
 
-            // Erweiterter Check für Übersichtskarten (Zoom 14 & 15)
-            // Wenn 3 verschiedene Gemeinden im Bild sind -> Neutraler Titel
+            // Wenn wir sehr weit rausgezoomt haben (Zoom 14/15), prüfen wir die Ecken.
+            // Sind zu viele verschiedene Städte im Bild, nennen wir es neutral "OpenFireMap".
             if (targetZoom === 14 || targetZoom === 15) {
                 const pointsToCheck = [
-                    {lat: nw.lat, lon: nw.lng}, 
-                    {lat: nw.lat, lon: se.lng}, 
-                    {lat: se.lat, lon: se.lng}, 
-                    {lat: se.lat, lon: nw.lng}  
+                    {lat: nw.lat, lon: nw.lng}, {lat: nw.lat, lon: se.lng}, 
+                    {lat: se.lat, lon: se.lng}, {lat: se.lat, lon: nw.lng}  
                 ];
-
                 const promises = pointsToCheck.map(p => fetchAddress(p.lat, p.lon));
                 const results = await Promise.all(promises);
                 results.push(centerLoc);
-
                 const uniqueCities = new Set();
-                results.forEach(loc => {
-                    if (loc.city) uniqueCities.add(loc.city);
-                });
-
-                if (uniqueCities.size >= 3) {
-                    displayTitle = "OpenFireMap.org";
-                }
+                results.forEach(loc => { if (loc.city) uniqueCities.add(loc.city); });
+                if (uniqueCities.size >= 3) displayTitle = "OpenFireMap.org";
             }
+        } catch (e) { console.error("Titel Fehler:", e); }
 
-        } catch (e) {
-            console.error("Titel Generierung Fehler:", e);
-        }
-
-        // Kachel-Berechnung (Web Mercator)
+        // --- Mathematik für Kacheln (Web Mercator Projektion) ---
         const worldSize = (z) => Math.pow(2, z);
         const lat2tile = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * worldSize(z);
         const lon2tile = (lon, z) => (lon + 180) / 360 * worldSize(z);
         
+        // Berechne welche Kacheln (x, y) wir brauchen
         const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
         const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
         const x2 = Math.floor(lon2tile(se.lng, targetZoom));
         const y2 = Math.floor(lat2tile(se.lat, targetZoom));
 
+        // Erstelle eine unsichtbare Leinwand (Canvas) im Speicher
         const canvas = document.createElement('canvas');
         canvas.width = (x2 - x1 + 1) * 256; 
         canvas.height = (y2 - y1 + 1) * 256;
         
-        // Limitierung auf ca. 200 Megapixel
+        // Browser stürzen ab, wenn Canvas zu groß wird. Limit ca. 14000 Pixel.
         if (canvas.width > 14000 || canvas.height > 14000) { 
-            showNotification(`Ausschnitt zu groß für Zoom ${targetZoom}! (Limit ~14000px)`); 
-            toggleExportMenu(); 
-            return; 
+            showNotification(`Ausschnitt zu groß!`); toggleExportMenu(); return; 
         }
 
         const ctx = canvas.getContext('2d');
@@ -834,7 +838,7 @@
 
         progressLabel.innerText = `Sammle Kacheln (Z${targetZoom})...`;
         
-        // Queue für parallelen Download
+        // Liste aller Kacheln, die wir laden müssen
         const tileQueue = [];
         for (let x = x1; x <= x2; x++) {
             for (let y = y1; y <= y2; y++) {
@@ -842,35 +846,24 @@
             }
         }
 
+        // --- Parallelisierung ---
+        // Wir laden 8 Bilder gleichzeitig, damit es schneller geht.
         const CONCURRENCY = 8; 
-        
         const processQueue = async () => {
             while (tileQueue.length > 0 && !signal.aborted) {
                 const {x, y} = tileQueue.shift();
                 await new Promise(resolve => {
-                    const img = new Image(); 
-                    img.crossOrigin = "anonymous";
+                    const img = new Image(); img.crossOrigin = "anonymous";
                     const zTargetUrl = baseUrlTpl.replace('{z}', targetZoom).replace('{x}', x).replace('{y}', y);
-                    
-                    img.onload = () => { 
-                        ctx.drawImage(img, (x - x1) * 256, (y - y1) * 256); 
-                        loaded++; updateProgress(); resolve(); 
-                    };
-                    
+                    img.onload = () => { ctx.drawImage(img, (x - x1) * 256, (y - y1) * 256); loaded++; updateProgress(); resolve(); };
+                    // Wenn Fehler (Kachel fehlt): Fallback auf Zoom-1
                     img.onerror = () => {
-                        // Fallback: Niedrigeren Zoomlevel hochskalieren
-                        const zFallback_x = Math.floor(x/2);
-                        const zFallback_y = Math.floor(y/2);
-                        const off_x = (x % 2) * 128;
-                        const off_y = (y % 2) * 128;
+                        const zFallback_x = Math.floor(x/2); const zFallback_y = Math.floor(y/2);
+                        const off_x = (x % 2) * 128; const off_y = (y % 2) * 128;
                         const zFallbackUrl = baseUrlTpl.replace('{z}', fallbackZoom).replace('{x}', zFallback_x).replace('{y}', zFallback_y);
-                        
                         const fImg = new Image(); fImg.crossOrigin = "anonymous"; fImg.src = zFallbackUrl;
-                        fImg.onload = () => { 
-                            ctx.drawImage(fImg, off_x, off_y, 128, 128, (x - x1) * 256, (y - y1) * 256, 256, 256); 
-                            loaded++; updateProgress(); resolve(); 
-                        };
-                        fImg.onerror = () => { loaded++; resolve(); };
+                        fImg.onload = () => { ctx.drawImage(fImg, off_x, off_y, 128, 128, (x - x1) * 256, (y - y1) * 256, 256, 256); loaded++; updateProgress(); resolve(); };
+                        fImg.onerror = () => { loaded++; resolve(); }; // Wenn auch Fallback fehlt: Pech gehabt (weiße Stelle)
                     };
                     img.src = zTargetUrl;
                 });
@@ -878,23 +871,16 @@
         };
 
         const workers = [];
-        for (let i = 0; i < CONCURRENCY; i++) {
-            workers.push(processQueue());
-        }
+        for (let i = 0; i < CONCURRENCY; i++) workers.push(processQueue());
         await Promise.all(workers);
 
         function updateProgress() { const p = Math.round((loaded / totalTiles) * 80); progressBar.style.width = p + "%"; progressPercent.innerText = p + "%"; }
-
         if(signal.aborted) { toggleExportMenu(); return; }
         
+        // --- Overlay Malen: Grenzen ---
         progressLabel.innerText = "Rendere Grenzen...";
-        ctx.save();
-        ctx.translate(-x1 * 256, -y1 * 256); 
-        
-        ctx.strokeStyle = "#333333"; 
-        ctx.lineWidth = 2; 
-        ctx.setLineDash([20, 20]); 
-        ctx.lineCap = "round";
+        ctx.save(); ctx.translate(-x1 * 256, -y1 * 256); // Verschiebe Nullpunkt
+        ctx.strokeStyle = "#333333"; ctx.lineWidth = 2; ctx.setLineDash([20, 20]); ctx.lineCap = "round";
 
         for (let el of cachedElements) {
             if (el.tags && el.tags.boundary === 'administrative' && el.geometry) {
@@ -904,14 +890,14 @@
                 for (let p of el.geometry) {
                     const px = lon2tile(p.lon, targetZoom) * 256;
                     const py = lat2tile(p.lat, targetZoom) * 256;
-                    if (first) { ctx.moveTo(px, py); first = false; }
-                    else { ctx.lineTo(px, py); }
+                    if (first) { ctx.moveTo(px, py); first = false; } else { ctx.lineTo(px, py); }
                 }
                 ctx.stroke();
             }
         }
         ctx.restore();
 
+        // --- Overlay Malen: Hydranten & Wachen ---
         progressLabel.innerText = "Rendere Infrastruktur...";
         ctx.save(); ctx.translate(-x1 * 256, -y1 * 256);
         const iconCache = {};
@@ -925,10 +911,9 @@
             const lon = el.lon || el.center?.lon;
             const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
             
+            // Verhindere doppelte Wachen
             if (isStation) {
-                const alreadyDrawn = renderedExportLocations.some(loc => 
-                    Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001
-                );
+                const alreadyDrawn = renderedExportLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
                 if (alreadyDrawn) continue;
                 renderedExportLocations.push({lat, lon});
             }
@@ -937,35 +922,31 @@
             const tx = lon2tile(lon, targetZoom) * 256;
             const ty = lat2tile(lat, targetZoom) * 256;
             
+            // Check ob Objekt im Bildausschnitt liegt
+            if (tx < x1*256 || tx > (x2+1)*256 || ty < y1*256 || ty > (y2+1)*256) continue;
+
+            // Gleiche Logik wie bei der Live-Karte: Punkte vs Icons
             if (isStation && targetZoom < 12) continue;
             if (!isStation && targetZoom < 15) continue;
-
-            if (tx < x1*256 || tx > (x2+1)*256 || ty < y1*256 || ty > (y2+1)*256) continue;
 
             const drawAsDot = !isStation && targetZoom < 17;
             const drawAsStationSquare = isStation && targetZoom < 14;
 
             if (drawAsDot || drawAsStationSquare) {
+                // Male Punkt oder Quadrat
                 const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
                 const color = isStation ? '#ef4444' : (isWater ? '#3b82f6' : '#ef4444');
-                
                 ctx.beginPath();
-                if (drawAsStationSquare) {
-                    ctx.rect(tx - 5, ty - 5, 10, 10);
-                } else {
-                    ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
-                }
-                ctx.fillStyle = color;
-                ctx.fill();
-                ctx.lineWidth = 1.5;
-                ctx.strokeStyle = "white";
-                ctx.stroke();
-            } 
-            else {
+                if (drawAsStationSquare) ctx.rect(tx - 5, ty - 5, 10, 10); else ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = color; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = "white"; ctx.stroke();
+            } else {
+                // Male SVG Icon
                 if (!iconCache[type]) {
+                    // Wandle SVG-String in Bild um
                     const svgB = new Blob([getSVGContent(type)], {type: 'image/svg+xml;charset=utf-8'}), url = URL.createObjectURL(svgB), img = new Image();
                     img.src = url; await new Promise(res => img.onload = res); iconCache[type] = img;
                 }
+                // Schatten und Zeichnen
                 ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
                 const iconScale = targetZoom < 17 ? 0.8 : 1.0; 
                 const size = (type === 'station' ? 38 : 34) * iconScale;
@@ -975,52 +956,49 @@
         }
         ctx.restore();
 
+        // --- Finale Layout Elemente (Kopfzeile & Maßstab) ---
         progressLabel.innerText = "Finalisiere Layout...";
         const bannerH = 150; 
-        ctx.fillStyle = "rgba(255, 255, 255, 0.98)"; 
-        ctx.fillRect(0, 0, canvas.width, bannerH);
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.2)"; 
-        ctx.lineWidth = 3; 
-        ctx.strokeRect(0, 0, canvas.width, bannerH);
         
+        // Weißer Banner oben
+        ctx.fillStyle = "rgba(255, 255, 255, 0.98)"; ctx.fillRect(0, 0, canvas.width, bannerH);
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.2)"; ctx.lineWidth = 3; ctx.strokeRect(0, 0, canvas.width, bannerH);
+        
+        // Titel Text
         ctx.fillStyle = "#0f172a"; ctx.textAlign = "center";
         const finalTitle = displayTitle === "OpenFireMap.org" ? "OpenFireMap.org" : `Orts- und Hydrantenplan ${displayTitle}`;
-        ctx.font = "bold 44px Arial, sans-serif"; 
-        ctx.fillText(finalTitle, canvas.width / 2, 60);
+        ctx.font = "bold 44px Arial, sans-serif"; ctx.fillText(finalTitle, canvas.width / 2, 60);
         
+        // Metadaten (Datum, Auflösung)
         const now = new Date();
         const mPerPx = (Math.cos(bounds.getCenter().lat * Math.PI / 180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, targetZoom));
         ctx.font = "24px Arial, sans-serif"; ctx.fillStyle = "#334155";
         ctx.fillText(`Stand: ${now.toLocaleString('de-DE', { month: 'long', year: 'numeric' })} | Auflösung: Z${targetZoom} (~${mPerPx.toFixed(2)} m/px)`, canvas.width / 2, 105);
 
+        // Maßstabsbalken unten rechts
         const prettyD = [1000, 500, 250, 100, 50]; 
         let distM = 100, scaleW = 100 / mPerPx;
         for (let d of prettyD) { let w = d / mPerPx; if (w <= canvas.width * 0.3) { distM = d; scaleW = w; break; } }
         
         const sX = canvas.width - scaleW - 40, sY = canvas.height - 40;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; 
-        ctx.fillRect(sX - 10, sY - 50, scaleW + 20, 60);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; ctx.fillRect(sX - 10, sY - 50, scaleW + 20, 60);
         ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 3; 
         ctx.beginPath(); ctx.moveTo(sX, sY - 10); ctx.lineTo(sX, sY); ctx.lineTo(sX + scaleW, sY); ctx.lineTo(sX + scaleW, sY - 10); ctx.stroke();
-        ctx.fillStyle = "#0f172a"; ctx.font = "bold 18px Arial"; 
-        ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
+        ctx.fillStyle = "#0f172a"; ctx.font = "bold 18px Arial"; ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
 
+        // --- Download starten ---
         progressBar.style.width = "100%";
         const link = document.createElement('a'); 
         link.download = `Hydrantenplan_${finalTitle.replace(/[\s\.]/g, '_')}_Z${targetZoom}_${activeLayerConfig}_${now.toISOString().slice(0,10)}.png`;
-        link.href = canvas.toDataURL("image/png"); 
-        link.click();
+        link.href = canvas.toDataURL("image/png"); // Canvas zu Bild umwandeln
+        link.click(); // Automatischer Klick auf Download
         
+        // Aufräumen
         Object.values(iconCache).forEach(img => URL.revokeObjectURL(img.src)); 
         setTimeout(toggleExportMenu, 800);
     }
 
-    function searchLocation() {
-        const q = document.getElementById('search-input').value;
-        if (!q) return;
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`).then(r => r.json()).then(d => { if(d.length) map.flyTo([d[0].lat, d[0].lon], 18); });
-    }
-
+    // Beim Starten der Seite: initMap ausführen
     window.onload = initMap;
 </script>
 </body>
