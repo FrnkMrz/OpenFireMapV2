@@ -12,12 +12,12 @@
 
     WAS MACHT DIESER CODE?
     1. Er lädt eine Landkarte (Leaflet).
-    2. Er fragt eine Datenbank (OpenStreetMap) nach Hydranten und Wachen.
+    2. Er fragt eine Datenbank (OpenStreetMap) nach Hydranten, Wachen und AEDs.
     3. Er übersetzt Texte automatisch (Deutsch, Englisch, Französisch etc.).
     4. Er erlaubt den Export als Bild (PNG) oder für Navis (GPX).
 
     AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-16
+    DATUM: 2026-01-16 (Update: AED Zoom Levels & Dots)
 -->
 <!DOCTYPE html>
 <!-- 'lang="de"' sagt dem Browser, dass die Grundsprache Deutsch ist. -->
@@ -75,6 +75,7 @@
         /* Kleine farbige Punkte für niedrige Zoomstufen (wenn man weit weg ist) */
         .hydrant-dot { background-color: #ef4444; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .tank-dot { background-color: #3b82f6; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
+        .defib-dot { background-color: #16a34a; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .station-square { background-color: #ef4444; border: 1px solid white; width: 10px; height: 10px; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
 
         /* Das Aussehen der kleinen Info-Schildchen beim Drüberfahren (Tooltips) */
@@ -336,7 +337,8 @@
             legend_res: "Auflösung",
             details: "Details",
             station: "Feuerwache",
-            hydrant: "Hydrant"
+            hydrant: "Hydrant",
+            defib: "Defibrillator (AED)"
         },
         // Englisch (Fallback für alle anderen Sprachen)
         en: {
@@ -387,7 +389,8 @@
             legend_res: "Resolution",
             details: "Details",
             station: "Fire Station",
-            hydrant: "Hydrant"
+            hydrant: "Hydrant",
+            defib: "Defibrillator (AED)"
         },
         // Französisch
         fr: {
@@ -438,7 +441,8 @@
             legend_res: "Résolution",
             details: "Détails",
             station: "Caserne",
-            hydrant: "Poteau incendie"
+            hydrant: "Poteau incendie",
+            defib: "Défibrillateur (DAE)"
         },
         // Spanisch
         es: {
@@ -489,7 +493,8 @@
             legend_res: "Resolución",
             details: "Detalles",
             station: "Estación de bomberos",
-            hydrant: "Hidrante"
+            hydrant: "Hidrante",
+            defib: "Desfibrilador (DEA)"
         },
         // Italienisch
         it: {
@@ -540,7 +545,8 @@
             legend_res: "Risoluzione",
             details: "Dettagli",
             station: "Caserma pompieri",
-            hydrant: "Idrante"
+            hydrant: "Idrante",
+            defib: "Defibrillatore (DAE)"
         },
         // Polnisch
         pl: {
@@ -591,7 +597,8 @@
             legend_res: "Rozdzielczość",
             details: "Szczegóły",
             station: "Straż pożarna",
-            hydrant: "Hydrant"
+            hydrant: "Hydrant",
+            defib: "Defibrylator (AED)"
         },
         // Niederländisch
         nl: {
@@ -642,7 +649,8 @@
             legend_res: "Resolutie",
             details: "Details",
             station: "Brandweerkazerne",
-            hydrant: "Brandkraan"
+            hydrant: "Brandkraan",
+            defib: "Defibrillator (AED)"
         },
         // Tschechisch
         cs: {
@@ -693,7 +701,8 @@
             legend_res: "Rozlišení",
             details: "Podrobnosti",
             station: "Hasičská stanice",
-            hydrant: "Hydrant"
+            hydrant: "Hydrant",
+            defib: "Defibrilátor (AED)"
         }
     };
 
@@ -888,6 +897,11 @@
             queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});`);
         }
 
+        // Ab Zoom 16: Defibrillatoren laden (Update)
+        if (zoom >= 16) {
+            queryParts.push(`node["emergency"="defibrillator"](${bbox});`);
+        }
+
         // Ab Zoom 14: Gemeindegrenzen laden
         let boundaryQuery = '';
         if (zoom >= 14) {
@@ -918,6 +932,15 @@
     
     // Baut das kleine Bildchen (SVG) für die Karte
     function getSVGContent(type) {
+        // Spezialfall Defibrillator (Grün mit Herz)
+        if (type === 'defibrillator') {
+             return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="45" fill="#16a34a" stroke="white" stroke-width="5"/>
+                <path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/>
+                <path d="M55 45 L45 55 L55 55 L45 65" stroke="#16a34a" stroke-width="3" fill="none"/>
+            </svg>`;
+        }
+
         const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
         const color = isWater ? '#3b82f6' : '#ef4444'; // Blau oder Rot
         
@@ -968,11 +991,18 @@
             if (!lat || !lon) return;
 
             const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
-            const type = isStation ? 'station' : (tags['fire_hydrant:type'] || tags.emergency);
+            const isDefib = tags.emergency === 'defibrillator';
+            let type = '';
 
-            // Filter (falls alte Daten noch im Speicher sind)
+            if (isStation) type = 'station';
+            else if (isDefib) type = 'defibrillator';
+            else type = tags['fire_hydrant:type'] || tags.emergency;
+
+            // Filter
             if (isStation && zoom < 12) return; 
-            if (!isStation && zoom < 15) return; 
+            if (!isStation && !isDefib && zoom < 15) return; 
+            // Defibrillatoren NUR ab Zoom 16
+            if (isDefib && zoom < 16) return;
 
             // Überlappungsschutz (damit nicht 2 Marker genau übereinander liegen)
             const alreadyDrawn = renderedLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
@@ -988,6 +1018,19 @@
                      const iconHtml = getSVGContent(type);
                      const marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [32, 32] }), zIndexOffset: 1000 }).addTo(markerLayer);
                     if (zoom === 18) { marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 }); }
+                }
+            } else if (isDefib) {
+                if (zoom < 17) {
+                    // Zoom 16: Grüner Punkt
+                    L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) }).addTo(markerLayer);
+                } else {
+                    // Ab Zoom 17: Defib Icon
+                    const iconHtml = getSVGContent(type);
+                    const marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), zIndexOffset: 2000 }).addTo(markerLayer);
+                    // Tooltip NUR bei Zoom 18
+                    if (zoom === 18) {
+                        marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
+                    }
                 }
             } else {
                 if (zoom < 17) {
@@ -1008,7 +1051,9 @@
 
     // Baut das Info-Fenster (Tooltip)
     function generateTooltip(tags) {
-        const tooltipTitle = tags.name || t('details'); 
+        let tooltipTitle = tags.name || t('details');
+        if (tags.emergency === 'defibrillator') tooltipTitle = t('defib');
+
         let html = `<div class="p-2 min-w-[180px]">
             <div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div>
             <div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
@@ -1210,10 +1255,11 @@
             
             const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
             const isHydrant = tags.emergency && ['fire_hydrant', 'water_tank', 'suction_point', 'fire_water_pond', 'cistern'].some(t => tags.emergency.includes(t));
+            const isDefib = tags.emergency === 'defibrillator';
 
-            if (!isStation && !isHydrant) return;
+            if (!isStation && !isHydrant && !isDefib) return;
 
-            let name = tags.name || (isStation ? t('station') : t('hydrant'));
+            let name = tags.name || (isStation ? t('station') : (isDefib ? t('defib') : t('hydrant')));
             if (!tags.name && tags['fire_hydrant:ref']) name = `H ${tags['fire_hydrant:ref']}`;
             if (!tags.name && tags['ref']) name = `${isStation ? 'Wache' : 'H'} ${tags['ref']}`;
 
@@ -1404,21 +1450,24 @@
                 renderedExportLocations.push({lat, lon});
             }
 
-            const type = isStation ? 'station' : (tags['fire_hydrant:type'] || tags.emergency);
+            const type = isStation ? 'station' : (tags.emergency === 'defibrillator' ? 'defibrillator' : (tags['fire_hydrant:type'] || tags.emergency));
             const tx = lon2tile(lon, targetZoom) * 256;
             const ty = lat2tile(lat, targetZoom) * 256;
             
             if (tx < x1*256 || tx > (x2+1)*256 || ty < y1*256 || ty > (y2+1)*256) continue;
 
             if (isStation && targetZoom < 12) continue;
-            if (!isStation && targetZoom < 15) continue;
+            if (type === 'defibrillator') {
+                if (targetZoom < 16) continue;
+            } else if (!isStation && targetZoom < 15) continue;
 
-            const drawAsDot = !isStation && targetZoom < 17;
             const drawAsStationSquare = isStation && targetZoom < 14;
+            const drawAsHydrantDot = !isStation && type !== 'defibrillator' && targetZoom < 17;
+            const drawAsDefibDot = type === 'defibrillator' && targetZoom === 16;
 
-            if (drawAsDot || drawAsStationSquare) {
+            if (drawAsHydrantDot || drawAsStationSquare || drawAsDefibDot) {
                 const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-                const color = isStation ? '#ef4444' : (isWater ? '#3b82f6' : '#ef4444');
+                const color = isStation ? '#ef4444' : (type === 'defibrillator' ? '#16a34a' : (isWater ? '#3b82f6' : '#ef4444'));
                 ctx.beginPath();
                 if (drawAsStationSquare) ctx.rect(tx - 5, ty - 5, 10, 10); else ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
                 ctx.fillStyle = color; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = "white"; ctx.stroke();
@@ -1482,4 +1531,3 @@
     window.onload = initMap;
 </script>
 </body>
-</html>
