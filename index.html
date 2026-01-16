@@ -871,12 +871,15 @@
        Diese Funktion läuft los, sobald die Webseite geladen ist.
        ========================================================================= */
     
-    function showNotification(msg) {
+    // NEU: Zeigt Nachrichten mit variabler Dauer an
+    function showNotification(msg, duration = 3000) {
         const box = document.getElementById('notification-box');
         if (!box) return;
         box.innerText = msg;
         box.style.display = 'block';
-        setTimeout(() => box.style.display = 'none', 3000); // Verschwindet nach 3 Sekunden
+        // Falls vorher schon ein Timer lief, löschen wir ihn, damit die Nachricht nicht sofort verschwindet
+        if(box.hideTimeout) clearTimeout(box.hideTimeout);
+        box.hideTimeout = setTimeout(() => box.style.display = 'none', duration); 
     }
 
     function initMap() {
@@ -1381,6 +1384,17 @@
         });
     }
 
+    // NEU: Konfiguration der maximalen Kantenlänge pro Zoomstufe (in Kilometern)
+    const ZOOM_LIMITS_KM = {
+        12: 30, // Weit rausgezoomt: Großer Ausschnitt erlaubt (30km)
+        13: 25,
+        14: 20,
+        15: 15,
+        16: 10,
+        17: 8,
+        18: 5   // Nah reingezoomt: Kleiner Ausschnitt (5km) wegen Detailreichtum
+    };
+
     async function exportAsPNG() {
         exportAbortController = new AbortController();
         const signal = exportAbortController.signal;
@@ -1456,16 +1470,24 @@
         // LIMIT-CHECK 1: Pixel-Limit (Technischer Schutz vor Browser-Absturz)
         // 14.000px ist eine sichere Obergrenze für Canvas in den meisten Browsern.
         if (canvas.width > 14000 || canvas.height > 14000) { 
-            showNotification(t('too_large')); toggleExportMenu(); return; 
+            showNotification(t('too_large'), 5000); // Längere Anzeigezeit (5s)
+            toggleExportMenu(); return; 
         }
 
-        // LIMIT-CHECK 2: 5km Limit bei hohem Zoom (Logische Einschränkung)
-        // Bei Zoom 18 verhindern wir riesige Gebiete, um den Server zu schonen.
-        // mapWidth (px) * mPerPx (m/px) = Breite in Metern
+        // LIMIT-CHECK 2: Intelligentes Zoom-Limit (Logische Einschränkung)
+        // Wir prüfen, ob der Ausschnitt für die gewählte Zoomstufe zu groß ist.
+        const maxKm = ZOOM_LIMITS_KM[targetZoom] || 5; // Standard 5km falls Zoom nicht definiert
+        const maxMeters = maxKm * 1000;
+        
+        // Tatsächliche Größe in Metern berechnen
         const widthMeters = mapWidth * mPerPx;
         const heightMeters = mapHeight * mPerPx;
-        if (targetZoom >= 18 && (widthMeters > 5000 || heightMeters > 5000)) {
-             showNotification("Zoom 18: Max. 5km Kantenlänge erlaubt!"); // Hinweis für den Nutzer
+
+        if (widthMeters > maxMeters || heightMeters > maxMeters) {
+             // Berechne, wie viel zu groß es ist, für eine gute Fehlermeldung
+             const currentMax = Math.max(widthMeters, heightMeters) / 1000;
+             const msg = `Zoom ${targetZoom}: Max. ${maxKm}km erlaubt! (Aktuell: ~${currentMax.toFixed(1)}km)`;
+             showNotification(msg, 6000); // 6 Sekunden anzeigen, damit man es lesen kann
              toggleExportMenu(); 
              return;
         }
