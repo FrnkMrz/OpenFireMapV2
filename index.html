@@ -1,214 +1,276 @@
 <!-- 
     =============================================================================
-    PROJEKT: OpenFireMap V2 - High-Res Exporter & GPX Tool (Vollständig Erklärt)
+    PROJEKT: OpenFireMap V2 - Lernversion (Vollständig)
+    AUTOR: Gemini (im Auftrag von Frank März)
+    DATUM: 2026-01-16
     =============================================================================
     
-    Hallo! Dies ist der Quellcode für deine Feuerwehr-Karten-Anwendung.
+    WILLKOMMEN IM MASCHINENRAUM!
     
-    STRUKTUR DIESER DATEI:
-    Diese Datei ist eine "Single Page Application" (SPA). Das heißt, alles, was 
-    die App braucht, steckt in dieser einen Textdatei. Du kannst sie einfach im 
-    Browser öffnen, und sie läuft – ganz ohne Installation.
+    Dies ist der Quellcode einer "Single Page Application" (Ein-Seiten-Anwendung).
+    Alles, was die Webseite braucht (Design, Logik, Texte), steckt in dieser Datei.
+    
+    STRUKTUR:
+    1. HTML (Struktur): Zeile 40-270
+    2. CSS (Design): Zeile 60-145
+    3. JAVASCRIPT (Logik): ab Zeile 280
+       - Wörterbuch (Übersetzungen)
+       - Karten-Logik
+       - Daten-Abruf (Overpass API)
+       - Export-Funktionen (PNG/GPX)
 
-    WAS MACHT DIESER CODE?
-    1. Er lädt eine Landkarte (Leaflet).
-    2. Er fragt eine Datenbank (OpenStreetMap) nach Hydranten, Wachen und AEDs.
-    3. Er übersetzt Texte automatisch (Deutsch, Englisch, Französisch etc.).
-    4. Er erlaubt den Export als Bild (PNG) oder für Navis (GPX).
-
-    AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-16 (Update: AED ab Zoom 15)
+    HINWEIS:
+    Alle Texte sind in der Variable 'translations' gespeichert, damit die Seite
+    automatisch die Sprache des Nutzers erkennt.
 -->
+
 <!DOCTYPE html>
-<!-- 'lang="de"' sagt dem Browser, dass die Grundsprache Deutsch ist. -->
+<!-- 'lang="de"' sagt dem Browser: "Diese Seite spricht Deutsch." -->
 <html lang="de">
 <head>
+    <!-- TECHNISCHE GRUNDEINSTELLUNGEN -->
     <meta charset="UTF-8">
-    <!-- 
-        WICHTIG FÜR HANDYS:
-        Dieser Befehl sagt dem Handy: "Zeige die Seite so breit an, wie der Bildschirm ist."
-        Ohne das wäre die Schrift auf dem Smartphone winzig klein.
-    -->
+    <!-- Wichtig für Handys: "Pass den Inhalt an die Bildschirmbreite an!" -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenFireMap.org V2</title>
     
     <!-- 
-        EXTERNE WERKZEUGE (Bibliotheken):
-        Wir laden hier fertige Bausteine aus dem Internet, damit wir nicht alles selbst programmieren müssen.
+        EXTERNE WERKZEUGE (BIBLIOTHEKEN) 
+        Wir laden fertige Code-Pakete aus dem Internet.
     -->
-    <!-- Leaflet CSS: Das Design für die Karte (Steuerelemente, Marker) -->
+    
+    <!-- Leaflet CSS: Das Design für die Karte -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Leaflet JS: Die Logik für die Karte (Zoomen, Verschieben) -->
+    
+    <!-- Leaflet JS: Die Logik für die Karte -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Tailwind CSS: Ein Werkzeugkasten für Design (macht Dinge fett, bunt, rund etc.) -->
+    
+    <!-- Tailwind CSS: Ein Design-Werkzeugkasten für schnelle Styles -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- CSS (CASCADING STYLE SHEETS) - HIER BESTIMMEN WIR DAS AUSSEHEN -->
+    <!-- HIER BEGINNT DAS DESIGN (CSS) -->
     <style>
-        /* Grundregeln für die gesamte Seite */
+        /* Grundeinstellungen */
         body { 
             margin: 0; padding: 0; 
-            overflow: hidden; /* Verhindert Scrollbalken am Rand - die Karte soll Vollbild sein */
+            overflow: hidden; /* Keine Scrollbalken */
             font-family: sans-serif; 
-            background: #0f172a; /* Ein dunkles Blau als Hintergrundfarbe */
+            background: #0f172a; /* Dunkelblau */
         }
         
-        /* Der Container, in den die Karte später "gemalt" wird. Er füllt den ganzen Bildschirm. */
+        /* Der Container für die Karte */
         #map { position: absolute; top: 0; bottom: 0; width: 100%; background: #1e293b; }
         
-        /* Das Design für die halbtransparenten Menüs ("Glassmorphism") */
+        /* Glassmorphismus (Milchglas-Effekt) */
         .glass-panel { 
-            background: rgba(15, 23, 42, 0.85); /* Dunkelblau, aber 85% undurchsichtig */
-            backdrop-filter: blur(12px); /* Der Hintergrund verschwimmt wie Milchglas */
-            border: 1px solid rgba(255, 255, 255, 0.1); /* Ein ganz feiner weißer Rand */
+            background: rgba(15, 23, 42, 0.90); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
         }
         
-        /* Styling für die Icons auf der Karte */
+        /* Layout für das Info-Fenster */
+        #legal-modal {
+            display: none; 
+            flex-direction: column; 
+        }
+
+        /* Animation für Marker */
         .icon-container { 
             display: flex; align-items: center; justify-content: center; 
-            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); /* Ein kleiner Schatten unter dem Icon */
-            transition: transform 0.1s ease; /* Weiche Animation */
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); 
+            transition: transform 0.1s ease; 
         }
-        /* Wenn man mit der Maus über ein Icon fährt, wird es 15% größer */
         .icon-container:hover { transform: scale(1.15); z-index: 1000 !important; }
 
-        /* Kleine farbige Punkte für niedrige Zoomstufen (wenn man weit weg ist) */
+        /* Farbige Punkte für Zoomstufen < 17 */
         .hydrant-dot { background-color: #ef4444; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .tank-dot { background-color: #3b82f6; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .defib-dot { background-color: #16a34a; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .station-square { background-color: #ef4444; border: 1px solid white; width: 10px; height: 10px; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
 
-        /* Das Aussehen der kleinen Info-Schildchen beim Drüberfahren (Tooltips) */
+        /* Tooltips (Info-Schildchen) */
         .leaflet-tooltip { 
-            background: #0f172a; 
-            color: white; 
-            border: 1px solid rgba(255,255,255,0.15); 
-            border-radius: 8px; 
-            font-size: 12px; 
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6); 
-            padding: 0; 
+            background: #0f172a; color: white; border: 1px solid rgba(255,255,255,0.15); 
+            border-radius: 8px; font-size: 12px; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6); padding: 0; 
         }
 
-        /* Der Text "100m" am Radius-Kreis */
+        /* Text "100m" am Kreis */
         .range-label {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: #333333 !important; /* Dunkelgraue Schrift */
-            font-weight: bold;
-            font-size: 14px;
-            /* Ein Trick: Weißer Schatten um den Text, damit man ihn auf jedem Untergrund lesen kann */
+            background: transparent !important; border: none !important; box-shadow: none !important;
+            color: #333333 !important; font-weight: bold; font-size: 14px;
             text-shadow: -1px -1px 0 rgba(255,255,255,0.8), 1px -1px 0 rgba(255,255,255,0.8), -1px 1px 0 rgba(255,255,255,0.8), 1px 1px 0 rgba(255,255,255,0.8);
         }
         
-        /* Markiert den aktiven Button blau */
         .layer-btn.active { color: #3b82f6; background: rgba(59, 130, 246, 0.1); font-weight: bold; }
         
-        /* Eine Animation: Rotes Pulsieren (für den Export-Text) */
+        /* Pulsierende Animation */
         @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .exporting-active { animation: pulse-red 2s infinite; }
 
-        /* Die rote Box für Fehlermeldungen oben rechts */
+        /* Rote Fehlermeldung */
         #notification-box { 
             position: absolute; top: 20px; right: 20px; z-index: 2000; display: none;
             background: #ef4444; color: white; padding: 12px 24px; border-radius: 12px;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); font-weight: 600;
         }
 
-        /* Ändert den Mauszeiger zu einem Fadenkreuz */
         .selection-mode { cursor: crosshair !important; }
-        /* Wenn ein Button deaktiviert ist (z.B. Zoom 18 bei Topo-Karte), wird er blass */
         .zoom-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: transparent; }
+        
+        /* Links */
+        a { color: #3b82f6; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        
+        /* Scrollbar Design */
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
     </style>
 </head>
 <body>
 
-<!-- HTML STRUKTUR (DAS SKELETT) -->
+<!-- HTML STRUKTUR -->
 
-<!-- 1. Der Platzhalter für die Karte -->
 <div id="map"></div>
-<!-- 2. Die Benachrichtigungsbox (versteckt) -->
 <div id="notification-box"></div>
 
-<!-- 
-    3. DIE STEUERLEISTE (Oben Links) 
-    z-[1000] sorgt dafür, dass sie ÜBER der Karte schwebt.
--->
+<!-- STEUERLEISTE (Oben Links) -->
 <div class="absolute top-5 left-5 z-[1000] flex gap-3">
-    <!-- Suchfeld -->
+    <!-- Suche -->
     <div class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5">
-        <!-- 'data-i18n-placeholder' ist unser Marker für die Übersetzung -->
         <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Ort suchen..." class="bg-transparent px-4 py-2 text-sm text-white outline-none w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-500">
         <button onclick="searchLocation()" class="p-2 text-slate-400 hover:text-white transition-colors">
-            <!-- Das hier ist SVG-Code. Das zeichnet das kleine Lupen-Icon. -->
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </button>
     </div>
     
-    <!-- GPS Button -->
+    <!-- GPS -->
     <button onclick="locateUser()" id="locate-btn" data-i18n-title="locate_title" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95" title="Mein Standort">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
     </button>
     
-    <!-- Layer Button -->
+    <!-- Layer -->
     <button onclick="toggleLayerMenu()" data-i18n-title="layers_title" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95" title="Karte wechseln">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
         </svg>
     </button>
 
-    <!-- Export Button -->
+    <!-- Export -->
     <button onclick="toggleExportMenu()" data-i18n-title="export_title" class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95" title="Export">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
     </button>
 </div>
 
-<!-- 4. DAS LAYER MENÜ (Auswahl des Hintergrunds) - Anfangs unsichtbar (class="hidden") -->
-<div id="layer-menu" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
-    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center" data-i18n="bg_header">Hintergrund</h3>
-    <div class="grid grid-cols-1 gap-1">
-        <!-- data-i18n="..." sagt dem Skript: "Tausche diesen Text gegen die richtige Sprache aus!" -->
-        <button onclick="setBaseLayer('voyager')" id="btn-voyager" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-blue-500"></div> <span data-i18n="layer_std">Standard (Voyager)</span>
+<!-- INFO & RECHT KNOPF (Klein, Unten Links) -->
+<div class="absolute bottom-8 left-5 z-[1000]">
+    <button onclick="toggleLegalModal()" id="btn-legal-trigger" class="glass-panel p-1.5 rounded-xl text-slate-400 hover:text-white shadow-xl transition-all border border-white/10 active:scale-95 flex items-center gap-1.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="text-[10px] font-bold hidden md:inline" data-i18n="legal_btn">Info & Recht</span>
+    </button>
+</div>
+
+<!-- INFO-BOX (Impressum & Recht) -->
+<div id="legal-modal" class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
+    <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            Rechtliches
+        </h2>
+        <button onclick="toggleLegalModal()" class="text-slate-500 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
-        <button onclick="setBaseLayer('positron')" id="btn-positron" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-slate-300"></div> <span data-i18n="layer_print">Druck (Hell)</span>
-        </button>
-        <!-- ... weitere Buttons für andere Kartenstile ... -->
-        <button onclick="setBaseLayer('dark')" id="btn-dark" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-slate-800"></div> <span data-i18n="layer_night">Nacht (Dunkel)</span>
-        </button>
-        <button onclick="setBaseLayer('satellite')" id="btn-satellite" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-green-600"></div> <span data-i18n="layer_sat">Satellit (Esri)</span>
-        </button>
-        <button onclick="setBaseLayer('topo')" id="btn-topo" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-amber-600"></div> <span data-i18n="layer_topo">Topographisch (OSM)</span>
-        </button>
-        <button onclick="setBaseLayer('osm')" id="btn-osm" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 border-t border-white/5 mt-1 pt-2">
-            <div class="w-3 h-3 rounded-full bg-emerald-500"></div> <span data-i18n="layer_osm">OSM (Intl)</span>
-        </button>
-        <button onclick="setBaseLayer('osmde')" id="btn-osmde" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-emerald-700"></div> <span data-i18n="layer_osmde">OSM (DE Style)</span>
-        </button>
+    </div>
+    
+    <div class="overflow-y-auto custom-scroll pr-2 text-xs space-y-6">
+        <!-- Impressum -->
+        <section>
+            <h3 class="text-sm font-bold text-white mb-1">Impressum</h3>
+            <p class="leading-relaxed text-slate-400">
+                Angaben gemäß § 5 TMG:<br><br>
+                <strong>Frank März</strong><br>
+                Kersbacher Weg 3<br>
+                91220 Schnaittach<br>
+                Deutschland<br><br>
+                Kontakt:<br>
+                Telefon: +499153/9229501<br>
+                E-Mail: info@openfiremap.org
+            </p>
+        </section>
+        
+        <!-- Datenschutz -->
+        <section>
+            <h3 class="text-sm font-bold text-white mb-1">Datenschutzerklärung (Kurzfassung)</h3>
+            <p class="leading-relaxed text-slate-400 mb-2">
+                Diese Anwendung läuft als "Client-Side Application" direkt in Ihrem Browser. Wir speichern keine personenbezogenen Daten auf eigenen Servern.
+            </p>
+            <p class="leading-relaxed text-slate-400">
+                Um die Karten anzuzeigen und Daten abzurufen, verbindet sich Ihr Browser jedoch direkt mit folgenden externen Diensten, wobei technisch bedingt Ihre IP-Adresse übertragen wird:
+            </p>
+            <ul class="list-disc list-inside mt-2 space-y-1 text-slate-500">
+                <li><strong>OpenStreetMap & CartoDB:</strong> Zum Laden der Kartenbilder (Kacheln).</li>
+                <li><strong>Overpass API:</strong> Zum Abruf der Hydranten-, Wachen- und Defibrillatordaten.</li>
+                <li><strong>Nominatim (OSM):</strong> Für die Ortssuche und Adressbestimmung.</li>
+            </ul>
+        </section>
+        
+        <!-- Lizenzen -->
+        <section>
+            <h3 class="text-sm font-bold text-white mb-1">Quellen & Lizenzen</h3>
+            <ul class="list-disc list-inside space-y-1 text-slate-400">
+                <li>
+                    <strong>Kartendaten:</strong> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>-Mitwirkende (ODbL).
+                </li>
+                <li>
+                    <strong>Kartenstil (Standard/Dark/Hell):</strong> &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>.
+                </li>
+                <li>
+                    <strong>Topographische Karte:</strong> Daten &copy; OpenStreetMap-Mitwirkende, SRTM | Darstellung &copy; <a href="http://opentopomap.org" target="_blank">OpenTopoMap</a> (CC-BY-SA).
+                </li>
+                <li>
+                    <strong>Software-Bibliotheken:</strong> <a href="https://leafletjs.com/" target="_blank">Leaflet</a>, <a href="https://tailwindcss.com/" target="_blank">Tailwind CSS</a>.
+                </li>
+            </ul>
+        </section>
+
+        <!-- Haftung -->
+        <section class="border-t border-white/5 pt-2">
+            <h3 class="text-sm font-bold text-white mb-1">Rechtlicher Hinweis & Kontakt</h3>
+            <p class="leading-relaxed text-slate-400 mb-2">
+                Dies ist ein rein privates, nicht-kommerzielles Projekt ohne Gewinnerzielungsabsicht.
+            </p>
+            <p class="leading-relaxed text-amber-500/80 italic mb-2 font-semibold">
+                "Keine Abmahnung ohne vorherigen Kontakt"
+            </p>
+            <p class="leading-relaxed text-slate-500">
+                Sollte der Inhalt oder die Aufmachung dieser Seiten fremde Rechte Dritter oder gesetzliche Bestimmungen verletzen, so bitte ich um eine entsprechende Nachricht ohne Kostennote. Ich garantiere, dass die zu Recht beanstandeten Passagen unverzüglich entfernt werden, ohne dass von Ihrer Seite die Einschaltung eines Rechtsbeistandes erforderlich ist.
+            </p>
+        </section>
     </div>
 </div>
 
-<!-- 5. DAS EXPORT MENÜ (Für PNG und GPX) -->
+<!-- MENÜ FÜR KARTEN-HINTERGRÜNDE -->
+<div id="layer-menu" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
+    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center" data-i18n="bg_header">Hintergrund</h3>
+    <div class="grid grid-cols-1 gap-1">
+        <button onclick="setBaseLayer('voyager')" id="btn-voyager" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-blue-500"></div> <span data-i18n="layer_std">Standard (Voyager)</span></button>
+        <button onclick="setBaseLayer('positron')" id="btn-positron" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-slate-300"></div> <span data-i18n="layer_print">Druck (Hell)</span></button>
+        <button onclick="setBaseLayer('dark')" id="btn-dark" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-slate-800"></div> <span data-i18n="layer_night">Nacht (Dunkel)</span></button>
+        <button onclick="setBaseLayer('satellite')" id="btn-satellite" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-green-600"></div> <span data-i18n="layer_sat">Satellit (Esri)</span></button>
+        <button onclick="setBaseLayer('topo')" id="btn-topo" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-amber-600"></div> <span data-i18n="layer_topo">Topographisch (OSM)</span></button>
+        <button onclick="setBaseLayer('osm')" id="btn-osm" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 border-t border-white/5 mt-1 pt-2"><div class="w-3 h-3 rounded-full bg-emerald-500"></div> <span data-i18n="layer_osm">OSM (Intl)</span></button>
+        <button onclick="setBaseLayer('osmde')" id="btn-osmde" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-emerald-700"></div> <span data-i18n="layer_osmde">OSM (DE Style)</span></button>
+    </div>
+</div>
+
+<!-- MENÜ FÜR EXPORT -->
 <div id="export-menu" class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
-    
-    <!-- Ansicht A: Einstellungen -->
     <div id="export-setup" class="space-y-5">
         <div class="flex justify-between items-center">
             <h3 class="font-bold text-lg" data-i18n="export_header">Export-Eigenschaften</h3>
             <button onclick="toggleExportMenu()" class="text-slate-500 hover:text-white">&times;</button>
         </div>
-        
-        <!-- Formatwahl Buttons (A4, Frei) -->
         <div class="space-y-2">
             <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider" data-i18n="format_label">Format-Vorlage (Verhältnis)</label>
             <div class="grid grid-cols-3 gap-2">
@@ -217,8 +279,6 @@
                 <button onclick="setExportFormat('a4p')" id="fmt-a4p" class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10" data-i18n="fmt_a4p">DIN HOCH</button>
             </div>
         </div>
-
-        <!-- Zoom Level Buttons -->
         <div class="space-y-2">
             <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider" data-i18n="zoom_label">Detail-Grad (Zoom)</label>
             <div class="grid grid-cols-4 gap-2">
@@ -228,64 +288,40 @@
                 <button onclick="setExportZoom(18)" id="zoom-18" class="zoom-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active">Z18</button>
             </div>
         </div>
-
-        <!-- Werkzeug zum Rechteck ziehen -->
         <button onclick="startSelection()" id="select-btn" class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
             <span data-i18n="select_area_btn">Ausschnitt auf Karte wählen</span>
         </button>
-
-        <div id="selection-info" class="hidden text-[11px] text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20" data-i18n="area_fixed">
-            Ausschnitt fixiert ✓
-        </div>
-
-        <!-- DER PNG BUTTON (Blau) -->
-        <button id="png-btn" onclick="exportAsPNG()" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
-            <span data-i18n="png_btn">Hydrantenplan (PNG)</span>
-        </button>
-
-        <!-- DER GPX BUTTON (Grün) -->
+        <div id="selection-info" class="hidden text-[11px] text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20" data-i18n="area_fixed">Ausschnitt fixiert ✓</div>
+        <button id="png-btn" onclick="exportAsPNG()" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg"><span data-i18n="png_btn">Hydrantenplan (PNG)</span></button>
         <button id="gpx-btn" onclick="exportAsGPX()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg border border-emerald-400/30">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             <span data-i18n="gpx_btn">Hydranten exportieren (GPX)</span>
         </button>
     </div>
     
-    <!-- Ansicht B: Ladebalken (wird nur beim PNG-Export sichtbar) -->
     <div id="export-progress" class="hidden">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-lg exporting-active text-blue-400" data-i18n="exporting_title">Export wird erstellt...</h3>
-        </div>
+        <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg exporting-active text-blue-400" data-i18n="exporting_title">Export wird erstellt...</h3></div>
         <div class="space-y-4">
             <div>
-                <div class="flex justify-between text-[10px] mb-1 uppercase tracking-widest text-blue-400 font-bold">
-                    <span id="progress-label" data-i18n="loading_tiles">Lade Kacheln...</span>
-                    <span id="progress-percent">0%</span>
-                </div>
-                <!-- Der Balken -->
-                <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                    <div id="progress-bar" class="h-full bg-blue-500 w-0 transition-all duration-300"></div>
-                </div>
+                <div class="flex justify-between text-[10px] mb-1 uppercase tracking-widest text-blue-400 font-bold"><span id="progress-label" data-i18n="loading_tiles">Lade Kacheln...</span><span id="progress-percent">0%</span></div>
+                <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden"><div id="progress-bar" class="h-full bg-blue-500 w-0 transition-all duration-300"></div></div>
             </div>
-            <button onclick="cancelExport()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2 rounded-xl text-sm font-semibold border border-red-500/20" data-i18n="cancel_btn">
-                Vorgang abbrechen
-            </button>
+            <button onclick="cancelExport()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2 rounded-xl text-sm font-semibold border border-red-500/20" data-i18n="cancel_btn">Vorgang abbrechen</button>
         </div>
     </div>
 </div>
 
-<!-- INFO BOX (Unten Rechts) -->
 <div class="absolute bottom-10 right-10 z-[1000] glass-panel p-4 rounded-2xl text-[10px] text-slate-400 font-mono border border-white/5">
     <div class="flex justify-between gap-4"><span data-i18n="zoom_info">ZOOM</span><span id="zoom-val" class="text-white font-bold">14.0</span></div>
     <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status" class="text-green-400">AKTUELL</span></div>
 </div>
 
-<!-- JAVASCRIPT LOGIK (DIE ELEKTRIK) -->
+<!-- JAVASCRIPT LOGIK -->
 <script>
     /* =========================================================================
        0. WÖRTERBUCH (DICTIONARY)
-       Hier sind alle Texte gespeichert. Das Programm sucht sich die passenden
-       Texte basierend auf der Sprache des Benutzers heraus.
+       Alle Texte für die automatische Übersetzung.
        ========================================================================= */
     const translations = {
         // Deutsch
@@ -338,9 +374,10 @@
             details: "Details",
             station: "Feuerwache",
             hydrant: "Hydrant",
-            defib: "Defibrillator (AED)"
+            defib: "Defibrillator (AED)",
+            legal_btn: "Info & Recht"
         },
-        // Englisch (Fallback für alle anderen Sprachen)
+        // Englisch
         en: {
             search_placeholder: "Search location...",
             locate_title: "My Location",
@@ -390,7 +427,8 @@
             details: "Details",
             station: "Fire Station",
             hydrant: "Hydrant",
-            defib: "Defibrillator (AED)"
+            defib: "Defibrillator (AED)",
+            legal_btn: "Info & Legal"
         },
         // Französisch
         fr: {
@@ -442,7 +480,8 @@
             details: "Détails",
             station: "Caserne",
             hydrant: "Poteau incendie",
-            defib: "Défibrillateur (DAE)"
+            defib: "Défibrillateur (DAE)",
+            legal_btn: "Info & Droit"
         },
         // Spanisch
         es: {
@@ -494,7 +533,8 @@
             details: "Detalles",
             station: "Estación de bomberos",
             hydrant: "Hidrante",
-            defib: "Desfibrilador (DEA)"
+            defib: "Desfibrilador (DEA)",
+            legal_btn: "Info & Legal"
         },
         // Italienisch
         it: {
@@ -546,7 +586,8 @@
             details: "Dettagli",
             station: "Caserma pompieri",
             hydrant: "Idrante",
-            defib: "Defibrillatore (DAE)"
+            defib: "Defibrillatore (DAE)",
+            legal_btn: "Info & Legale"
         },
         // Polnisch
         pl: {
@@ -598,7 +639,8 @@
             details: "Szczegóły",
             station: "Straż pożarna",
             hydrant: "Hydrant",
-            defib: "Defibrylator (AED)"
+            defib: "Defibrylator (AED)",
+            legal_btn: "Info i prawo"
         },
         // Niederländisch
         nl: {
@@ -650,7 +692,8 @@
             details: "Details",
             station: "Brandweerkazerne",
             hydrant: "Brandkraan",
-            defib: "Defibrillator (AED)"
+            defib: "Defibrillator (AED)",
+            legal_btn: "Info & Recht"
         },
         // Tschechisch
         cs: {
@@ -702,76 +745,65 @@
             details: "Podrobnosti",
             station: "Hasičská stanice",
             hydrant: "Hydrant",
-            defib: "Defibrilátor (AED)"
+            defib: "Defibrilátor (AED)",
+            legal_btn: "Info & Právo"
         }
     };
 
-    /* =========================================================================
-       1. SPRACH-LOGIK & HAUPT-VARIABLEN
-       Das Herzstück der internationalen Version.
-       ========================================================================= */
+    /* 1. SPRACH-LOGIK 
+       Diese Funktionen sorgen dafür, dass die Seite in der richtigen Sprache startet.
+    */
     
-    // Schritt 1: Wir schauen, welche Sprache der Browser benutzt.
-    // Das ist z.B. "de-DE" für Deutsch-Deutschland oder "fr-CA" für Französisch-Kanada.
+    // Ermitteln der Browsersprache (z.B. "de-DE")
     const userLangFull = navigator.language || navigator.userLanguage; 
-    
-    // Schritt 2: Wir schneiden alles nach dem Bindestrich ab. Wir wollen nur "de", "fr", "en".
+    // Nur den ersten Teil nehmen ("de")
     const userLangShort = userLangFull.split('-')[0];
-    
-    // Schritt 3: Wir prüfen: Kennen wir diese Sprache?
-    // Wenn 'translations' einen Eintrag für 'fr' hat, nehmen wir 'fr'.
-    // Wenn nicht (z.B. bei Japanisch 'ja'), nehmen wir Englisch ('en') als Standard.
+    // Prüfen, ob wir die Sprache haben, sonst Englisch als Standard
     const currentLang = translations[userLangShort] ? userLangShort : 'en';
     
-    // Das ist unsere Übersetzungs-Maschine:
-    // Du gibst ihr einen Schlüssel (z.B. "png_btn") und sie gibt den richtigen Text zurück.
+    // Hilfsfunktion: Liefert den übersetzten Text für einen Schlüssel
     function t(key) {
         return translations[currentLang][key] || translations['en'][key] || key;
     }
 
-    // Diese Funktion läuft einmal beim Starten. Sie sucht alle Texte auf der Seite und tauscht sie aus.
+    // Tauscht alle Texte im HTML aus
     function updatePageLanguage() {
-        console.log(`Sprache erkannt: ${userLangFull} -> Nutze: ${currentLang}`); // Nur für Entwickler in der Konsole
-        
-        // 1. Normale Texte (z.B. in Buttons oder Überschriften)
-        // Wir suchen alles, was das Attribut 'data-i18n' hat.
         document.querySelectorAll('[data-i18n]').forEach(el => {
-            const key = el.getAttribute('data-i18n'); // Welcher Textschlüssel?
-            el.innerText = t(key); // Ersetze den Inhalt durch die Übersetzung
+            const key = el.getAttribute('data-i18n'); 
+            el.innerText = t(key);
         });
-        
-        // 2. Tooltips (Mouseover-Texte)
-        // Wir suchen alles mit 'data-i18n-title'.
         document.querySelectorAll('[data-i18n-title]').forEach(el => {
             const key = el.getAttribute('data-i18n-title');
             el.title = t(key);
         });
-        
-        // 3. Platzhalter in Eingabefeldern (z.B. "Ort suchen...")
-        // Wir suchen alles mit 'data-i18n-placeholder'.
         document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
             const key = el.getAttribute('data-i18n-placeholder');
             el.placeholder = t(key);
         });
     }
 
-    /* ----------------------------------------------------------- */
-    /* HIER BEGINNEN DIE NORMALEN KARTEN-VARIABLEN */
+    /* 2. ZENTRALE VARIABLEN
+       Hier speichern wir den Zustand der App (welche Karte, welche Daten etc.)
+    */
 
-    let map;                    // Die Karte selbst
-    let markerLayer;            // Folie für Hydranten
-    let boundaryLayer;          // Folie für Grenzen
-    let rangeLayerGroup;        // Folie für den 100m Kreis
-    let activeRangeCenter = null; // Welcher Hydrant ist gerade angeklickt?
-    let currentRequestController; // Hilft beim Abbrechen alter Internet-Anfragen
-    let exportAbortController;    // Hilft beim Abbrechen des Exports
-    let cachedElements = [];    // Unser Gedächtnis: Hier liegen alle heruntergeladenen Hydranten
-    let activeLayerConfig = 'voyager'; // Welches Karten-Design ist aktiv?
-    let exportFormat = 'free';  // Welches Papierformat?
-    let exportZoomLevel = 18;   // Wie scharf soll das Bild sein?
-    let isSelecting = false, selectionRect = null, startPoint = null, finalBounds = null; // Variablen für das Rechteck-Werkzeug
+    let map;                    // Das Leaflet-Karten-Objekt
+    let markerLayer;            // Eine "Folie" für alle Marker (Hydranten etc.)
+    let boundaryLayer;          // Eine "Folie" für die Gemeindegrenzen
+    let rangeLayerGroup;        // Eine "Folie" für den orangenen 100m-Kreis
+    let activeRangeCenter = null; // Welcher Hydrant wurde zuletzt angeklickt?
+    
+    // Diese Controller helfen uns, laufende Internet-Anfragen abzubrechen,
+    // wenn der Benutzer z.B. wild auf der Karte herumschiebt.
+    let currentRequestController; 
+    let exportAbortController;    
+    
+    let cachedElements = [];    // Hier speichern wir die geladenen Daten (Cache)
+    let activeLayerConfig = 'voyager'; // Welches Design (Standard, Satellit) ist aktiv?
+    let exportFormat = 'free';  // Papierformat für Export (A4 oder Frei)
+    let exportZoomLevel = 18;   // Gewünschte Qualität für Export
+    let isSelecting = false, selectionRect = null, startPoint = null, finalBounds = null; // Für das Auswahl-Rechteck
 
-    // Woher kommen die Bilder für den Hintergrund? (URLs der Server)
+    // Adressen der Karten-Server (Woher kommen die Bilder?)
     const layerUrls = {
         voyager: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
         positron: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
@@ -781,17 +813,40 @@
         osm: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         osmde: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png'
     };
+    
+    // WICHTIG: Die HTML-Texte für die Lizenzangaben unten rechts auf der interaktiven Karte
+    const layerAttributions = {
+        voyager: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        positron: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        dark: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        satellite: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        topo: 'Kartendaten: &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende, SRTM | Kartendarstellung: &copy; <a href="http://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+        osm: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        osmde: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    };
 
-    // Maximale Zoomstufe pro Karte (manche Karten werden unscharf, wenn man zu nah ran geht)
+    // NEU: Text-Versionen für den PNG Export (Da HTML im Bild nicht funktioniert, brauchen wir reinen Text)
+    const layerAttributionsText = {
+        voyager: '© OpenStreetMap contributors, © CARTO',
+        positron: '© OpenStreetMap contributors, © CARTO',
+        dark: '© OpenStreetMap contributors, © CARTO',
+        satellite: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, GIS Community',
+        topo: 'Daten: © OpenStreetMap-Mitwirkende, SRTM | Darstellung: © OpenTopoMap (CC-BY-SA)',
+        osm: '© OpenStreetMap contributors',
+        osmde: '© OpenStreetMap contributors'
+    };
+
+    // Manche Karten gehen nicht bis Zoom 18 (z.B. Topo nur bis 16/17)
     const layerMaxZoom = { voyager: 18, positron: 18, dark: 18, satellite: 18, topo: 17, osm: 18, osmde: 18 };
-    // Wo fragen wir die Hydranten ab? (Overpass API Server)
+    
+    // Server, die wir fragen können (Overpass API). Falls einer ausfällt, nehmen wir den anderen.
     const overpassEndpoints = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
     /* =========================================================================
-       2. KARTEN START & WERKZEUGE
+       3. KARTEN START (INITIALISIERUNG)
+       Diese Funktion läuft los, sobald die Webseite geladen ist.
        ========================================================================= */
     
-    // Zeigt rote Nachrichten oben rechts an
     function showNotification(msg) {
         const box = document.getElementById('notification-box');
         if (!box) return;
@@ -800,32 +855,34 @@
         setTimeout(() => box.style.display = 'none', 3000); // Verschwindet nach 3 Sekunden
     }
 
-    // Die Haupt-Start-Funktion
     function initMap() {
-        // ZUERST: Sprache einstellen!
-        updatePageLanguage();
+        updatePageLanguage(); // Sprache setzen
 
-        // Layer-Gruppen erstellen
+        // Erstelle die "Folien" (Layer Groups)
         markerLayer = L.layerGroup();
         boundaryLayer = L.layerGroup(); 
         rangeLayerGroup = L.layerGroup(); 
         
-        // Karte erstellen, Startpunkt: Schnaittach
+        // Erstelle die Karte und setze Startpunkt auf Schnaittach
         map = L.map('map', { zoomControl: false, center: [49.555, 11.350], zoom: 14 });
         
+        // Standard-Hintergrund laden
         setBaseLayer('voyager'); 
+        
+        // Folien auf die Karte legen
         boundaryLayer.addTo(map); 
         rangeLayerGroup.addTo(map); 
         markerLayer.addTo(map);   
         
-        // Wenn man die Karte bewegt -> Neue Daten laden
+        // Event Listener: Was passiert wann?
+        // Wenn Karte bewegt wird -> Daten neu laden
         map.on('moveend zoomend', fetchOSMData); 
-        // Wenn man zoomt -> Kreis aktualisieren
+        // Wenn gezoomt wird -> Kreis anpassen
         map.on('zoomend', updateRangeCircle);    
         // Zoom-Anzeige unten rechts aktualisieren
         map.on('zoom', () => document.getElementById('zoom-val').innerText = map.getZoom().toFixed(1)); 
         
-        // Maus-Events für das Rechteck-Ziehen
+        // Maus-Events für das "Ausschnitt wählen" Werkzeug
         map.on('mousedown', onMouseDown);
         map.on('mousemove', onMouseMove);
         map.on('mouseup', onMouseUp);
@@ -838,22 +895,23 @@
             }
         });
 
-        // Daten jetzt laden
+        // Einmal initial Daten laden
         fetchOSMData();
     }
 
     /* =========================================================================
-       3. DATEN LADEN (Die Overpass API Logik)
+       4. DATEN LADEN (OVERPASS API)
+       Hier fragen wir die OpenStreetMap-Datenbank ab.
        ========================================================================= */
     
-    // Hilfsfunktion: Versucht Server A, wenn kaputt, dann Server B
+    // Helfer: Versucht Server A, bei Fehler Server B (Retry Pattern)
     async function fetchWithRetry(query) {
         for (let endpoint of overpassEndpoints) {
             try {
                 const res = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, { signal: currentRequestController.signal });
                 if (!res.ok) continue; 
                 const text = await res.text();
-                // Check ob Antwort valide ist
+                // Prüfen ob Antwort Müll ist (HTML Fehlerseite statt JSON Daten)
                 if (text.trim().startsWith('<?xml') || text.trim().startsWith('<html')) continue;
                 return JSON.parse(text); 
             } catch (e) { if (e.name === 'AbortError') throw e; } 
@@ -861,11 +919,11 @@
         throw new Error("API Fehler");
     }
 
-    // Entscheidet, WELCHE Daten geladen werden (Optimierung!)
+    // Die Hauptlogik für das Datenladen
     async function fetchOSMData() {
         const zoom = map.getZoom();
         
-        // Regel: Unter Zoom 12 laden wir gar nichts (zu viele Daten)
+        // Wenn wir zu weit weg sind (Zoom < 12), laden wir nichts (zu viele Daten!)
         if (zoom < 12) {
             document.getElementById('data-status').innerText = t('status_standby'); 
             cachedElements = [];
@@ -874,35 +932,35 @@
             return; 
         }
         
-        // Wir schauen, wo wir gerade auf der Karte sind (Koordinaten)
+        // Bounding Box berechnen: Wo schaut der User gerade hin? (Süd, West, Nord, Ost)
         const b = map.getBounds();
         const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
         
         const status = document.getElementById('data-status');
         status.innerText = t('status_loading'); 
         
+        // Alte Anfrage abbrechen, falls noch eine läuft
         if (currentRequestController) currentRequestController.abort();
         currentRequestController = new AbortController();
         
-        // Wir bauen die Datenbank-Abfrage zusammen
+        // Abfrage (Query) zusammenbauen
         let queryParts = [];
         
-        // Ab Zoom 12: Wachen laden
+        // Wachen ab Zoom 12
         if (zoom >= 12) {
             queryParts.push(`nwr["amenity"="fire_station"](${bbox});`);
             queryParts.push(`nwr["building"="fire_station"](${bbox});`);
         }
-        // Erst ab Zoom 15: Hydranten laden (weil es so viele sind)
+        // Hydranten ab Zoom 15
         if (zoom >= 15) {
             queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});`);
         }
-
-        // Ab Zoom 15: Defibrillatoren laden (Update)
+        // Defibrillatoren ab Zoom 15 (Update!)
         if (zoom >= 15) {
             queryParts.push(`node["emergency"="defibrillator"](${bbox});`);
         }
 
-        // Ab Zoom 14: Gemeindegrenzen laden
+        // Grenzen ab Zoom 14
         let boundaryQuery = '';
         if (zoom >= 14) {
             boundaryQuery = `(way["boundary"="administrative"]["admin_level"="8"](${bbox});)->.boundaries; .boundaries out geom;`;
@@ -910,7 +968,7 @@
 
         if (queryParts.length === 0 && boundaryQuery === '') return;
 
-        // Der finale Code für den Server
+        // Der Code, den wir an den Server schicken (Overpass QL Sprache)
         let q = `[out:json][timeout:90];
         (
           ${queryParts.join('\n')}
@@ -921,18 +979,19 @@
         try {
             const data = await fetchWithRetry(q);
             cachedElements = data.elements; // Daten merken
-            renderMarkers(data.elements, zoom); // Malen
+            renderMarkers(data.elements, zoom); // Auf Karte malen
             status.innerText = t('status_current'); 
         } catch (e) { if (e.name !== 'AbortError') status.innerText = t('status_error'); }
     }
 
     /* =========================================================================
-       4. DARSTELLUNG (Marker malen)
+       5. DARSTELLUNG (RENDERING)
+       Hier werden die Daten in bunte Punkte und Icons verwandelt.
        ========================================================================= */
     
-    // Baut das kleine Bildchen (SVG) für die Karte
+    // Erzeugt den SVG-Code (das Bild) für ein Icon
     function getSVGContent(type) {
-        // Spezialfall Defibrillator (Grün mit Herz)
+        // Spezialfall: Defibrillator (Grünes Icon mit Herz)
         if (type === 'defibrillator') {
              return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="50" cy="50" r="45" fill="#16a34a" stroke="white" stroke-width="5"/>
@@ -942,9 +1001,8 @@
         }
 
         const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-        const color = isWater ? '#3b82f6' : '#ef4444'; // Blau oder Rot
+        const color = isWater ? '#3b82f6' : '#ef4444'; 
         
-        // Spezialfall Wandhydrant
         if (type === 'wall') {
              return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
@@ -953,7 +1011,6 @@
             </svg>`;
         }
         
-        // Buchstaben zuweisen
         let char = '';
         switch(type) {
             case 'underground': char = 'U'; break; 
@@ -963,29 +1020,28 @@
             default:            char = '';
         }
         
-        // Feuerwache Icon
         if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="#ef4444" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
         
-        // Normales Hydranten Icon
         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
     }
 
-    // Malt die Marker auf die Karte
+    // Platziert die Marker auf der Karte
     function renderMarkers(elements, zoom) {
         markerLayer.clearLayers(); 
         boundaryLayer.clearLayers(); 
-        const renderedLocations = []; 
+        const renderedLocations = []; // Merken, wo wir schon was gemalt haben (gegen Überlappung)
         
         elements.forEach(el => {
             const tags = el.tags || {};
-            // Grenzen malen
+            // Grenzen zeichnen
             if (tags.boundary === 'administrative' && el.geometry) {
                 if (zoom < 14) return; 
                 const latlngs = el.geometry.map(p => [p.lat, p.lon]);
                 L.polyline(latlngs, { color: '#333333', weight: 1, dashArray: '10, 10', opacity: 0.7 }).addTo(boundaryLayer);
                 return; 
             }
-            // Position finden
+            
+            // Koordinaten bestimmen
             const lat = el.lat || el.center?.lat;
             const lon = el.lon || el.center?.lon;
             if (!lat || !lon) return;
@@ -998,58 +1054,57 @@
             else if (isDefib) type = 'defibrillator';
             else type = tags['fire_hydrant:type'] || tags.emergency;
 
-            // Filter
+            // Filterlogik: Was zeigen wir wann?
             if (isStation && zoom < 12) return; 
             if (!isStation && !isDefib && zoom < 15) return; 
-            // Defibrillatoren NUR ab Zoom 15 (Update)
-            if (isDefib && zoom < 15) return;
+            if (isDefib && zoom < 15) return; // Defib ab Zoom 15
 
-            // Überlappungsschutz (damit nicht 2 Marker genau übereinander liegen)
+            // Überlappungsschutz
             const alreadyDrawn = renderedLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
             if (isStation && alreadyDrawn) return;
             if (isStation) renderedLocations.push({lat, lon});
 
+            // Darstellungslogik
             if (isStation) {
                 if (zoom < 14) {
-                     // Kleines Quadrat bei weitem Zoom
+                     // Wache weit weg: Rotes Quadrat
                      L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10,10] }) }).addTo(markerLayer);
                 } else {
-                     // Großes Icon wenn nah dran
+                     // Wache nah: Großes Haus-Icon
                      const iconHtml = getSVGContent(type);
                      const marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [32, 32] }), zIndexOffset: 1000 }).addTo(markerLayer);
                     if (zoom === 18) { marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 }); }
                 }
             } else if (isDefib) {
                 if (zoom < 17) {
-                    // Zoom 15 & 16: Grüner Punkt
+                    // Defib mittel: Grüner Punkt (Zoom 15 & 16)
                     L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) }).addTo(markerLayer);
                 } else {
-                    // Ab Zoom 17: Defib Icon
+                    // Defib nah: Großes Icon (ab Zoom 17)
                     const iconHtml = getSVGContent(type);
                     const marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), zIndexOffset: 2000 }).addTo(markerLayer);
-                    // Tooltip NUR bei Zoom 18
+                    // Tooltip (Text) NUR bei Zoom 18
                     if (zoom === 18) {
                         marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
                     }
                 }
             } else {
                 if (zoom < 17) {
-                    // Kleiner Punkt bei mittlerem Zoom
+                    // Hydrant mittel: Roter Punkt
                     const color = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type) ? 'tank-dot' : 'hydrant-dot';
                     L.marker([lat, lon], { icon: L.divIcon({ className: color, iconSize: [10,10] }) }).addTo(markerLayer);
                 } else {
-                    // Großes Icon bei sehr nahem Zoom
+                    // Hydrant nah: Großes Icon
                     const iconHtml = getSVGContent(type);
                     const marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), zIndexOffset: 0 }).addTo(markerLayer);
                     if (zoom === 18) { marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 }); }
-                    // Klick-Event für 100m Kreis
                     marker.on('click', (e) => { L.DomEvent.stopPropagation(e); showRangeCircle(lat, lon); });
                 }
             }
         });
     }
 
-    // Baut das Info-Fenster (Tooltip)
+    // Erstellt den HTML-Text für den Tooltip (das kleine Info-Schildchen)
     function generateTooltip(tags) {
         let tooltipTitle = tags.name || t('details');
         if (tags.emergency === 'defibrillator') tooltipTitle = t('defib');
@@ -1069,7 +1124,7 @@
         updateRangeCircle();
     }
 
-    // Malt den orangenen Kreis
+    // Zeichnet den 100m Kreis
     function updateRangeCircle() {
         rangeLayerGroup.clearLayers();
         if (!activeRangeCenter) return;
@@ -1080,8 +1135,8 @@
             color: '#f97316', fillColor: '#f97316', fillOpacity: 0.15, radius: 100, weight: 2, dashArray: '5, 8', interactive: false 
         }).addTo(rangeLayerGroup);
 
+        // Berechnet, wo der Text "100m" stehen soll, damit er schön am Rand des Kreises liegt
         if (zoom >= 17) {
-            // Berechnung für die Position des "100m" Textes
             const latRad = activeRangeCenter.lat * Math.PI / 180;
             const kmPerDegLon = 111.32 * Math.cos(latRad);
             const offsetLon = 0.05 / kmPerDegLon; 
@@ -1091,7 +1146,7 @@
         }
     }
 
-    // Findet die GPS Position des Nutzers
+    // GPS Funktion
     function locateUser() {
         if (!navigator.geolocation) { showNotification(t('geo_error')); return; }
         const btn = document.getElementById('locate-btn');
@@ -1115,11 +1170,13 @@
     }
 
     /* =========================================================================
-       5. EXPORT & MENÜ FUNKTIONEN
+       6. EXPORT LOGIK (DAS KOMPLIZIERTE)
+       Hier werden Bilder (PNG) und Daten (GPX) erstellt.
        ========================================================================= */
+    
+    // Setzt das gewünschte Format (A4 oder Frei)
     function setExportFormat(fmt) {
         exportFormat = fmt;
-        // Buttons visuell umschalten
         document.querySelectorAll('.fmt-btn').forEach(b => {
             b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
             b.classList.add('bg-white/5');
@@ -1128,6 +1185,7 @@
         clearSelection(); 
     }
 
+    // Setzt den gewünschten Zoom
     function setExportZoom(z) {
         if (activeLayerConfig === 'topo' && z > 17) return; 
         exportZoomLevel = z;
@@ -1156,7 +1214,7 @@
         document.getElementById('selection-info').classList.add('hidden');
     }
 
-    // Rechteck ziehen: Maus gedrückt
+    // Logik für das Zeichnen des Auswahl-Rechtecks
     function onMouseDown(e) {
         if (!isSelecting) return;
         startPoint = e.latlng;
@@ -1165,12 +1223,10 @@
         }).addTo(map);
     }
 
-    // Rechteck ziehen: Maus bewegen
     function onMouseMove(e) {
         if (!isSelecting || !startPoint || !selectionRect) return;
         let current = e.latlng;
         if (exportFormat !== 'free') {
-            // Seitenverhältnis erzwingen
             const ratio = (exportFormat === 'a4l') ? 1.4142 : 0.7071; 
             const lngScale = Math.cos(startPoint.lat * Math.PI / 180);
             const dy = Math.abs(current.lat - startPoint.lat);
@@ -1182,7 +1238,6 @@
         selectionRect.setBounds([startPoint, current]);
     }
 
-    // Rechteck ziehen: Maus loslassen
     function onMouseUp(e) {
         if (!isSelecting || !startPoint) return;
         finalBounds = selectionRect.getBounds(); 
@@ -1192,13 +1247,22 @@
         document.getElementById('selection-info').classList.remove('hidden');
     }
 
+    // Ändert die Hintergrundkarte
     function setBaseLayer(key) {
         activeLayerConfig = key;
+        // Alte Layer entfernen
         map.eachLayer(layer => { if (layer instanceof L.TileLayer) map.removeLayer(layer); });
-        L.tileLayer(layerUrls[key], { attribution: '&copy; OSM', crossOrigin: 'anonymous' }).addTo(map);
+        
+        // Neuen Layer mit korrekter Lizenzinfo hinzufügen
+        const attribution = layerAttributions[key] || '&copy; OSM';
+        L.tileLayer(layerUrls[key], { attribution: attribution, crossOrigin: 'anonymous' }).addTo(map);
+        
+        // Buttons aktualisieren
         document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.getElementById(`btn-${key}`);
         if(activeBtn) activeBtn.classList.add('active');
+        
+        // Topo geht nur bis Zoom 17
         const btn18 = document.getElementById('zoom-18');
         if (key === 'topo') {
             btn18.disabled = true;
@@ -1208,8 +1272,14 @@
         }
     }
 
+    // Menü-Steuerung
     function toggleExportMenu() { document.getElementById('export-menu').classList.toggle('hidden'); resetExportUI(); }
     function toggleLayerMenu() { document.getElementById('layer-menu').classList.toggle('hidden'); }
+    function toggleLegalModal() { 
+        const modal = document.getElementById('legal-modal');
+        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+    }
+
     function resetExportUI() {
         document.getElementById('export-setup').classList.remove('hidden');
         document.getElementById('export-progress').classList.add('hidden');
@@ -1217,20 +1287,19 @@
     }
     function cancelExport() { if(exportAbortController) exportAbortController.abort(); }
 
+    // Suchfunktion (Nominatim)
     function searchLocation() {
         const q = document.getElementById('search-input').value;
         if (!q) return;
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`).then(r => r.json()).then(d => { if(d.length) map.flyTo([d[0].lat, d[0].lon], 18); });
     }
 
-    /* =========================================================================
-       6. EXPORT FUNKTIONEN (GPX & PNG)
-       ========================================================================= */
-    
-    // GPX Export: Schreibt eine Textdatei im XML-Format
+    /* -----------------------------------------------------------
+       GPX EXPORT (Für Navis)
+       Erstellt eine Textdatei im XML-Format.
+       ----------------------------------------------------------- */
     function exportAsGPX() {
         const bounds = finalBounds || map.getBounds();
-        // Filtern: Nur Punkte im Bereich
         const pointsToExport = cachedElements.filter(el => {
             const lat = el.lat || el.center?.lat;
             const lon = el.lon || el.center?.lon;
@@ -1243,7 +1312,6 @@
             return;
         }
 
-        // XML Datei aufbauen
         let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
         gpx += '<gpx version="1.1" creator="OpenFireMap V2" xmlns="http://www.topografix.com/GPX/1/1">\n';
         gpx += `  <metadata><name>Hydranten Export</name><time>${new Date().toISOString()}</time></metadata>\n`;
@@ -1277,7 +1345,6 @@
 
         gpx += '</gpx>';
 
-        // Datei zum Download anbieten
         const blob = new Blob([gpx], {type: 'application/gpx+xml'});
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -1290,7 +1357,6 @@
         toggleExportMenu();
     }
 
-    // Hilft, Sonderzeichen sicher für XML zu machen
     function escapeXML(str) {
         return str.replace(/[<>&'"]/g, c => {
             switch (c) {
@@ -1303,11 +1369,16 @@
         });
     }
 
-    // PNG Export: Erstellt das große Bild
+    /* -----------------------------------------------------------
+       PNG EXPORT (Das große Bild)
+       Hier wird es komplex: Wir laden hunderte kleine Kacheln und
+       setzen sie auf einer unsichtbaren Leinwand (Canvas) zusammen.
+       ----------------------------------------------------------- */
     async function exportAsPNG() {
         exportAbortController = new AbortController();
         const signal = exportAbortController.signal;
         
+        // UI umschalten auf "Ladebalken"
         document.getElementById('export-setup').classList.add('hidden');
         document.getElementById('export-progress').classList.remove('hidden');
         const progressBar = document.getElementById('progress-bar'), progressPercent = document.getElementById('progress-percent'), progressLabel = document.getElementById('progress-label');
@@ -1319,11 +1390,11 @@
 
         progressLabel.innerText = t('locating'); 
         
+        // Titel finden (Ortsname)
         let displayTitle = "OpenFireMap.org";
         const centerLat = bounds.getCenter().lat;
         const centerLon = bounds.getCenter().lng;
 
-        // Versuche Ortsnamen zu finden
         try {
             const fetchAddress = async (lat, lon) => {
                 const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`); 
@@ -1353,15 +1424,18 @@
             }
         } catch (e) { console.error("Titel Fehler:", e); }
 
+        // Mathe: Wie viele Pixel ist die Welt groß?
         const worldSize = (z) => Math.pow(2, z);
         const lat2tile = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * worldSize(z);
         const lon2tile = (lon, z) => (lon + 180) / 360 * worldSize(z);
         
+        // Kachel-Koordinaten berechnen
         const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
         const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
         const x2 = Math.floor(lon2tile(se.lng, targetZoom));
         const y2 = Math.floor(lat2tile(se.lat, targetZoom));
 
+        // Leinwand erstellen
         const canvas = document.createElement('canvas');
         canvas.width = (x2 - x1 + 1) * 256; 
         canvas.height = (y2 - y1 + 1) * 256;
@@ -1377,6 +1451,7 @@
 
         progressLabel.innerText = `${t('loading_tiles')} (Z${targetZoom})...`;
         
+        // Warteschlange für Kacheln
         const tileQueue = [];
         for (let x = x1; x <= x2; x++) {
             for (let y = y1; y <= y2; y++) {
@@ -1384,6 +1459,7 @@
             }
         }
 
+        // Kacheln parallel laden
         const CONCURRENCY = 8; 
         const processQueue = async () => {
             while (tileQueue.length > 0 && !signal.aborted) {
@@ -1393,6 +1469,7 @@
                     const zTargetUrl = baseUrlTpl.replace('{z}', targetZoom).replace('{x}', x).replace('{y}', y);
                     img.onload = () => { ctx.drawImage(img, (x - x1) * 256, (y - y1) * 256); loaded++; updateProgress(); resolve(); };
                     img.onerror = () => {
+                        // Fallback (falls Kachel fehlt, niedrigere Zoomstufe laden und skalieren)
                         const zFallback_x = Math.floor(x/2); const zFallback_y = Math.floor(y/2);
                         const off_x = (x % 2) * 128; const off_y = (y % 2) * 128;
                         const zFallbackUrl = baseUrlTpl.replace('{z}', fallbackZoom).replace('{x}', zFallback_x).replace('{y}', zFallback_y);
@@ -1412,6 +1489,7 @@
         function updateProgress() { const p = Math.round((loaded / totalTiles) * 80); progressBar.style.width = p + "%"; progressPercent.innerText = p + "%"; }
         if(signal.aborted) { toggleExportMenu(); return; }
         
+        // Grenzen zeichnen
         progressLabel.innerText = t('render_bounds');
         ctx.save(); ctx.translate(-x1 * 256, -y1 * 256); 
         ctx.strokeStyle = "#333333"; ctx.lineWidth = 2; ctx.setLineDash([20, 20]); ctx.lineCap = "round";
@@ -1431,6 +1509,7 @@
         }
         ctx.restore();
 
+        // Icons zeichnen
         progressLabel.innerText = t('render_infra');
         ctx.save(); ctx.translate(-x1 * 256, -y1 * 256);
         const iconCache = {};
@@ -1458,7 +1537,7 @@
 
             if (isStation && targetZoom < 12) continue;
             if (type === 'defibrillator') {
-                if (targetZoom < 15) continue; // Update: ab 15
+                if (targetZoom < 15) continue;
             } else if (!isStation && targetZoom < 15) continue;
 
             const drawAsStationSquare = isStation && targetZoom < 14;
@@ -1485,29 +1564,33 @@
         }
         ctx.restore();
 
+        // Layout finalisieren (Banner oben)
         progressLabel.innerText = t('layout_final');
-        const bannerH = 150; 
+        const bannerH = 170; // Höhe des weißen Balkens oben (Erhöht für 3. Zeile)
         ctx.fillStyle = "rgba(255, 255, 255, 0.98)"; ctx.fillRect(0, 0, canvas.width, bannerH);
         ctx.strokeStyle = "rgba(15, 23, 42, 0.2)"; ctx.lineWidth = 3; ctx.strokeRect(0, 0, canvas.width, bannerH);
         
         ctx.fillStyle = "#0f172a"; ctx.textAlign = "center";
         const finalTitle = displayTitle === "OpenFireMap.org" ? "OpenFireMap.org" : `${t('plan_title')} ${displayTitle}`;
-        ctx.font = "bold 44px Arial, sans-serif"; ctx.fillText(finalTitle, canvas.width / 2, 60);
+        ctx.font = "bold 44px Arial, sans-serif"; ctx.fillText(finalTitle, canvas.width / 2, 55);
         
         const now = new Date();
         const mPerPx = (Math.cos(bounds.getCenter().lat * Math.PI / 180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, targetZoom));
-        ctx.font = "24px Arial, sans-serif"; ctx.fillStyle = "#334155";
+        ctx.font = "22px Arial, sans-serif"; ctx.fillStyle = "#334155";
         
-        // Datum passend zur Sprache formatieren
-        const localeMap = {
-            'de': 'de-DE', 'en': 'en-US', 'fr': 'fr-FR', 'es': 'es-ES', 
-            'it': 'it-IT', 'pl': 'pl-PL', 'nl': 'nl-NL', 'cs': 'cs-CZ'
-        };
+        const localeMap = { 'de': 'de-DE', 'en': 'en-US', 'fr': 'fr-FR', 'es': 'es-ES', 'it': 'it-IT', 'pl': 'pl-PL', 'nl': 'nl-NL', 'cs': 'cs-CZ' };
         const dateLocale = localeMap[currentLang] || 'en-US';
         const dateStr = now.toLocaleDateString(dateLocale, { year: 'numeric', month: 'long' });
         
-        ctx.fillText(`${t('legend_date')}: ${dateStr} | ${t('legend_res')}: Z${targetZoom} (~${mPerPx.toFixed(2)} m/px)`, canvas.width / 2, 105);
+        // Zeile 2: Datum & Zoom
+        ctx.fillText(`${t('legend_date')}: ${dateStr} | ${t('legend_res')}: Z${targetZoom} (~${mPerPx.toFixed(2)} m/px)`, canvas.width / 2, 95);
+        
+        // Zeile 3: Lizenzen (Neu!)
+        ctx.font = "italic 16px Arial, sans-serif"; ctx.fillStyle = "#64748b";
+        const attributionText = layerAttributionsText[activeLayerConfig] || '© OpenStreetMap contributors';
+        ctx.fillText(attributionText, canvas.width / 2, 125);
 
+        // Maßstabsbalken unten rechts malen
         const prettyD = [1000, 500, 250, 100, 50]; 
         let distM = 100, scaleW = 100 / mPerPx;
         for (let d of prettyD) { let w = d / mPerPx; if (w <= canvas.width * 0.3) { distM = d; scaleW = w; break; } }
@@ -1518,6 +1601,7 @@
         ctx.beginPath(); ctx.moveTo(sX, sY - 10); ctx.lineTo(sX, sY); ctx.lineTo(sX + scaleW, sY); ctx.lineTo(sX + scaleW, sY - 10); ctx.stroke();
         ctx.fillStyle = "#0f172a"; ctx.font = "bold 18px Arial"; ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
 
+        // Fertig! Bild erstellen und Download starten
         progressBar.style.width = "100%";
         const link = document.createElement('a'); 
         link.download = `Hydrantenplan_${finalTitle.replace(/[\s\.]/g, '_')}_Z${targetZoom}_${activeLayerConfig}_${now.toISOString().slice(0,10)}.png`;
@@ -1531,3 +1615,4 @@
     window.onload = initMap;
 </script>
 </body>
+</html>
