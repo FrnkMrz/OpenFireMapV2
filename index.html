@@ -59,6 +59,31 @@
     <title>OpenFireMap.org</title>
     
     <!-- 
+        FAVICONS & APP ICONS
+        Diese Icons sorgen dafür, dass die Seite als Lesezeichen oder App auf dem Homescreen gut aussieht.
+        WICHTIG: Die entsprechenden PNG/ICO/JSON Dateien müssen im gleichen Ordner liegen!
+    -->
+    <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    <!-- Das Standard-Favicon für alte Browser -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- 
         EXTERNE WERKZEUGE (BIBLIOTHEKEN) 
         Wir laden fertige Code-Pakete aus dem Internet.
     -->
@@ -1385,8 +1410,12 @@
     }
 
     // NEU: Konfiguration der maximalen Kantenlänge pro Zoomstufe (in Kilometern)
+    // Dient als Schutz, damit keine riesigen Datenmengen bei hohem Zoom geladen werden müssen.
     const ZOOM_LIMITS_KM = {
-        15: 15, // Weit rausgezoomt: Großer Ausschnitt erlaubt (15km)
+        12: 30, // Weit rausgezoomt: Großer Ausschnitt erlaubt (30km)
+        13: 25,
+        14: 20,
+        15: 15,
         16: 10,
         17: 8,
         18: 5   // Nah reingezoomt: Kleiner Ausschnitt (5km) wegen Detailreichtum
@@ -1699,4 +1728,3 @@
     window.onload = initMap;
 </script>
 </body>
-</html>
