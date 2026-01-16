@@ -5,23 +5,47 @@
     DATUM: 2026-01-16
     =============================================================================
     
-    WILLKOMMEN IM MASCHINENRAUM!
+    PROJEKT-BESCHREIBUNG & LERNZIELE:
     
-    Dies ist der Quellcode einer "Single Page Application" (Ein-Seiten-Anwendung).
-    Alles, was die Webseite braucht (Design, Logik, Texte), steckt in dieser Datei.
+    Dies ist ein persönliches Lernprojekt, um die Entwicklung moderner Webanwendungen
+    (Single Page Applications) zu verstehen und anzuwenden.
     
-    STRUKTUR:
-    1. HTML (Struktur): Zeile 40-270
-    2. CSS (Design): Zeile 60-145
-    3. JAVASCRIPT (Logik): ab Zeile 280
+    WAS MACHT DIESE WEBSEITE?
+    Dieses Tool dient der Visualisierung von rettungsdienstlich relevanter Infrastruktur
+    aus der OpenStreetMap-Datenbank.
+    
+    Kernfunktionen:
+    1. Interaktive Karte: Zeigt Feuerwachen, Hydranten, Wassertanks und Defibrillatoren (AED).
+    2. Intelligenter Zoom: 
+       - Wachen erscheinen ab Zoom 12.
+       - Hydranten ab Zoom 15.
+       - Defibrillatoren als Punkte ab Zoom 15, als detaillierte Icons ab Zoom 17.
+    3. Einsatztaktik: Klick auf einen Hydranten zeigt einen 100m-Radius (Schlauchstrecke).
+    4. Export-Tools:
+       - PNG-Export: Erstellt hochauflösende, druckfertige Karten mit Rahmen, Titel,
+         Datum, Maßstab und Lizenzhinweisen.
+       - GPX-Export: Exportiert die sichtbaren Punkte für Navigationsgeräte.
+    5. Internationalisierung: Die Oberfläche passt sich automatisch der Browsersprache an
+       (unterstützt DE, EN, FR, ES, IT, PL, NL, CS).
+       
+    TECHNISCHER AUFBAU:
+    Es handelt sich um eine "Single Page Application" (SPA). Das bedeutet, der gesamte
+    Quellcode (Struktur, Design und Programmierlogik) ist in dieser einzigen HTML-Datei
+    vereint.
+    
+    STRUKTUR DES CODES:
+    1. HTML (Zeile 60-300): Das Grundgerüst der Seite (Buttons, Menüs, Karten-Container).
+    2. CSS (Zeile 80-160): Das Design (Farben, Layouts, Animationen) mittels Tailwind CSS
+       und eigenen Styles.
+    3. JAVASCRIPT (ab Zeile 310): Die "Intelligenz" der Seite.
        - Wörterbuch (Übersetzungen)
-       - Karten-Logik
-       - Daten-Abruf (Overpass API)
-       - Export-Funktionen (PNG/GPX)
+       - Karten-Logik (Leaflet Bibliothek)
+       - Daten-Abruf (Live-Abfrage der Overpass API)
+       - Export-Logik (Zeichnen auf Canvas für PNG, XML-Generierung für GPX)
 
-    HINWEIS:
-    Alle Texte sind in der Variable 'translations' gespeichert, damit die Seite
-    automatisch die Sprache des Nutzers erkennt.
+    RECHTLICHE HINWEISE:
+    Impressum und Datenschutzerklärung sind fest integriert ("Info & Recht"-Button),
+    um einen rechtssicheren Betrieb zu ermöglichen.
 -->
 
 <!DOCTYPE html>
@@ -32,7 +56,7 @@
     <meta charset="UTF-8">
     <!-- Wichtig für Handys: "Pass den Inhalt an die Bildschirmbreite an!" -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenFireMap.org V2</title>
+    <title>OpenFireMap.org</title>
     
     <!-- 
         EXTERNE WERKZEUGE (BIBLIOTHEKEN) 
@@ -1170,11 +1194,8 @@
     }
 
     /* =========================================================================
-       6. EXPORT LOGIK (DAS KOMPLIZIERTE)
-       Hier werden Bilder (PNG) und Daten (GPX) erstellt.
+       5. EXPORT & MENÜ FUNKTIONEN
        ========================================================================= */
-    
-    // Setzt das gewünschte Format (A4 oder Frei)
     function setExportFormat(fmt) {
         exportFormat = fmt;
         document.querySelectorAll('.fmt-btn').forEach(b => {
@@ -1185,7 +1206,6 @@
         clearSelection(); 
     }
 
-    // Setzt den gewünschten Zoom
     function setExportZoom(z) {
         if (activeLayerConfig === 'topo' && z > 17) return; 
         exportZoomLevel = z;
@@ -1214,7 +1234,6 @@
         document.getElementById('selection-info').classList.add('hidden');
     }
 
-    // Logik für das Zeichnen des Auswahl-Rechtecks
     function onMouseDown(e) {
         if (!isSelecting) return;
         startPoint = e.latlng;
@@ -1247,22 +1266,17 @@
         document.getElementById('selection-info').classList.remove('hidden');
     }
 
-    // Ändert die Hintergrundkarte
     function setBaseLayer(key) {
         activeLayerConfig = key;
-        // Alte Layer entfernen
         map.eachLayer(layer => { if (layer instanceof L.TileLayer) map.removeLayer(layer); });
         
-        // Neuen Layer mit korrekter Lizenzinfo hinzufügen
+        // Update Layer with correct Attribution
         const attribution = layerAttributions[key] || '&copy; OSM';
         L.tileLayer(layerUrls[key], { attribution: attribution, crossOrigin: 'anonymous' }).addTo(map);
         
-        // Buttons aktualisieren
         document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.getElementById(`btn-${key}`);
         if(activeBtn) activeBtn.classList.add('active');
-        
-        // Topo geht nur bis Zoom 17
         const btn18 = document.getElementById('zoom-18');
         if (key === 'topo') {
             btn18.disabled = true;
@@ -1272,7 +1286,6 @@
         }
     }
 
-    // Menü-Steuerung
     function toggleExportMenu() { document.getElementById('export-menu').classList.toggle('hidden'); resetExportUI(); }
     function toggleLayerMenu() { document.getElementById('layer-menu').classList.toggle('hidden'); }
     function toggleLegalModal() { 
@@ -1287,17 +1300,16 @@
     }
     function cancelExport() { if(exportAbortController) exportAbortController.abort(); }
 
-    // Suchfunktion (Nominatim)
     function searchLocation() {
         const q = document.getElementById('search-input').value;
         if (!q) return;
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`).then(r => r.json()).then(d => { if(d.length) map.flyTo([d[0].lat, d[0].lon], 18); });
     }
 
-    /* -----------------------------------------------------------
-       GPX EXPORT (Für Navis)
-       Erstellt eine Textdatei im XML-Format.
-       ----------------------------------------------------------- */
+    /* =========================================================================
+       6. EXPORT FUNKTIONEN (GPX & PNG)
+       ========================================================================= */
+    
     function exportAsGPX() {
         const bounds = finalBounds || map.getBounds();
         const pointsToExport = cachedElements.filter(el => {
@@ -1369,16 +1381,10 @@
         });
     }
 
-    /* -----------------------------------------------------------
-       PNG EXPORT (Das große Bild)
-       Hier wird es komplex: Wir laden hunderte kleine Kacheln und
-       setzen sie auf einer unsichtbaren Leinwand (Canvas) zusammen.
-       ----------------------------------------------------------- */
     async function exportAsPNG() {
         exportAbortController = new AbortController();
         const signal = exportAbortController.signal;
         
-        // UI umschalten auf "Ladebalken"
         document.getElementById('export-setup').classList.add('hidden');
         document.getElementById('export-progress').classList.remove('hidden');
         const progressBar = document.getElementById('progress-bar'), progressPercent = document.getElementById('progress-percent'), progressLabel = document.getElementById('progress-label');
@@ -1390,7 +1396,6 @@
 
         progressLabel.innerText = t('locating'); 
         
-        // Titel finden (Ortsname)
         let displayTitle = "OpenFireMap.org";
         const centerLat = bounds.getCenter().lat;
         const centerLon = bounds.getCenter().lng;
@@ -1424,34 +1429,59 @@
             }
         } catch (e) { console.error("Titel Fehler:", e); }
 
-        // Mathe: Wie viele Pixel ist die Welt groß?
         const worldSize = (z) => Math.pow(2, z);
         const lat2tile = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * worldSize(z);
         const lon2tile = (lon, z) => (lon + 180) / 360 * worldSize(z);
         
-        // Kachel-Koordinaten berechnen
         const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
         const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
         const x2 = Math.floor(lon2tile(se.lng, targetZoom));
         const y2 = Math.floor(lat2tile(se.lat, targetZoom));
 
-        // Leinwand erstellen
-        const canvas = document.createElement('canvas');
-        canvas.width = (x2 - x1 + 1) * 256; 
-        canvas.height = (y2 - y1 + 1) * 256;
+        // NEU: Berechne Map-Größe + Rand (Margin)
+        const margin = 40; // Rand an allen Seiten
+        const footerH = 60; // Extra Platz unten für Text
         
+        const mapWidth = (x2 - x1 + 1) * 256;
+        const mapHeight = (y2 - y1 + 1) * 256;
+
+        // Berechne Auflösung (Meter pro Pixel) für Limits
+        // Dies ist der "reale" Maßstab an diesem Ort
+        const mPerPx = (Math.cos(bounds.getCenter().lat * Math.PI / 180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, targetZoom));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = mapWidth + (margin * 2); 
+        canvas.height = mapHeight + margin + footerH + margin; // Oben 40, Unten 40 + 60
+        
+        // LIMIT-CHECK 1: Pixel-Limit (Technischer Schutz vor Browser-Absturz)
+        // 14.000px ist eine sichere Obergrenze für Canvas in den meisten Browsern.
         if (canvas.width > 14000 || canvas.height > 14000) { 
             showNotification(t('too_large')); toggleExportMenu(); return; 
         }
 
+        // LIMIT-CHECK 2: 5km Limit bei hohem Zoom (Logische Einschränkung)
+        // Bei Zoom 18 verhindern wir riesige Gebiete, um den Server zu schonen.
+        // mapWidth (px) * mPerPx (m/px) = Breite in Metern
+        const widthMeters = mapWidth * mPerPx;
+        const heightMeters = mapHeight * mPerPx;
+        if (targetZoom >= 18 && (widthMeters > 5000 || heightMeters > 5000)) {
+             showNotification("Zoom 18: Max. 5km Kantenlänge erlaubt!"); // Hinweis für den Nutzer
+             toggleExportMenu(); 
+             return;
+        }
+
         const ctx = canvas.getContext('2d');
+        
+        // Hintergrund weiß füllen (der Rand)
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
         const totalTiles = (x2 - x1 + 1) * (y2 - y1 + 1);
         let loaded = 0;
         const baseUrlTpl = layerUrls[activeLayerConfig].replace('{s}', 'a').replace('{r}', '');
 
         progressLabel.innerText = `${t('loading_tiles')} (Z${targetZoom})...`;
         
-        // Warteschlange für Kacheln
         const tileQueue = [];
         for (let x = x1; x <= x2; x++) {
             for (let y = y1; y <= y2; y++) {
@@ -1459,7 +1489,6 @@
             }
         }
 
-        // Kacheln parallel laden
         const CONCURRENCY = 8; 
         const processQueue = async () => {
             while (tileQueue.length > 0 && !signal.aborted) {
@@ -1467,14 +1496,20 @@
                 await new Promise(resolve => {
                     const img = new Image(); img.crossOrigin = "anonymous";
                     const zTargetUrl = baseUrlTpl.replace('{z}', targetZoom).replace('{x}', x).replace('{y}', y);
-                    img.onload = () => { ctx.drawImage(img, (x - x1) * 256, (y - y1) * 256); loaded++; updateProgress(); resolve(); };
+                    // NEU: Zeichne Tiles verschoben um 'margin'
+                    img.onload = () => { 
+                        ctx.drawImage(img, (x - x1) * 256 + margin, (y - y1) * 256 + margin); 
+                        loaded++; updateProgress(); resolve(); 
+                    };
                     img.onerror = () => {
-                        // Fallback (falls Kachel fehlt, niedrigere Zoomstufe laden und skalieren)
                         const zFallback_x = Math.floor(x/2); const zFallback_y = Math.floor(y/2);
                         const off_x = (x % 2) * 128; const off_y = (y % 2) * 128;
                         const zFallbackUrl = baseUrlTpl.replace('{z}', fallbackZoom).replace('{x}', zFallback_x).replace('{y}', zFallback_y);
                         const fImg = new Image(); fImg.crossOrigin = "anonymous"; fImg.src = zFallbackUrl;
-                        fImg.onload = () => { ctx.drawImage(fImg, off_x, off_y, 128, 128, (x - x1) * 256, (y - y1) * 256, 256, 256); loaded++; updateProgress(); resolve(); };
+                        fImg.onload = () => { 
+                            ctx.drawImage(fImg, off_x, off_y, 128, 128, (x - x1) * 256 + margin, (y - y1) * 256 + margin, 256, 256); 
+                            loaded++; updateProgress(); resolve(); 
+                        };
                         fImg.onerror = () => { loaded++; resolve(); };
                     };
                     img.src = zTargetUrl;
@@ -1489,9 +1524,10 @@
         function updateProgress() { const p = Math.round((loaded / totalTiles) * 80); progressBar.style.width = p + "%"; progressPercent.innerText = p + "%"; }
         if(signal.aborted) { toggleExportMenu(); return; }
         
-        // Grenzen zeichnen
         progressLabel.innerText = t('render_bounds');
-        ctx.save(); ctx.translate(-x1 * 256, -y1 * 256); 
+        ctx.save(); 
+        // NEU: Verschiebe Koordinatensystem für Vektoren (Grenzen)
+        ctx.translate((-x1 * 256) + margin, (-y1 * 256) + margin); 
         ctx.strokeStyle = "#333333"; ctx.lineWidth = 2; ctx.setLineDash([20, 20]); ctx.lineCap = "round";
 
         for (let el of cachedElements) {
@@ -1509,9 +1545,10 @@
         }
         ctx.restore();
 
-        // Icons zeichnen
         progressLabel.innerText = t('render_infra');
-        ctx.save(); ctx.translate(-x1 * 256, -y1 * 256);
+        ctx.save(); 
+        // NEU: Verschiebe Koordinatensystem für Icons
+        ctx.translate((-x1 * 256) + margin, (-y1 * 256) + margin);
         const iconCache = {};
         const renderedExportLocations = []; 
 
@@ -1564,18 +1601,29 @@
         }
         ctx.restore();
 
-        // Layout finalisieren (Banner oben)
         progressLabel.innerText = t('layout_final');
-        const bannerH = 170; // Höhe des weißen Balkens oben (Erhöht für 3. Zeile)
-        ctx.fillStyle = "rgba(255, 255, 255, 0.98)"; ctx.fillRect(0, 0, canvas.width, bannerH);
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.2)"; ctx.lineWidth = 3; ctx.strokeRect(0, 0, canvas.width, bannerH);
+        const bannerH = 170; 
+        // Banner wird auch relativ zum neuen Margin gezeichnet
+        ctx.fillStyle = "rgba(255, 255, 255, 0.98)"; 
+        ctx.fillRect(margin, margin, mapWidth, bannerH);
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.2)"; ctx.lineWidth = 3; 
         
+        // Titel-Rahmen (Header Border)
+        ctx.strokeRect(margin, margin, mapWidth, bannerH);
+        
+        // --- ÄNDERUNG: Rahmen um die Karte ---
+        // Zeichnet einen Rahmen um den Rest der Karte (unterhalb des Banners)
+        ctx.strokeRect(margin, margin + bannerH, mapWidth, mapHeight - bannerH);
+        
+        // Text-Positionen anpassen (+ margin)
+        const centerX = margin + (mapWidth / 2);
+
         ctx.fillStyle = "#0f172a"; ctx.textAlign = "center";
         const finalTitle = displayTitle === "OpenFireMap.org" ? "OpenFireMap.org" : `${t('plan_title')} ${displayTitle}`;
-        ctx.font = "bold 44px Arial, sans-serif"; ctx.fillText(finalTitle, canvas.width / 2, 55);
+        ctx.font = "bold 44px Arial, sans-serif"; ctx.fillText(finalTitle, centerX, margin + 55);
         
         const now = new Date();
-        const mPerPx = (Math.cos(bounds.getCenter().lat * Math.PI / 180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, targetZoom));
+        // mPerPx wurde schon oben berechnet
         ctx.font = "22px Arial, sans-serif"; ctx.fillStyle = "#334155";
         
         const localeMap = { 'de': 'de-DE', 'en': 'en-US', 'fr': 'fr-FR', 'es': 'es-ES', 'it': 'it-IT', 'pl': 'pl-PL', 'nl': 'nl-NL', 'cs': 'cs-CZ' };
@@ -1583,25 +1631,42 @@
         const dateStr = now.toLocaleDateString(dateLocale, { year: 'numeric', month: 'long' });
         
         // Zeile 2: Datum & Zoom
-        ctx.fillText(`${t('legend_date')}: ${dateStr} | ${t('legend_res')}: Z${targetZoom} (~${mPerPx.toFixed(2)} m/px)`, canvas.width / 2, 95);
+        // --- ÄNDERUNG: "Z" durch "Zoom" ersetzt ---
+        ctx.fillText(`${t('legend_date')}: ${dateStr} | ${t('legend_res')}: Zoom ${targetZoom} (~${mPerPx.toFixed(2)} m/px)`, centerX, margin + 95);
         
-        // Zeile 3: Lizenzen (Neu!)
+        // Zeile 3: Lizenzen (Im Banner)
         ctx.font = "italic 16px Arial, sans-serif"; ctx.fillStyle = "#64748b";
         const attributionText = layerAttributionsText[activeLayerConfig] || '© OpenStreetMap contributors';
-        ctx.fillText(attributionText, canvas.width / 2, 125);
+        ctx.fillText(attributionText, centerX, margin + 125);
 
-        // Maßstabsbalken unten rechts malen
+        // Maßstabsbalken unten rechts (innerhalb der Karte)
         const prettyD = [1000, 500, 250, 100, 50]; 
         let distM = 100, scaleW = 100 / mPerPx;
-        for (let d of prettyD) { let w = d / mPerPx; if (w <= canvas.width * 0.3) { distM = d; scaleW = w; break; } }
+        for (let d of prettyD) { let w = d / mPerPx; if (w <= mapWidth * 0.3) { distM = d; scaleW = w; break; } }
         
-        const sX = canvas.width - scaleW - 40, sY = canvas.height - 40;
+        const sX = margin + mapWidth - scaleW - 40; 
+        const sY = margin + mapHeight - 40;
         ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; ctx.fillRect(sX - 10, sY - 50, scaleW + 20, 60);
         ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 3; 
         ctx.beginPath(); ctx.moveTo(sX, sY - 10); ctx.lineTo(sX, sY); ctx.lineTo(sX + scaleW, sY); ctx.lineTo(sX + scaleW, sY - 10); ctx.stroke();
         ctx.fillStyle = "#0f172a"; ctx.font = "bold 18px Arial"; ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
 
-        // Fertig! Bild erstellen und Download starten
+        // Footer Text (Ganz unten im weißen Rand)
+        const footerY = margin + mapHeight + (footerH / 2) + 10; // Vertikal zentriert im Footer-Bereich
+        ctx.fillStyle = "#334155";
+        
+        // Links: Projektname
+        // --- ÄNDERUNG: "Export -" entfernt, nur "OpenFireMap.org", NICHT mehr fett ---
+        ctx.textAlign = "left"; 
+        ctx.font = "16px Arial, sans-serif"; // "bold" entfernt
+        ctx.fillText("OpenFireMap.org", margin, footerY);
+
+        // Rechts: Zeitstempel
+        ctx.textAlign = "right";
+        ctx.font = "16px Arial, sans-serif";
+        const timeStr = now.toLocaleString(dateLocale, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        ctx.fillText(timeStr, margin + mapWidth, footerY);
+
         progressBar.style.width = "100%";
         const link = document.createElement('a'); 
         link.download = `Hydrantenplan_${finalTitle.replace(/[\s\.]/g, '_')}_Z${targetZoom}_${activeLayerConfig}_${now.toISOString().slice(0,10)}.png`;
