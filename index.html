@@ -17,7 +17,7 @@
     4. Er erlaubt den Export als Bild (PNG) oder für Navis (GPX).
 
     AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-16 (Update: AED Zoom Levels & Dots)
+    DATUM: 2026-01-16 (Update: AED ab Zoom 15)
 -->
 <!DOCTYPE html>
 <!-- 'lang="de"' sagt dem Browser, dass die Grundsprache Deutsch ist. -->
@@ -897,8 +897,8 @@
             queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});`);
         }
 
-        // Ab Zoom 16: Defibrillatoren laden (Update)
-        if (zoom >= 16) {
+        // Ab Zoom 15: Defibrillatoren laden (Update)
+        if (zoom >= 15) {
             queryParts.push(`node["emergency"="defibrillator"](${bbox});`);
         }
 
@@ -1001,8 +1001,8 @@
             // Filter
             if (isStation && zoom < 12) return; 
             if (!isStation && !isDefib && zoom < 15) return; 
-            // Defibrillatoren NUR ab Zoom 16
-            if (isDefib && zoom < 16) return;
+            // Defibrillatoren NUR ab Zoom 15 (Update)
+            if (isDefib && zoom < 15) return;
 
             // Überlappungsschutz (damit nicht 2 Marker genau übereinander liegen)
             const alreadyDrawn = renderedLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
@@ -1021,7 +1021,7 @@
                 }
             } else if (isDefib) {
                 if (zoom < 17) {
-                    // Zoom 16: Grüner Punkt
+                    // Zoom 15 & 16: Grüner Punkt
                     L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) }).addTo(markerLayer);
                 } else {
                     // Ab Zoom 17: Defib Icon
@@ -1458,12 +1458,12 @@
 
             if (isStation && targetZoom < 12) continue;
             if (type === 'defibrillator') {
-                if (targetZoom < 16) continue;
+                if (targetZoom < 15) continue; // Update: ab 15
             } else if (!isStation && targetZoom < 15) continue;
 
             const drawAsStationSquare = isStation && targetZoom < 14;
             const drawAsHydrantDot = !isStation && type !== 'defibrillator' && targetZoom < 17;
-            const drawAsDefibDot = type === 'defibrillator' && targetZoom === 16;
+            const drawAsDefibDot = type === 'defibrillator' && targetZoom >= 15 && targetZoom < 17;
 
             if (drawAsHydrantDot || drawAsStationSquare || drawAsDefibDot) {
                 const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
