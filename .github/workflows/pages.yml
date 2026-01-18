@@ -1,12 +1,6 @@
-name: Pages
-
-on:
-  push:
-    branches: ["main"]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: echo "placeholder"
+- name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # WICHTIG: Hier definieren wir, dass nur der Inhalt von /docs veröffentlicht wird.
+          # Das macht /docs zum "Root" der Webseite.
+          path: './docs'
