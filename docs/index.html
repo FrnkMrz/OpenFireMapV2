@@ -2,9 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+
   <title>OpenFireMapV2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Basic SEO -->
+  <meta name="description" content="OpenFireMapV2 – OSM-based hydrant map experiment">
+  <meta name="robots" content="index, follow">
+
+  <!-- Favicons -->
+  <link rel="icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+  <link rel="apple-touch-icon" href="favicons/apple-touch-icon.png">
+
+  <!-- PWA / Manifest -->
+  <link rel="manifest" href="favicons/site.webmanifest">
+  <meta name="theme-color" content="#e20074">
+
+  <!-- Windows Tiles (legacy, but harmless) -->
+  <meta name="msapplication-config" content="favicons/browserconfig.xml">
+  <meta name="msapplication-TileColor" content="#ffffff">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="assets/css/main.css">
 </head>
+
 <body>
-  <h1>OpenFireMapV2</h1>
+  <noscript>
+    This site requires JavaScript to work properly.
+  </noscript>
+
+  <header>
+    <h1>OpenFireMapV2</h1>
+  </header>
+
+  <main id="map">
+    <!-- Map will be rendered here -->
+  </main>
+
+  <!-- Scripts -->
+  <script type="module" src="assets/js/config.js"></script>
+  <script type="module" src="assets/js/map.js"></script>
 </body>
 </html>
