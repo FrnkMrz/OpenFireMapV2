@@ -1,8 +1,8 @@
 <!-- 
     =============================================================================
-    PROJEKT: OpenFireMap V2 - Lernversion (Vollständig)
+    PROJEKT: OpenFireMap V2 - Lernversion (Vollständig & Barrierefrei)
     AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-16 (Update: Rechtstexte & Ressourcen ergänzt)
+    DATUM: 2026-01-18
     =============================================================================
     
     PROJEKT-BESCHREIBUNG & LERNZIELE:
@@ -34,10 +34,10 @@
     vereint.
     
     STRUKTUR DES CODES:
-    1. HTML (Zeile 60-300): Das Grundgerüst der Seite (Buttons, Menüs, Karten-Container).
+    1. HTML (Zeile 100-400): Das Grundgerüst der Seite (Buttons, Menüs, Karten-Container).
     2. CSS (Zeile 80-160): Das Design (Farben, Layouts, Animationen) mittels Tailwind CSS
        und eigenen Styles.
-    3. JAVASCRIPT (ab Zeile 310): Die "Intelligenz" der Seite.
+    3. JAVASCRIPT (ab Zeile 410): Die "Intelligenz" der Seite.
        - Wörterbuch (Übersetzungen)
        - Karten-Logik (Leaflet Bibliothek)
        - Daten-Abruf (Live-Abfrage der Overpass API)
@@ -46,6 +46,24 @@
     RECHTLICHE HINWEISE:
     Impressum und Datenschutzerklärung sind fest integriert ("Info & Recht"-Button),
     um einen rechtssicheren Betrieb zu ermöglichen.
+
+    =============================================================================
+    NEU: ÄNDERUNGEN FÜR BARRIEREFREIHEIT (Accessibility / a11y)
+    =============================================================================
+    Damit die Seite auch von Menschen mit Einschränkungen (z.B. Blinde mit Screenreadern)
+    genutzt werden kann, wurden folgende Anpassungen vorgenommen:
+
+    1.  Semantik: Eine unsichtbare Hauptüberschrift (H1) hinzugefügt, damit Screenreader
+        die Struktur der Seite verstehen.
+    2.  Labels: Alle Buttons ohne sichtbaren Text (nur Icons) haben jetzt ein 'aria-label',
+        damit Vorlese-Software weiß, was der Knopf tut.
+    3.  Formulare: Das Suchfeld hat ein verstecktes <label> bekommen.
+    4.  Fokus-Indikatoren: Alle interaktiven Elemente haben jetzt sichtbare Rahmen
+        (focus:ring), wenn man sie mit der Tastatur (Tab-Taste) ansteuert.
+    5.  Live-Regionen: Die Nachrichtenbox (notification-box) hat 'role="alert"',
+        damit neue Meldungen sofort vorgelesen werden.
+    6.  Kontrast: Einige Textfarben wurden leicht aufgehellt, um die Lesbarkeit
+        auf dem dunklen Hintergrund zu verbessern.
 -->
 
 <!DOCTYPE html>
@@ -185,40 +203,72 @@
 
 <!-- HTML STRUKTUR -->
 
-<div id="map"></div>
-<div id="notification-box"></div>
+<!-- 
+    BARRIEREFREIHEIT (Accessibility):
+    Diese unsichtbare Überschrift ("sr-only" = Screen Reader Only) hilft blinden Nutzern,
+    sofort zu verstehen, auf welcher Seite sie sind.
+-->
+<h1 class="sr-only">OpenFireMap - Interaktive Karte für Feuerwehr-Infrastruktur</h1>
+
+<div id="map" aria-label="Interaktive Karte" role="application"></div>
+
+<!-- 
+    BARRIEREFREIHEIT (Live Region):
+    'role="alert"' sorgt dafür, dass Änderungen in diesem Bereich (z.B. "Standort gefunden")
+    sofort vom Screenreader vorgelesen werden, auch wenn der Fokus gerade woanders ist.
+-->
+<div id="notification-box" role="alert" aria-live="polite"></div>
 
 <!-- STEUERLEISTE (Oben Links) -->
 <div class="absolute top-5 left-5 z-[1000] flex gap-3">
     <!-- Suche -->
-    <div class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5">
-        <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Ort suchen..." class="bg-transparent px-4 py-2 text-sm text-white outline-none w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-500">
-        <button onclick="searchLocation()" class="p-2 text-slate-400 hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+    <div class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5 focus-within:ring-2 focus-within:ring-blue-500">
+        <!-- 
+            BARRIEREFREIHEIT (Formular-Label):
+            Jedes Eingabefeld braucht ein Label. Mit "sr-only" verstecken wir es optisch,
+            aber es bleibt für Screenreader lesbar.
+        -->
+        <label for="search-input" class="sr-only" data-i18n="search_placeholder">Ort suchen</label>
+        <!-- 
+            BARRIEREFREIHEIT (Fokus):
+            'outline-none' entfernt den Standard-Rahmen. Wir ersetzen ihn durch
+            'focus:ring-0', da der Container außenherum (Zeile 175) den Fokus-Ring übernimmt.
+        -->
+        <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Ort suchen..." class="bg-transparent px-4 py-2 text-sm text-white outline-none focus:ring-0 w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-400">
+        
+        <!-- 
+            BARRIEREFREIHEIT (Buttons):
+            'aria-label' beschreibt die Funktion des Buttons für Blinde.
+            Das SVG-Icon bekommt 'aria-hidden="true"', damit es ignoriert wird.
+        -->
+        <button onclick="searchLocation()" aria-label="Suchen" class="p-2 text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-xl">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </button>
     </div>
     
     <!-- GPS -->
-    <button onclick="locateUser()" id="locate-btn" data-i18n-title="locate_title" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95" title="Mein Standort">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+    <button onclick="locateUser()" id="locate-btn" data-i18n-title="locate_title" aria-label="Meinen Standort bestimmen" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500" title="Mein Standort">
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
     </button>
     
     <!-- Layer -->
-    <button onclick="toggleLayerMenu()" data-i18n-title="layers_title" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95" title="Karte wechseln">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+    <!-- 'aria-expanded' zeigt an, ob das Menü offen ist (wird per JS gesteuert) -->
+    <!-- 'aria-controls' verbindet den Button mit dem Menü -->
+    <button onclick="toggleLayerMenu()" id="layer-btn-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="layer-menu" aria-label="Kartenhintergrund wechseln" data-i18n-title="layers_title" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500" title="Karte wechseln">
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
         </svg>
     </button>
 
     <!-- Export -->
-    <button onclick="toggleExportMenu()" data-i18n-title="export_title" class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95" title="Export">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+    <button onclick="toggleExportMenu()" id="export-btn-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="export-menu" aria-label="Export Menü öffnen" data-i18n-title="export_title" class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500" title="Export">
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
     </button>
 </div>
 
 <!-- INFO & RECHT KNOPF (Klein, Unten Links) -->
 <div class="absolute bottom-8 left-5 z-[1000]">
-    <button onclick="toggleLegalModal()" id="btn-legal-trigger" class="glass-panel p-1.5 rounded-xl text-slate-400 hover:text-white shadow-xl transition-all border border-white/10 active:scale-95 flex items-center gap-1.5">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <button onclick="toggleLegalModal()" id="btn-legal-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="legal-modal" class="glass-panel p-1.5 rounded-xl text-slate-400 hover:text-white shadow-xl transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <span class="text-[10px] font-bold hidden md:inline" data-i18n="legal_btn">Info & Recht</span>
@@ -226,14 +276,14 @@
 </div>
 
 <!-- INFO-BOX (Impressum & Recht) -->
-<div id="legal-modal" class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
+<div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title" class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
     <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
-        <h2 class="text-lg font-bold text-white flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <h2 id="legal-title" class="text-lg font-bold text-white flex items-center gap-2">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             Rechtliches
         </h2>
-        <button onclick="toggleLegalModal()" class="text-slate-500 hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        <button onclick="toggleLegalModal()" aria-label="Schließen" class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-lg p-1">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
     </div>
     
@@ -274,19 +324,19 @@
             <h3 class="text-sm font-bold text-white mb-1">Quellen & Lizenzen</h3>
             <ul class="list-disc list-inside space-y-1 text-slate-400">
                 <li>
-                    <strong>Kartendaten:</strong> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>-Mitwirkende (ODbL).
+                    <strong>Kartendaten:</strong> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">OpenStreetMap</a>-Mitwirkende (ODbL).
                 </li>
                 <li>
-                    <strong>Kartenstil (Standard/Dark/Hell):</strong> &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>.
+                    <strong>Kartenstil (Standard/Dark/Hell):</strong> &copy; <a href="https://carto.com/attributions" target="_blank" class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">CARTO</a>.
                 </li>
                 <li>
                     <strong>Satellitenbilder:</strong> Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community.
                 </li>
                 <li>
-                    <strong>Topographische Karte:</strong> Daten &copy; OpenStreetMap-Mitwirkende, SRTM | Darstellung &copy; <a href="http://opentopomap.org" target="_blank">OpenTopoMap</a> (CC-BY-SA).
+                    <strong>Topographische Karte:</strong> Daten &copy; OpenStreetMap-Mitwirkende, SRTM | Darstellung &copy; <a href="http://opentopomap.org" target="_blank" class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">OpenTopoMap</a> (CC-BY-SA).
                 </li>
                 <li>
-                    <strong>Software-Bibliotheken:</strong> <a href="https://leafletjs.com/" target="_blank">Leaflet</a>, <a href="https://tailwindcss.com/" target="_blank">Tailwind CSS</a>.
+                    <strong>Software-Bibliotheken:</strong> <a href="https://leafletjs.com/" target="_blank" class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Leaflet</a>, <a href="https://tailwindcss.com/" target="_blank" class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Tailwind CSS</a>.
                 </li>
             </ul>
         </section>
@@ -308,63 +358,67 @@
 </div>
 
 <!-- MENÜ FÜR KARTEN-HINTERGRÜNDE -->
-<div id="layer-menu" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
+<div id="layer-menu" role="menu" aria-labelledby="layer-btn-trigger" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center" data-i18n="bg_header">Hintergrund</h3>
     <div class="grid grid-cols-1 gap-1">
-        <button onclick="setBaseLayer('voyager')" id="btn-voyager" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-blue-500"></div> <span data-i18n="layer_std">Standard (Voyager)</span></button>
-        <button onclick="setBaseLayer('positron')" id="btn-positron" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-slate-300"></div> <span data-i18n="layer_print">Druck (Hell)</span></button>
-        <button onclick="setBaseLayer('dark')" id="btn-dark" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-slate-800"></div> <span data-i18n="layer_night">Nacht (Dunkel)</span></button>
-        <button onclick="setBaseLayer('satellite')" id="btn-satellite" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-green-600"></div> <span data-i18n="layer_sat">Satellit (Esri)</span></button>
-        <button onclick="setBaseLayer('topo')" id="btn-topo" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-amber-600"></div> <span data-i18n="layer_topo">Topographisch (OSM)</span></button>
-        <button onclick="setBaseLayer('osm')" id="btn-osm" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 border-t border-white/5 mt-1 pt-2"><div class="w-3 h-3 rounded-full bg-emerald-500"></div> <span data-i18n="layer_osm">OSM (Intl)</span></button>
-        <button onclick="setBaseLayer('osmde')" id="btn-osmde" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-emerald-700"></div> <span data-i18n="layer_osmde">OSM (DE Style)</span></button>
+        <!-- 
+            BARRIEREFREIHEIT (Menü-Buttons):
+            Auch hier: Sichtbarer Fokus-Ring (focus:ring-2) für Tastatur-Nutzer.
+        -->
+        <button onclick="setBaseLayer('voyager')" role="menuitem" id="btn-voyager" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-blue-500" aria-hidden="true"></div> <span data-i18n="layer_std">Standard (Voyager)</span></button>
+        <button onclick="setBaseLayer('positron')" role="menuitem" id="btn-positron" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-slate-300" aria-hidden="true"></div> <span data-i18n="layer_print">Druck (Hell)</span></button>
+        <button onclick="setBaseLayer('dark')" role="menuitem" id="btn-dark" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-slate-800" aria-hidden="true"></div> <span data-i18n="layer_night">Nacht (Dunkel)</span></button>
+        <button onclick="setBaseLayer('satellite')" role="menuitem" id="btn-satellite" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-green-600" aria-hidden="true"></div> <span data-i18n="layer_sat">Satellit (Esri)</span></button>
+        <button onclick="setBaseLayer('topo')" role="menuitem" id="btn-topo" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-amber-600" aria-hidden="true"></div> <span data-i18n="layer_topo">Topographisch (OSM)</span></button>
+        <button onclick="setBaseLayer('osm')" role="menuitem" id="btn-osm" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 border-t border-white/5 mt-1 pt-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-emerald-500" aria-hidden="true"></div> <span data-i18n="layer_osm">OSM (Intl)</span></button>
+        <button onclick="setBaseLayer('osmde')" role="menuitem" id="btn-osmde" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-emerald-700" aria-hidden="true"></div> <span data-i18n="layer_osmde">OSM (DE Style)</span></button>
     </div>
 </div>
 
 <!-- MENÜ FÜR EXPORT -->
-<div id="export-menu" class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
+<div id="export-menu" role="dialog" aria-labelledby="export-title" aria-modal="true" class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
     <div id="export-setup" class="space-y-5">
         <div class="flex justify-between items-center">
-            <h3 class="font-bold text-lg" data-i18n="export_header">Export-Eigenschaften</h3>
-            <button onclick="toggleExportMenu()" class="text-slate-500 hover:text-white">&times;</button>
+            <h3 id="export-title" class="font-bold text-lg" data-i18n="export_header">Export-Eigenschaften</h3>
+            <button onclick="toggleExportMenu()" aria-label="Schließen" class="text-slate-400 hover:text-white focus:outline-none focus:text-white text-2xl leading-none">&times;</button>
         </div>
         <div class="space-y-2">
             <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider" data-i18n="format_label">Format-Vorlage (Verhältnis)</label>
-            <div class="grid grid-cols-3 gap-2">
-                <button onclick="setExportFormat('free')" id="fmt-free" class="fmt-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active" data-i18n="fmt_free">FREI</button>
-                <button onclick="setExportFormat('a4l')" id="fmt-a4l" class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10" data-i18n="fmt_a4l">DIN QUER</button>
-                <button onclick="setExportFormat('a4p')" id="fmt-a4p" class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10" data-i18n="fmt_a4p">DIN HOCH</button>
+            <div class="grid grid-cols-3 gap-2" role="group" aria-label="Format-Auswahl">
+                <button onclick="setExportFormat('free')" id="fmt-free" class="fmt-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active focus:outline-none focus:ring-2 focus:ring-blue-500" data-i18n="fmt_free">FREI</button>
+                <button onclick="setExportFormat('a4l')" id="fmt-a4l" class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500" data-i18n="fmt_a4l">DIN QUER</button>
+                <button onclick="setExportFormat('a4p')" id="fmt-a4p" class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500" data-i18n="fmt_a4p">DIN HOCH</button>
             </div>
         </div>
         <div class="space-y-2">
             <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider" data-i18n="zoom_label">Detail-Grad (Zoom)</label>
-            <div class="grid grid-cols-4 gap-2">
-                <button onclick="setExportZoom(15)" id="zoom-15" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">Z15</button>
-                <button onclick="setExportZoom(16)" id="zoom-16" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">Z16</button>
-                <button onclick="setExportZoom(17)" id="zoom-17" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">Z17</button>
-                <button onclick="setExportZoom(18)" id="zoom-18" class="zoom-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active">Z18</button>
+            <div class="grid grid-cols-4 gap-2" role="group" aria-label="Zoom-Auswahl">
+                <button onclick="setExportZoom(15)" id="zoom-15" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">Z15</button>
+                <button onclick="setExportZoom(16)" id="zoom-16" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">Z16</button>
+                <button onclick="setExportZoom(17)" id="zoom-17" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">Z17</button>
+                <button onclick="setExportZoom(18)" id="zoom-18" class="zoom-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active focus:outline-none focus:ring-2 focus:ring-blue-500">Z18</button>
             </div>
         </div>
-        <button onclick="startSelection()" id="select-btn" class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
+        <button onclick="startSelection()" id="select-btn" class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
             <span data-i18n="select_area_btn">Ausschnitt auf Karte wählen</span>
         </button>
         <div id="selection-info" class="hidden text-[11px] text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20" data-i18n="area_fixed">Ausschnitt fixiert ✓</div>
-        <button id="png-btn" onclick="exportAsPNG()" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg"><span data-i18n="png_btn">Hydrantenplan (PNG)</span></button>
-        <button id="gpx-btn" onclick="exportAsGPX()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg border border-emerald-400/30">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        <button id="png-btn" onclick="exportAsPNG()" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-300"><span data-i18n="png_btn">Hydrantenplan (PNG)</span></button>
+        <button id="gpx-btn" onclick="exportAsGPX()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg border border-emerald-400/30 focus:outline-none focus:ring-2 focus:ring-emerald-300">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             <span data-i18n="gpx_btn">Hydranten exportieren (GPX)</span>
         </button>
     </div>
     
-    <div id="export-progress" class="hidden">
+    <div id="export-progress" class="hidden" role="status">
         <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg exporting-active text-blue-400" data-i18n="exporting_title">Export wird erstellt...</h3></div>
         <div class="space-y-4">
             <div>
                 <div class="flex justify-between text-[10px] mb-1 uppercase tracking-widest text-blue-400 font-bold"><span id="progress-label" data-i18n="loading_tiles">Lade Kacheln...</span><span id="progress-percent">0%</span></div>
                 <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden"><div id="progress-bar" class="h-full bg-blue-500 w-0 transition-all duration-300"></div></div>
             </div>
-            <button onclick="cancelExport()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2 rounded-xl text-sm font-semibold border border-red-500/20" data-i18n="cancel_btn">Vorgang abbrechen</button>
+            <button onclick="cancelExport()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2 rounded-xl text-sm font-semibold border border-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-500" data-i18n="cancel_btn">Vorgang abbrechen</button>
         </div>
     </div>
 </div>
@@ -774,7 +828,7 @@
             zoom_label: "Úroveň detailů (Zoom)",
             select_area_btn: "Vybrat oblast",
             area_fixed: "Oblast fixována ✓",
-            png_btn: "Mapa hydrantów (PNG)",
+            png_btn: "Mapa hydrantů (PNG)",
             gpx_btn: "Exportovat do GPX",
             exporting_title: "Vytváření exportu...",
             loading_tiles: "Načítání dlaždic...",
@@ -1322,11 +1376,28 @@
         }
     }
 
-    function toggleExportMenu() { document.getElementById('export-menu').classList.toggle('hidden'); resetExportUI(); }
-    function toggleLayerMenu() { document.getElementById('layer-menu').classList.toggle('hidden'); }
+    // ACCESSIBILITY UPDATE: ARIA-Attribute beim Öffnen/Schließen umschalten
+    function toggleExportMenu() { 
+        const menu = document.getElementById('export-menu');
+        const btn = document.getElementById('export-btn-trigger');
+        const isHidden = menu.classList.toggle('hidden');
+        btn.setAttribute('aria-expanded', !isHidden);
+        if(!isHidden) resetExportUI();
+    }
+
+    function toggleLayerMenu() { 
+        const menu = document.getElementById('layer-menu');
+        const btn = document.getElementById('layer-btn-trigger');
+        const isHidden = menu.classList.toggle('hidden');
+        btn.setAttribute('aria-expanded', !isHidden);
+    }
+
     function toggleLegalModal() { 
         const modal = document.getElementById('legal-modal');
-        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+        const btn = document.getElementById('btn-legal-trigger');
+        const isVisible = (modal.style.display === 'flex');
+        modal.style.display = isVisible ? 'none' : 'flex';
+        btn.setAttribute('aria-expanded', !isVisible);
     }
 
     function resetExportUI() {
