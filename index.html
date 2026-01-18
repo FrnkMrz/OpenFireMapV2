@@ -1,8 +1,8 @@
 <!-- 
     =============================================================================
-    PROJEKT: OpenFireMap V2 - Lernversion (Vollständig & Barrierefrei)
+    PROJEKT: OpenFireMap V2 - Lernversion (Vollständig, Barrierefrei & Schnell)
     AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-18
+    DATUM: 2026-01-18 (Update: OSM DE Fix - CORS)
     =============================================================================
     
     PROJEKT-BESCHREIBUNG & LERNZIELE:
@@ -64,6 +64,16 @@
         damit neue Meldungen sofort vorgelesen werden.
     6.  Kontrast: Einige Textfarben wurden leicht aufgehellt, um die Lesbarkeit
         auf dem dunklen Hintergrund zu verbessern.
+
+    =============================================================================
+    NEU: PERFORMANCE OPTIMIERUNGEN (Schnelleres Laden)
+    =============================================================================
+    1.  Preconnect: Verbindungen zu wichtigen Servern (Kartenbilder, API) werden
+        ganz früh aufgebaut, noch bevor sie gebraucht werden.
+    2.  Defer: Skripte (Javascript) laden jetzt parallel im Hintergrund und blockieren
+        nicht mehr den Seitenaufbau.
+    3.  DOMContentLoaded: Die Karte startet sofort, wenn das HTML gelesen ist, und
+        wartet nicht mehr auf alle Bilder/Icons.
 -->
 
 <!DOCTYPE html>
@@ -76,6 +86,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenFireMap.org</title>
     
+    <!-- 
+        PERFORMANCE (Preconnect):
+        Wir "warnen" den Browser vor, dass wir gleich Daten von diesen Servern brauchen.
+        So kann er schon mal den DNS-Eintrag suchen und die Verbindung öffnen.
+    -->
+    <link rel="preconnect" href="https://unpkg.com"> <!-- Für Leaflet -->
+    <link rel="preconnect" href="https://cdn.tailwindcss.com"> <!-- Für CSS -->
+    <link rel="preconnect" href="https://a.basemaps.cartocdn.com"> <!-- Für Kartenbilder -->
+    <link rel="preconnect" href="https://overpass-api.de"> <!-- Für Daten -->
+
     <!-- 
         FAVICONS & APP ICONS (ANGEPASST)
         Diese Icons sorgen dafür, dass die Seite als Lesezeichen oder App auf dem Homescreen gut aussieht.
@@ -109,16 +129,20 @@
     <!-- 
         EXTERNE WERKZEUGE (BIBLIOTHEKEN) 
         Wir laden fertige Code-Pakete aus dem Internet.
+        
+        PERFORMANCE (Defer):
+        Das Attribut 'defer' sorgt dafür, dass diese Skripte parallel geladen werden,
+        ohne den Seitenaufbau anzuhalten.
     -->
     
     <!-- Leaflet CSS: Das Design für die Karte -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
-    <!-- Leaflet JS: Die Logik für die Karte -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet JS: Die Logik für die Karte (jetzt mit defer) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
     
-    <!-- Tailwind CSS: Ein Design-Werkzeugkasten für schnelle Styles -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS: Ein Design-Werkzeugkasten für schnelle Styles (jetzt mit defer) -->
+    <script src="https://cdn.tailwindcss.com" defer></script>
 
     <!-- HIER BEGINNT DAS DESIGN (CSS) -->
     <style>
@@ -828,7 +852,7 @@
             zoom_label: "Úroveň detailů (Zoom)",
             select_area_btn: "Vybrat oblast",
             area_fixed: "Oblast fixována ✓",
-            png_btn: "Mapa hydrantů (PNG)",
+            png_btn: "Mapa hydrantów (PNG)",
             gpx_btn: "Exportovat do GPX",
             exporting_title: "Vytváření exportu...",
             loading_tiles: "Načítání dlaždic...",
@@ -922,7 +946,7 @@
         satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         topo: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
         osm: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        osmde: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png'
+        osmde: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png'
     };
     
     // WICHTIG: Die HTML-Texte für die Lizenzangaben unten rechts auf der interaktiven Karte
@@ -1362,7 +1386,13 @@
         
         // Update Layer with correct Attribution
         const attribution = layerAttributions[key] || '&copy; OSM';
-        L.tileLayer(layerUrls[key], { attribution: attribution, crossOrigin: 'anonymous' }).addTo(map);
+        
+        // BUG FIX (FRANK MÄRZ): 'tile.openstreetmap.de' (FOSSGIS e.V.) unterstützt manchmal
+        // kein 'crossOrigin: anonymous' für einfache GET-Requests im Browser.
+        // Das führte dazu, dass die Karte weiß blieb ("Karte lädt nicht").
+        // LÖSUNG: Wir entfernen 'crossOrigin' für die Anzeige-Ebene.
+        // Für den Export laden wir die Bilder sowieso neu, daher ist das hier sicher.
+        L.tileLayer(layerUrls[key], { attribution: attribution }).addTo(map);
         
         document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.getElementById(`btn-${key}`);
@@ -1803,7 +1833,9 @@
         setTimeout(toggleExportMenu, 800);
     }
 
-    // Beim Starten der Seite: initMap ausführen
-    window.onload = initMap;
+    // PERFORMANCE OPTIMIERUNG: 
+    // Statt 'window.onload' (wartet auf ALLE Bilder) nutzen wir 'DOMContentLoaded'.
+    // Das startet die Karte sofort, wenn das HTML-Gerüst steht.
+    document.addEventListener('DOMContentLoaded', initMap);
 </script>
 </body>
