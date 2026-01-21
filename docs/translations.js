@@ -35,7 +35,7 @@
 
    4. UNTERSTÜTZTE SPRACHEN (LÄNDERCODES)
    --------------------------------------
-   Die Anwendung unterstützt nun folgende 15 Sprachen:
+   Die Anwendung unterstützt nun folgende 18 Sprachen:
    
    - DE : Deutsch (Basissprache)
    - EN : Englisch (Weltweit / Fallback)
@@ -51,7 +51,11 @@
    - NO : Norwegisch
    - PT : Portugiesisch
    - FL : Flämisch (Belgien)
-   - LB : Luxemburgisch (Neu)
+   - LB : Luxemburgisch
+   - JA : Japanisch (Neu)
+   - KO : Koreanisch (Neu)
+   - MS : Malaiisch (Neu)
+   - TH : Thai (Neu)
 
    ========================================================================================== */
 
@@ -841,7 +845,7 @@ const translations = {
     },
 
     // --------------------------------------------------------------------------------------
-    // LUXEMBURGISCH (LB) - NEU
+    // LUXEMBURGISCH (LB)
     // --------------------------------------------------------------------------------------
     lb: {
         search_placeholder: "Plaz sichen...",
@@ -894,5 +898,229 @@ const translations = {
         hydrant: "Hydrant",
         defib: "Defibrillator (AED)",
         legal_btn: "Info & Recht"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // JAPANISCH (JA) - NEU
+    // --------------------------------------------------------------------------------------
+    ja: {
+        search_placeholder: "場所を検索...",
+        locate_title: "現在地",
+        layers_title: "地図レイヤー切替",
+        export_title: "エクスポート",
+        bg_header: "背景",
+        layer_std: "標準 (Voyager)",
+        layer_print: "印刷 (明)",
+        layer_night: "夜間 (暗)",
+        layer_sat: "衛星 (Esri)",
+        layer_topo: "地形図 (OSM)",
+        layer_osm: "OSM (国際)",
+        layer_osmde: "OSM (ドイツ様式)",
+        export_header: "エクスポート設定",
+        format_label: "形式 (比率)",
+        fmt_free: "自由",
+        fmt_a4l: "A4 横",
+        fmt_a4p: "A4 縦",
+        zoom_label: "詳細レベル (ズーム)",
+        select_area_btn: "地図上で範囲を選択",
+        area_fixed: "範囲固定 ✓",
+        png_btn: "消火栓マップ (PNG)",
+        gpx_btn: "消火栓エクスポート (GPX)",
+        exporting_title: "エクスポート作成中...",
+        loading_tiles: "タイル読み込み中...",
+        cancel_btn: "キャンセル",
+        zoom_info: "ズーム",
+        data_info: "データ",
+        status_current: "最新",
+        status_loading: "読み込み中...",
+        status_standby: "待機中 (ズーム < 12)",
+        status_error: "エラー",
+        geo_error: "位置情報はサポートされていません。",
+        geo_found: "位置を特定しました！",
+        geo_fail: "位置特定に失敗しました。",
+        drag_area: "範囲をドラッグ",
+        no_objects: "選択範囲にオブジェクトがありません！",
+        gpx_success: "GPXとしてエクスポートしました！",
+        too_large: "範囲が広すぎます！",
+        locating: "エリア特定中...",
+        render_bounds: "境界線を描画中...",
+        render_infra: "インフラを描画中...",
+        layout_final: "レイアウト仕上げ中...",
+        plan_title: "消火栓マップ",
+        legend_date: "日付",
+        legend_res: "解像度",
+        details: "詳細",
+        station: "消防署",
+        hydrant: "消火栓",
+        defib: "AED (自動体外式除細動器)",
+        legal_btn: "情報・法的"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // KOREANISCH (KO) - NEU
+    // --------------------------------------------------------------------------------------
+    ko: {
+        search_placeholder: "장소 검색...",
+        locate_title: "내 위치",
+        layers_title: "지도 레이어 전환",
+        export_title: "내보내기",
+        bg_header: "배경",
+        layer_std: "표준 (Voyager)",
+        layer_print: "인쇄 (밝음)",
+        layer_night: "야간 (어두움)",
+        layer_sat: "위성 (Esri)",
+        layer_topo: "지형도 (OSM)",
+        layer_osm: "OSM (국제)",
+        layer_osmde: "OSM (독일 스타일)",
+        export_header: "내보내기 속성",
+        format_label: "형식 (비율)",
+        fmt_free: "자유",
+        fmt_a4l: "A4 가로",
+        fmt_a4p: "A4 세로",
+        zoom_label: "상세 레벨 (줌)",
+        select_area_btn: "지도에서 영역 선택",
+        area_fixed: "영역 고정됨 ✓",
+        png_btn: "소화전 지도 (PNG)",
+        gpx_btn: "소화전 내보내기 (GPX)",
+        exporting_title: "내보내기 생성 중...",
+        loading_tiles: "타일 로딩 중...",
+        cancel_btn: "취소",
+        zoom_info: "줌",
+        data_info: "데이터",
+        status_current: "최신",
+        status_loading: "로딩 중...",
+        status_standby: "대기 (줌 < 12)",
+        status_error: "오류",
+        geo_error: "위치 정보가 지원되지 않습니다.",
+        geo_found: "위치 찾음!",
+        geo_fail: "위치 찾기 실패.",
+        drag_area: "영역 드래그",
+        no_objects: "선택된 영역에 개체가 없습니다!",
+        gpx_success: "GPX로 내보내기 성공!",
+        too_large: "영역이 너무 큽니다!",
+        locating: "영역 찾는 중...",
+        render_bounds: "경계 렌더링 중...",
+        render_infra: "인프라 렌더링 중...",
+        layout_final: "레이아웃 마무리 중...",
+        plan_title: "소화전 지도",
+        legend_date: "날짜",
+        legend_res: "해상도",
+        details: "상세",
+        station: "소방서",
+        hydrant: "소화전",
+        defib: "제세동기 (AED)",
+        legal_btn: "정보 및 법적 고지"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // MALAIISCH (MS) - NEU
+    // --------------------------------------------------------------------------------------
+    ms: {
+        search_placeholder: "Cari lokasi...",
+        locate_title: "Lokasi Saya",
+        layers_title: "Tukar Lapisan Peta",
+        export_title: "Eksport",
+        bg_header: "Latar Belakang",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Cetak (Terang)",
+        layer_night: "Malam (Gelap)",
+        layer_sat: "Satelit (Esri)",
+        layer_topo: "Topografi (OSM)",
+        layer_osm: "OSM (Antarabangsa)",
+        layer_osmde: "OSM (Gaya DE)",
+        export_header: "Sifat Eksport",
+        format_label: "Format (Nisbah)",
+        fmt_free: "BEBAS",
+        fmt_a4l: "A4 LANDSKAP",
+        fmt_a4p: "A4 POTRET",
+        zoom_label: "Tahap Perincian (Zoom)",
+        select_area_btn: "Pilih Kawasan di Peta",
+        area_fixed: "Kawasan ditetapkan ✓",
+        png_btn: "Peta Pili Bomba (PNG)",
+        gpx_btn: "Eksport Pili Bomba (GPX)",
+        exporting_title: "Mencipta Eksport...",
+        loading_tiles: "Memuatkan Jubin...",
+        cancel_btn: "Batal",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "TERKINI",
+        status_loading: "MEMUATKAN...",
+        status_standby: "SEDIA (Zoom < 12)",
+        status_error: "RALAT",
+        geo_error: "Geolokasi tidak disokong.",
+        geo_found: "Lokasi ditemui!",
+        geo_fail: "Gagal mengesan lokasi.",
+        drag_area: "Seret kawasan",
+        no_objects: "Tiada objek di kawasan yang dipilih!",
+        gpx_success: "Objek dieksport sebagai GPX!",
+        too_large: "Kawasan terlalu besar!",
+        locating: "Mengesan kawasan...",
+        render_bounds: "Memapar sempadan...",
+        render_infra: "Memapar infrastruktur...",
+        layout_final: "Menyiapkan susun atur...",
+        plan_title: "Peta Pili Bomba",
+        legend_date: "Tarikh",
+        legend_res: "Resolusi",
+        details: "Butiran",
+        station: "Balai Bomba",
+        hydrant: "Pili Bomba",
+        defib: "Defibrilator (AED)",
+        legal_btn: "Info & Undang-undang"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // THAI (TH) - NEU
+    // --------------------------------------------------------------------------------------
+    th: {
+        search_placeholder: "ค้นหาสถานที่...",
+        locate_title: "ตำแหน่งของฉัน",
+        layers_title: "เปลี่ยนชั้นข้อมูลแผนที่",
+        export_title: "ส่งออก",
+        bg_header: "พื้นหลัง",
+        layer_std: "มาตรฐาน (Voyager)",
+        layer_print: "พิมพ์ (สว่าง)",
+        layer_night: "กลางคืน (มืด)",
+        layer_sat: "ดาวเทียม (Esri)",
+        layer_topo: "ภูมิประเทศ (OSM)",
+        layer_osm: "OSM (สากล)",
+        layer_osmde: "OSM (สไตล์เยอรมัน)",
+        export_header: "คุณสมบัติการส่งออก",
+        format_label: "รูปแบบ (อัตราส่วน)",
+        fmt_free: "อิสระ",
+        fmt_a4l: "A4 แนวนอน",
+        fmt_a4p: "A4 แนวตั้ง",
+        zoom_label: "ระดับรายละเอียด (ซูม)",
+        select_area_btn: "เลือกพื้นที่บนแผนที่",
+        area_fixed: "พื้นที่ถูกกำหนดแล้ว ✓",
+        png_btn: "แผนที่หัวดับเพลิง (PNG)",
+        gpx_btn: "ส่งออกหัวดับเพลิง (GPX)",
+        exporting_title: "กำลังสร้างการส่งออก...",
+        loading_tiles: "กำลังโหลดกระเบื้อง...",
+        cancel_btn: "ยกเลิก",
+        zoom_info: "ซูม",
+        data_info: "ข้อมูล",
+        status_current: "ปัจจุบัน",
+        status_loading: "กำลังโหลด...",
+        status_standby: "รอพร้อม (ซูม < 12)",
+        status_error: "ข้อผิดพลาด",
+        geo_error: "ไม่รองรับการระบุตำแหน่งทางภูมิศาสตร์",
+        geo_found: "พบตำแหน่ง!",
+        geo_fail: "ระบุตำแหน่งล้มเหลว",
+        drag_area: "ลากพื้นที่",
+        no_objects: "ไม่มีวัตถุในพื้นที่ที่เลือก!",
+        gpx_success: "ส่งออกวัตถุเป็น GPX แล้ว!",
+        too_large: "พื้นที่ใหญ่เกินไป!",
+        locating: "กำลังระบุพื้นที่...",
+        render_bounds: "กำลังแสดงผลขอบเขต...",
+        render_infra: "กำลังแสดงผลโครงสร้างพื้นฐาน...",
+        layout_final: "กำลังสรุปรูปแบบ...",
+        plan_title: "แผนที่หัวดับเพลิง",
+        legend_date: "วันที่",
+        legend_res: "ความละเอียด",
+        details: "รายละเอียด",
+        station: "สถานีดับเพลิง",
+        hydrant: "หัวดับเพลิง",
+        defib: "เครื่องกระตุกหัวใจ (AED)",
+        legal_btn: "ข้อมูลและกฎหมาย"
     }
 };
