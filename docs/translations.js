@@ -96,6 +96,7 @@ const translations = {
         data_info: "DATEN",
         status_current: "AKTUELL",
         status_loading: "LÄDT...",
+        status_waiting: "WARTE AUF POS...", // NEU
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FEHLER",
         geo_error: "Geolokalisierung nicht unterstützt.",
@@ -152,6 +153,7 @@ const translations = {
         data_info: "DATA",
         status_current: "CURRENT",
         status_loading: "LOADING...",
+        status_waiting: "WAITING FOR POS...", // NEU
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "ERROR",
         geo_error: "Geolocation not supported.",
@@ -208,6 +210,7 @@ const translations = {
         data_info: "DONNÉES",
         status_current: "ACTUEL",
         status_loading: "CHARGEMENT...",
+        status_waiting: "ATTENTE POS...", // NEU
         status_standby: "VEILLE (Zoom < 12)",
         status_error: "ERREUR",
         geo_error: "Géolocalisation non supportée.",
@@ -264,6 +267,7 @@ const translations = {
         data_info: "DATOS",
         status_current: "ACTUAL",
         status_loading: "CARGANDO...",
+        status_waiting: "ESPERANDO POS...", // NEU
         status_standby: "ESPERA (Zoom < 12)",
         status_error: "ERROR",
         geo_error: "Geolocalización no soportada.",
@@ -320,6 +324,7 @@ const translations = {
         data_info: "DATI",
         status_current: "ATTUALE",
         status_loading: "CARICAMENTO...",
+        status_waiting: "ATTESA POS...", // NEU
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "ERRORE",
         geo_error: "Geolocalizzazione non supportata.",
@@ -376,6 +381,7 @@ const translations = {
         data_info: "DANE",
         status_current: "AKTUALNE",
         status_loading: "ŁADOWANIE...",
+        status_waiting: "CZEKANIE NA POZ...", // NEU
         status_standby: "CZUWANIE (Zoom < 12)",
         status_error: "BŁĄD",
         geo_error: "Geolokalizacja nieobsługiwana.",
@@ -432,6 +438,7 @@ const translations = {
         data_info: "DATA",
         status_current: "ACTUEEL",
         status_loading: "LADEN...",
+        status_waiting: "WACHTEN OP POS...", // NEU
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FOUT",
         geo_error: "Geolocatie niet ondersteund.",
@@ -488,6 +495,7 @@ const translations = {
         data_info: "DATA",
         status_current: "AKTUÁLNÍ",
         status_loading: "NAČÍTÁNÍ...",
+        status_waiting: "ČEKÁNÍ NA POZ...", // NEU
         status_standby: "PŘIPRAVENO (Zoom < 12)",
         status_error: "CHYBA",
         geo_error: "Geolokace není podporována.",
@@ -544,6 +552,7 @@ const translations = {
         data_info: "DATA",
         status_current: "AKTUEL",
         status_loading: "INDLÆSER...",
+        status_waiting: "VENTER PÅ POS...", // NEU
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FEJL",
         geo_error: "Geolokalisering understøttes ikke.",
@@ -600,6 +609,7 @@ const translations = {
         data_info: "DATA",
         status_current: "AJANTASAINEN",
         status_loading: "LADATAAN...",
+        status_waiting: "ODOTTAA SIJ...", // NEU
         status_standby: "VALMIUSTILA (Zoom < 12)",
         status_error: "VIRHE",
         geo_error: "Paikannusta ei tueta.",
@@ -656,6 +666,7 @@ const translations = {
         data_info: "DATA",
         status_current: "AKTUELL",
         status_loading: "LADDAR...",
+        status_waiting: "VÄNTAR PÅ POS...", // NEU
         status_standby: "VÄNTELÄGE (Zoom < 12)",
         status_error: "FEL",
         geo_error: "Geolokalisering stöds ej.",
@@ -712,6 +723,7 @@ const translations = {
         data_info: "DATA",
         status_current: "OPPDATERT",
         status_loading: "LASTER...",
+        status_waiting: "VENTER PÅ POS...", // NEU
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FEIL",
         geo_error: "Geolokalisering støttes ikke.",
@@ -768,6 +780,7 @@ const translations = {
         data_info: "DADOS",
         status_current: "ATUAL",
         status_loading: "CARREGANDO...",
+        status_waiting: "AGUARDANDO POS...", // NEU
         status_standby: "AGUARDANDO (Zoom < 12)",
         status_error: "ERRO",
         geo_error: "Geolocalização não suportada.",
@@ -824,6 +837,7 @@ const translations = {
         data_info: "DATA",
         status_current: "ACTUEEL",
         status_loading: "LADEN...",
+        status_waiting: "WACHTEN OP POS...", // NEU
         status_standby: "STAND-BY (Zoom < 12)",
         status_error: "FOUT",
         geo_error: "Geolocatie niet ondersteund.",
@@ -880,6 +894,7 @@ const translations = {
         data_info: "DATEN",
         status_current: "AKTUELL",
         status_loading: "LUEDEN...",
+        status_waiting: "WAARD OP POS...", // NEU
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FEELER",
         geo_error: "Geolokalisiérung net ënnerstëtzt.",
@@ -936,6 +951,7 @@ const translations = {
         data_info: "データ",
         status_current: "最新",
         status_loading: "読み込み中...",
+        status_waiting: "位置待機中...", // NEU
         status_standby: "待機中 (ズーム < 12)",
         status_error: "エラー",
         geo_error: "位置情報はサポートされていません。",
@@ -992,6 +1008,7 @@ const translations = {
         data_info: "데이터",
         status_current: "최신",
         status_loading: "로딩 중...",
+        status_waiting: "위치 대기 중...", // NEU
         status_standby: "대기 (줌 < 12)",
         status_error: "오류",
         geo_error: "위치 정보가 지원되지 않습니다.",
@@ -1048,6 +1065,7 @@ const translations = {
         data_info: "DATA",
         status_current: "TERKINI",
         status_loading: "MEMUATKAN...",
+        status_waiting: "MENUNGGU POS...", // NEU
         status_standby: "SEDIA (Zoom < 12)",
         status_error: "RALAT",
         geo_error: "Geolokasi tidak disokong.",
@@ -1104,6 +1122,7 @@ const translations = {
         data_info: "ข้อมูล",
         status_current: "ปัจจุบัน",
         status_loading: "กำลังโหลด...",
+        status_waiting: "กำลังรอตำแหน่ง...", // NEU
         status_standby: "รอพร้อม (ซูม < 12)",
         status_error: "ข้อผิดพลาด",
         geo_error: "ไม่รองรับการระบุตำแหน่งทางภูมิศาสตร์",
@@ -1160,6 +1179,7 @@ const translations = {
         data_info: "数据",
         status_current: "最新",
         status_loading: "加载中...",
+        status_waiting: "等待定位...", // NEU
         status_standby: "待机 (缩放 < 12)",
         status_error: "错误",
         geo_error: "不支持地理定位。",
@@ -1216,6 +1236,7 @@ const translations = {
         data_info: "數據",
         status_current: "最新",
         status_loading: "載入緊...",
+        status_waiting: "等待定位...", // NEU
         status_standby: "待機 (縮放 < 12)",
         status_error: "錯誤",
         geo_error: "唔支援地理定位。",
@@ -1240,7 +1261,7 @@ const translations = {
     },
 
     // --------------------------------------------------------------------------------------
-    // TAIWANESISCH / TRADITIONELLES CHINESISCH (TW) - NEU
+    // TAIWANESISCH / TRADITIONELLES CHINESISCH (TW)
     // --------------------------------------------------------------------------------------
     tw: {
         search_placeholder: "搜尋地點...",
@@ -1272,6 +1293,7 @@ const translations = {
         data_info: "數據",
         status_current: "最新",
         status_loading: "載入中...",
+        status_waiting: "等待定位...", // NEU
         status_standby: "待機 (縮放 < 12)",
         status_error: "錯誤",
         geo_error: "不支援地理定位。",
