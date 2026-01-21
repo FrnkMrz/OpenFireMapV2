@@ -1,37 +1,36 @@
 /**
  * ==========================================================================================
  * DATEI: config.js
- * ZWECK: Zentrale Konfiguration (URLs, Farben, Einstellungen)
- * LERN-ZIEL: Wie man "Magic Numbers" und feste Werte in einer Datei sammelt (Wartbarkeit).
+ * ZWECK: Zentrale Konfiguration (URLs, Farben, Zoom-Stufen)
+ * LERN-ZIEL: Vermeidung von "Magic Numbers" im Code durch zentrale Steuerung.
  * ==========================================================================================
  */
 
 export const Config = {
     
-    // START-POSITION
-    // Wo soll die Karte starten, wenn man die Seite lädt?
-    // [Breitengrad (Lat), Längengrad (Lon)] -> Schnaittach
+    // --- START-POSITION ---
+    // Wo soll die Karte beim ersten Laden starten? (Schnaittach)
     defaultCenter: [49.555, 11.350],
     
-    // START-ZOOM
-    // 14 = Stadtteil-Ebene (man sieht Straßen, aber noch keine Hausnummern)
-    defaultZoom: 14,
+    // --- ZOOM-EINSTELLUNGEN ---
+    defaultZoom: 14,      // Zoom beim ersten Laden der Seite
+    searchZoom: 14,       // Zoom-Stufe nach einer erfolgreichen Suche
+    locateZoom: 16,       // Zoom-Stufe nach Klick auf den GPS-Button
 
-    // DATEN-QUELLEN (Overpass API)
-    // Hier fragen wir nach Hydranten. Wir haben mehrere Server als Backup.
+    // --- DATEN-QUELLEN (Overpass API) ---
+    // Wir nutzen mehrere Server als Backup, falls einer langsam ist oder ausfällt.
     overpassEndpoints: [
-        'https://overpass-api.de/api/interpreter',             // Hauptserver
-        'https://overpass.kumi.systems/api/interpreter',       // Backup 1
-        'https://maps.mail.ru/osm/tools/overpass/api/interpreter' // Backup 2
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
     ],
 
-    // ORTS-SUCHE (Geocoding)
-    // Um Adressen in Koordinaten umzuwandeln (und andersherum für den Titel).
+    // --- GEODIENSTE ---
     nominatimUrl: 'https://nominatim.openstreetmap.org',
 
-    // KARTEN-HINTERGRÜNDE (Layers)
-    // attr: HTML-Copyright für die Webseite (mit Links)
-    // textAttr: Reiner Text für das PNG-Bild (ohne Links)
+    // --- KARTEN-HINTERGRÜNDE (Layers) ---
+    // 'attr' ist für die Webseite (mit HTML-Links)
+    // 'textAttr' ist für den Export (reiner Text für das PNG)
     layers: {
         voyager: {
             url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
@@ -61,7 +60,7 @@ export const Config = {
             url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
             attr: 'Daten: &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende, SRTM | Darstellung: &copy; <a href="http://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
             textAttr: 'Daten: © OpenStreetMap-Mitwirkende, SRTM | Darstellung: © OpenTopoMap (CC-BY-SA)',
-            maxZoom: 17 // Topo geht oft nicht tiefer als 17
+            maxZoom: 17
         },
         osm: {
             url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -77,46 +76,26 @@ export const Config = {
         }
     },
     
-    // EXPORT-SICHERHEIT
-    // Verhindert, dass der Browser abstürzt, weil jemand versucht, ganz Deutschland als PNG zu speichern.
-    // Maximale Breite in Kilometern pro Zoomstufe.
+    // --- EXPORT-EINSTELLUNGEN ---
+    // Maximale Breite in Kilometern pro Zoomstufe, um Browser-Abstürze zu verhindern.
     exportZoomLimitsKm: {
-        12: 30, 
-        13: 25, 
-        14: 20, 
-        15: 15, 
-        16: 10, 
-        17: 8,  
-        18: 5
+        12: 30, 13: 25, 14: 20, 15: 15, 16: 10, 17: 8, 18: 5
     },
 
-    // ZENTRALE FARBPALETTE
-    // Hier definieren wir alle Farben an einem Ort.
-    // Das macht es leicht, später das Design zu ändern.
+    // --- ZENTRALE FARBPALETTE ---
+    // Ändere eine Farbe hier, und sie ändert sich überall (Karte & Export).
     colors: {
-        // Infrastruktur
         station: '#ef4444',       // Rot (Feuerwachen)
         hydrant: '#ef4444',       // Rot (Standard Hydranten)
         water: '#3b82f6',         // Blau (Wasser/Zisternen/Teiche)
         defib: '#16a34a',         // Grün (Defibrillatoren)
         
-        // Karte & Tools
         rangeCircle: '#f97316',   // Orange (100m Radius Kreis)
         selection: '#3b82f6',     // Blau (Auswahl-Rechteck Export)
         bounds: '#333333',        // Dunkelgrau (Gemeindegrenzen)
         
-        // Export Design (Header & Footer)
-        textMain: '#0f172a',      // Dunkelblau (Titel)
-        textSub: '#334155',       // Grau-Blau (Datum/Footer)
-        bgHeader: 'rgba(255, 255, 255, 0.98)' // Weißer Kasten (Hintergrund)
+        textMain: '#0f172a',      // Dunkelblau (Titel im Export)
+        textSub: '#334155',       // Grau-Blau (Datum/Footer im Export)
+        bgHeader: 'rgba(255, 255, 255, 0.98)' // Weißer Kasten Hintergrund
     }
-    export const Config = {
-    // START-POSITION
-    defaultCenter: [49.555, 11.350],
-    
-    // ZOOM-EINSTELLUNGEN
-    defaultZoom: 14,      // Zoom beim ersten Laden der Seite
-    searchZoom: 14,       // NEU: Zoom-Stufe nach einer erfolgreichen Suche
-    
-    // ... Rest der Konfiguration bleibt gleich ...
-};
+}; // WICHTIG: Dieses Semikolon beendet das Objekt.
