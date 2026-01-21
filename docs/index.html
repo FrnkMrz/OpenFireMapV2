@@ -1,8 +1,8 @@
 <!-- 
     =============================================================================
-    PROJEKT: OpenFireMap V2 - Lernversion (Vollständig, Barrierefrei & Schnell)
+    PROJEKT: OpenFireMap V2 - Lernversion (Refactored)
     AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-21 (Update: Fix für Tooltip-Verzögerung)
+    DATUM: 2026-01-21 (Update: Aufteilung in 2 Dateien)
     =============================================================================
     
     PROJEKT-BESCHREIBUNG & LERNZIELE:
@@ -32,21 +32,16 @@
        - Es ist immer nur ein Menü gleichzeitig offen.
        - Tooltips (Zoom 18) bleiben nun zuverlässig 3 Sekunden offen, damit man sie lesen kann.
        
-    TECHNISCHER AUFBAU:
-    Es handelt sich um eine "Single Page Application" (SPA). Das bedeutet, der gesamte
-    Quellcode (Struktur, Design und Programmierlogik) ist in dieser einzigen HTML-Datei
-    vereint.
+    TECHNISCHER AUFBAU (REFACTORED):
+    Die Anwendung wurde in zwei Dateien aufgeteilt, um die Übersichtlichkeit zu verbessern:
     
-    STRUKTUR DES CODES:
-    1. HTML (Zeile 100-400): Das Grundgerüst der Seite (Buttons, Menüs, Karten-Container).
-    2. CSS (Zeile 80-160): Das Design (Farben, Layouts, Animationen) mittels Tailwind CSS
-       und eigenen Styles.
-    3. JAVASCRIPT (ab Zeile 410): Die "Intelligenz" der Seite.
-       - Wörterbuch (Übersetzungen)
-       - Karten-Logik (Leaflet Bibliothek)
-       - Daten-Abruf (Live-Abfrage der Overpass API)
-       - Export-Logik (Zeichnen auf Canvas für PNG, XML-Generierung für GPX)
-       - NEU: Manuelle Steuerung der Tooltip-Events (Zeile ~950)
+    1. index.html (Diese Datei):
+       - Enthält die HTML-Struktur, CSS-Design und die JavaScript-Logik.
+       - Lädt die externen Bibliotheken (Leaflet, Tailwind).
+       
+    2. translations.js (Externe Datei):
+       - Enthält das gesamte Wörterbuch (Dictionary) für alle Sprachen.
+       - Wird im <head> geladen und stellt die Variable 'translations' bereit.
 
     RECHTLICHE HINWEISE:
     Impressum und Datenschutzerklärung sind fest integriert ("Info & Recht"-Button),
@@ -112,6 +107,12 @@
     
     <!-- Tailwind CSS: Ein Design-Werkzeugkasten für schnelle Styles (jetzt mit defer) -->
     <script src="https://cdn.tailwindcss.com" defer></script>
+
+    <!-- 
+        LOKALE RESSOURCEN (HINZUGEFÜGT)
+        Hier laden wir unsere ausgelagerte Sprachdatei. 
+    -->
+    <script src="translations.js"></script>
 
     <!-- HIER BEGINNT DAS DESIGN (CSS) -->
     <style>
@@ -394,454 +395,29 @@
 <!-- JAVASCRIPT LOGIK -->
 <script>
     /* =========================================================================
-       0. WÖRTERBUCH (DICTIONARY)
-       Alle Texte für die automatische Übersetzung.
+       1. SPRACH-LOGIK (UPDATE: WÖRTERBUCH IST JETZT EXTERN)
+       Die Variable 'translations' kommt jetzt aus der Datei translations.js
        ========================================================================= */
-    const translations = {
-        // Deutsch
-        de: {
-            search_placeholder: "Ort suchen...",
-            locate_title: "Mein Standort",
-            layers_title: "Karte wechseln",
-            export_title: "Export",
-            bg_header: "Hintergrund",
-            layer_std: "Standard (Voyager)",
-            layer_print: "Druck (Hell)",
-            layer_night: "Nacht (Dunkel)",
-            layer_sat: "Satellit (Esri)",
-            layer_topo: "Topographisch (OSM)",
-            layer_osm: "OSM (Intl)",
-            layer_osmde: "OSM (DE Style)",
-            export_header: "Export-Eigenschaften",
-            format_label: "Format-Vorlage (Verhältnis)",
-            fmt_free: "FREI",
-            fmt_a4l: "DIN QUER",
-            fmt_a4p: "DIN HOCH",
-            zoom_label: "Detail-Grad (Zoom)",
-            select_area_btn: "Ausschnitt auf Karte wählen",
-            area_fixed: "Ausschnitt fixiert ✓",
-            png_btn: "Hydrantenplan (PNG)",
-            gpx_btn: "Hydranten exportieren (GPX)",
-            exporting_title: "Export wird erstellt...",
-            loading_tiles: "Lade Kacheln...",
-            cancel_btn: "Vorgang abbrechen",
-            zoom_info: "ZOOM",
-            data_info: "DATEN",
-            status_current: "AKTUELL",
-            status_loading: "LÄDT...",
-            status_standby: "STANDBY (Zoom < 12)",
-            status_error: "FEHLER",
-            geo_error: "Geolokalisierung nicht unterstützt.",
-            geo_found: "Standort gefunden!",
-            geo_fail: "Standort fehlerhaft.",
-            drag_area: "Bereich ziehen",
-            no_objects: "Keine Objekte im gewählten Bereich!",
-            gpx_success: "Objekte als GPX exportiert!",
-            too_large: "Ausschnitt zu groß!",
-            locating: "Lokalisiere Gebiet...",
-            render_bounds: "Rendere Grenzen...",
-            render_infra: "Rendere Infrastruktur...",
-            layout_final: "Finalisiere Layout...",
-            plan_title: "Orts- und Hydrantenplan",
-            legend_date: "Stand",
-            legend_res: "Auflösung",
-            details: "Details",
-            station: "Feuerwache",
-            hydrant: "Hydrant",
-            defib: "Defibrillator (AED)",
-            legal_btn: "Info & Recht"
-        },
-        // Englisch
-        en: {
-            search_placeholder: "Search location...",
-            locate_title: "My Location",
-            layers_title: "Switch Map Layer",
-            export_title: "Export",
-            bg_header: "Background",
-            layer_std: "Standard (Voyager)",
-            layer_print: "Print (Light)",
-            layer_night: "Night (Dark)",
-            layer_sat: "Satellite (Esri)",
-            layer_topo: "Topographic (OSM)",
-            layer_osm: "OSM (Intl)",
-            layer_osmde: "OSM (DE Style)",
-            export_header: "Export Properties",
-            format_label: "Aspect Ratio",
-            fmt_free: "FREE",
-            fmt_a4l: "A4 LANDSCAPE",
-            fmt_a4p: "A4 PORTRAIT",
-            zoom_label: "Detail Level (Zoom)",
-            select_area_btn: "Select Area on Map",
-            area_fixed: "Area fixed ✓",
-            png_btn: "Hydrant Map (PNG)",
-            gpx_btn: "Export Hydrants (GPX)",
-            exporting_title: "Creating Export...",
-            loading_tiles: "Loading Tiles...",
-            cancel_btn: "Cancel Process",
-            zoom_info: "ZOOM",
-            data_info: "DATA",
-            status_current: "CURRENT",
-            status_loading: "LOADING...",
-            status_standby: "STANDBY (Zoom < 12)",
-            status_error: "ERROR",
-            geo_error: "Geolocation not supported.",
-            geo_found: "Location found!",
-            geo_fail: "Location failed.",
-            drag_area: "Draw area",
-            no_objects: "No objects in selected area!",
-            gpx_success: "Objects exported as GPX!",
-            too_large: "Area too large!",
-            locating: "Locating area...",
-            render_bounds: "Rendering boundaries...",
-            render_infra: "Rendering infrastructure...",
-            layout_final: "Finalizing layout...",
-            plan_title: "Hydrant Map",
-            legend_date: "Date",
-            legend_res: "Resolution",
-            details: "Details",
-            station: "Fire Station",
-            hydrant: "Hydrant",
-            defib: "Defibrillator (AED)",
-            legal_btn: "Info & Legal"
-        },
-        // Französisch
-        fr: {
-            search_placeholder: "Rechercher...",
-            locate_title: "Ma position",
-            layers_title: "Changer de carte",
-            export_title: "Exporter",
-            bg_header: "Arrière-plan",
-            layer_std: "Standard (Voyager)",
-            layer_print: "Impression (Clair)",
-            layer_night: "Nuit (Sombre)",
-            layer_sat: "Satellite (Esri)",
-            layer_topo: "Topographique (OSM)",
-            layer_osm: "OSM (Intl)",
-            layer_osmde: "OSM (Style DE)",
-            export_header: "Propriétés d'exportation",
-            format_label: "Format (Ratio)",
-            fmt_free: "LIBRE",
-            fmt_a4l: "A4 PAYSAGE",
-            fmt_a4p: "A4 PORTRAIT",
-            zoom_label: "Niveau de détail (Zoom)",
-            select_area_btn: "Sélectionner une zone",
-            area_fixed: "Zone fixée ✓",
-            png_btn: "Carte des poteaux (PNG)",
-            gpx_btn: "Exporter en GPX",
-            exporting_title: "Création de l'export...",
-            loading_tiles: "Chargement des tuiles...",
-            cancel_btn: "Annuler",
-            zoom_info: "ZOOM",
-            data_info: "DONNÉES",
-            status_current: "ACTUEL",
-            status_loading: "CHARGEMENT...",
-            status_standby: "VEILLE (Zoom < 12)",
-            status_error: "ERREUR",
-            geo_error: "Géolocalisation non supportée.",
-            geo_found: "Position trouvée !",
-            geo_fail: "Échec de localisation.",
-            drag_area: "Dessiner la zone",
-            no_objects: "Aucun objet dans la zone !",
-            gpx_success: "Objets exportés en GPX !",
-            too_large: "Zone trop grande !",
-            locating: "Localisation de la zone...",
-            render_bounds: "Rendu des limites...",
-            render_infra: "Rendu de l'infrastructure...",
-            layout_final: "Finalisation...",
-            plan_title: "Carte des Hydrants",
-            legend_date: "Date",
-            legend_res: "Résolution",
-            details: "Détails",
-            station: "Caserne",
-            hydrant: "Poteau incendie",
-            defib: "Défibrillateur (DAE)",
-            legal_btn: "Info & Droit"
-        },
-        // Spanisch
-        es: {
-            search_placeholder: "Buscar lugar...",
-            locate_title: "Mi ubicación",
-            layers_title: "Cambiar mapa",
-            export_title: "Exportar",
-            bg_header: "Fondo",
-            layer_std: "Estándar (Voyager)",
-            layer_print: "Impresión (Claro)",
-            layer_night: "Noche (Oscuro)",
-            layer_sat: "Satélite (Esri)",
-            layer_topo: "Topográfico (OSM)",
-            layer_osm: "OSM (Intl)",
-            layer_osmde: "OSM (Estilo DE)",
-            export_header: "Propiedades de exportación",
-            format_label: "Formato (Relación)",
-            fmt_free: "LIBRE",
-            fmt_a4l: "A4 PAISAJE",
-            fmt_a4p: "A4 RETRATO",
-            zoom_label: "Nivel de detalle (Zoom)",
-            select_area_btn: "Seleccionar zona",
-            area_fixed: "Zona fijada ✓",
-            png_btn: "Mapa de hidrantes (PNG)",
-            gpx_btn: "Exportar como GPX",
-            exporting_title: "Creando exportación...",
-            loading_tiles: "Cargando teselas...",
-            cancel_btn: "Cancelar",
-            zoom_info: "ZOOM",
-            data_info: "DATOS",
-            status_current: "ACTUAL",
-            status_loading: "CARGANDO...",
-            status_standby: "ESPERA (Zoom < 12)",
-            status_error: "ERROR",
-            geo_error: "Geolocalización no soportada.",
-            geo_found: "¡Ubicación encontrada!",
-            geo_fail: "Fallo de ubicación.",
-            drag_area: "Arrastrar área",
-            no_objects: "¡No hay objetos en la zona!",
-            gpx_success: "¡Objetos exportados a GPX!",
-            too_large: "¡Zona demasiado grande!",
-            locating: "Localizando zona...",
-            render_bounds: "Renderizando límites...",
-            render_infra: "Renderizando infraestructura...",
-            layout_final: "Finalizando diseño...",
-            plan_title: "Mapa de Hidrantes",
-            legend_date: "Fecha",
-            legend_res: "Resolución",
-            details: "Detalles",
-            station: "Estación de bomberos",
-            hydrant: "Hidrante",
-            defib: "Desfibrilador (DEA)",
-            legal_btn: "Info & Legal"
-        },
-        // Italienisch
-        it: {
-            search_placeholder: "Cerca luogo...",
-            locate_title: "La mia posizione",
-            layers_title: "Cambia mappa",
-            export_title: "Esporta",
-            bg_header: "Sfondo",
-            layer_std: "Standard (Voyager)",
-            layer_print: "Stampa (Chiaro)",
-            layer_night: "Notte (Scuro)",
-            layer_sat: "Satellite (Esri)",
-            layer_topo: "Topografico (OSM)",
-            layer_osm: "OSM (Intl)",
-            layer_osmde: "OSM (Stile DE)",
-            export_header: "Proprietà esportazione",
-            format_label: "Formato",
-            fmt_free: "LIBERO",
-            fmt_a4l: "A4 ORIZZONTALE",
-            fmt_a4p: "A4 VERTICALE",
-            zoom_label: "Dettaglio (Zoom)",
-            select_area_btn: "Seleziona area",
-            area_fixed: "Area fissata ✓",
-            png_btn: "Mappa idranti (PNG)",
-            gpx_btn: "Esporta in GPX",
-            exporting_title: "Creazione esportazione...",
-            loading_tiles: "Caricamento riquadri...",
-            cancel_btn: "Annulla",
-            zoom_info: "ZOOM",
-            data_info: "DATI",
-            status_current: "ATTUALE",
-            status_loading: "CARICAMENTO...",
-            status_standby: "STANDBY (Zoom < 12)",
-            status_error: "ERRORE",
-            geo_error: "Geolocalizzazione non supportata.",
-            geo_found: "Posizione trovata!",
-            geo_fail: "Posizione fallita.",
-            drag_area: "Disegna area",
-            no_objects: "Nessun oggetto nell'area!",
-            gpx_success: "Oggetti esportati in GPX!",
-            too_large: "Area troppo grande!",
-            locating: "Localizzazione area...",
-            render_bounds: "Rendering confini...",
-            render_infra: "Rendering infrastruttura...",
-            layout_final: "Finalizzazione layout...",
-            plan_title: "Mappa Idranti",
-            legend_date: "Data",
-            legend_res: "Risoluzione",
-            details: "Dettagli",
-            station: "Caserma pompieri",
-            hydrant: "Idrante",
-            defib: "Defibrillatore (DAE)",
-            legal_btn: "Info & Legale"
-        },
-        // Polnisch
-        pl: {
-            search_placeholder: "Szukaj miejsca...",
-            locate_title: "Moja lokalizacja",
-            layers_title: "Zmień mapę",
-            export_title: "Eksport",
-            bg_header: "Tło",
-            layer_std: "Standard (Voyager)",
-            layer_print: "Druk (Jasny)",
-            layer_night: "Noc (Ciemny)",
-            layer_sat: "Satelita (Esri)",
-            layer_topo: "Topograficzna (OSM)",
-            layer_osm: "OSM (Intl)",
-            layer_osmde: "OSM (Styl DE)",
-            export_header: "Właściwości eksportu",
-            format_label: "Format",
-            fmt_free: "WOLNY",
-            fmt_a4l: "A4 POZIOMO",
-            fmt_a4p: "A4 PIONOWO",
-            zoom_label: "Poziom szczegółów (Zoom)",
-            select_area_btn: "Wybierz obszar",
-            area_fixed: "Obszar ustalony ✓",
-            png_btn: "Mapa hydrantów (PNG)",
-            gpx_btn: "Eksportuj do GPX",
-            exporting_title: "Tworzenie eksportu...",
-            loading_tiles: "Ładowanie kafelków...",
-            cancel_btn: "Anuluj",
-            zoom_info: "ZOOM",
-            data_info: "DANE",
-            status_current: "AKTUALNE",
-            status_loading: "ŁADOWANIE...",
-            status_standby: "CZUWANIE (Zoom < 12)",
-            status_error: "BŁĄD",
-            geo_error: "Geolokalizacja nieobsługiwana.",
-            geo_found: "Znaleziono lokalizację!",
-            geo_fail: "Błąd lokalizacji.",
-            drag_area: "Rysuj obszar",
-            no_objects: "Brak obiektów w obszarze!",
-            gpx_success: "Wyeksportowano do GPX!",
-            too_large: "Obszar zbyt duży!",
-            locating: "Lokalizowanie obszaru...",
-            render_bounds: "Renderowanie granic...",
-            render_infra: "Renderowanie infrastruktury...",
-            layout_final: "Finalizowanie układu...",
-            plan_title: "Mapa Hydrantów",
-            legend_date: "Data",
-            legend_res: "Rozdzielczość",
-            details: "Szczegóły",
-            station: "Straż pożarna",
-            hydrant: "Hydrant",
-            defib: "Defibrylator (AED)",
-            legal_btn: "Info i prawo"
-        },
-        // Niederländisch
-        nl: {
-            search_placeholder: "Zoek locatie...",
-            locate_title: "Mijn locatie",
-            layers_title: "Kaart wisselen",
-            export_title: "Export",
-            bg_header: "Achtergrond",
-            layer_std: "Standaard (Voyager)",
-            layer_print: "Print (Licht)",
-            layer_night: "Nacht (Donker)",
-            layer_sat: "Satelliet (Esri)",
-            layer_topo: "Topografisch (OSM)",
-            layer_osm: "OSM (Intl)",
-            layer_osmde: "OSM (DE Stijl)",
-            export_header: "Export Eigenschappen",
-            format_label: "Formaat",
-            fmt_free: "VRIJ",
-            fmt_a4l: "A4 LIGGEND",
-            fmt_a4p: "A4 STAAND",
-            zoom_label: "Detailniveau (Zoom)",
-            select_area_btn: "Selecteer gebied",
-            area_fixed: "Gebied vastgelegd ✓",
-            png_btn: "Hydrantenkaart (PNG)",
-            gpx_btn: "Exporteer naar GPX",
-            exporting_title: "Export maken...",
-            loading_tiles: "Tegels laden...",
-            cancel_btn: "Annuleren",
-            zoom_info: "ZOOM",
-            data_info: "DATA",
-            status_current: "ACTUEEL",
-            status_loading: "LADEN...",
-            status_standby: "STANDBY (Zoom < 12)",
-            status_error: "FOUT",
-            geo_error: "Geolocatie niet ondersteund.",
-            geo_found: "Locatie gevonden!",
-            geo_fail: "Locatie mislukt.",
-            drag_area: "Sleep gebied",
-            no_objects: "Geen objecten in gebied!",
-            gpx_success: "Geëxporteerd als GPX!",
-            too_large: "Gebied te groot!",
-            locating: "Gebied lokaliseren...",
-            render_bounds: "Grenzen renderen...",
-            render_infra: "Infrastructuur renderen...",
-            layout_final: "Lay-out voltooien...",
-            plan_title: "Hydrantenkaart",
-            legend_date: "Datum",
-            legend_res: "Resolutie",
-            details: "Details",
-            station: "Brandweerkazerne",
-            hydrant: "Brandkraan",
-            defib: "Defibrillator (AED)",
-            legal_btn: "Info & Recht"
-        },
-        // Tschechisch
-        cs: {
-            search_placeholder: "Hledat místo...",
-            locate_title: "Moje poloha",
-            layers_title: "Změnit mapu",
-            export_title: "Export",
-            bg_header: "Pozadí",
-            layer_std: "Standard (Voyager)",
-            layer_print: "Tisk (Světlý)",
-            layer_night: "Noc (Tmavý)",
-            layer_sat: "Satelit (Esri)",
-            layer_topo: "Topografická (OSM)",
-            layer_osm: "OSM (Intl)",
-            layer_osmde: "OSM (DE Styl)",
-            export_header: "Vlastnosti exportu",
-            format_label: "Formát",
-            fmt_free: "VOLNÝ",
-            fmt_a4l: "A4 NA ŠÍŘKU",
-            fmt_a4p: "A4 NA VÝŠKU",
-            zoom_label: "Úroveň detailů (Zoom)",
-            select_area_btn: "Vybrat oblast",
-            area_fixed: "Oblast fixována ✓",
-            png_btn: "Mapa hydrantów (PNG)",
-            gpx_btn: "Exportovat do GPX",
-            exporting_title: "Vytváření exportu...",
-            loading_tiles: "Načítání dlaždic...",
-            cancel_btn: "Zrušit",
-            zoom_info: "ZOOM",
-            data_info: "DATA",
-            status_current: "AKTUÁLNÍ",
-            status_loading: "NAČÍTÁNÍ...",
-            status_standby: "PŘIPRAVENO (Zoom < 12)",
-            status_error: "CHYBA",
-            geo_error: "Geolokace není podporována.",
-            geo_found: "Poloha nalezena!",
-            geo_fail: "Poloha nezjištěna.",
-            drag_area: "Vybrat oblast",
-            no_objects: "Žádné objekty v oblasti!",
-            gpx_success: "Exportováno do GPX!",
-            too_large: "Oblast je příliš velká!",
-            locating: "Lokalizace oblasti...",
-            render_bounds: "Vykreslování hranic...",
-            render_infra: "Vykreslování infrastruktury...",
-            layout_final: "Dokončování...",
-            plan_title: "Mapa Hydrantů",
-            legend_date: "Datum",
-            legend_res: "Rozlišení",
-            details: "Podrobnosti",
-            station: "Hasičská stanice",
-            hydrant: "Hydrant",
-            defib: "Defibrilátor (AED)",
-            legal_btn: "Info & Právo"
-        }
-    };
-
-    /* 1. SPRACH-LOGIK 
-       Diese Funktionen sorgen dafür, dass die Seite in der richtigen Sprache startet.
-    */
     
     // Ermitteln der Browsersprache (z.B. "de-DE")
     const userLangFull = navigator.language || navigator.userLanguage; 
     // Nur den ersten Teil nehmen ("de")
     const userLangShort = userLangFull.split('-')[0];
+    
     // Prüfen, ob wir die Sprache haben, sonst Englisch als Standard
-    const currentLang = translations[userLangShort] ? userLangShort : 'en';
+    // HINWEIS: Wir greifen hier auf 'translations' zu, das in translations.js definiert wurde.
+    const currentLang = (typeof translations !== 'undefined' && translations[userLangShort]) ? userLangShort : 'en';
     
     // Hilfsfunktion: Liefert den übersetzten Text für einen Schlüssel
     function t(key) {
+        if (typeof translations === 'undefined') return key; // Fallback, falls JS nicht geladen
         return translations[currentLang][key] || translations['en'][key] || key;
     }
 
     // Tauscht alle Texte im HTML aus
     function updatePageLanguage() {
+        if (typeof translations === 'undefined') return;
+
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n'); 
             el.innerText = t(key);
