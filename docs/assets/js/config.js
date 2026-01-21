@@ -1,52 +1,43 @@
 /**
  * ==========================================================================================
  * DATEI: config.js
- * ZWECK: Zentrale Konfiguration
- * LERN-ZIEL: Verstehen von Konstanten und Konfigurations-Objekten.
+ * ZWECK: Zentrale Konfiguration (URLs, Farben, Einstellungen)
+ * LERN-ZIEL: Wie man "Magic Numbers" und feste Werte in einer Datei sammelt (Wartbarkeit).
  * ==========================================================================================
- * * Warum eine extra Datei?
- * Anstatt "Magische Zahlen" (wie Koordinaten oder URLs) überall im Code zu verstreuen,
- * sammeln wir sie hier. Wenn sich z.B. die Start-Position ändern soll, musst du nur
- * hier eine Zeile ändern, und die ganze App übernimmt das.
  */
 
-// "export" bedeutet: Diese Variable darf von anderen Dateien benutzt (importiert) werden.
-// "const" bedeutet: Dieser Wert ist fest und darf sich nicht während der Laufzeit ändern.
 export const Config = {
     
-    // Start-Koordinaten [Breitengrad, Längengrad] für Schnaittach.
-    // Tipp: Du kannst diese Werte z.B. bei Google Maps ablesen (Rechtsklick -> "Was ist hier?").
+    // START-POSITION
+    // Wo soll die Karte starten, wenn man die Seite lädt?
+    // [Breitengrad (Lat), Längengrad (Lon)] -> Schnaittach
     defaultCenter: [49.555, 11.350],
     
-    // Zoom-Stufe beim Start. 
-    // 1 = Ganze Welt, 10 = Stadt, 14 = Stadtteil, 18 = Hausnummer genau.
+    // START-ZOOM
+    // 14 = Stadtteil-Ebene (man sieht Straßen, aber noch keine Hausnummern)
     defaultZoom: 14,
 
-    // --- OVERPASS API SERVE (Daten-Quellen) ---
-    // Das sind die Computer, die wir fragen: "Wo sind hier Hydranten?".
-    // Wir speichern eine Liste (Array) von Servern. Wenn der erste "Besetzt" ist,
-    // nimmt unser Skript automatisch den nächsten (siehe api.js).
+    // DATEN-QUELLEN (Overpass API)
+    // Hier fragen wir nach Hydranten. Wir haben mehrere Server als Backup.
     overpassEndpoints: [
-        'https://overpass-api.de/api/interpreter',             // Hauptserver (Deutschland)
-        'https://overpass.kumi.systems/api/interpreter',       // Sehr schneller Alternativ-Server
-        'https://maps.mail.ru/osm/tools/overpass/api/interpreter' // Backup-Server
+        'https://overpass-api.de/api/interpreter',             // Hauptserver
+        'https://overpass.kumi.systems/api/interpreter',       // Backup 1
+        'https://maps.mail.ru/osm/tools/overpass/api/interpreter' // Backup 2
     ],
 
-    // Adresse für die Namens-Suche (Geocoding Service)
+    // ORTS-SUCHE (Geocoding)
+    // Um Adressen in Koordinaten umzuwandeln (und andersherum für den Titel).
     nominatimUrl: 'https://nominatim.openstreetmap.org',
 
-    // --- KARTEN-HINTERGRÜNDE (Layer) ---
-    // Hier definieren wir, welche "Tapeten" (Kacheln) die Karte haben kann.
-    // Jeder Eintrag besteht aus einer URL (Wo liegt das Bild?) und Copyright-Infos.
+    // KARTEN-HINTERGRÜNDE (Layers)
+    // attr: HTML-Copyright für die Webseite (mit Links)
+    // textAttr: Reiner Text für das PNG-Bild (ohne Links)
     layers: {
         voyager: {
-            // {z} = Zoom, {x}/{y} = Position der Kachel
             url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-            // WICHTIG: Das 'attr' (Attribution) ist HTML-Code für die Anzeige unten rechts im Browser (mit Links).
             attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            // 'textAttr' ist reiner Text für den PNG-Export (weil Bilder keine klickbaren Links haben können).
             textAttr: '© OpenStreetMap contributors, © CARTO',
-            maxZoom: 18 // Wie tief darf man zoomen?
+            maxZoom: 18
         },
         positron: {
             url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
@@ -70,7 +61,7 @@ export const Config = {
             url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
             attr: 'Daten: &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende, SRTM | Darstellung: &copy; <a href="http://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
             textAttr: 'Daten: © OpenStreetMap-Mitwirkende, SRTM | Darstellung: © OpenTopoMap (CC-BY-SA)',
-            maxZoom: 17 // Achtung: Topo-Karten gehen oft nicht so tief wie andere!
+            maxZoom: 17 // Topo geht oft nicht tiefer als 17
         },
         osm: {
             url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -86,36 +77,37 @@ export const Config = {
         }
     },
     
-    // --- EXPORT SCHUTZ ---
-    // Wenn man bei Zoom 12 (ganzer Landkreis) versucht, ein PNG zu machen,
-    // würde der Browser abstürzen (Bild wäre 50.000 x 50.000 Pixel groß).
-    // Deshalb begrenzen wir die erlaubte Breite in Kilometern.
+    // EXPORT-SICHERHEIT
+    // Verhindert, dass der Browser abstürzt, weil jemand versucht, ganz Deutschland als PNG zu speichern.
+    // Maximale Breite in Kilometern pro Zoomstufe.
     exportZoomLimitsKm: {
-        12: 30, // Bei Zoom 12 darf der Ausschnitt max. 30km breit sein
-        13: 25,
-        14: 20,
+        12: 30, 
+        13: 25, 
+        14: 20, 
         15: 15, 
-        16: 10,
+        16: 10, 
         17: 8,  
-        18: 5   // Bei Zoom 18 (sehr detailliert) nur 5km
-    }
-    export const Config = {
-    // ... (deine bisherigen Einstellungen oben lassen) ...
+        18: 5
+    },
 
-    // NEU: Zentrale Farbpalette
+    // ZENTRALE FARBPALETTE
+    // Hier definieren wir alle Farben an einem Ort.
+    // Das macht es leicht, später das Design zu ändern.
     colors: {
+        // Infrastruktur
         station: '#ef4444',       // Rot (Feuerwachen)
         hydrant: '#ef4444',       // Rot (Standard Hydranten)
         water: '#3b82f6',         // Blau (Wasser/Zisternen/Teiche)
         defib: '#16a34a',         // Grün (Defibrillatoren)
         
+        // Karte & Tools
         rangeCircle: '#f97316',   // Orange (100m Radius Kreis)
         selection: '#3b82f6',     // Blau (Auswahl-Rechteck Export)
         bounds: '#333333',        // Dunkelgrau (Gemeindegrenzen)
         
-        // Export Design
+        // Export Design (Header & Footer)
         textMain: '#0f172a',      // Dunkelblau (Titel)
         textSub: '#334155',       // Grau-Blau (Datum/Footer)
-        bgHeader: 'rgba(255, 255, 255, 0.98)' // Weißer Kasten
+        bgHeader: 'rgba(255, 255, 255, 0.98)' // Weißer Kasten (Hintergrund)
     }
 };
