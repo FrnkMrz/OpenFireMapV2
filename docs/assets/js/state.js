@@ -1,48 +1,85 @@
 /**
  * ==========================================================================================
- * DATEI: state.js
- * ZWECK: Globaler Zustandsspeicher (State Management)
- * BESCHREIBUNG:
- * In Modulen gibt es keine "globalen Variablen" mehr, die einfach so überall herumfliegen.
- * Das ist gut, weil es Chaos verhindert.
- * Stattdessen speichern wir alles, was wir uns merken müssen (z.B. "Ist die Karte gerade geladen?"),
- * sauber in diesem `State`-Objekt.
+ * DATEI: config.js (Die Einstellungen)
+ * LERN-ZIEL: Zentrale Konfiguration
  * ==========================================================================================
+ * * In dieser Datei speichern wir alle Werte, die sich während der Laufzeit der App
+ * NICHT ändern (sogenannte Konstanten).
+ * * Vorteil: Wenn wir z.B. die Start-Position der Karte ändern wollen, müssen wir
+ * nicht im komplizierten Code suchen, sondern ändern es einfach hier oben.
+ * * "export const": Macht diese Variable für andere Dateien verfügbar.
  */
 
-export const State = {
-    // Das Leaflet-Karten-Objekt (wird beim Start erstellt)
-    map: null,                  
+export const Config = {
+    // Start-Position der Karte: [Breitengrad, Längengrad] (Koordinaten für Schnaittach)
+    defaultCenter: [49.555, 11.350],
     
-    // Layer-Gruppen (Folien), auf die wir Dinge zeichnen
-    markerLayer: null,          // Für Hydranten & Wachen Icons
-    boundaryLayer: null,        // Für Gemeindegrenzen (gestrichelte Linien)
-    rangeLayerGroup: null,      // Für den orangenen 100m Kreis
-    
-    // Zwischenspeicher für geladene OSM-Daten
-    // Damit wir beim Export nicht nochmal alles neu laden müssen.
-    cachedElements: [],         
-    
-    // Welcher Hintergrund ist gerade aktiv? (Standard: 'voyager')
-    activeLayerKey: 'voyager',  
-    
-    // Export-Einstellungen, die der Nutzer gewählt hat
-    exportFormat: 'free',       // 'free', 'a4l' (Quer), 'a4p' (Hoch)
-    exportZoomLevel: 18,        // Gewünschte Qualität
-    
-    // Status für das Auswahl-Rechteck beim Export
-    selection: {
-        active: false,      // Ist der Auswahl-Modus gerade an?
-        rect: null,         // Das gezeichnete Rechteck auf der Karte
-        startPoint: null,   // Wo hat der Nutzer angefangen zu ziehen?
-        finalBounds: null   // Das fertige Ergebnis (Koordinaten)
-    },
+    // Wie nah soll beim Start hereingezoomt werden? (Kleiner = Weltraum, Größer = Haus)
+    defaultZoom: 14,
 
-    // AbortController: "Notbremsen" für Internet-Anfragen
-    // Damit können wir laufende Ladevorgänge abbrechen, wenn der Nutzer
-    // z.B. wild auf der Karte herumschiebt.
-    controllers: {
-        fetch: null,    // Für das Laden der Icons
-        export: null    // Für den PNG Export
+    // LISTE DER SERVER (API Endpunkte)
+    // Wir fragen diese Server nach den Hydranten-Daten.
+    // Wir nutzen eine Liste (Array), damit wir Alternativen haben, falls einer ausfällt.
+    overpassEndpoints: [
+        'https://overpass-api.de/api/interpreter',             // Hauptserver (Deutschland)
+        'https://overpass.kumi.systems/api/interpreter',       // Starker Alternativserver
+        'https://maps.mail.ru/osm/tools/overpass/api/interpreter' // Backup
+    ],
+
+    // Adresse für die Ortssuche (Wenn du oben links einen Städtenamen eingibst)
+    nominatimUrl: 'https://nominatim.openstreetmap.org',
+
+    // KARTEN-HINTERGRÜNDE (Layer)
+    // Hier definieren wir, welche Kacheln (Tiles) geladen werden sollen.
+    // {z} = Zoomstufe, {x}/{y} = Koordinaten der Kachel
+    layers: {
+        voyager: {
+            url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+            attr: '&copy; OpenStreetMap contributors &copy; CARTO', // Urheberrechtshinweis
+            maxZoom: 18 // Wie tief darf man zoomen?
+        },
+        positron: {
+            url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            attr: '&copy; OpenStreetMap contributors &copy; CARTO',
+            maxZoom: 18
+        },
+        dark: { // Dunkler Modus (gut für Nachts)
+            url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            attr: '&copy; OpenStreetMap contributors &copy; CARTO',
+            maxZoom: 18
+        },
+        satellite: { // Satellitenbilder
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            attr: 'Tiles &copy; Esri &mdash; Source: Esri et al.',
+            maxZoom: 18
+        },
+        topo: { // Topographische Karte (Höhenlinien) - Achtung: Geht oft nur bis Zoom 17!
+            url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+            attr: 'Daten: OSM, SRTM | Darstellung: OpenTopoMap',
+            maxZoom: 17
+        },
+        osm: { // Das klassische OpenStreetMap Aussehen
+            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            attr: '&copy; OpenStreetMap contributors',
+            maxZoom: 18
+        },
+        osmde: { // Deutscher Stil (Beschriftungen in Deutsch)
+            url: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
+            attr: '&copy; OpenStreetMap contributors',
+            maxZoom: 18
+        }
+    },
+    
+    // EXPORT LIMITS
+    // Um den Browser nicht abstürzen zu lassen, erlauben wir bei niedrigen Zoomstufen
+    // (wo man viel Fläche sieht) nur kleine Export-Bereiche.
+    exportZoomLimitsKm: {
+        12: 30, // Bei Zoom 12 max. 30km Breite
+        13: 25,
+        14: 20,
+        15: 15, 
+        16: 10,
+        17: 8,  
+        18: 5   // Bei Zoom 18 (sehr detailliert) nur 5km
     }
 };
