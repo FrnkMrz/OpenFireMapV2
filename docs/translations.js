@@ -1,65 +1,9 @@
 /* ==========================================================================================
    DATEI: translations.js
-   PROJEKT: OpenFireMap V2
+   PROJEKT: OpenFireMap V2 (Updated)
    AUTOR: Gemini (im Auftrag von Frank März)
    DATUM: 2026-01-21
-   ==========================================================================================
-
-   1. WAS MACHT DIESE DATEI? (FUNKTIONSBESCHREIBUNG)
-   -------------------------------------------------
-   Diese Datei dient als zentrale Datenbank für alle Textinhalte der Webseite. 
-   Sie trennt den Programmiercode (Logik) vom Inhalt (Text). Das ermöglicht:
-   - Einfache Pflege der Texte ohne Risiko, den Code zu beschädigen.
-   - Schnelles Hinzufügen neuer Sprachen.
-   - Automatische Umschaltung der Sprache basierend auf den Browser-Einstellungen des Besuchers.
-
-   2. WO GEHÖRT SIE HIN? (ARCHITEKTUR)
-   -----------------------------------
-   - Diese Datei liegt im selben Verzeichnis wie die 'index.html'.
-   - Sie wird in der 'index.html' im <head>-Bereich über <script src="translations.js"></script> geladen.
-   - Sie muss VOR dem eigentlichen Hauptskript geladen werden, damit die Variable 'translations'
-     bereits existiert, wenn die Seite startet.
-
-   3. CODE-DOKUMENTATION & STRUKTUR
-   --------------------------------
-   Die Datei definiert eine einzige globale Konstante: 'const translations'.
-   Dies ist ein verschachteltes JavaScript-Objekt (JSON-Struktur).
-   
-   Ebene 1: Der Sprach-Code (ISO 639-1 oder Sondercodes wie 'yue', 'tw')
-            z.B. 'de' für Deutsch, 'zh' für Mandarin.
-            
-   Ebene 2: Die Schlüssel-Wert-Paare für die Texte.
-            - Schlüssel (Links): Ein eindeutiger Name, z.B. "search_placeholder".
-              Dieser Name wird im HTML-Code verwendet (data-i18n="search_placeholder").
-            - Wert (Rechts): Der tatsächliche Text in der jeweiligen Sprache.
-
-   4. UNTERSTÜTZTE SPRACHEN (LÄNDERCODES)
-   --------------------------------------
-   Die Anwendung unterstützt nun folgende 21 Sprachen:
-   
-   - DE : Deutsch (Basissprache)
-   - EN : Englisch (Weltweit / Fallback)
-   - FR : Französisch
-   - ES : Spanisch
-   - IT : Italienisch
-   - PL : Polnisch
-   - NL : Niederländisch
-   - CS : Tschechisch
-   - DA : Dänisch
-   - FI : Finnisch
-   - SV : Schwedisch
-   - NO : Norwegisch
-   - PT : Portugiesisch
-   - FL : Flämisch (Belgien)
-   - LB : Luxemburgisch
-   - JA : Japanisch
-   - KO : Koreanisch
-   - MS : Malaiisch
-   - TH : Thai
-   - ZH : Mandarin Chinesisch (Vereinfacht - Festland)
-   - YUE: Kantonesisch (Traditionell - HK/Macau)
-   - TW : Chinesisch (Traditionell - Taiwan) (Neu)
-
+   UPDATE: Erweiterte Fehlermeldungen & Robustheit
    ========================================================================================== */
 
 const translations = {
@@ -96,9 +40,15 @@ const translations = {
         data_info: "DATEN",
         status_current: "AKTUELL",
         status_loading: "LÄDT...",
-        status_waiting: "WARTE AUF POS...", // NEU
+        status_waiting: "WARTE AUF POS...",
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FEHLER",
+        // --- NEUE FEHLERMELDUNGEN ---
+        err_generic: "Fehler beim Laden. Server antwortet nicht.",
+        err_ratelimit: "Zu viele Anfragen! Bitte kurz warten.",
+        err_timeout: "Server überlastet. Bitte näher heranzoomen.",
+        err_offline: "Keine Internetverbindung erkannt.",
+        // ----------------------------
         geo_error: "Geolokalisierung nicht unterstützt.",
         geo_found: "Standort gefunden!",
         geo_fail: "Standort fehlerhaft.",
@@ -153,9 +103,15 @@ const translations = {
         data_info: "DATA",
         status_current: "CURRENT",
         status_loading: "LOADING...",
-        status_waiting: "WAITING FOR POS...", // NEU
+        status_waiting: "WAITING FOR POS...",
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "ERROR",
+        // --- NEW ERROR MESSAGES ---
+        err_generic: "Error loading data. Server not responding.",
+        err_ratelimit: "Too many requests! Please wait a moment.",
+        err_timeout: "Server busy. Please zoom in.",
+        err_offline: "No internet connection detected.",
+        // --------------------------
         geo_error: "Geolocation not supported.",
         geo_found: "Location found!",
         geo_fail: "Location failed.",
@@ -210,9 +166,15 @@ const translations = {
         data_info: "DONNÉES",
         status_current: "ACTUEL",
         status_loading: "CHARGEMENT...",
-        status_waiting: "ATTENTE POS...", // NEU
+        status_waiting: "ATTENTE POS...",
         status_standby: "VEILLE (Zoom < 12)",
         status_error: "ERREUR",
+        // --- NOUVEAU ---
+        err_generic: "Erreur de chargement. Le serveur ne répond pas.",
+        err_ratelimit: "Trop de requêtes ! Veuillez patienter.",
+        err_timeout: "Serveur occupé. Veuillez zoomer davantage.",
+        err_offline: "Aucune connexion Internet.",
+        // ---------------
         geo_error: "Géolocalisation non supportée.",
         geo_found: "Position trouvée !",
         geo_fail: "Échec de localisation.",
@@ -267,9 +229,15 @@ const translations = {
         data_info: "DATOS",
         status_current: "ACTUAL",
         status_loading: "CARGANDO...",
-        status_waiting: "ESPERANDO POS...", // NEU
+        status_waiting: "ESPERANDO POS...",
         status_standby: "ESPERA (Zoom < 12)",
         status_error: "ERROR",
+        // --- NUEVO ---
+        err_generic: "Error al cargar. El servidor no responde.",
+        err_ratelimit: "¡Demasiadas peticiones! Espere un momento.",
+        err_timeout: "Servidor ocupado. Por favor, acerque el zoom.",
+        err_offline: "Sin conexión a Internet.",
+        // -------------
         geo_error: "Geolocalización no soportada.",
         geo_found: "¡Ubicación encontrada!",
         geo_fail: "Fallo de ubicación.",
@@ -324,9 +292,15 @@ const translations = {
         data_info: "DATI",
         status_current: "ATTUALE",
         status_loading: "CARICAMENTO...",
-        status_waiting: "ATTESA POS...", // NEU
+        status_waiting: "ATTESA POS...",
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "ERRORE",
+        // --- NUOVO ---
+        err_generic: "Errore di caricamento. Il server non risponde.",
+        err_ratelimit: "Troppe richieste! Attendere prego.",
+        err_timeout: "Server occupato. Ingrandire la mappa.",
+        err_offline: "Nessuna connessione internet.",
+        // -------------
         geo_error: "Geolocalizzazione non supportata.",
         geo_found: "Posizione trovata!",
         geo_fail: "Posizione fallita.",
@@ -381,9 +355,15 @@ const translations = {
         data_info: "DANE",
         status_current: "AKTUALNE",
         status_loading: "ŁADOWANIE...",
-        status_waiting: "CZEKANIE NA POZ...", // NEU
+        status_waiting: "CZEKANIE NA POZ...",
         status_standby: "CZUWANIE (Zoom < 12)",
         status_error: "BŁĄD",
+        // --- NOWY ---
+        err_generic: "Błąd ładowania. Serwer nie odpowiada.",
+        err_ratelimit: "Zbyt wiele żądań! Proszę czekać.",
+        err_timeout: "Serwer zajęty. Proszę przybliżyć mapę.",
+        err_offline: "Brak połączenia z internetem.",
+        // ------------
         geo_error: "Geolokalizacja nieobsługiwana.",
         geo_found: "Znaleziono lokalizację!",
         geo_fail: "Błąd lokalizacji.",
@@ -438,9 +418,15 @@ const translations = {
         data_info: "DATA",
         status_current: "ACTUEEL",
         status_loading: "LADEN...",
-        status_waiting: "WACHTEN OP POS...", // NEU
+        status_waiting: "WACHTEN OP POS...",
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FOUT",
+        // --- NIEUW ---
+        err_generic: "Fout bij laden. Server reageert niet.",
+        err_ratelimit: "Te veel verzoeken! Even geduld.",
+        err_timeout: "Server bezet. Zoom verder in.",
+        err_offline: "Geen internetverbinding.",
+        // -------------
         geo_error: "Geolocatie niet ondersteund.",
         geo_found: "Locatie gevonden!",
         geo_fail: "Locatie mislukt.",
@@ -495,9 +481,15 @@ const translations = {
         data_info: "DATA",
         status_current: "AKTUÁLNÍ",
         status_loading: "NAČÍTÁNÍ...",
-        status_waiting: "ČEKÁNÍ NA POZ...", // NEU
+        status_waiting: "ČEKÁNÍ NA POZ...",
         status_standby: "PŘIPRAVENO (Zoom < 12)",
         status_error: "CHYBA",
+        // --- NOVÝ ---
+        err_generic: "Chyba při načítání. Server neodpovídá.",
+        err_ratelimit: "Příliš mnoho požadavků! Čekejte.",
+        err_timeout: "Server přetížen. Přibližte mapu.",
+        err_offline: "Žádné připojení k internetu.",
+        // ------------
         geo_error: "Geolokace není podporována.",
         geo_found: "Poloha nalezena!",
         geo_fail: "Poloha nezjištěna.",
@@ -552,9 +544,15 @@ const translations = {
         data_info: "DATA",
         status_current: "AKTUEL",
         status_loading: "INDLÆSER...",
-        status_waiting: "VENTER PÅ POS...", // NEU
+        status_waiting: "VENTER PÅ POS...",
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FEJL",
+        // --- NY ---
+        err_generic: "Fejl ved indlæsning. Server svarer ikke.",
+        err_ratelimit: "For mange anmodninger! Vent venligst.",
+        err_timeout: "Server optaget. Zoom ind venligst.",
+        err_offline: "Ingen internetforbindelse.",
+        // --------
         geo_error: "Geolokalisering understøttes ikke.",
         geo_found: "Placering fundet!",
         geo_fail: "Placering mislykkedes.",
@@ -609,9 +607,15 @@ const translations = {
         data_info: "DATA",
         status_current: "AJANTASAINEN",
         status_loading: "LADATAAN...",
-        status_waiting: "ODOTTAA SIJ...", // NEU
+        status_waiting: "ODOTTAA SIJ...",
         status_standby: "VALMIUSTILA (Zoom < 12)",
         status_error: "VIRHE",
+        // --- UUSI ---
+        err_generic: "Virhe ladattaessa. Palvelin ei vastaa.",
+        err_ratelimit: "Liikaa pyyntöjä! Odota hetki.",
+        err_timeout: "Palvelin varattu. Lähennä karttaa.",
+        err_offline: "Ei internet-yhteyttä.",
+        // ------------
         geo_error: "Paikannusta ei tueta.",
         geo_found: "Sijainti löytyi!",
         geo_fail: "Sijainti epäonnistui.",
@@ -666,9 +670,15 @@ const translations = {
         data_info: "DATA",
         status_current: "AKTUELL",
         status_loading: "LADDAR...",
-        status_waiting: "VÄNTAR PÅ POS...", // NEU
+        status_waiting: "VÄNTAR PÅ POS...",
         status_standby: "VÄNTELÄGE (Zoom < 12)",
         status_error: "FEL",
+        // --- NY ---
+        err_generic: "Fel vid laddning. Servern svarar inte.",
+        err_ratelimit: "För många förfrågningar! Vänta.",
+        err_timeout: "Server upptagen. Zooma in tack.",
+        err_offline: "Ingen internetanslutning.",
+        // ----------
         geo_error: "Geolokalisering stöds ej.",
         geo_found: "Plats hittad!",
         geo_fail: "Plats misslyckades.",
@@ -723,9 +733,15 @@ const translations = {
         data_info: "DATA",
         status_current: "OPPDATERT",
         status_loading: "LASTER...",
-        status_waiting: "VENTER PÅ POS...", // NEU
+        status_waiting: "VENTER PÅ POS...",
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FEIL",
+        // --- NY ---
+        err_generic: "Feil ved lasting. Server svarer ikke.",
+        err_ratelimit: "For mange forespørsler! Vent litt.",
+        err_timeout: "Server opptatt. Vennligst zoom inn.",
+        err_offline: "Ingen internettforbindelse.",
+        // ----------
         geo_error: "Geolokalisering støttes ikke.",
         geo_found: "Posisjon funnet!",
         geo_fail: "Posisjon mislyktes.",
@@ -780,9 +796,15 @@ const translations = {
         data_info: "DADOS",
         status_current: "ATUAL",
         status_loading: "CARREGANDO...",
-        status_waiting: "AGUARDANDO POS...", // NEU
+        status_waiting: "AGUARDANDO POS...",
         status_standby: "AGUARDANDO (Zoom < 12)",
         status_error: "ERRO",
+        // --- NOVO ---
+        err_generic: "Erro ao carregar. Servidor não responde.",
+        err_ratelimit: "Muitos pedidos! Por favor, aguarde.",
+        err_timeout: "Servidor ocupado. Aumente o zoom.",
+        err_offline: "Sem conexão com a internet.",
+        // ------------
         geo_error: "Geolocalização não suportada.",
         geo_found: "Localização encontrada!",
         geo_fail: "Falha na localização.",
@@ -837,9 +859,15 @@ const translations = {
         data_info: "DATA",
         status_current: "ACTUEEL",
         status_loading: "LADEN...",
-        status_waiting: "WACHTEN OP POS...", // NEU
+        status_waiting: "WACHTEN OP POS...",
         status_standby: "STAND-BY (Zoom < 12)",
         status_error: "FOUT",
+        // --- NIEUW ---
+        err_generic: "Fout bij laden. Server reageert niet.",
+        err_ratelimit: "Te veel verzoeken! Even geduld.",
+        err_timeout: "Server bezet. Zoom verder in.",
+        err_offline: "Geen internetverbinding.",
+        // -------------
         geo_error: "Geolocatie niet ondersteund.",
         geo_found: "Locatie gevonden!",
         geo_fail: "Locatie mislukt.",
@@ -894,9 +922,15 @@ const translations = {
         data_info: "DATEN",
         status_current: "AKTUELL",
         status_loading: "LUEDEN...",
-        status_waiting: "WAARD OP POS...", // NEU
+        status_waiting: "WAARD OP POS...",
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FEELER",
+        // --- NEI ---
+        err_generic: "Feeler beim Lueden. Server äntwert net.",
+        err_ratelimit: "Ze vill Ufroen! Waart w.e.g. kuerz.",
+        err_timeout: "Server iwwerlaascht. Zoomt w.e.g. méi no.",
+        err_offline: "Keng Internetverbindung.",
+        // -----------
         geo_error: "Geolokalisiérung net ënnerstëtzt.",
         geo_found: "Standuert fonnt!",
         geo_fail: "Standuert feelgeschloen.",
@@ -951,9 +985,15 @@ const translations = {
         data_info: "データ",
         status_current: "最新",
         status_loading: "読み込み中...",
-        status_waiting: "位置待機中...", // NEU
+        status_waiting: "位置待機中...",
         status_standby: "待機中 (ズーム < 12)",
         status_error: "エラー",
+        // --- 新しい ---
+        err_generic: "読み込みエラー。サーバーが応答しません。",
+        err_ratelimit: "リクエストが多すぎます！少々お待ちください。",
+        err_timeout: "サーバーが混雑しています。ズームインしてください。",
+        err_offline: "インターネット接続がありません。",
+        // -------------
         geo_error: "位置情報はサポートされていません。",
         geo_found: "位置を特定しました！",
         geo_fail: "位置特定に失敗しました。",
@@ -1008,9 +1048,15 @@ const translations = {
         data_info: "데이터",
         status_current: "최신",
         status_loading: "로딩 중...",
-        status_waiting: "위치 대기 중...", // NEU
+        status_waiting: "위치 대기 중...",
         status_standby: "대기 (줌 < 12)",
         status_error: "오류",
+        // --- 새로운 ---
+        err_generic: "로드 오류. 서버가 응답하지 않습니다.",
+        err_ratelimit: "요청이 너무 많습니다! 잠시만 기다려주세요.",
+        err_timeout: "서버가 혼잡합니다. 지도를 확대해 주세요.",
+        err_offline: "인터넷 연결이 없습니다.",
+        // -------------
         geo_error: "위치 정보가 지원되지 않습니다.",
         geo_found: "위치 찾음!",
         geo_fail: "위치 찾기 실패.",
@@ -1065,9 +1111,15 @@ const translations = {
         data_info: "DATA",
         status_current: "TERKINI",
         status_loading: "MEMUATKAN...",
-        status_waiting: "MENUNGGU POS...", // NEU
+        status_waiting: "MENUNGGU POS...",
         status_standby: "SEDIA (Zoom < 12)",
         status_error: "RALAT",
+        // --- BARU ---
+        err_generic: "Ralat memuatkan. Pelayan tidak bertindak balas.",
+        err_ratelimit: "Terlalu banyak permintaan! Sila tunggu.",
+        err_timeout: "Pelayan sibuk. Sila zum masuk.",
+        err_offline: "Tiada sambungan internet.",
+        // ------------
         geo_error: "Geolokasi tidak disokong.",
         geo_found: "Lokasi ditemui!",
         geo_fail: "Gagal mengesan lokasi.",
@@ -1122,9 +1174,15 @@ const translations = {
         data_info: "ข้อมูล",
         status_current: "ปัจจุบัน",
         status_loading: "กำลังโหลด...",
-        status_waiting: "กำลังรอตำแหน่ง...", // NEU
+        status_waiting: "กำลังรอตำแหน่ง...",
         status_standby: "รอพร้อม (ซูม < 12)",
         status_error: "ข้อผิดพลาด",
+        // --- ใหม่ ---
+        err_generic: "ข้อผิดพลาดในการโหลด เซิร์ฟเวอร์ไม่ตอบสนอง",
+        err_ratelimit: "คำขอมากเกินไป! กรุณารอสักครู่",
+        err_timeout: "เซิร์ฟเวอร์ไม่ว่าง กรุณาซูมเข้า",
+        err_offline: "ไม่มีการเชื่อมต่ออินเทอร์เน็ต",
+        // ----------
         geo_error: "ไม่รองรับการระบุตำแหน่งทางภูมิศาสตร์",
         geo_found: "พบตำแหน่ง!",
         geo_fail: "ระบุตำแหน่งล้มเหลว",
@@ -1179,9 +1237,15 @@ const translations = {
         data_info: "数据",
         status_current: "最新",
         status_loading: "加载中...",
-        status_waiting: "等待定位...", // NEU
+        status_waiting: "等待定位...",
         status_standby: "待机 (缩放 < 12)",
         status_error: "错误",
+        // --- 新 ---
+        err_generic: "加载错误。服务器无响应。",
+        err_ratelimit: "请求过多！请稍候。",
+        err_timeout: "服务器繁忙。请放大地图。",
+        err_offline: "无互联网连接。",
+        // ---------
         geo_error: "不支持地理定位。",
         geo_found: "已找到位置！",
         geo_fail: "定位失败。",
@@ -1236,9 +1300,15 @@ const translations = {
         data_info: "數據",
         status_current: "最新",
         status_loading: "載入緊...",
-        status_waiting: "等待定位...", // NEU
+        status_waiting: "等待定位...",
         status_standby: "待機 (縮放 < 12)",
         status_error: "錯誤",
+        // --- 新 ---
+        err_generic: "載入錯誤。伺服器冇反應。",
+        err_ratelimit: "太多請求！請稍候。",
+        err_timeout: "伺服器繁忙。請放大地圖。",
+        err_offline: "冇互聯網連接。",
+        // ---------
         geo_error: "唔支援地理定位。",
         geo_found: "搵到位置！",
         geo_fail: "定位失敗。",
@@ -1293,9 +1363,15 @@ const translations = {
         data_info: "數據",
         status_current: "最新",
         status_loading: "載入中...",
-        status_waiting: "等待定位...", // NEU
+        status_waiting: "等待定位...",
         status_standby: "待機 (縮放 < 12)",
         status_error: "錯誤",
+        // --- 新 ---
+        err_generic: "載入錯誤。伺服器無回應。",
+        err_ratelimit: "請求過多！請稍候。",
+        err_timeout: "伺服器忙碌。請放大地圖。",
+        err_offline: "無網際網路連線。",
+        // ---------
         geo_error: "不支援地理定位。",
         geo_found: "已找到位置！",
         geo_fail: "定位失敗。",
