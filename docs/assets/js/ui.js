@@ -9,6 +9,7 @@
  */
 
 import { State } from './state.js';
+import { Config } from './config.js'; // DIESE ZEILE HAT GEFEHLT
 import { t } from './i18n.js';
 // Wir importieren Funktionen aus export.js, um sie auf Buttons zu legen
 import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, cancelExport } from './export.js';
