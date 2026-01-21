@@ -8,10 +8,11 @@
  * 2. Canvas API: Wie "malt" man eine Karte, Linien und Icons programmatisch?
  * 3. Asynchronität: Wie lädt man hunderte Kacheln gleichzeitig, ohne abzustürzen?
  * 4. Blob & Files: Wie erzeugt man eine Datei im Speicher und bietet sie zum Download an?
+ * 5. Clean Code: Nutzung zentraler Farben aus Config.colors statt Hardcoding.
  */
 
 import { State } from './state.js';   // Zugriff auf den globalen Zustand (Karte, Cache)
-import { Config } from './config.js'; // Zugriff auf Konfiguration (URLs, Copyrights)
+import { Config } from './config.js'; // Zugriff auf Konfiguration (Farben, URLs)
 import { t, getLang } from './i18n.js'; // Zugriff auf Übersetzungen
 import { showNotification, toggleExportMenu } from './ui.js'; // Zugriff auf UI-Funktionen
 
@@ -27,7 +28,7 @@ import { showNotification, toggleExportMenu } from './ui.js'; // Zugriff auf UI-
 export function setExportFormat(fmt) {
     State.exportFormat = fmt;
     
-    // UI: Den aktiven Button blau markieren, die anderen grau
+    // UI: Den aktiven Button markieren
     document.querySelectorAll('.fmt-btn').forEach(b => {
         b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
         b.classList.add('bg-white/5');
@@ -35,14 +36,12 @@ export function setExportFormat(fmt) {
     const btn = document.getElementById(`fmt-${fmt}`);
     if(btn) btn.classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
     
-    // Wenn wir das Format ändern, passt das alte Rechteck vielleicht nicht mehr -> Löschen.
+    // Altes Rechteck löschen, da Format nicht mehr passt
     clearSelection();
 }
 
 /**
  * Setzt die Zoom-Stufe für das finale Bild.
- * - Zoom 15: Grobe Übersicht (Stadtteil)
- * - Zoom 18: Hohe Details (Hausnummern genau)
  */
 export function setExportZoom(z) {
     // Schutz: Topographische Karten haben oft keine Kacheln für Zoom 18.
@@ -50,7 +49,7 @@ export function setExportZoom(z) {
     
     State.exportZoomLevel = z;
     
-    // UI Update (Buttons färben)
+    // UI Update
     document.querySelectorAll('.zoom-btn').forEach(b => {
         b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
         b.classList.add('bg-white/5');
@@ -67,18 +66,12 @@ export function startSelection() {
     State.selection.active = true;
     clearSelection();
     
-    // Leaflet-Funktion: Verhindert, dass die Karte sich verschiebt, wenn man zieht.
     State.map.dragging.disable(); 
-    
-    // CSS-Klasse hinzufügen, damit der Mauszeiger zum Fadenkreuz wird.
     State.map.getContainer().classList.add('selection-mode'); 
     
     showNotification(t('drag_area')); 
 }
 
-/**
- * Entfernt das blaue Rechteck wieder.
- */
 function clearSelection() {
     if (State.selection.rect) { 
         State.map.removeLayer(State.selection.rect); 
@@ -89,20 +82,22 @@ function clearSelection() {
 }
 
 /**
- * Der "Event Handler" für die Maus.
- * Wird von app.js aufgerufen, wenn auf der Karte geklickt/gezogen wird.
- * @param {Event} e - Das Maus-Event von Leaflet (enthält Koordinaten)
- * @param {string} type - 'down' (klick), 'move' (ziehen), 'up' (loslassen)
+ * Der "Event Handler" für die Maus-Bewegungen beim Auswählen.
+ * @param {Event} e - Das Maus-Event von Leaflet
+ * @param {string} type - 'down', 'move', 'up'
  */
 export function handleSelectionEvents(e, type) {
-    if (!State.selection.active) return; // Nur arbeiten, wenn Modus aktiv ist
+    if (!State.selection.active) return;
 
     // 1. MAUS GEDRÜCKT: Startpunkt merken
     if (type === 'down') {
         State.selection.startPoint = e.latlng;
-        // Ein leeres Rechteck an der Startposition erzeugen
+        // Farbe kommt jetzt aus der Config!
         State.selection.rect = L.rectangle([e.latlng, e.latlng], {
-            color: '#3b82f6', weight: 2, fillOpacity: 0.2, interactive: false
+            color: Config.colors.selection, 
+            weight: 2, 
+            fillOpacity: 0.2, 
+            interactive: false
         }).addTo(State.map);
     } 
     // 2. MAUS BEWEGT: Rechteck Größe anpassen
@@ -111,8 +106,7 @@ export function handleSelectionEvents(e, type) {
         
         // KOMPLEXE MATHEMATIK: Seitenverhältnis erzwingen (für DIN A4)
         if (State.exportFormat !== 'free') {
-            // A4 Verhältnis ist Wurzel aus 2 (ca. 1.414)
-            const ratio = (State.exportFormat === 'a4l') ? 1.4142 : 0.7071; 
+            const ratio = (State.exportFormat === 'a4l') ? 1.4142 : 0.7071; // Wurzel 2
             const start = State.selection.startPoint;
             
             // Problem: Auf einer Kugel (Erde) sind Längengrade oben enger als am Äquator.
@@ -120,16 +114,13 @@ export function handleSelectionEvents(e, type) {
             const lngScale = Math.cos(start.lat * Math.PI / 180);
             
             const dy = Math.abs(current.lat - start.lat);
-            const dx = (dy * ratio) / lngScale; // Hier korrigieren wir die Breite
+            const dx = (dy * ratio) / lngScale; // Korrektur der Breite
             
-            // In welche Richtung zieht der User? (Oben/Unten, Links/Rechts)
             const latDir = current.lat > start.lat ? 1 : -1;
             const lngDir = current.lng > start.lng ? 1 : -1;
             
-            // Endpunkt neu berechnen, damit es exakt DIN A4 bleibt
             current = L.latLng(start.lat + (latDir * dy), start.lng + (lngDir * dx));
         }
-        // Rechteck auf der Karte aktualisieren
         State.selection.rect.setBounds([State.selection.startPoint, current]);
     }
     // 3. MAUS LOSGELASSEN: Fertig
@@ -138,25 +129,16 @@ export function handleSelectionEvents(e, type) {
         State.selection.active = false;
         State.selection.startPoint = null;
         
-        // Karte wieder freigeben ("auftauen")
         State.map.dragging.enable();
         State.map.getContainer().classList.remove('selection-mode');
-        
-        // Bestätigung anzeigen ("Fixiert ✓")
         document.getElementById('selection-info').classList.remove('hidden');
     }
 }
 
 /* =============================================================================
    TEIL 2: GPX EXPORT (Daten speichern)
-   GPX ist ein XML-Format (wie HTML), das Navis verstehen.
    ============================================================================= */
 
-/**
- * Hilfsfunktion: Macht Text "XML-sicher".
- * Wenn ein Hydrant "<Hydrant>" heißt, würde das XML kaputt gehen.
- * Wir wandeln "<" in "&lt;" um.
- */
 function escapeXML(str) {
     if (!str) return '';
     return str.replace(/[<>&'"]/g, c => {
@@ -169,10 +151,9 @@ function escapeXML(str) {
 
 export function exportAsGPX() {
     try {
-        // Welchen Bereich nehmen wir? (Benutzer-Auswahl oder aktueller Bildschirm)
         const bounds = State.selection.finalBounds || State.map.getBounds();
         
-        // Wir filtern unseren Daten-Cache: Nur Punkte, die im Rechteck liegen.
+        // Filter: Nur Punkte im Bereich
         const pointsToExport = State.cachedElements.filter(el => {
             const lat = el.lat || el.center?.lat;
             const lon = el.lon || el.center?.lon;
@@ -181,37 +162,31 @@ export function exportAsGPX() {
         });
 
         if (pointsToExport.length === 0) {
-            showNotification(t('no_objects')); // Keine Hydranten gefunden
+            showNotification(t('no_objects'));
             return;
         }
 
-        // Wir bauen den XML-String Zeile für Zeile zusammen
         let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
         gpx += '<gpx version="1.1" creator="OpenFireMap V2" xmlns="http://www.topografix.com/GPX/1/1">\n';
         gpx += `  <metadata><name>Hydranten Export</name><time>${new Date().toISOString()}</time></metadata>\n`;
 
         pointsToExport.forEach(el => {
             const tags = el.tags || {};
-            
-            // Ist es relevant? (Wache, Hydrant oder Defi)
             const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
             const isHydrant = tags.emergency && ['fire_hydrant', 'water_tank', 'suction_point', 'fire_water_pond', 'cistern'].some(t => tags.emergency.includes(t));
             const isDefib = tags.emergency === 'defibrillator';
 
             if (!isStation && !isHydrant && !isDefib) return;
 
-            // Namen generieren (z.B. "H 100" oder "Feuerwache")
             let name = tags.name || (isStation ? t('station') : (isDefib ? t('defib') : t('hydrant')));
             if (!tags.name && tags['fire_hydrant:type']) name = `H ${tags['fire_hydrant:type']}`;
             if (!tags.name && tags['ref']) name = `${isStation ? 'Wache' : 'H'} ${tags['ref']}`;
 
-            // Beschreibung bauen (alle Eigenschaften auflisten)
             let desc = [];
             for (const [k, v] of Object.entries(tags)) {
                 desc.push(`${k}: ${v}`);
             }
             
-            // Wegpunkt schreiben (<wpt>)
             gpx += `  <wpt lat="${el.lat || el.center.lat}" lon="${el.lon || el.center.lon}">\n`;
             gpx += `    <name>${escapeXML(name)}</name>\n`;
             gpx += `    <desc>${escapeXML(desc.join('\n'))}</desc>\n`;
@@ -221,18 +196,12 @@ export function exportAsGPX() {
 
         gpx += '</gpx>';
 
-        // DOWNLOAD ANSTOSSEN
-        // 1. Blob erstellen (Ein virtuelles Datei-Objekt im Arbeitsspeicher)
         const blob = new Blob([gpx], {type: 'application/gpx+xml'});
-        // 2. Eine URL dafür erzeugen (blob:https://...)
         const url = URL.createObjectURL(blob);
-        // 3. Einen unsichtbaren Link erstellen und "klicken"
         const link = document.createElement('a');
         link.download = `OpenFireMap_Export_${new Date().toISOString().slice(0,10)}.gpx`;
         link.href = url;
         link.click();
-        
-        // 4. Speicher wieder freigeben
         URL.revokeObjectURL(url);
         
         showNotification(`${pointsToExport.length} ${t('gpx_success')}`);
@@ -246,35 +215,42 @@ export function exportAsGPX() {
 /* =============================================================================
    TEIL 3: PNG EXPORT (Bild erstellen)
    Das ist der komplizierteste Teil. Wir bauen ein Bild Pixel für Pixel zusammen.
-   Warum? Weil wir nicht einfach einen Screenshot machen können (Karte ist oft größer als Bildschirm).
    ============================================================================= */
 
-// Ermöglicht das Abbrechen des Exports ("Notbremse")
 export function cancelExport() { 
     if(State.controllers.export) State.controllers.export.abort(); 
 }
 
 // --- MATHEMATISCHE HELFERLEIN ---
-// Umrechnung: Geokoordinaten (Welt) -> Kachel-Nummern (XYZ)
-// Die Welt ist bei Zoom 0 eine Kachel (256px). Bei Zoom 1 sind es 4 Kacheln usw.
 const worldSize = (z) => Math.pow(2, z);
 const lat2tile = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * worldSize(z);
 const lon2tile = (lon, z) => (lon + 180) / 360 * worldSize(z);
 
 /**
- * Erzeugt SVG-Code für die Icons.
- * PROBLEM: Canvas kann keine HTML-Elemente (<div>) malen. 
- * LÖSUNG: Wir müssen die Icons hier als SVG-Text definieren und später in ein Bild umwandeln.
+ * Erzeugt SVG-Code für die Icons im PNG.
+ * UPDATE: Nutzt jetzt Config.colors!
  */
 function getSVGContentForExport(type) {
+    // Zentrale Farben holen
+    const c = Config.colors;
+
     if (type === 'defibrillator') {
-         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#16a34a" stroke="white" stroke-width="5"/><path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/><path d="M55 45 L45 55 L55 55 L45 65" stroke="#16a34a" stroke-width="3" fill="none"/></svg>`;
+         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="${c.defib}" stroke="white" stroke-width="5"/>
+            <path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/>
+            <path d="M55 45 L45 55 L55 55 L45 65" stroke="${c.defib}" stroke-width="3" fill="none"/>
+        </svg>`;
     }
+    
     const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-    const color = isWater ? '#3b82f6' : '#ef4444';
+    const color = isWater ? c.water : c.hydrant;
     
     if (type === 'wall') {
-         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/><circle cx="42" cy="52" r="18" fill="none" stroke="white" stroke-width="6" /><line x1="64" y1="34" x2="64" y2="70" stroke="white" stroke-width="6" stroke-linecap="round" /></svg>`;
+         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
+            <circle cx="42" cy="52" r="18" fill="none" stroke="white" stroke-width="6" />
+            <line x1="64" y1="34" x2="64" y2="70" stroke="white" stroke-width="6" stroke-linecap="round" />
+        </svg>`;
     }
     
     let char = '';
@@ -286,14 +262,13 @@ function getSVGContentForExport(type) {
         default:            char = '';
     }
     
-    if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="#ef4444" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
+    if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="${c.station}" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
     
     return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
 }
 
 /**
  * HAUPTFUNKTION: EXPORT ALS PNG
- * Diese Funktion ist 'async', weil das Laden von Bildern aus dem Internet Zeit braucht.
  */
 export async function exportAsPNG() {
     console.log("=== EXPORT START ===");
@@ -302,7 +277,7 @@ export async function exportAsPNG() {
         State.controllers.export = new AbortController();
         const signal = State.controllers.export.signal;
         
-        // 1. UI UPDATE (Ladebalken anzeigen)
+        // 1. UI UPDATE
         document.getElementById('export-setup').classList.add('hidden');
         document.getElementById('export-progress').classList.remove('hidden');
         const progressBar = document.getElementById('progress-bar');
@@ -315,14 +290,13 @@ export async function exportAsPNG() {
 
         setStatus(t('locating')); 
 
-        // 2. PARAMETER BERECHNEN (Welcher Bereich?)
+        // 2. PARAMETER BERECHNEN
         const targetZoom = State.exportZoomLevel;
         const bounds = State.selection.finalBounds || State.map.getBounds(); 
         const nw = bounds.getNorthWest();
         const se = bounds.getSouthEast();
 
         // 3. AUTOMATISCHER TITEL (Reverse Geocoding)
-        // Wir fragen OpenStreetMap: "Wie heißt der Ort in der Mitte?"
         let displayTitle = "OpenFireMap.org";
         try {
             const center = bounds.getCenter();
@@ -335,21 +309,19 @@ export async function exportAsPNG() {
             // Ortsteil finden
             const suburb = addr.suburb || addr.neighbourhood || addr.hamlet || "";
             
-            // Titel bauen: "Schnaittach" oder "Schnaittach - Rollhofen"
+            // Titel bauen
             if (city) displayTitle = suburb ? `${city} - ${suburb}` : city;
         } catch(e) { console.warn("Titel Warnung (ignoriert):", e); }
 
-        // 4. KACHEL-BERECHNUNG (Tile Grid)
-        // Welche Kacheln (X/Y) decken unseren Bereich ab?
+        // 4. KACHEL-BERECHNUNG
         const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
         const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
         const x2 = Math.floor(lon2tile(se.lng, targetZoom));
         const y2 = Math.floor(lat2tile(se.lat, targetZoom));
 
-        const margin = 40;  // Weißer Rand um die Karte
-        const footerH = 60; // Platz für Copyright unten
+        const margin = 40; 
+        const footerH = 60; 
         
-        // Pixel-Größe berechnen (Anzahl Kacheln * 256px)
         const mapWidth = (x2 - x1 + 1) * 256;
         const mapHeight = (y2 - y1 + 1) * 256;
         const totalWidth = mapWidth + (margin * 2);
@@ -357,23 +329,21 @@ export async function exportAsPNG() {
 
         const mPerPx = (Math.cos(bounds.getCenter().lat * Math.PI / 180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, targetZoom));
 
-        // SICHERHEITS-CHECK: Ist das Bild zu groß für den Browser?
-        // Canvas hat Limits (oft ca. 16.000px).
+        // SICHERHEITS-CHECK: Canvas-Limits
         if (totalWidth > 14000 || totalHeight > 14000) { 
             throw new Error(t('too_large') + " (>14000px)");
         }
 
-        // 5. CANVAS ERSTELLEN (Die virtuelle Leinwand)
+        // 5. CANVAS ERSTELLEN
         const canvas = document.createElement('canvas');
         canvas.width = totalWidth; 
         canvas.height = totalHeight; 
         const ctx = canvas.getContext('2d');
         
-        // Weißen Hintergrund füllen (sonst ist es transparent)
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 6. KACHELN LADEN UND ZEICHNEN
+        // 6. KACHELN LADEN
         setStatus(`${t('loading_tiles')} (Z${targetZoom})...`);
         const tileQueue = [];
         for (let x = x1; x <= x2; x++) for (let y = y1; y <= y2; y++) tileQueue.push({x, y});
@@ -382,15 +352,13 @@ export async function exportAsPNG() {
         let loaded = 0;
         const baseUrlTpl = Config.layers[State.activeLayerKey].url.replace('{s}', 'a').replace('{r}', '');
 
-        // Queue-Worker: Wir laden maximal 8 Bilder gleichzeitig.
-        // Das schont den Browser und verhindert Netzwerk-Staus.
+        // Queue-Worker (max 8 Bilder gleichzeitig)
         const processQueue = async () => {
             while (tileQueue.length > 0 && !signal.aborted) {
                 const {x, y} = tileQueue.shift();
                 await new Promise(resolve => {
                     const img = new Image(); 
-                    // WICHTIG: 'anonymous' erlaubt uns, das Bild im Canvas zu speichern.
-                    // Ohne das würde der Browser den Export wegen "Tainted Canvas" blockieren.
+                    // WICHTIG: 'anonymous' für CORS (Canvas Sicherheit)
                     img.crossOrigin = "anonymous"; 
                     img.src = baseUrlTpl.replace('{z}', targetZoom).replace('{x}', x).replace('{y}', y);
                     
@@ -398,17 +366,14 @@ export async function exportAsPNG() {
                         ctx.drawImage(img, (x - x1) * 256 + margin, (y - y1) * 256 + margin); 
                         loaded++; updateProgress(); resolve(); 
                     };
-                    img.onerror = () => { 
-                        // Wenn eine Kachel fehlt, machen wir einfach weiter (weißes Loch ist besser als Absturz)
-                        loaded++; resolve(); 
-                    };
+                    img.onerror = () => { loaded++; resolve(); }; // Fehler ignorieren
                 });
             }
         };
 
         const workers = [];
         for (let i = 0; i < 8; i++) workers.push(processQueue());
-        await Promise.all(workers); // Warten bis alle fertig sind
+        await Promise.all(workers);
 
         function updateProgress() { 
             const p = Math.round((loaded / totalTiles) * 80); 
@@ -417,18 +382,19 @@ export async function exportAsPNG() {
 
         if(signal.aborted) throw new Error("Vom Benutzer abgebrochen");
 
-        // 7. GRENZEN MALEN (Gestrichelte Linien)
+        // 7. GRENZEN MALEN
         setStatus(t('render_bounds'));
         ctx.save();
         ctx.translate((-x1 * 256) + margin, (-y1 * 256) + margin);
-        ctx.strokeStyle = "#333333"; ctx.lineWidth = 2; ctx.setLineDash([20, 20]); ctx.lineCap = "round";
+        // Config Farbe nutzen!
+        ctx.strokeStyle = Config.colors.bounds; 
+        ctx.lineWidth = 2; ctx.setLineDash([20, 20]); ctx.lineCap = "round";
         
         State.cachedElements.forEach(el => {
             if (el.tags && el.tags.boundary === 'administrative' && el.geometry && targetZoom >= 14) {
                  ctx.beginPath();
                  let first = true;
                  for (let p of el.geometry) {
-                     // Koordinaten -> Pixel umrechnen
                      const px = lon2tile(p.lon, targetZoom) * 256;
                      const py = lat2tile(p.lat, targetZoom) * 256;
                      if (first) { ctx.moveTo(px, py); first = false; } else { ctx.lineTo(px, py); }
@@ -438,13 +404,12 @@ export async function exportAsPNG() {
         });
         ctx.restore();
 
-        // 8. INFRASTRUKTUR MALEN (Icons & Punkte)
+        // 8. INFRASTRUKTUR MALEN
         setStatus(t('render_infra'));
         ctx.save(); 
         ctx.translate((-x1 * 256) + margin, (-y1 * 256) + margin);
         
         const iconCache = {};
-        // Helfer: SVG-Text zu Bild konvertieren
         const loadSVG = async (type) => {
             if(iconCache[type]) return iconCache[type];
             const svgStr = getSVGContentForExport(type);
@@ -458,7 +423,6 @@ export async function exportAsPNG() {
             return img;
         };
 
-        // Alle Elemente durchgehen
         for (let el of State.cachedElements) {
             const tags = el.tags || {};
             if (tags.boundary === 'administrative') continue;
@@ -471,18 +435,21 @@ export async function exportAsPNG() {
             const tx = lon2tile(lon, targetZoom) * 256;
             const ty = lat2tile(lat, targetZoom) * 256;
             
-            // Nur malen, wenn im sichtbaren Bereich (Performance!)
+            // Nur malen, wenn im Bild
             if (tx < x1*256 || tx > (x2+1)*256 || ty < y1*256 || ty > (y2+1)*256) continue;
             
-            // Filter-Regeln (Zoom)
             if (isStation && targetZoom < 12) continue;
             if (!isStation && targetZoom < 15) continue;
 
-            // Punkt malen (weit weg) oder Icon malen (nah dran)?
+            // Zeichnen: Punkt oder Icon?
             if (targetZoom < 17 && !isStation) {
                  ctx.beginPath();
                  ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
-                 ctx.fillStyle = type === 'defibrillator' ? '#16a34a' : '#ef4444'; 
+                 
+                 // Config Farben für die Punkte
+                 const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
+                 ctx.fillStyle = type === 'defibrillator' ? Config.colors.defib : (isWater ? Config.colors.water : Config.colors.hydrant);
+                 
                  ctx.fill(); ctx.stroke();
             } else {
                 try {
@@ -494,40 +461,45 @@ export async function exportAsPNG() {
         }
         ctx.restore();
 
-        // 9. LAYOUT MALEN (Header, Footer, Maßstab)
+        // 9. LAYOUT (Design wiederhergestellt!)
         setStatus(t('layout_final'));
         
-        const bannerH = 170; // Höhe des Kopfbereichs
-        ctx.fillStyle = "rgba(255, 255, 255, 0.98)";
+        // Hintergrund Header
+        const bannerH = 170;
+        ctx.fillStyle = Config.colors.bgHeader || "rgba(255, 255, 255, 0.98)";
         ctx.fillRect(margin, margin, mapWidth, bannerH);
         
-        // Rahmen zeichnen
+        // Rahmen
         ctx.strokeStyle = "rgba(15, 23, 42, 0.2)"; ctx.lineWidth = 3;
         ctx.strokeRect(margin, margin, mapWidth, bannerH);
         ctx.strokeRect(margin, margin + bannerH, mapWidth, mapHeight - bannerH);
         
         const centerX = margin + (mapWidth / 2);
         
-        // Titel ("Hydrantenplan Schnaittach")
-        ctx.fillStyle = "#0f172a"; ctx.textAlign = "center";
+        // Titel: Jetzt mit "Hydrantenplan ..." Prefix!
+        ctx.fillStyle = Config.colors.textMain || "#0f172a"; 
+        ctx.textAlign = "center";
         ctx.font = "bold 44px Arial, sans-serif"; 
+        
         const finalTitle = displayTitle === "OpenFireMap.org" ? "OpenFireMap.org" : `${t('plan_title')} ${displayTitle}`;
         ctx.fillText(finalTitle, centerX, margin + 55);
         
-        // Datum & Zoom-Info
+        // Datum & Zoom
         const now = new Date();
-        ctx.font = "22px Arial, sans-serif"; ctx.fillStyle = "#334155";
+        ctx.font = "22px Arial, sans-serif"; 
+        ctx.fillStyle = Config.colors.textSub || "#334155";
+        
         const localeMap = { 'de': 'de-DE', 'en': 'en-US' };
         const dateLocale = localeMap[getLang()] || 'en-US';
         const dateStr = now.toLocaleDateString(dateLocale, { year: 'numeric', month: 'long' });
         
         ctx.fillText(`${t('legend_date')}: ${dateStr} | ${t('legend_res')}: Zoom ${targetZoom} (~${mPerPx.toFixed(2)} m/px)`, centerX, margin + 95);
         
-        // Copyright-Hinweis
+        // Copyright
         ctx.font = "italic 16px Arial, sans-serif"; ctx.fillStyle = "#64748b";
         ctx.fillText(Config.layers[State.activeLayerKey].textAttr || "© OpenStreetMap", centerX, margin + 125);
 
-        // Maßstabsbalken (unten rechts)
+        // Maßstabsbalken
         const prettyD = [1000, 500, 250, 100, 50]; 
         let distM = 100, scaleW = 100 / mPerPx;
         for (let d of prettyD) { let w = d / mPerPx; if (w <= mapWidth * 0.3) { distM = d; scaleW = w; break; } }
@@ -539,9 +511,9 @@ export async function exportAsPNG() {
         ctx.beginPath(); ctx.moveTo(sX, sY - 10); ctx.lineTo(sX, sY); ctx.lineTo(sX + scaleW, sY); ctx.lineTo(sX + scaleW, sY - 10); ctx.stroke();
         ctx.fillStyle = "#0f172a"; ctx.font = "bold 18px Arial"; ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
 
-        // Fußzeile
+        // Footer
         const footerY = margin + mapHeight + (footerH / 2) + 10; 
-        ctx.fillStyle = "#334155";
+        ctx.fillStyle = Config.colors.textSub || "#334155";
         ctx.textAlign = "left"; 
         ctx.font = "16px Arial, sans-serif"; 
         ctx.fillText("OpenFireMap.org", margin, footerY);
@@ -552,24 +524,20 @@ export async function exportAsPNG() {
         ctx.fillText(timeStr, margin + mapWidth, footerY);
 
         // 10. DOWNLOAD STARTEN
-        // LERN-PUNKT: 'toBlob' vs 'toDataURL'
-        // 'toDataURL' macht einen riesigen Text-String (Base64). Das bringt Browser zum Absturz.
-        // 'toBlob' erzeugt Binärdaten direkt im Speicher. Das ist viel effizienter für große Bilder.
+        // 'toBlob' ist besser als 'toDataURL' für große Bilder (kein Absturz)
         setStatus("Speichere Datei...");
         
         canvas.toBlob((blob) => {
-            if (!blob) {
-                throw new Error("Blob fehlgeschlagen");
-            }
+            if (!blob) throw new Error("Blob fehlgeschlagen");
+            
             const link = document.createElement('a');
-            const safeTitle = finalTitle.replace(/[\s\.:]/g, '_'); // Dateiname säubern
+            const safeTitle = finalTitle.replace(/[\s\.:]/g, '_');
             link.download = `Plan_${safeTitle}_Z${targetZoom}.png`;
             link.href = URL.createObjectURL(blob);
             document.body.appendChild(link); // Hack für Firefox
             link.click();
             document.body.removeChild(link);
             
-            // Aufräumen
             setTimeout(() => {
                 URL.revokeObjectURL(link.href);
                 toggleExportMenu();
