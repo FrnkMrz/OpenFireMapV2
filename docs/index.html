@@ -7,22 +7,25 @@
     
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://a.basemaps.cartocdn.com">
+    <link rel="preconnect" href="https://overpass-api.de">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
     <script src="https://cdn.tailwindcss.com" defer></script>
 
-    <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
-    
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/main.css">
 
     <script type="module" src="assets/js/app.js" defer></script>
 </head>
 <body>
-    <h1 class="sr-only">OpenFireMap</h1>
+    <h1 class="sr-only">OpenFireMap - Interaktive Karte</h1>
 
     <div id="map" aria-label="Karte" role="application"></div>
-    <div id="notification-box" role="alert" aria-live="polite"></div>
     
+    <div id="notification-box" role="alert" aria-live="polite"></div>
+
     <div class="absolute top-5 left-5 z-[1000] flex gap-3">
         <div class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5 focus-within:ring-2 focus-within:ring-blue-500">
             <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" class="bg-transparent px-4 py-2 text-sm text-white outline-none focus:ring-0 w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-400">
@@ -34,12 +37,12 @@
         <button id="locate-btn" data-i18n-title="locate_title" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500">
              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
         </button>
-        
-        <button id="layer-btn-trigger" data-i18n-title="layers_title" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+        <button id="layer-btn-trigger" data-i18n-title="layers_title" aria-haspopup="true" aria-expanded="false" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
         </button>
 
-        <button id="export-btn-trigger" data-i18n-title="export_title" class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button id="export-btn-trigger" data-i18n-title="export_title" aria-haspopup="true" aria-expanded="false" class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
         </button>
     </div>
@@ -56,7 +59,7 @@
         <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status" class="text-green-400">AKTUELL</span></div>
     </div>
 
-    <div id="layer-menu" role="menu" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
+    <div id="layer-menu" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
         <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center" data-i18n="bg_header">Hintergrund</h3>
         <div class="grid grid-cols-1 gap-1">
             <button id="btn-voyager" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-blue-500"></div> <span data-i18n="layer_std">Standard</span></button>
@@ -69,7 +72,7 @@
         </div>
     </div>
 
-    <div id="export-menu" role="dialog" class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
+    <div id="export-menu" class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
         <div id="export-setup" class="space-y-5">
             <div class="flex justify-between items-center">
                 <h3 id="export-title" class="font-bold text-lg" data-i18n="export_header">Export</h3>
@@ -117,15 +120,35 @@
         </div>
     </div>
 
-    <div id="legal-modal" role="dialog" class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
+    <div id="legal-modal" class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
         <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
-            <h2 class="text-lg font-bold text-white">Rechtliches</h2>
-            <button id="legal-close-btn" class="text-slate-400 hover:text-white">&times;</button>
+            <h2 id="legal-title" class="text-lg font-bold text-white flex items-center gap-2">Rechtliches</h2>
+            <button id="legal-close-btn" class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-lg p-1">&times;</button>
         </div>
+        
         <div class="overflow-y-auto custom-scroll pr-2 text-xs space-y-6">
-            <p>Impressum: Frank März...</p>
-            <p>Datenschutz: ...</p>
+            <section>
+                <h3 class="text-sm font-bold text-white mb-1">Impressum</h3>
+                <p class="leading-relaxed text-slate-400">
+                    Angaben gemäß § 5 TMG:<br><br>
+                    <strong>Frank März</strong><br>
+                    Kersbacher Weg 3<br>
+                    91220 Schnaittach<br>
+                    Deutschland<br><br>
+                    Kontakt:<br>
+                    Telefon: +499153/9229501<br>
+                    E-Mail: info@openfiremap.org
+                </p>
+            </section>
+            
+            <section>
+                <h3 class="text-sm font-bold text-white mb-1">Datenschutz (Kurzfassung)</h3>
+                <p class="leading-relaxed text-slate-400">
+                    Diese App läuft im Browser. Daten werden direkt von externen Servern (OSM, Overpass) geladen. Ihre IP-Adresse wird technisch bedingt dorthin übertragen.
+                </p>
+            </section>
         </div>
     </div>
+
 </body>
 </html>
