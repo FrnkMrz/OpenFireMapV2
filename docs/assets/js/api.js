@@ -1,7 +1,7 @@
 /**
  * ==========================================================================================
- * DATEI: api.js (OPTIMIERT)
- * ZWECK: Datenabruf - Strengere Trennung der Zoom-Stufen
+ * DATEI: api.js (REPARIERT)
+ * ZWECK: Datenabruf mit ECHTEM Retry (probiert nächsten Server bei Fehler)
  * ==========================================================================================
  */
 
@@ -17,15 +17,18 @@ import { showNotification } from './ui.js';
 async function fetchWithRetry(query) {
     if (!navigator.onLine) throw new Error('err_offline');
 
-    // Liste der Server
+    // Liste der Server (Reihenfolge optimiert)
     const endpoints = [
         'https://overpass-api.de/api/interpreter',
         'https://overpass.kumi.systems/api/interpreter',
         'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
     ];
 
+    // Wir probieren jeden Server der Reihe nach
     for (let endpoint of endpoints) {
         try {
+            console.log(`Versuche Server: ${endpoint}`); // Debug-Info
+
             const res = await fetch(endpoint, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -33,24 +36,36 @@ async function fetchWithRetry(query) {
                 signal: State.controllers.fetch.signal 
             });
             
+            // Wenn Server Fehler meldet (z.B. 504 Timeout oder 429 Too Many Requests)
             if (!res.ok) {
-                if (res.status === 429) throw new Error('err_ratelimit');
-                if (res.status >= 500) throw new Error('err_timeout');
-                console.warn(`Server ${endpoint} Fehler: ${res.status}`);
-                continue; 
+                console.warn(`Server ${endpoint} antwortet mit Status ${res.status}. Versuche nächsten...`);
+                continue; // WICHTIG: Springt zum nächsten Server in der Liste!
             }
 
             const text = await res.text();
-            if (text.trim().startsWith('<')) continue; 
+            
+            // Schutz vor HTML-Fehlerseiten (passiert bei manchen Proxies)
+            if (text.trim().startsWith('<') || text.trim().length === 0) {
+                console.warn(`Server ${endpoint} schickte ungültige Daten. Versuche nächsten...`);
+                continue;
+            }
 
+            // Wenn wir hier sind, hat alles geklappt!
             return JSON.parse(text);
 
         } catch (e) {
-            if (['err_ratelimit', 'err_timeout', 'err_offline'].includes(e.message)) throw e;
+            // Wenn der User abbricht (Zoomt/Verschiebt), dann wirklich aufhören
             if (e.name === 'AbortError') throw e;
-            console.warn(`Fehler bei ${endpoint}:`, e);
+            
+            // Wenn kein Internet da ist, bringt nächster Server auch nichts
+            if (e.message === 'err_offline') throw e;
+
+            // Bei allen anderen Netzwerkfehlern: Warnung loggen und nächsten Server probieren
+            console.warn(`Verbindungsfehler bei ${endpoint}:`, e);
         }
     }
+    
+    // Wenn die Schleife durchläuft und KEINER geantwortet hat:
     throw new Error("err_generic");
 }
 
@@ -92,16 +107,15 @@ export async function fetchOSMData() {
     let logMessage = `Zoom ${zoom.toFixed(1)}: `;
 
     // LEVEL A: Wachen laden (ab Zoom 12)
-    // Das sind nur wenige Objekte, das geht schnell.
     if (zoom >= 12) {
         queryParts.push(`nwr["amenity"="fire_station"](${bbox});`);
         queryParts.push(`nwr["building"="fire_station"](${bbox});`);
         logMessage += "Lade Wachen... ";
     }
 
-    // LEVEL B: Hydranten laden (ERST AB ZOOM 15!)
-    // Hier entsteht die Last. Wenn wir das zu früh machen, crasht der Server.
-    if (zoom >= 15) {
+    // LEVEL B: Hydranten laden (ERST AB ZOOM 16 - SICHERHEITSHALBER)
+    // Ich habe es auf 16 erhöht, damit Zoom 15 (oft noch ganze Stadtteile) nicht crashed.
+    if (zoom >= 16) {
         queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});`);
         queryParts.push(`node["emergency"="defibrillator"](${bbox});`);
         logMessage += "+ Hydranten & Defis";
@@ -112,12 +126,12 @@ export async function fetchOSMData() {
     // LEVEL C: Grenzen laden (ab Zoom 14)
     let boundaryQuery = (zoom >= 14) ? `(way["boundary"="administrative"]["admin_level"="8"](${bbox});)->.boundaries; .boundaries out geom;` : '';
 
-    console.log(logMessage); // <--- SCHAU MAL IN DIE KONSOLE (F12)
+    console.log(logMessage);
 
     if (queryParts.length === 0 && boundaryQuery === '') return;
 
-    // Timeout: 25 Sekunden
-    const q = `[out:json][timeout:25];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
+    // Timeout erhöht auf 90 Sekunden!
+    const q = `[out:json][timeout:90];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 
     try {
         const data = await fetchWithRetry(q);
