@@ -1,0 +1,119 @@
+/* ==========================================================================
+   DATEI: docs/assets/css/style.css
+   THEMA: Dark Mode & Glassmorphism für OpenFireMap
+   ========================================================================== */
+
+/* 1. Grundeinstellungen & Karte */
+html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Verhindert Scrollbalken */
+    background-color: #0f172a; /* Fallback (Dunkles Slate) */
+}
+
+#map {
+    height: 100vh;
+    width: 100vw;
+    z-index: 1; /* Basis-Ebene */
+    background: #0f172a;
+}
+
+/* 2. Der "Milchglas"-Effekt (Glassmorphism) */
+.glass-panel {
+    background: rgba(15, 23, 42, 0.6); /* Dunkles Blau, 60% transparent */
+    backdrop-filter: blur(12px);       /* Der Weichzeichner-Effekt */
+    -webkit-backdrop-filter: blur(12px); /* Für Safari */
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Feiner weißer Rand */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+                0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Hover-Effekt für Buttons in Glass-Panels */
+.glass-panel button:hover {
+    transition: all 0.3s ease;
+}
+
+/* 3. Suchfeld-Animation */
+#search-input:focus {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 4. Benachrichtigungs-Box (Toasts) */
+#notification-box {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000; /* Muss über der Karte und den Menüs liegen */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none; /* Klicks gehen durch, wenn keine Box da ist */
+}
+
+.toast {
+    pointer-events: auto;
+    padding: 12px 24px;
+    border-radius: 12px;
+    color: white;
+    font-weight: 500;
+    font-size: 0.9rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    animation: slideDown 0.3s ease-out forwards;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 300px;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+}
+
+/* Toast-Varianten */
+.toast.info {
+    background: rgba(59, 130, 246, 0.9); /* Blau */
+    border: 1px solid rgba(96, 165, 250, 0.5);
+}
+
+.toast.success {
+    background: rgba(16, 185, 129, 0.9); /* Grün */
+    border: 1px solid rgba(52, 211, 153, 0.5);
+}
+
+.toast.error {
+    background: rgba(239, 68, 68, 0.9); /* Rot */
+    border: 1px solid rgba(248, 113, 113, 0.5);
+}
+
+.toast.warning {
+    background: rgba(245, 158, 11, 0.9); /* Orange */
+    border: 1px solid rgba(251, 191, 36, 0.5);
+}
+
+/* Animation für das Erscheinen */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 5. Leaflet Anpassungen (optional) */
+/* Versteckt das Standard-Leaflet-Zoom-Control, da wir eigene Buttons haben wollen? 
+   Falls nicht, lassen wir es so. */
+.leaflet-control-zoom {
+    display: none; /* Wir nutzen eigene Buttons in der UI */
+}
+
+/* Copyright-Text hübscher machen */
+.leaflet-control-attribution {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border-radius: 4px;
+    padding: 0 5px;
+    font-size: 10px;
+}
