@@ -25,8 +25,8 @@
    Die Datei definiert eine einzige globale Konstante: 'const translations'.
    Dies ist ein verschachteltes JavaScript-Objekt (JSON-Struktur).
    
-   Ebene 1: Der Sprach-Code (ISO 639-1)
-            z.B. 'de' für Deutsch, 'en' für Englisch.
+   Ebene 1: Der Sprach-Code (ISO 639-1 oder Sondercodes wie 'yue')
+            z.B. 'de' für Deutsch, 'zh' für Mandarin.
             
    Ebene 2: Die Schlüssel-Wert-Paare für die Texte.
             - Schlüssel (Links): Ein eindeutiger Name, z.B. "search_placeholder".
@@ -35,7 +35,7 @@
 
    4. UNTERSTÜTZTE SPRACHEN (LÄNDERCODES)
    --------------------------------------
-   Die Anwendung unterstützt nun folgende 18 Sprachen:
+   Die Anwendung unterstützt nun folgende 20 Sprachen:
    
    - DE : Deutsch (Basissprache)
    - EN : Englisch (Weltweit / Fallback)
@@ -52,10 +52,12 @@
    - PT : Portugiesisch
    - FL : Flämisch (Belgien)
    - LB : Luxemburgisch
-   - JA : Japanisch (Neu)
-   - KO : Koreanisch (Neu)
-   - MS : Malaiisch (Neu)
-   - TH : Thai (Neu)
+   - JA : Japanisch
+   - KO : Koreanisch
+   - MS : Malaiisch
+   - TH : Thai
+   - ZH : Mandarin Chinesisch (Neu - Vereinfacht)
+   - YUE: Kantonesisch (Neu - Traditionell HK)
 
    ========================================================================================== */
 
@@ -901,7 +903,7 @@ const translations = {
     },
 
     // --------------------------------------------------------------------------------------
-    // JAPANISCH (JA) - NEU
+    // JAPANISCH (JA)
     // --------------------------------------------------------------------------------------
     ja: {
         search_placeholder: "場所を検索...",
@@ -957,7 +959,7 @@ const translations = {
     },
 
     // --------------------------------------------------------------------------------------
-    // KOREANISCH (KO) - NEU
+    // KOREANISCH (KO)
     // --------------------------------------------------------------------------------------
     ko: {
         search_placeholder: "장소 검색...",
@@ -1013,7 +1015,7 @@ const translations = {
     },
 
     // --------------------------------------------------------------------------------------
-    // MALAIISCH (MS) - NEU
+    // MALAIISCH (MS)
     // --------------------------------------------------------------------------------------
     ms: {
         search_placeholder: "Cari lokasi...",
@@ -1069,7 +1071,7 @@ const translations = {
     },
 
     // --------------------------------------------------------------------------------------
-    // THAI (TH) - NEU
+    // THAI (TH)
     // --------------------------------------------------------------------------------------
     th: {
         search_placeholder: "ค้นหาสถานที่...",
@@ -1122,5 +1124,117 @@ const translations = {
         hydrant: "หัวดับเพลิง",
         defib: "เครื่องกระตุกหัวใจ (AED)",
         legal_btn: "ข้อมูลและกฎหมาย"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // MANDARIN CHINESISCH (ZH) - NEU (Vereinfacht)
+    // --------------------------------------------------------------------------------------
+    zh: {
+        search_placeholder: "搜索地点...",
+        locate_title: "我的位置",
+        layers_title: "切换图层",
+        export_title: "导出",
+        bg_header: "背景",
+        layer_std: "标准 (Voyager)",
+        layer_print: "打印 (亮色)",
+        layer_night: "夜间 (暗色)",
+        layer_sat: "卫星 (Esri)",
+        layer_topo: "地形 (OSM)",
+        layer_osm: "OSM (国际)",
+        layer_osmde: "OSM (德国样式)",
+        export_header: "导出属性",
+        format_label: "格式 (比例)",
+        fmt_free: "自由",
+        fmt_a4l: "A4 横向",
+        fmt_a4p: "A4 纵向",
+        zoom_label: "详细程度 (缩放)",
+        select_area_btn: "在地图上选择区域",
+        area_fixed: "区域已固定 ✓",
+        png_btn: "消火栓地图 (PNG)",
+        gpx_btn: "导出消火栓 (GPX)",
+        exporting_title: "正在创建导出...",
+        loading_tiles: "加载瓦片中...",
+        cancel_btn: "取消",
+        zoom_info: "缩放",
+        data_info: "数据",
+        status_current: "最新",
+        status_loading: "加载中...",
+        status_standby: "待机 (缩放 < 12)",
+        status_error: "错误",
+        geo_error: "不支持地理定位。",
+        geo_found: "已找到位置！",
+        geo_fail: "定位失败。",
+        drag_area: "拖动区域",
+        no_objects: "选定区域内无对象！",
+        gpx_success: "对象已导出为 GPX！",
+        too_large: "区域太大！",
+        locating: "定位区域...",
+        render_bounds: "渲染边界...",
+        render_infra: "渲染基础设施...",
+        layout_final: "最终布局...",
+        plan_title: "消火栓地图",
+        legend_date: "日期",
+        legend_res: "分辨率",
+        details: "详细信息",
+        station: "消防站",
+        hydrant: "消火栓",
+        defib: "除颤器 (AED)",
+        legal_btn: "信息与法律"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // KANTONESISCH (YUE) - NEU (Traditionell - HK/Macau)
+    // --------------------------------------------------------------------------------------
+    yue: {
+        search_placeholder: "搜尋地點...",
+        locate_title: "我嘅位置",
+        layers_title: "切換圖層",
+        export_title: "匯出",
+        bg_header: "背景",
+        layer_std: "標準 (Voyager)",
+        layer_print: "列印 (淺色)",
+        layer_night: "夜間 (深色)",
+        layer_sat: "衛星 (Esri)",
+        layer_topo: "地形 (OSM)",
+        layer_osm: "OSM (國際)",
+        layer_osmde: "OSM (德國樣式)",
+        export_header: "匯出屬性",
+        format_label: "格式 (比例)",
+        fmt_free: "自由",
+        fmt_a4l: "A4 橫向",
+        fmt_a4p: "A4 縱向",
+        zoom_label: "詳細程度 (縮放)",
+        select_area_btn: "喺地圖上選擇區域",
+        area_fixed: "區域已鎖定 ✓",
+        png_btn: "消防喉地圖 (PNG)",
+        gpx_btn: "匯出消防喉 (GPX)",
+        exporting_title: "建立緊匯出...",
+        loading_tiles: "載入緊圖磚...",
+        cancel_btn: "取消",
+        zoom_info: "縮放",
+        data_info: "數據",
+        status_current: "最新",
+        status_loading: "載入緊...",
+        status_standby: "待機 (縮放 < 12)",
+        status_error: "錯誤",
+        geo_error: "唔支援地理定位。",
+        geo_found: "搵到位置！",
+        geo_fail: "定位失敗。",
+        drag_area: "拖曳區域",
+        no_objects: "選定區域內冇物件！",
+        gpx_success: "物件已匯出做 GPX！",
+        too_large: "區域太大！",
+        locating: "定位區域...",
+        render_bounds: "渲染邊界...",
+        render_infra: "渲染基礎設施...",
+        layout_final: "最終佈局...",
+        plan_title: "消防喉地圖",
+        legend_date: "日期",
+        legend_res: "解像度",
+        details: "詳細資訊",
+        station: "消防局",
+        hydrant: "消防喉",
+        defib: "除顫器 (AED)",
+        legal_btn: "資訊與法律"
     }
 };
