@@ -1,1396 +1,1319 @@
-<!-- 
-    =============================================================================
-    PROJEKT: OpenFireMap V2 - Lernversion (Mit Smart Caching)
-    AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-21
-    =============================================================================
-    
-    PROJEKT-BESCHREIBUNG & LERNZIELE:
-    
-    Dies ist ein persönliches Lernprojekt, um die Entwicklung moderner Webanwendungen
-    (Single Page Applications) zu verstehen und anzuwenden.
-    
-    WAS MACHT DIESE WEBSEITE?
-    Dieses Tool dient der Visualisierung von rettungsdienstlich relevanter Infrastruktur
-    aus der OpenStreetMap-Datenbank.
-    
-    Kernfunktionen:
-    1. Interaktive Karte: Zeigt Feuerwachen, Hydranten, Wassertanks und Defibrillatoren (AED).
-    2. Intelligenter Zoom: 
-       - Wachen erscheinen ab Zoom 12.
-       - Hydranten ab Zoom 15.
-       - Defibrillatoren als Punkte ab Zoom 15, als detaillierte Icons ab Zoom 17.
-    3. Einsatztaktik: Klick auf einen Hydranten zeigt einen 100m-Radius (Schlauchstrecke).
-    4. Export-Tools:
-       - PNG-Export: Erstellt hochauflösende, druckfertige Karten mit Rahmen, Titel,
-         Datum, Maßstab und Lizenzhinweisen.
-       - GPX-Export: Exportiert die sichtbaren Punkte für Navigationsgeräte.
-    5. Internationalisierung: Die Oberfläche passt sich automatisch der Browsersprache an
-       (unterstützt DE, EN, FR, ES, IT, PL, NL, CS, DA, FI, SV, NO, PT, FL, LB, JA, KO, MS, TH, ZH, YUE, TW).
-    
-    NEU: SMART CACHING STRATEGIE (PERFORMANCE)
-    ------------------------------------------
-    Um die Overpass-API zu schonen und Ladezeiten zu eliminieren:
-    
-    1. Grid-Snapping (Rasterung):
-       Wir runden Koordinaten auf 4 Nachkommastellen (ca. 10m). Das verhindert, 
-       dass minimales "Wackeln" am Bildschirm neue Daten lädt.
-       
-    2. SessionStorage (Browser-Speicher):
-       Daten werden im RAM des Browsers gespeichert. Wenn du an einen Ort zurückkehrst,
-       werden die Daten sofort aus dem Speicher geladen, statt aus dem Internet.
+/* ==========================================================================================
+   DATEI: translations.js
+   PROJEKT: OpenFireMap V2
+   AUTOR: Gemini (im Auftrag von Frank März)
+   DATUM: 2026-01-21
+   ==========================================================================================
 
-    RECHTLICHE HINWEISE:
-    Impressum und Datenschutzerklärung sind fest integriert ("Info & Recht"-Button),
-    um einen rechtssicheren Betrieb zu ermöglichen.
--->
+   1. WAS MACHT DIESE DATEI? (FUNKTIONSBESCHREIBUNG)
+   -------------------------------------------------
+   Diese Datei dient als zentrale Datenbank für alle Textinhalte der Webseite. 
+   Sie trennt den Programmiercode (Logik) vom Inhalt (Text). Das ermöglicht:
+   - Einfache Pflege der Texte ohne Risiko, den Code zu beschädigen.
+   - Schnelles Hinzufügen neuer Sprachen.
+   - Automatische Umschaltung der Sprache basierend auf den Browser-Einstellungen des Besuchers.
 
-<!DOCTYPE html>
-<!-- 'lang="de"' sagt dem Browser: "Diese Seite spricht Deutsch." -->
-<html lang="de">
-<head>
-    <!-- TECHNISCHE GRUNDEINSTELLUNGEN -->
-    <meta charset="UTF-8">
-    <!-- Wichtig für Handys: "Pass den Inhalt an die Bildschirmbreite an!" -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenFireMap.org</title>
-    
-    <!-- 
-        PERFORMANCE (Preconnect):
-        Wir "warnen" den Browser vor, dass wir gleich Daten von diesen Servern brauchen.
-        So kann er schon mal den DNS-Eintrag suchen und die Verbindung öffnen.
-    -->
-    <link rel="preconnect" href="https://unpkg.com"> <!-- Für Leaflet -->
-    <link rel="preconnect" href="https://cdn.tailwindcss.com"> <!-- Für CSS -->
-    <link rel="preconnect" href="https://a.basemaps.cartocdn.com"> <!-- Für Kartenbilder -->
-    <link rel="preconnect" href="https://overpass-api.de"> <!-- Für Daten -->
+   2. WO GEHÖRT SIE HIN? (ARCHITEKTUR)
+   -----------------------------------
+   - Diese Datei liegt im selben Verzeichnis wie die 'index.html'.
+   - Sie wird in der 'index.html' im <head>-Bereich über <script src="translations.js"></script> geladen.
+   - Sie muss VOR dem eigentlichen Hauptskript geladen werden, damit die Variable 'translations'
+     bereits existiert, wenn die Seite startet.
 
-    <!-- 
-        FAVICONS & APP ICONS
-        Diese Icons sorgen dafür, dass die Seite als Lesezeichen oder App auf dem Homescreen gut aussieht.
-    -->
-    <link rel="apple-touch-icon" sizes="57x57" href="favicons/apple-icon-57x57.png">
-    <link rel="apple-touch-icon" sizes="60x60" href="favicons/apple-icon-60x60.png">
-    <link rel="apple-touch-icon" sizes="72x72" href="favicons/apple-icon-72x72.png">
-    <link rel="apple-touch-icon" sizes="76x76" href="favicons/apple-icon-76x76.png">
-    <link rel="apple-touch-icon" sizes="114x114" href="favicons/apple-icon-114x114.png">
-    <link rel="apple-touch-icon" sizes="120x120" href="favicons/apple-icon-120x120.png">
-    <link rel="apple-touch-icon" sizes="144x144" href="favicons/apple-icon-144x144.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="favicons/apple-icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-icon-180x180.png">
-    <link rel="icon" type="image/png" sizes="192x192"  href="favicons/android-icon-192x192.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="96x96" href="favicons/favicon-96x96.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
-    
-    <link rel="manifest" href="favicons/sitemanifest">
-    <meta name="msapplication-TileColor" content="#ffffff">
-    <meta name="msapplication-TileImage" content="favicon/ms-icon-144x144.png">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/x-icon" href="favicons/favicon.ico">
-    
-    <!-- 
-        EXTERNE WERKZEUGE (BIBLIOTHEKEN) 
-        Wir laden fertige Code-Pakete aus dem Internet.
-    -->
-    
-    <!-- Leaflet CSS: Das Design für die Karte -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- Leaflet JS: Die Logik für die Karte (jetzt mit defer, damit es nicht blockiert) -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-    
-    <!-- Tailwind CSS: Ein Design-Werkzeugkasten für schnelle Styles -->
-    <script src="https://cdn.tailwindcss.com" defer></script>
-
-    <!-- 
-        LOKALE RESSOURCEN
-        Hier laden wir unsere ausgelagerte Sprachdatei (Wörterbuch). 
-    -->
-    <script src="translations.js"></script>
-
-    <!-- HIER BEGINNT DAS DESIGN (CSS) -->
-    <style>
-        /* Grundeinstellungen: Keine Ränder, keine Scrollbalken am Hauptfenster */
-        body { 
-            margin: 0; padding: 0; 
-            overflow: hidden; 
-            font-family: sans-serif; 
-            background: #0f172a; /* Dunkelblau (Slate-900) */
-        }
-        
-        /* Der Container für die Karte füllt den ganzen Bildschirm */
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; background: #1e293b; }
-        
-        /* Glassmorphismus (Milchglas-Effekt) für Menüs und Buttons */
-        .glass-panel { 
-            background: rgba(15, 23, 42, 0.90); /* Fast undurchsichtiges Dunkelblau */
-            backdrop-filter: blur(12px); /* Hintergrund verschwimmen lassen */
-            border: 1px solid rgba(255, 255, 255, 0.1); /* Feiner weißer Rand */
-        }
-        
-        #legal-modal { display: none; flex-direction: column; }
-
-        /* Animation für Marker (Vergrößern beim Drüberfahren) */
-        .icon-container { 
-            display: flex; align-items: center; justify-content: center; 
-            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); 
-            transition: transform 0.1s ease; 
-        }
-        .icon-container:hover { transform: scale(1.15); z-index: 1000 !important; }
-
-        /* Farbige Punkte für Zoomstufen < 17 (Performance-Optimierung) */
-        .hydrant-dot { background-color: #ef4444; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
-        .tank-dot { background-color: #3b82f6; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
-        .defib-dot { background-color: #16a34a; border: 1.5px solid white; border-radius: 50%; width: 10px; height: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
-        .station-square { background-color: #ef4444; border: 1px solid white; width: 10px; height: 10px; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
-
-        /* Tooltips (Info-Schildchen an Markern) */
-        .leaflet-tooltip { 
-            background: #0f172a; color: white; border: 1px solid rgba(255,255,255,0.15); 
-            border-radius: 8px; font-size: 12px; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6); padding: 0; 
-        }
-
-        /* Text "100m" am orangenen Kreis */
-        .range-label {
-            background: transparent !important; border: none !important; box-shadow: none !important;
-            color: #333333 !important; font-weight: bold; font-size: 14px;
-            text-shadow: -1px -1px 0 rgba(255,255,255,0.8), 1px -1px 0 rgba(255,255,255,0.8), -1px 1px 0 rgba(255,255,255,0.8), 1px 1px 0 rgba(255,255,255,0.8);
-        }
-        
-        /* Aktiver Button im Menü hervorheben */
-        .layer-btn.active { color: #3b82f6; background: rgba(59, 130, 246, 0.1); font-weight: bold; }
-        
-        /* Pulsierende Animation beim Export */
-        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        .exporting-active { animation: pulse-red 2s infinite; }
-
-        /* Rote Fehlermeldung oben rechts */
-        #notification-box { 
-            position: absolute; top: 20px; right: 20px; z-index: 2000; display: none;
-            background: #ef4444; color: white; padding: 12px 24px; border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); font-weight: 600;
-        }
-
-        /* Fadenkreuz-Cursor beim Auswählen eines Bereichs */
-        .selection-mode { cursor: crosshair !important; }
-        .zoom-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: transparent; }
-        
-        /* Standard Link-Styling */
-        a { color: #3b82f6; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        
-        /* Schöne Scrollbalken für Webkit-Browser (Chrome/Safari) */
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
-        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-    </style>
-</head>
-<body>
-
-<!-- HTML STRUKTUR (Das Grundgerüst der Seite) -->
-
-<h1 class="sr-only">OpenFireMap.org - Feuerwehrinfrastruktur Karte</h1>
-<div id="map" aria-label="Interaktive Karte" role="application"></div>
-<div id="notification-box" role="alert" aria-live="polite"></div>
-
-<!-- STEUERLEISTE (Oben Links: Suche, GPS, Layer, Export) -->
-<div class="absolute top-5 left-5 z-[1000] flex gap-3">
-    <!-- Suche -->
-    <div class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5 focus-within:ring-2 focus-within:ring-blue-500">
-        <label for="search-input" class="sr-only" data-i18n="search_placeholder">Ort suchen</label>
-        <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Ort suchen..." class="bg-transparent px-4 py-2 text-sm text-white outline-none focus:ring-0 w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-400">
-        <button onclick="searchLocation()" aria-label="Suchen" class="p-2 text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-xl">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-        </button>
-    </div>
-    
-    <!-- GPS Button -->
-    <button onclick="locateUser()" id="locate-btn" data-i18n-title="locate_title" aria-label="Meinen Standort bestimmen" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500" title="Mein Standort">
-        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-    </button>
-    
-    <!-- Layer Button (Kartenhintergrund) -->
-    <button onclick="toggleLayerMenu()" id="layer-btn-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="layer-menu" aria-label="Kartenhintergrund wechseln" data-i18n-title="layers_title" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500" title="Karte wechseln">
-        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-        </svg>
-    </button>
-
-    <!-- Export Button -->
-    <button onclick="toggleExportMenu()" id="export-btn-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="export-menu" aria-label="Export Menü öffnen" data-i18n-title="export_title" class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500" title="Export">
-        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-    </button>
-</div>
-
-<!-- INFO & RECHT KNOPF (Unten Links) -->
-<div class="absolute bottom-8 left-5 z-[1000]">
-    <button onclick="toggleLegalModal()" id="btn-legal-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="legal-modal" class="glass-panel p-1.5 rounded-xl text-slate-400 hover:text-white shadow-xl transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span class="text-[10px] font-bold hidden md:inline" data-i18n="legal_btn">Info & Recht</span>
-    </button>
-</div>
-
-<!-- INFO-BOX (Impressum) - Standardmäßig versteckt -->
-<div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title" class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
-    <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
-        <h2 id="legal-title" class="text-lg font-bold text-white flex items-center gap-2">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            Rechtliches
-        </h2>
-        <button onclick="toggleLegalModal()" aria-label="Schließen" class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-lg p-1">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
-    </div>
-    
-    <div class="overflow-y-auto custom-scroll pr-2 text-xs space-y-6">
-        <section>
-            <h3 class="text-sm font-bold text-white mb-1">Impressum</h3>
-            <p class="leading-relaxed text-slate-400">
-                Angaben gemäß § 5 TMG:<br><br>
-                <strong>Frank März</strong><br>
-                Kersbacher Weg 3<br>
-                91220 Schnaittach<br>
-                Deutschland<br><br>
-                Kontakt:<br>
-                Telefon: +499153/9229501<br>
-                E-Mail: info@openfiremap.org
-            </p>
-        </section>
-        
-        <section>
-            <h3 class="text-sm font-bold text-white mb-1">Datenschutzerklärung (Kurzfassung)</h3>
-            <p class="leading-relaxed text-slate-400 mb-2">
-                Diese Anwendung läuft als "Client-Side Application" direkt in Ihrem Browser. Wir speichern keine personenbezogenen Daten auf eigenen Servern.
-            </p>
-            <ul class="list-disc list-inside mt-2 space-y-1 text-slate-500">
-                <li><strong>Karten-Server:</strong> OSM, CartoDB, Esri, OpenTopoMap (Laden der Kacheln).</li>
-                <li><strong>Overpass API:</strong> Abruf der Infrastrukturdaten.</li>
-                <li><strong>Nominatim:</strong> Ortssuche.</li>
-            </ul>
-        </section>
-        
-        <section>
-            <h3 class="text-sm font-bold text-white mb-1">Quellen & Lizenzen</h3>
-            <ul class="list-disc list-inside space-y-1 text-slate-400">
-                <li><strong>Kartendaten:</strong> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> (ODbL).</li>
-                <li><strong>Stil:</strong> &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>.</li>
-                <li><strong>Satellit:</strong> &copy; Esri, DigitalGlobe, GeoEye, i-cubed, USDA, USGS, AEX, Getmapping, Aerogrid, IGN, IGP, swisstopo, and the GIS User Community.</li>
-                <li><strong>Topographie:</strong> &copy; <a href="http://opentopomap.org" target="_blank">OpenTopoMap</a> (CC-BY-SA).</li>
-            </ul>
-        </section>
-
-        <section class="border-t border-white/5 pt-2">
-            <h3 class="text-sm font-bold text-white mb-1">Rechtlicher Hinweis</h3>
-            <p class="leading-relaxed text-slate-400 mb-2">Dies ist ein rein privates, nicht-kommerzielles Projekt.</p>
-            <p class="leading-relaxed text-amber-500/80 italic mb-2 font-semibold">"Keine Abmahnung ohne vorherigen Kontakt"</p>
-        </section>
-    </div>
-</div>
-
-<!-- LAYER MENU (Hintergrund-Auswahl) -->
-<div id="layer-menu" role="menu" aria-labelledby="layer-btn-trigger" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
-    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center" data-i18n="bg_header">Hintergrund</h3>
-    <div class="grid grid-cols-1 gap-1">
-        <button onclick="setBaseLayer('voyager')" id="btn-voyager" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-blue-500"></div> <span data-i18n="layer_std">Standard (Voyager)</span></button>
-        <button onclick="setBaseLayer('positron')" id="btn-positron" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-slate-300"></div> <span data-i18n="layer_print">Druck (Hell)</span></button>
-        <button onclick="setBaseLayer('dark')" id="btn-dark" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-slate-800"></div> <span data-i18n="layer_night">Nacht (Dunkel)</span></button>
-        <button onclick="setBaseLayer('satellite')" id="btn-satellite" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-green-600"></div> <span data-i18n="layer_sat">Satellit (Esri)</span></button>
-        <button onclick="setBaseLayer('topo')" id="btn-topo" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-amber-600"></div> <span data-i18n="layer_topo">Topographisch (OSM)</span></button>
-        <button onclick="setBaseLayer('osm')" id="btn-osm" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 border-t border-white/5 mt-1 pt-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-emerald-500"></div> <span data-i18n="layer_osm">OSM (Intl)</span></button>
-        <button onclick="setBaseLayer('osmde')" id="btn-osmde" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-emerald-700"></div> <span data-i18n="layer_osmde">OSM (DE Style)</span></button>
-    </div>
-</div>
-
-<!-- EXPORT MENU (Popup Fenster) -->
-<div id="export-menu" role="dialog" aria-labelledby="export-title" aria-modal="true" class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
-    <div id="export-setup" class="space-y-5">
-        <div class="flex justify-between items-center">
-            <h3 id="export-title" class="font-bold text-lg" data-i18n="export_header">Export-Eigenschaften</h3>
-            <button onclick="toggleExportMenu()" aria-label="Schließen" class="text-slate-400 hover:text-white focus:outline-none focus:text-white text-2xl leading-none">&times;</button>
-        </div>
-        
-        <!-- Auswahl Format (A4, Frei) -->
-        <div class="space-y-2">
-            <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider" data-i18n="format_label">Format-Vorlage (Verhältnis)</label>
-            <div class="grid grid-cols-3 gap-2" role="group">
-                <button onclick="setExportFormat('free')" id="fmt-free" class="fmt-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active focus:outline-none focus:ring-2 focus:ring-blue-500" data-i18n="fmt_free">FREI</button>
-                <button onclick="setExportFormat('a4l')" id="fmt-a4l" class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500" data-i18n="fmt_a4l">DIN QUER</button>
-                <button onclick="setExportFormat('a4p')" id="fmt-a4p" class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500" data-i18n="fmt_a4p">DIN HOCH</button>
-            </div>
-        </div>
-        
-        <!-- Auswahl Zoom-Level (Auflösung) -->
-        <div class="space-y-2">
-            <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider" data-i18n="zoom_label">Detail-Grad (Zoom)</label>
-            <div class="grid grid-cols-4 gap-2" role="group">
-                <button onclick="setExportZoom(15)" id="zoom-15" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">Z15</button>
-                <button onclick="setExportZoom(16)" id="zoom-16" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">Z16</button>
-                <button onclick="setExportZoom(17)" id="zoom-17" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">Z17</button>
-                <button onclick="setExportZoom(18)" id="zoom-18" class="zoom-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active focus:outline-none focus:ring-2 focus:ring-blue-500">Z18</button>
-            </div>
-        </div>
-        
-        <button onclick="startSelection()" id="select-btn" class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
-            <span data-i18n="select_area_btn">Ausschnitt auf Karte wählen</span>
-        </button>
-        <div id="selection-info" class="hidden text-[11px] text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20" data-i18n="area_fixed">Ausschnitt fixiert ✓</div>
-        
-        <button id="png-btn" onclick="exportAsPNG()" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-300"><span data-i18n="png_btn">Hydrantenplan (PNG)</span></button>
-        <button id="gpx-btn" onclick="exportAsGPX()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg border border-emerald-400/30 focus:outline-none focus:ring-2 focus:ring-emerald-300">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            <span data-i18n="gpx_btn">Hydranten exportieren (GPX)</span>
-        </button>
-    </div>
-    
-    <!-- Ladebalken beim Export -->
-    <div id="export-progress" class="hidden" role="status">
-        <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg exporting-active text-blue-400" data-i18n="exporting_title">Export wird erstellt...</h3></div>
-        <div class="space-y-4">
-            <div>
-                <div class="flex justify-between text-[10px] mb-1 uppercase tracking-widest text-blue-400 font-bold"><span id="progress-label" data-i18n="loading_tiles">Lade Kacheln...</span><span id="progress-percent">0%</span></div>
-                <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden"><div id="progress-bar" class="h-full bg-blue-500 w-0 transition-all duration-300"></div></div>
-            </div>
-            <button onclick="cancelExport()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2 rounded-xl text-sm font-semibold border border-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-500" data-i18n="cancel_btn">Vorgang abbrechen</button>
-        </div>
-    </div>
-</div>
-
-<!-- Statusanzeige (Unten Rechts: Zoom & Datenstatus) -->
-<div class="absolute bottom-10 right-10 z-[1000] glass-panel p-4 rounded-2xl text-[10px] text-slate-400 font-mono border border-white/5">
-    <div class="flex justify-between gap-4"><span data-i18n="zoom_info">ZOOM</span><span id="zoom-val" class="text-white font-bold">14.0</span></div>
-    <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status" class="text-green-400">AKTUELL</span></div>
-</div>
-
-<!-- JAVASCRIPT LOGIK -->
-<script>
-    /* =========================================================================
-       1. SPRACH-LOGIK & GLOBALE VARIABLEN
-       Hier definieren wir die Grundzustände der App und laden die Sprache.
-       ========================================================================= */
-    
-    // Wir fragen den Browser: "Welche Sprache sprichst du?" (z.B. "de-DE", "en-US")
-    const userLangFull = navigator.language || navigator.userLanguage; 
-    const userLangFullLower = userLangFull.toLowerCase();
-    const userLangShort = userLangFull.split('-')[0]; // Nur "de", "en", etc.
-    
-    // Logik zur Bestimmung der richtigen Übersetzung
-    let detectedLang = 'en'; // Fallback ist Englisch
-    if (userLangFullLower === 'zh-tw') detectedLang = 'tw'; // Taiwan
-    else if (userLangFullLower === 'zh-hk' || userLangFullLower === 'zh-mo') detectedLang = 'yue'; // Hongkong
-    else if (userLangShort === 'zh') detectedLang = 'zh'; // Mandarin
-    else if (typeof translations !== 'undefined' && translations[userLangShort]) detectedLang = userLangShort;
-    
-    const currentLang = detectedLang;
-    
-    // Hilfsfunktion: Gibt den übersetzten Text für einen Schlüssel zurück (oder den Schlüssel selbst)
-    function t(key) {
-        if (typeof translations === 'undefined') return key;
-        return translations[currentLang][key] || translations['en'][key] || key;
-    }
-
-    // Geht durch das ganze HTML und tauscht Texte basierend auf 'data-i18n' Attributen aus
-    function updatePageLanguage() {
-        if (typeof translations === 'undefined') return;
-        document.querySelectorAll('[data-i18n]').forEach(el => el.innerText = t(el.getAttribute('data-i18n')));
-        document.querySelectorAll('[data-i18n-title]').forEach(el => el.title = t(el.getAttribute('data-i18n-title')));
-        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => el.placeholder = t(el.getAttribute('data-i18n-placeholder')));
-    }
-
-    // Zentrale Variablen für den Zustand der Karte
-    let map;                    // Das Leaflet-Kartenobjekt
-    let markerLayer;            // Ebene für Icons (Hydranten etc.)
-    let boundaryLayer;          // Ebene für Gemeindegrenzen
-    let rangeLayerGroup;        // Ebene für den 100m Radius-Kreis
-    let activeRangeCenter = null; // Speichert, welcher Hydrant gerade angeklickt ist
-    
-    // Controller zum Abbrechen von laufenden Anfragen (wichtig bei schnellem Zoomen)
-    let currentRequestController; 
-    let exportAbortController;    
-    
-    let cachedElements = [];        // Hier speichern wir die geladenen Daten im RAM
-    let activeLayerConfig = 'voyager'; // Aktueller Kartenstil
-    let exportFormat = 'free';      // Export-Format (A4 oder Frei)
-    let exportZoomLevel = 18;       // Export-Qualität
-    let isSelecting = false, selectionRect = null, startPoint = null, finalBounds = null; // Für das Auswahl-Tool
-    let debounceTimer = null;       // Timer für verzögertes Laden
-
-    // Adressen der verschiedenen Karten-Anbieter (Tile Server)
-    const layerUrls = {
-        voyager: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-        positron: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-        dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        topo: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-        osm: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        osmde: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png'
-    };
-    
-    // Urheberrechtshinweise für die Karten
-    const layerAttributions = {
-        voyager: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        positron: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        dark: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        satellite: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP',
-        topo: 'Kartendaten: &copy; <a href="https://openstreetmap.org/copyright">OSM</a>, <a href="http://opentopomap.org">OpenTopoMap</a>',
-        osm: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        osmde: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    };
-
-    // Text-Versionen der Urheberrechte für den PNG-Export
-    const layerAttributionsText = {
-        voyager: '© OpenStreetMap contributors, © CARTO',
-        positron: '© OpenStreetMap contributors, © CARTO',
-        dark: '© OpenStreetMap contributors, © CARTO',
-        satellite: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping',
-        topo: 'Daten: © OpenStreetMap, Darstellung: © OpenTopoMap',
-        osm: '© OpenStreetMap contributors',
-        osmde: '© OpenStreetMap contributors'
-    };
-
-    // Overpass API Server (Wir nutzen zwei, falls einer ausfällt)
-    const overpassEndpoints = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
-
-    /* =========================================================================
-       2. INITIALISIERUNG
-       Diese Funktionen starten die App, sobald die Seite geladen ist.
-       ========================================================================= */
-    
-    // Zeigt eine kleine Nachricht oben rechts an (z.B. "Standort gefunden")
-    function showNotification(msg, duration = 3000) {
-        const box = document.getElementById('notification-box');
-        if (!box) return;
-        box.innerText = msg;
-        box.style.display = 'block';
-        // Falls schon ein Timer läuft, diesen stoppen
-        if(box.hideTimeout) clearTimeout(box.hideTimeout);
-        // Nach 'duration' Millisekunden wieder ausblenden
-        box.hideTimeout = setTimeout(() => box.style.display = 'none', duration); 
-    }
-
-    function initMap() {
-        updatePageLanguage();
-        setupMenuAutoClose(); // Menüs automatisch schließen lassen
-        
-        // Layer-Gruppen initialisieren (wie Folien auf einem Overhead-Projektor)
-        markerLayer = L.layerGroup();
-        boundaryLayer = L.layerGroup(); 
-        rangeLayerGroup = L.layerGroup(); 
-        
-        // Karte erstellen, Startpunkt: Schnaittach Zentrum
-        map = L.map('map', { zoomControl: false, center: [49.555, 11.350], zoom: 14 });
-        setBaseLayer('voyager'); // Standard-Hintergrund setzen
-        
-        // Layer zur Karte hinzufügen
-        boundaryLayer.addTo(map); 
-        rangeLayerGroup.addTo(map); 
-        markerLayer.addTo(map);   
-        
-        // Event Listeners: Was passiert wann?
-        
-        // Wenn man die Karte bewegt (Ende der Bewegung + Zoom) -> Daten laden
-        map.on('moveend zoomend', onMapMoveDebounced); 
-        
-        // Wenn gezoomt wird -> 100m Kreis anpassen
-        map.on('zoomend', updateRangeCircle);    
-        
-        // Zoom-Anzeige unten rechts aktualisieren
-        map.on('zoom', () => document.getElementById('zoom-val').innerText = map.getZoom().toFixed(1)); 
-        
-        // Auswahl-Werkzeug Logik (Maus ziehen)
-        map.on('mousedown', onMouseDown);
-        map.on('mousemove', onMouseMove);
-        map.on('mouseup', onMouseUp);
-        
-        // Klick ins Leere -> Auswahl aufheben
-        map.on('click', () => {
-            if (activeRangeCenter && !isSelecting) {
-                activeRangeCenter = null;
-                updateRangeCircle();
-            }
-        });
-
-        // Beim ersten Start sofort Daten laden
-        fetchOSMData(); 
-    }
-
-    // Debounce-Funktion: Verhindert, dass bei jedem Pixel-Wackler sofort geladen wird.
-    // Wir warten 500ms, nachdem der Nutzer aufgehört hat zu schieben.
-    function onMapMoveDebounced() {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        const statusEl = document.getElementById('data-status');
-        statusEl.innerText = t('status_waiting'); // Zeige "WARTE..."
-        statusEl.className = 'text-amber-400 font-bold'; 
-
-        debounceTimer = setTimeout(() => {
-            fetchOSMData(); // Erst jetzt wirklich laden
-        }, 500); 
-    }
-
-    /* =========================================================================
-       3. SMART CACHING & DATA FETCHING (NEUE LOGIK)
-       Hier liegt der Schlüssel zur Performance-Optimierung.
-       ========================================================================= */
-
-    /**
-     * FUNKTION: getSmartBBoxString
-     * ZWECK: Grid-Snapping (Rasterung) der Koordinaten.
-     * WARUM? Wenn du die Karte am Handy um 1 Pixel verschiebst, ändern sich die
-     * Koordinaten von 49.123456 auf 49.123457. Für den Server ist das eine
-     * komplett NEUE Anfrage. Wir runden die Koordinaten aber auf 4 Stellen.
-     * So bleiben sie gleich, auch wenn man leicht wackelt -> Cache Hit!
-     */
-    function getSmartBBoxString(bounds) {
-        // Faktor 10000 entspricht 4 Nachkommastellen (Genauigkeit ca. 11 Meter)
-        const prec = 10000;
-        
-        // Süden/Westen: Wir runden AB (floor), um den Bereich eher etwas größer zu machen
-        const s = Math.floor(bounds.getSouth() * prec) / prec;
-        const w = Math.floor(bounds.getWest() * prec) / prec;
-        
-        // Norden/Osten: Wir runden AUF (ceil)
-        const n = Math.ceil(bounds.getNorth() * prec) / prec;
-        const e = Math.ceil(bounds.getEast() * prec) / prec;
-        
-        return `${s},${w},${n},${e}`;
-    }
-
-    /**
-     * FUNKTION: fetchWithCache
-     * ZWECK: Lädt Daten erst aus dem Speicher, dann aus dem Netz.
-     * LOGIK:
-     * 1. Prüfe 'sessionStorage': Haben wir diese URL schon mal geladen?
-     * 2. JA -> Nimm Daten aus RAM (0ms Ladezeit).
-     * 3. NEIN -> Frage Overpass API.
-     * 4. Speichere Ergebnis für das nächste Mal.
-     */
-    async function fetchWithCache(url, signal) {
-        // Eindeutiger Schlüssel für diese Anfrage
-        const cacheKey = "ofm_cache_" + url;
-
-        // 1. Cache prüfen
-        const cachedData = sessionStorage.getItem(cacheKey);
-        if (cachedData) {
-            console.log("⚡ Cache Hit: Daten aus Speicher geladen.");
-            return JSON.parse(cachedData);
-        }
-
-        // 2. Netzwerk Anfrage (falls nicht im Cache)
-        console.log("🌍 Cache Miss: Lade Daten aus dem Internet...");
-        const response = await fetch(url, { signal });
-        
-        if (!response.ok) throw new Error(response.statusText);
-        const text = await response.text();
-        
-        // Sicherheitscheck: Ist es wirklich JSON oder eine HTML-Fehlermeldung?
-        if (text.trim().startsWith('<') || text.includes('Too Many Requests')) {
-            throw new Error("API Limit oder Fehler");
-        }
-
-        const data = JSON.parse(text);
-
-        // 3. Ergebnis speichern
-        // Wir nutzen try-catch, weil der Speicher voll sein könnte (QuotaExceeded)
-        try {
-            sessionStorage.setItem(cacheKey, text);
-        } catch (e) {
-            console.warn("⚠️ Browser-Speicher voll! Lösche Cache und versuche es erneut...");
-            sessionStorage.clear(); // Radikal aufräumen
-            try {
-                sessionStorage.setItem(cacheKey, text); // Neuer Versuch
-            } catch (e2) {
-                console.error("Cache immer noch voll, Daten werden nicht gespeichert.");
-            }
-        }
-
-        return data;
-    }
-
-    // Hauptfunktion zum Laden der OSM-Daten
-    async function fetchOSMData() {
-        const zoom = map.getZoom();
-        const status = document.getElementById('data-status');
-        
-        // Standby-Modus: Wenn zu weit rausgezoomt, nichts laden (schont API)
-        if (zoom < 12) {
-            status.innerText = t('status_standby');
-            status.className = 'text-green-400'; 
-            cachedElements = [];
-            markerLayer.clearLayers();
-            boundaryLayer.clearLayers();
-            return; 
-        }
-        
-        // HIER WIRD DIE NEUE LOGIK ANGEWENDET:
-        // Wir holen die "smarte", gerundete Bounding Box
-        const bbox = getSmartBBoxString(map.getBounds());
-        
-        status.innerText = t('status_loading'); 
-        status.className = 'text-green-400';
-        
-        // Alte Anfrage abbrechen, falls noch eine läuft
-        if (currentRequestController) currentRequestController.abort();
-        currentRequestController = new AbortController();
-        
-        // Overpass QL Query zusammenbauen
-        let queryParts = [];
-        
-        if (zoom >= 12) {
-            // Wachen laden (Node, Way, Relation)
-            queryParts.push(`nwr["amenity"="fire_station"](${bbox});`);
-            queryParts.push(`nwr["building"="fire_station"](${bbox});`);
-        }
-        if (zoom >= 15) {
-            // Hydranten & Wasserstellen laden
-            queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});`);
-        }
-        if (zoom >= 15) {
-            // Defibrillatoren laden
-            queryParts.push(`node["emergency"="defibrillator"](${bbox});`);
-        }
-
-        let boundaryQuery = '';
-        if (zoom >= 14) {
-            // Gemeindegrenzen laden (Level 8)
-            boundaryQuery = `(way["boundary"="administrative"]["admin_level"="8"](${bbox});)->.boundaries; .boundaries out geom;`;
-        }
-
-        if (queryParts.length === 0 && boundaryQuery === '') return;
-
-        const q = `[out:json][timeout:90];
-        (
-          ${queryParts.join('\n')}
-        )->.pois;
-        .pois out center;
-        ${boundaryQuery}`;
-        
-        // Abfrage mit Retry-Logik und Cache
-        let success = false;
-        
-        for (let endpoint of overpassEndpoints) {
-            if (success) break;
-            try {
-                const url = `${endpoint}?data=${encodeURIComponent(q)}`;
-                // Hier rufen wir unsere neue Caching-Funktion auf
-                const data = await fetchWithCache(url, currentRequestController.signal);
-                
-                cachedElements = data.elements; 
-                renderMarkers(data.elements, zoom); 
-                status.innerText = t('status_current'); 
-                status.className = 'text-green-400';
-                success = true;
-                
-            } catch (e) {
-                if (e.name === 'AbortError') return; // User hat abgebrochen (Zoom/Move) -> egal
-                console.warn(`Server ${endpoint} fehlgeschlagen:`, e);
-            }
-        }
-        
-        if (!success) {
-            status.innerText = t('status_error');
-            status.className = 'text-red-500 font-bold';
-        }
-    }
-
-    /* =========================================================================
-       4. RENDERING & UI LOGIK
-       Hier wird aus den rohen Daten bunte Grafik.
-       ========================================================================= */
-    
-    // Erstellt den SVG-Code für die Icons (Vektorgrafiken im Code statt Bilder)
-    function getSVGContent(type) {
-        // Spezial-Icon für Defis
-        if (type === 'defibrillator') {
-             return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="45" fill="#16a34a" stroke="white" stroke-width="5"/>
-                <path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/>
-                <path d="M55 45 L45 55 L55 55 L45 65" stroke="#16a34a" stroke-width="3" fill="none"/>
-            </svg>`;
-        }
-        // Farben: Blau für Wasser, Rot für Hydranten
-        const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-        const color = isWater ? '#3b82f6' : '#ef4444'; 
-        
-        // Buchstaben-Codes für Hydranten-Typen
-        let char = '';
-        switch(type) {
-            case 'underground': char = 'U'; break; // Unterflur
-            case 'pillar':      char = 'O'; break; // Überflur
-            case 'pipe':        char = 'I'; break; // Steigleitung
-            case 'dry_barrel':  char = 'Ø'; break; // Trocken
-            default:            char = '';
-        }
-        
-        // Wachen-Symbol (Haus)
-        if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="#ef4444" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
-        
-        // Standard Hydranten-Symbol (Kreis mit Buchstabe)
-        return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
-    }
-
-    // Zeichnet alle Marker auf die Karte
-    function renderMarkers(elements, zoom) {
-        markerLayer.clearLayers(); 
-        boundaryLayer.clearLayers(); 
-        const renderedLocations = []; // Zum Verhindern von Duplikaten
-        
-        elements.forEach(el => {
-            const tags = el.tags || {};
+   3. CODE-DOKUMENTATION & STRUKTUR
+   --------------------------------
+   Die Datei definiert eine einzige globale Konstante: 'const translations'.
+   Dies ist ein verschachteltes JavaScript-Objekt (JSON-Struktur).
+   
+   Ebene 1: Der Sprach-Code (ISO 639-1 oder Sondercodes wie 'yue', 'tw')
+            z.B. 'de' für Deutsch, 'zh' für Mandarin.
             
-            // Grenzen zeichnen
-            if (tags.boundary === 'administrative' && el.geometry) {
-                if (zoom < 14) return; 
-                const latlngs = el.geometry.map(p => [p.lat, p.lon]);
-                L.polyline(latlngs, { color: '#333333', weight: 1, dashArray: '10, 10', opacity: 0.7 }).addTo(boundaryLayer);
-                return; 
-            }
-            
-            const lat = el.lat || el.center?.lat;
-            const lon = el.lon || el.center?.lon;
-            if (!lat || !lon) return;
+   Ebene 2: Die Schlüssel-Wert-Paare für die Texte.
+            - Schlüssel (Links): Ein eindeutiger Name, z.B. "search_placeholder".
+              Dieser Name wird im HTML-Code verwendet (data-i18n="search_placeholder").
+            - Wert (Rechts): Der tatsächliche Text in der jeweiligen Sprache.
 
-            // Typ bestimmen
-            const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
-            const isDefib = tags.emergency === 'defibrillator';
-            let type = '';
+   4. UNTERSTÜTZTE SPRACHEN (LÄNDERCODES)
+   --------------------------------------
+   Die Anwendung unterstützt nun folgende 21 Sprachen:
+   
+   - DE : Deutsch (Basissprache)
+   - EN : Englisch (Weltweit / Fallback)
+   - FR : Französisch
+   - ES : Spanisch
+   - IT : Italienisch
+   - PL : Polnisch
+   - NL : Niederländisch
+   - CS : Tschechisch
+   - DA : Dänisch
+   - FI : Finnisch
+   - SV : Schwedisch
+   - NO : Norwegisch
+   - PT : Portugiesisch
+   - FL : Flämisch (Belgien)
+   - LB : Luxemburgisch
+   - JA : Japanisch
+   - KO : Koreanisch
+   - MS : Malaiisch
+   - TH : Thai
+   - ZH : Mandarin Chinesisch (Vereinfacht - Festland)
+   - YUE: Kantonesisch (Traditionell - HK/Macau)
+   - TW : Chinesisch (Traditionell - Taiwan) (Neu)
 
-            if (isStation) type = 'station';
-            else if (isDefib) type = 'defibrillator';
-            else type = tags['fire_hydrant:type'] || tags.emergency;
+   ========================================================================================== */
 
-            // Zoom-Filter: Was wird wann angezeigt?
-            if (isStation && zoom < 12) return; 
-            if (!isStation && !isDefib && zoom < 15) return; 
-            if (isDefib && zoom < 15) return; 
+const translations = {
+    // --------------------------------------------------------------------------------------
+    // DEUTSCH (DE) - Basissprache
+    // --------------------------------------------------------------------------------------
+    de: {
+        search_placeholder: "Ort suchen...",
+        locate_title: "Mein Standort",
+        layers_title: "Karte wechseln",
+        export_title: "Export",
+        bg_header: "Hintergrund",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Druck (Hell)",
+        layer_night: "Nacht (Dunkel)",
+        layer_sat: "Satellit (Esri)",
+        layer_topo: "Topographisch (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Style)",
+        export_header: "Export-Eigenschaften",
+        format_label: "Format-Vorlage (Verhältnis)",
+        fmt_free: "FREI",
+        fmt_a4l: "DIN QUER",
+        fmt_a4p: "DIN HOCH",
+        zoom_label: "Detail-Grad (Zoom)",
+        select_area_btn: "Ausschnitt auf Karte wählen",
+        area_fixed: "Ausschnitt fixiert ✓",
+        png_btn: "Hydrantenplan (PNG)",
+        gpx_btn: "Hydranten exportieren (GPX)",
+        exporting_title: "Export wird erstellt...",
+        loading_tiles: "Lade Kacheln...",
+        cancel_btn: "Vorgang abbrechen",
+        zoom_info: "ZOOM",
+        data_info: "DATEN",
+        status_current: "AKTUELL",
+        status_loading: "LÄDT...",
+        status_waiting: "WARTE AUF POS...", // NEU
+        status_standby: "STANDBY (Zoom < 12)",
+        status_error: "FEHLER",
+        geo_error: "Geolokalisierung nicht unterstützt.",
+        geo_found: "Standort gefunden!",
+        geo_fail: "Standort fehlerhaft.",
+        drag_area: "Bereich ziehen",
+        no_objects: "Keine Objekte im gewählten Bereich!",
+        gpx_success: "Objekte als GPX exportiert!",
+        too_large: "Ausschnitt zu groß!",
+        locating: "Lokalisiere Gebiet...",
+        render_bounds: "Rendere Grenzen...",
+        render_infra: "Rendere Infrastruktur...",
+        layout_final: "Finalisiere Layout...",
+        plan_title: "Orts- und Hydrantenplan",
+        legend_date: "Stand",
+        legend_res: "Auflösung",
+        details: "Details",
+        station: "Feuerwache",
+        hydrant: "Hydrant",
+        defib: "Defibrillator (AED)",
+        legal_btn: "Info & Recht"
+    },
 
-            // Duplikate filtern (manchmal liefert API Node UND Way für das gleiche Objekt)
-            const alreadyDrawn = renderedLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
-            if (isStation && alreadyDrawn) return;
-            if (isStation) renderedLocations.push({lat, lon});
+    // --------------------------------------------------------------------------------------
+    // ENGLISCH (EN)
+    // --------------------------------------------------------------------------------------
+    en: {
+        search_placeholder: "Search location...",
+        locate_title: "My Location",
+        layers_title: "Switch Map Layer",
+        export_title: "Export",
+        bg_header: "Background",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Print (Light)",
+        layer_night: "Night (Dark)",
+        layer_sat: "Satellite (Esri)",
+        layer_topo: "Topographic (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Style)",
+        export_header: "Export Properties",
+        format_label: "Aspect Ratio",
+        fmt_free: "FREE",
+        fmt_a4l: "A4 LANDSCAPE",
+        fmt_a4p: "A4 PORTRAIT",
+        zoom_label: "Detail Level (Zoom)",
+        select_area_btn: "Select Area on Map",
+        area_fixed: "Area fixed ✓",
+        png_btn: "Hydrant Map (PNG)",
+        gpx_btn: "Export Hydrants (GPX)",
+        exporting_title: "Creating Export...",
+        loading_tiles: "Loading Tiles...",
+        cancel_btn: "Cancel Process",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "CURRENT",
+        status_loading: "LOADING...",
+        status_waiting: "WAITING FOR POS...", // NEU
+        status_standby: "STANDBY (Zoom < 12)",
+        status_error: "ERROR",
+        geo_error: "Geolocation not supported.",
+        geo_found: "Location found!",
+        geo_fail: "Location failed.",
+        drag_area: "Draw area",
+        no_objects: "No objects in selected area!",
+        gpx_success: "Objects exported as GPX!",
+        too_large: "Area too large!",
+        locating: "Locating area...",
+        render_bounds: "Rendering boundaries...",
+        render_infra: "Rendering infrastructure...",
+        layout_final: "Finalizing layout...",
+        plan_title: "Hydrant Map",
+        legend_date: "Date",
+        legend_res: "Resolution",
+        details: "Details",
+        station: "Fire Station",
+        hydrant: "Hydrant",
+        defib: "Defibrillator (AED)",
+        legal_btn: "Info & Legal"
+    },
 
-            let marker = null;
+    // --------------------------------------------------------------------------------------
+    // FRANZÖSISCH (FR)
+    // --------------------------------------------------------------------------------------
+    fr: {
+        search_placeholder: "Rechercher...",
+        locate_title: "Ma position",
+        layers_title: "Changer de carte",
+        export_title: "Exporter",
+        bg_header: "Arrière-plan",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Impression (Clair)",
+        layer_night: "Nuit (Sombre)",
+        layer_sat: "Satellite (Esri)",
+        layer_topo: "Topographique (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (Style DE)",
+        export_header: "Propriétés d'exportation",
+        format_label: "Format (Ratio)",
+        fmt_free: "LIBRE",
+        fmt_a4l: "A4 PAYSAGE",
+        fmt_a4p: "A4 PORTRAIT",
+        zoom_label: "Niveau de détail (Zoom)",
+        select_area_btn: "Sélectionner une zone",
+        area_fixed: "Zone fixée ✓",
+        png_btn: "Carte des poteaux (PNG)",
+        gpx_btn: "Exporter en GPX",
+        exporting_title: "Création de l'export...",
+        loading_tiles: "Chargement des tuiles...",
+        cancel_btn: "Annuler",
+        zoom_info: "ZOOM",
+        data_info: "DONNÉES",
+        status_current: "ACTUEL",
+        status_loading: "CHARGEMENT...",
+        status_waiting: "ATTENTE POS...", // NEU
+        status_standby: "VEILLE (Zoom < 12)",
+        status_error: "ERREUR",
+        geo_error: "Géolocalisation non supportée.",
+        geo_found: "Position trouvée !",
+        geo_fail: "Échec de localisation.",
+        drag_area: "Dessiner la zone",
+        no_objects: "Aucun objet dans la zone !",
+        gpx_success: "Objets exportés en GPX !",
+        too_large: "Zone trop grande !",
+        locating: "Localisation de la zone...",
+        render_bounds: "Rendu des limites...",
+        render_infra: "Rendu de l'infrastructure...",
+        layout_final: "Finalisation...",
+        plan_title: "Carte des Hydrants",
+        legend_date: "Date",
+        legend_res: "Résolution",
+        details: "Détails",
+        station: "Caserne",
+        hydrant: "Poteau incendie",
+        defib: "Défibrillateur (DAE)",
+        legal_btn: "Info & Droit"
+    },
 
-            // Marker erstellen (Unterscheidung Punkt vs. SVG Icon je nach Zoom)
-            if (isStation) {
-                if (zoom < 14) {
-                     L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10,10] }) }).addTo(markerLayer);
-                } else {
-                     const iconHtml = getSVGContent(type);
-                     marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [32, 32] }), zIndexOffset: 1000 }).addTo(markerLayer);
-                }
-            } else if (isDefib) {
-                if (zoom < 17) {
-                    L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) }).addTo(markerLayer);
-                } else {
-                    const iconHtml = getSVGContent(type);
-                    marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), zIndexOffset: 2000 }).addTo(markerLayer);
-                }
-            } else {
-                if (zoom < 17) {
-                    const color = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type) ? 'tank-dot' : 'hydrant-dot';
-                    L.marker([lat, lon], { icon: L.divIcon({ className: color, iconSize: [10,10] }) }).addTo(markerLayer);
-                } else {
-                    const iconHtml = getSVGContent(type);
-                    marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), zIndexOffset: 0 }).addTo(markerLayer);
-                    // Radius-Kreis bei Klick aktivieren
-                    marker.on('click', (e) => { L.DomEvent.stopPropagation(e); showRangeCircle(lat, lon); });
-                }
-            }
+    // --------------------------------------------------------------------------------------
+    // SPANISCH (ES)
+    // --------------------------------------------------------------------------------------
+    es: {
+        search_placeholder: "Buscar lugar...",
+        locate_title: "Mi ubicación",
+        layers_title: "Cambiar mapa",
+        export_title: "Exportar",
+        bg_header: "Fondo",
+        layer_std: "Estándar (Voyager)",
+        layer_print: "Impresión (Claro)",
+        layer_night: "Noche (Oscuro)",
+        layer_sat: "Satélite (Esri)",
+        layer_topo: "Topográfico (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (Estilo DE)",
+        export_header: "Propiedades de exportación",
+        format_label: "Formato (Relación)",
+        fmt_free: "LIBRE",
+        fmt_a4l: "A4 PAISAJE",
+        fmt_a4p: "A4 RETRATO",
+        zoom_label: "Nivel de detalle (Zoom)",
+        select_area_btn: "Seleccionar zona",
+        area_fixed: "Zona fijada ✓",
+        png_btn: "Mapa de hidrantes (PNG)",
+        gpx_btn: "Exportar como GPX",
+        exporting_title: "Creando exportación...",
+        loading_tiles: "Cargando teselas...",
+        cancel_btn: "Cancelar",
+        zoom_info: "ZOOM",
+        data_info: "DATOS",
+        status_current: "ACTUAL",
+        status_loading: "CARGANDO...",
+        status_waiting: "ESPERANDO POS...", // NEU
+        status_standby: "ESPERA (Zoom < 12)",
+        status_error: "ERROR",
+        geo_error: "Geolocalización no soportada.",
+        geo_found: "¡Ubicación encontrada!",
+        geo_fail: "Fallo de ubicación.",
+        drag_area: "Arrastrar área",
+        no_objects: "¡No hay objetos en la zona!",
+        gpx_success: "¡Objetos exportados a GPX!",
+        too_large: "¡Zona demasiado grande!",
+        locating: "Localizando zona...",
+        render_bounds: "Renderizando límites...",
+        render_infra: "Renderizando infraestructura...",
+        layout_final: "Finalizando diseño...",
+        plan_title: "Mapa de Hidrantes",
+        legend_date: "Fecha",
+        legend_res: "Resolución",
+        details: "Detalles",
+        station: "Estación de bomberos",
+        hydrant: "Hidrante",
+        defib: "Desfibrilador (DEA)",
+        legal_btn: "Info & Legal"
+    },
 
-            // Tooltips (Info-Blasen) hinzufügen (nur bei hohem Zoom)
-            if (marker && zoom === 18) {
-                marker.bindTooltip(generateTooltip(tags), { 
-                    interactive: true, permanent: false, sticky: false, direction: 'top', opacity: 0.95 
-                });
-                // Smart-Tooltip Logik: Bleibt kurz offen zum Lesen, schließt sich dann automatisch
-                marker.off('mouseover'); marker.off('mouseout');
-                marker._tooltipCloseTimer = null;
-                marker.on('mouseover', function() {
-                    if (this._tooltipCloseTimer) { clearTimeout(this._tooltipCloseTimer); this._tooltipCloseTimer = null; }
-                    this.openTooltip();
-                });
-                marker.on('mouseout', function() {
-                    this._tooltipCloseTimer = setTimeout(() => { this.closeTooltip(); }, 3000);
-                });
-                // Verhindern, dass Tooltip zugeht, wenn man mit der Maus drauf ist
-                marker.on('tooltipopen', function(e) {
-                    const tooltipNode = e.tooltip._container;
-                    if (!tooltipNode) return;
-                    L.DomEvent.on(tooltipNode, 'mouseenter', () => {
-                        if (this._tooltipCloseTimer) { clearTimeout(this._tooltipCloseTimer); this._tooltipCloseTimer = null; }
-                    });
-                    L.DomEvent.on(tooltipNode, 'mouseleave', () => {
-                        this._tooltipCloseTimer = setTimeout(() => { this.closeTooltip(); }, 3000);
-                    });
-                });
-            }
-        });
+    // --------------------------------------------------------------------------------------
+    // ITALIENISCH (IT)
+    // --------------------------------------------------------------------------------------
+    it: {
+        search_placeholder: "Cerca luogo...",
+        locate_title: "La mia posizione",
+        layers_title: "Cambia mappa",
+        export_title: "Esporta",
+        bg_header: "Sfondo",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Stampa (Chiaro)",
+        layer_night: "Notte (Scuro)",
+        layer_sat: "Satellite (Esri)",
+        layer_topo: "Topografico (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (Stile DE)",
+        export_header: "Proprietà esportazione",
+        format_label: "Formato",
+        fmt_free: "LIBERO",
+        fmt_a4l: "A4 ORIZZONTALE",
+        fmt_a4p: "A4 VERTICALE",
+        zoom_label: "Dettaglio (Zoom)",
+        select_area_btn: "Seleziona area",
+        area_fixed: "Area fissata ✓",
+        png_btn: "Mappa idranti (PNG)",
+        gpx_btn: "Esporta in GPX",
+        exporting_title: "Creazione esportazione...",
+        loading_tiles: "Caricamento riquadri...",
+        cancel_btn: "Annulla",
+        zoom_info: "ZOOM",
+        data_info: "DATI",
+        status_current: "ATTUALE",
+        status_loading: "CARICAMENTO...",
+        status_waiting: "ATTESA POS...", // NEU
+        status_standby: "STANDBY (Zoom < 12)",
+        status_error: "ERRORE",
+        geo_error: "Geolocalizzazione non supportata.",
+        geo_found: "Posizione trovata!",
+        geo_fail: "Posizione fallita.",
+        drag_area: "Disegna area",
+        no_objects: "Nessun oggetto nell'area!",
+        gpx_success: "Oggetti esportati in GPX!",
+        too_large: "Area troppo grande!",
+        locating: "Localizzazione area...",
+        render_bounds: "Rendering confini...",
+        render_infra: "Rendering infrastruttura...",
+        layout_final: "Finalizzazione layout...",
+        plan_title: "Mappa Idranti",
+        legend_date: "Data",
+        legend_res: "Risoluzione",
+        details: "Dettagli",
+        station: "Caserma pompieri",
+        hydrant: "Idrante",
+        defib: "Defibrillatore (DAE)",
+        legal_btn: "Info & Legale"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // POLNISCH (PL)
+    // --------------------------------------------------------------------------------------
+    pl: {
+        search_placeholder: "Szukaj miejsca...",
+        locate_title: "Moja lokalizacja",
+        layers_title: "Zmień mapę",
+        export_title: "Eksport",
+        bg_header: "Tło",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Druk (Jasny)",
+        layer_night: "Noc (Ciemny)",
+        layer_sat: "Satelita (Esri)",
+        layer_topo: "Topograficzna (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (Styl DE)",
+        export_header: "Właściwości eksportu",
+        format_label: "Format",
+        fmt_free: "WOLNY",
+        fmt_a4l: "A4 POZIOMO",
+        fmt_a4p: "A4 PIONOWO",
+        zoom_label: "Poziom szczegółów (Zoom)",
+        select_area_btn: "Wybierz obszar",
+        area_fixed: "Obszar ustalony ✓",
+        png_btn: "Mapa hydrantów (PNG)",
+        gpx_btn: "Eksportuj do GPX",
+        exporting_title: "Tworzenie eksportu...",
+        loading_tiles: "Ładowanie kafelków...",
+        cancel_btn: "Anuluj",
+        zoom_info: "ZOOM",
+        data_info: "DANE",
+        status_current: "AKTUALNE",
+        status_loading: "ŁADOWANIE...",
+        status_waiting: "CZEKANIE NA POZ...", // NEU
+        status_standby: "CZUWANIE (Zoom < 12)",
+        status_error: "BŁĄD",
+        geo_error: "Geolokalizacja nieobsługiwana.",
+        geo_found: "Znaleziono lokalizację!",
+        geo_fail: "Błąd lokalizacji.",
+        drag_area: "Rysuj obszar",
+        no_objects: "Brak obiektów w obszarze!",
+        gpx_success: "Wyeksportowano do GPX!",
+        too_large: "Obszar zbyt duży!",
+        locating: "Lokalizowanie obszaru...",
+        render_bounds: "Renderowanie granic...",
+        render_infra: "Renderowanie infrastruktury...",
+        layout_final: "Finalizowanie układu...",
+        plan_title: "Mapa Hydrantów",
+        legend_date: "Data",
+        legend_res: "Rozdzielczość",
+        details: "Szczegóły",
+        station: "Straż pożarna",
+        hydrant: "Hydrant",
+        defib: "Defibrylator (AED)",
+        legal_btn: "Info i prawo"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // NIEDERLÄNDISCH (NL)
+    // --------------------------------------------------------------------------------------
+    nl: {
+        search_placeholder: "Zoek locatie...",
+        locate_title: "Mijn locatie",
+        layers_title: "Kaart wisselen",
+        export_title: "Export",
+        bg_header: "Achtergrond",
+        layer_std: "Standaard (Voyager)",
+        layer_print: "Print (Licht)",
+        layer_night: "Nacht (Donker)",
+        layer_sat: "Satelliet (Esri)",
+        layer_topo: "Topografisch (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stijl)",
+        export_header: "Export Eigenschappen",
+        format_label: "Formaat",
+        fmt_free: "VRIJ",
+        fmt_a4l: "A4 LIGGEND",
+        fmt_a4p: "A4 STAAND",
+        zoom_label: "Detailniveau (Zoom)",
+        select_area_btn: "Selecteer gebied",
+        area_fixed: "Gebied vastgelegd ✓",
+        png_btn: "Hydrantenkaart (PNG)",
+        gpx_btn: "Exporteer naar GPX",
+        exporting_title: "Export maken...",
+        loading_tiles: "Tegels laden...",
+        cancel_btn: "Annuleren",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "ACTUEEL",
+        status_loading: "LADEN...",
+        status_waiting: "WACHTEN OP POS...", // NEU
+        status_standby: "STANDBY (Zoom < 12)",
+        status_error: "FOUT",
+        geo_error: "Geolocatie niet ondersteund.",
+        geo_found: "Locatie gevonden!",
+        geo_fail: "Locatie mislukt.",
+        drag_area: "Sleep gebied",
+        no_objects: "Geen objecten in gebied!",
+        gpx_success: "Geëxporteerd als GPX!",
+        too_large: "Gebied te groot!",
+        locating: "Gebied lokaliseren...",
+        render_bounds: "Grenzen renderen...",
+        render_infra: "Infrastructuur renderen...",
+        layout_final: "Lay-out voltooien...",
+        plan_title: "Hydrantenkaart",
+        legend_date: "Datum",
+        legend_res: "Resolutie",
+        details: "Details",
+        station: "Brandweerkazerne",
+        hydrant: "Brandkraan",
+        defib: "Defibrillator (AED)",
+        legal_btn: "Info & Recht"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // TSCHECHISCH (CS)
+    // --------------------------------------------------------------------------------------
+    cs: {
+        search_placeholder: "Hledat místo...",
+        locate_title: "Moje poloha",
+        layers_title: "Změnit mapu",
+        export_title: "Export",
+        bg_header: "Pozadí",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Tisk (Světlý)",
+        layer_night: "Noc (Tmavý)",
+        layer_sat: "Satelit (Esri)",
+        layer_topo: "Topografická (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Styl)",
+        export_header: "Vlastnosti exportu",
+        format_label: "Formát",
+        fmt_free: "VOLNÝ",
+        fmt_a4l: "A4 NA ŠÍŘKU",
+        fmt_a4p: "A4 NA VÝŠKU",
+        zoom_label: "Úroveň detailů (Zoom)",
+        select_area_btn: "Vybrat oblast",
+        area_fixed: "Oblast fixována ✓",
+        png_btn: "Mapa hydrantów (PNG)",
+        gpx_btn: "Exportovat do GPX",
+        exporting_title: "Vytváření exportu...",
+        loading_tiles: "Načítání dlaždic...",
+        cancel_btn: "Zrušit",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "AKTUÁLNÍ",
+        status_loading: "NAČÍTÁNÍ...",
+        status_waiting: "ČEKÁNÍ NA POZ...", // NEU
+        status_standby: "PŘIPRAVENO (Zoom < 12)",
+        status_error: "CHYBA",
+        geo_error: "Geolokace není podporována.",
+        geo_found: "Poloha nalezena!",
+        geo_fail: "Poloha nezjištěna.",
+        drag_area: "Vybrat oblast",
+        no_objects: "Žádné objekty v oblasti!",
+        gpx_success: "Exportováno do GPX!",
+        too_large: "Oblast je příliš velká!",
+        locating: "Lokalizace oblasti...",
+        render_bounds: "Vykreslování hranic...",
+        render_infra: "Vykreslování infrastruktury...",
+        layout_final: "Dokončování...",
+        plan_title: "Mapa Hydrantů",
+        legend_date: "Datum",
+        legend_res: "Rozlišení",
+        details: "Podrobnosti",
+        station: "Hasičská stanice",
+        hydrant: "Hydrant",
+        defib: "Defibrilátor (AED)",
+        legal_btn: "Info & Právo"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // DÄNISCH (DA)
+    // --------------------------------------------------------------------------------------
+    da: {
+        search_placeholder: "Søg efter sted...",
+        locate_title: "Min placering",
+        layers_title: "Skift kortlag",
+        export_title: "Eksport",
+        bg_header: "Baggrund",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Udskrift (Lys)",
+        layer_night: "Nat (Mørk)",
+        layer_sat: "Satellit (Esri)",
+        layer_topo: "Topografisk (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stil)",
+        export_header: "Eksportegenskaber",
+        format_label: "Format (Forhold)",
+        fmt_free: "FRI",
+        fmt_a4l: "A4 LIGGENDE",
+        fmt_a4p: "A4 STÅENDE",
+        zoom_label: "Detaljeringsgrad (Zoom)",
+        select_area_btn: "Vælg område på kortet",
+        area_fixed: "Område fastlagt ✓",
+        png_btn: "Hydrantkort (PNG)",
+        gpx_btn: "Eksporter hydranter (GPX)",
+        exporting_title: "Opretter eksport...",
+        loading_tiles: "Indlæser fliser...",
+        cancel_btn: "Annuller proces",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "AKTUEL",
+        status_loading: "INDLÆSER...",
+        status_waiting: "VENTER PÅ POS...", // NEU
+        status_standby: "STANDBY (Zoom < 12)",
+        status_error: "FEJL",
+        geo_error: "Geolokalisering understøttes ikke.",
+        geo_found: "Placering fundet!",
+        geo_fail: "Placering mislykkedes.",
+        drag_area: "Træk område",
+        no_objects: "Ingen objekter i det valgte område!",
+        gpx_success: "Objekter eksporteret som GPX!",
+        too_large: "Området er for stort!",
+        locating: "Lokaliserer område...",
+        render_bounds: "Renderer grænser...",
+        render_infra: "Renderer infrastruktur...",
+        layout_final: "Afslutter layout...",
+        plan_title: "Hydrantkort",
+        legend_date: "Dato",
+        legend_res: "Opløsning",
+        details: "Detaljer",
+        station: "Brandstation",
+        hydrant: "Brandhane",
+        defib: "Hjertestarter (AED)",
+        legal_btn: "Info & Lov"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // FINNISCH (FI)
+    // --------------------------------------------------------------------------------------
+    fi: {
+        search_placeholder: "Etsi sijainti...",
+        locate_title: "Oma sijainti",
+        layers_title: "Vaihda karttataso",
+        export_title: "Vienti",
+        bg_header: "Tausta",
+        layer_std: "Vakio (Voyager)",
+        layer_print: "Tulostus (Vaalea)",
+        layer_night: "Yö (Tumma)",
+        layer_sat: "Satelliitti (Esri)",
+        layer_topo: "Topografinen (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Tyyli)",
+        export_header: "Viennin ominaisuudet",
+        format_label: "Muoto (Suhde)",
+        fmt_free: "VAPAA",
+        fmt_a4l: "A4 VAAKA",
+        fmt_a4p: "A4 PYSTY",
+        zoom_label: "Yksityiskohtaisuus (Zoom)",
+        select_area_btn: "Valitse alue kartalta",
+        area_fixed: "Alue lukittu ✓",
+        png_btn: "Palopostikartta (PNG)",
+        gpx_btn: "Vie palopostit (GPX)",
+        exporting_title: "Luodaan vientiä...",
+        loading_tiles: "Ladataan tiiliä...",
+        cancel_btn: "Peruuta",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "AJANTASAINEN",
+        status_loading: "LADATAAN...",
+        status_waiting: "ODOTTAA SIJ...", // NEU
+        status_standby: "VALMIUSTILA (Zoom < 12)",
+        status_error: "VIRHE",
+        geo_error: "Paikannusta ei tueta.",
+        geo_found: "Sijainti löytyi!",
+        geo_fail: "Sijainti epäonnistui.",
+        drag_area: "Vedä alue",
+        no_objects: "Ei kohteita valitulla alueella!",
+        gpx_success: "Kohteet viety GPX-muodossa!",
+        too_large: "Alue on liian suuri!",
+        locating: "Paikannetaan aluetta...",
+        render_bounds: "Renderöidään rajoja...",
+        render_infra: "Renderöidään infrastruktuuria...",
+        layout_final: "Viimeistellään...",
+        plan_title: "Palopostikartta",
+        legend_date: "Päiväys",
+        legend_res: "Resoluutio",
+        details: "Tiedot",
+        station: "Paloasema",
+        hydrant: "Paloposti",
+        defib: "Sydämentahdistin (AED)",
+        legal_btn: "Info & Laki"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // SCHWEDISCH (SV)
+    // --------------------------------------------------------------------------------------
+    sv: {
+        search_placeholder: "Sök plats...",
+        locate_title: "Min plats",
+        layers_title: "Byt kartlager",
+        export_title: "Export",
+        bg_header: "Bakgrund",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Utskrift (Ljus)",
+        layer_night: "Natt (Mörk)",
+        layer_sat: "Satellit (Esri)",
+        layer_topo: "Topografisk (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stil)",
+        export_header: "Exportegenskaper",
+        format_label: "Format (Förhållande)",
+        fmt_free: "FRI",
+        fmt_a4l: "A4 LIGGANDE",
+        fmt_a4p: "A4 STÅENDE",
+        zoom_label: "Detaljnivå (Zoom)",
+        select_area_btn: "Välj område på kartan",
+        area_fixed: "Område fastställt ✓",
+        png_btn: "Brandpostkarta (PNG)",
+        gpx_btn: "Exportera brandposter (GPX)",
+        exporting_title: "Skapar export...",
+        loading_tiles: "Laddar kartrutor...",
+        cancel_btn: "Avbryt",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "AKTUELL",
+        status_loading: "LADDAR...",
+        status_waiting: "VÄNTAR PÅ POS...", // NEU
+        status_standby: "VÄNTELÄGE (Zoom < 12)",
+        status_error: "FEL",
+        geo_error: "Geolokalisering stöds ej.",
+        geo_found: "Plats hittad!",
+        geo_fail: "Plats misslyckades.",
+        drag_area: "Dra område",
+        no_objects: "Inga objekt i valt område!",
+        gpx_success: "Objekt exporterade som GPX!",
+        too_large: "Området är för stort!",
+        locating: "Lokaliserar område...",
+        render_bounds: "Renderar gränser...",
+        render_infra: "Renderar infrastruktur...",
+        layout_final: "Slutför layout...",
+        plan_title: "Brandpostkarta",
+        legend_date: "Datum",
+        legend_res: "Upplösning",
+        details: "Detaljer",
+        station: "Brandstation",
+        hydrant: "Brandpost",
+        defib: "Hjärtstartare (AED)",
+        legal_btn: "Info & Lag"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // NORWEGISCH (NO)
+    // --------------------------------------------------------------------------------------
+    no: {
+        search_placeholder: "Søk etter sted...",
+        locate_title: "Min posisjon",
+        layers_title: "Bytt kartlag",
+        export_title: "Eksport",
+        bg_header: "Bakgrunn",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Utskrift (Lys)",
+        layer_night: "Natt (Mørk)",
+        layer_sat: "Satellitt (Esri)",
+        layer_topo: "Topografisk (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stil)",
+        export_header: "Eksportegenskaper",
+        format_label: "Format (Forhold)",
+        fmt_free: "FRI",
+        fmt_a4l: "A4 LIGGENDE",
+        fmt_a4p: "A4 STÅENDE",
+        zoom_label: "Detaljnivå (Zoom)",
+        select_area_btn: "Velg område på kartet",
+        area_fixed: "Område låst ✓",
+        png_btn: "Brannhydrantkart (PNG)",
+        gpx_btn: "Eksporter hydranter (GPX)",
+        exporting_title: "Oppretter eksport...",
+        loading_tiles: "Laster kartfliser...",
+        cancel_btn: "Avbryt",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "OPPDATERT",
+        status_loading: "LASTER...",
+        status_waiting: "VENTER PÅ POS...", // NEU
+        status_standby: "STANDBY (Zoom < 12)",
+        status_error: "FEIL",
+        geo_error: "Geolokalisering støttes ikke.",
+        geo_found: "Posisjon funnet!",
+        geo_fail: "Posisjon mislyktes.",
+        drag_area: "Dra område",
+        no_objects: "Ingen objekter i valgt område!",
+        gpx_success: "Objekter eksportert som GPX!",
+        too_large: "Området er for stort!",
+        locating: "Lokaliserer område...",
+        render_bounds: "Tegner grenser...",
+        render_infra: "Tegner infrastruktur...",
+        layout_final: "Fullfører layout...",
+        plan_title: "Brannhydrantkart",
+        legend_date: "Dato",
+        legend_res: "Oppløsning",
+        details: "Detaljer",
+        station: "Brannstasjon",
+        hydrant: "Brannhydrant",
+        defib: "Hjertestarter (AED)",
+        legal_btn: "Info & Lov"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // PORTUGIESISCH (PT)
+    // --------------------------------------------------------------------------------------
+    pt: {
+        search_placeholder: "Pesquisar local...",
+        locate_title: "Minha localização",
+        layers_title: "Mudar camada",
+        export_title: "Exportar",
+        bg_header: "Fundo",
+        layer_std: "Padrão (Voyager)",
+        layer_print: "Impressão (Claro)",
+        layer_night: "Noite (Escuro)",
+        layer_sat: "Satélite (Esri)",
+        layer_topo: "Topográfico (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (Estilo DE)",
+        export_header: "Propriedades de Exportação",
+        format_label: "Formato (Proporção)",
+        fmt_free: "LIVRE",
+        fmt_a4l: "A4 PAISAGEM",
+        fmt_a4p: "A4 RETRATO",
+        zoom_label: "Nível de Detalhe (Zoom)",
+        select_area_btn: "Selecionar área no mapa",
+        area_fixed: "Área fixada ✓",
+        png_btn: "Mapa de Hidrantes (PNG)",
+        gpx_btn: "Exportar Hidrantes (GPX)",
+        exporting_title: "Criando exportação...",
+        loading_tiles: "Carregando azulejos...",
+        cancel_btn: "Cancelar processo",
+        zoom_info: "ZOOM",
+        data_info: "DADOS",
+        status_current: "ATUAL",
+        status_loading: "CARREGANDO...",
+        status_waiting: "AGUARDANDO POS...", // NEU
+        status_standby: "AGUARDANDO (Zoom < 12)",
+        status_error: "ERRO",
+        geo_error: "Geolocalização não suportada.",
+        geo_found: "Localização encontrada!",
+        geo_fail: "Falha na localização.",
+        drag_area: "Arrastar área",
+        no_objects: "Nenhum objeto na área selecionada!",
+        gpx_success: "Objetos exportados como GPX!",
+        too_large: "Área muito grande!",
+        locating: "Localizando área...",
+        render_bounds: "Renderizando limites...",
+        render_infra: "Renderizando infraestrutura...",
+        layout_final: "Finalizando layout...",
+        plan_title: "Mapa de Hidrantes",
+        legend_date: "Data",
+        legend_res: "Resolução",
+        details: "Detalhes",
+        station: "Corpo de Bombeiros",
+        hydrant: "Hidrante",
+        defib: "Desfibrilador (DEA)",
+        legal_btn: "Info & Legal"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // FLÄMISCH (FL/BE)
+    // --------------------------------------------------------------------------------------
+    fl: {
+        search_placeholder: "Zoek locatie...",
+        locate_title: "Mijn locatie",
+        layers_title: "Kaartlaag wijzigen",
+        export_title: "Exporteren",
+        bg_header: "Achtergrond",
+        layer_std: "Standaard (Voyager)",
+        layer_print: "Afdruk (Licht)",
+        layer_night: "Nacht (Donker)",
+        layer_sat: "Satelliet (Esri)",
+        layer_topo: "Topografisch (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stijl)",
+        export_header: "Export Eigenschappen",
+        format_label: "Formaat (Verhouding)",
+        fmt_free: "VRIJ",
+        fmt_a4l: "A4 LIGGEND",
+        fmt_a4p: "A4 STAAND",
+        zoom_label: "Detailniveau (Zoom)",
+        select_area_btn: "Selecteer gebied op kaart",
+        area_fixed: "Gebied vastgelegd ✓",
+        png_btn: "Hydrantenkaart (PNG)",
+        gpx_btn: "Exporteer hydranten (GPX)",
+        exporting_title: "Export aanmaken...",
+        loading_tiles: "Tegels laden...",
+        cancel_btn: "Annuleren",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "ACTUEEL",
+        status_loading: "LADEN...",
+        status_waiting: "WACHTEN OP POS...", // NEU
+        status_standby: "STAND-BY (Zoom < 12)",
+        status_error: "FOUT",
+        geo_error: "Geolocatie niet ondersteund.",
+        geo_found: "Locatie gevonden!",
+        geo_fail: "Locatie mislukt.",
+        drag_area: "Sleep gebied",
+        no_objects: "Geen objecten in geselecteerd gebied!",
+        gpx_success: "Objecten geëxporteerd als GPX!",
+        too_large: "Gebied te groot!",
+        locating: "Gebied lokaliseren...",
+        render_bounds: "Grenzen renderen...",
+        render_infra: "Infrastructuur renderen...",
+        layout_final: "Lay-out voltooien...",
+        plan_title: "Hydrantenkaart",
+        legend_date: "Datum",
+        legend_res: "Resolutie",
+        details: "Details",
+        station: "Brandweerkazerne",
+        hydrant: "Brandkraan",
+        defib: "Defibrillator (AED)",
+        legal_btn: "Info & Recht"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // LUXEMBURGISCH (LB)
+    // --------------------------------------------------------------------------------------
+    lb: {
+        search_placeholder: "Plaz sichen...",
+        locate_title: "Meng Positioun",
+        layers_title: "Kaart wiesselen",
+        export_title: "Export",
+        bg_header: "Hannergrond",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Drock (Hell)",
+        layer_night: "Nuecht (Däischter)",
+        layer_sat: "Satellit (Esri)",
+        layer_topo: "Topographesch (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stil)",
+        export_header: "Export-Eegeschaften",
+        format_label: "Format (Verhältnis)",
+        fmt_free: "FRÄI",
+        fmt_a4l: "A4 QUER",
+        fmt_a4p: "A4 HÉICH",
+        zoom_label: "Detail-Grad (Zoom)",
+        select_area_btn: "Ausschnëtt op der Kaart wielen",
+        area_fixed: "Ausschnëtt fixéiert ✓",
+        png_btn: "Hydrantenplang (PNG)",
+        gpx_btn: "Hydranten exportéieren (GPX)",
+        exporting_title: "Export gëtt erstallt...",
+        loading_tiles: "Lueden Kachelen...",
+        cancel_btn: "Oofbriechen",
+        zoom_info: "ZOOM",
+        data_info: "DATEN",
+        status_current: "AKTUELL",
+        status_loading: "LUEDEN...",
+        status_waiting: "WAARD OP POS...", // NEU
+        status_standby: "STANDBY (Zoom < 12)",
+        status_error: "FEELER",
+        geo_error: "Geolokalisiérung net ënnerstëtzt.",
+        geo_found: "Standuert fonnt!",
+        geo_fail: "Standuert feelgeschloen.",
+        drag_area: "Beräich zéien",
+        no_objects: "Keng Objeten am gewielte Beräich!",
+        gpx_success: "Objeten als GPX exportéiert!",
+        too_large: "Ausschnëtt ze grouss!",
+        locating: "Lokaliséieren Beräich...",
+        render_bounds: "Grenzen renderen...",
+        render_infra: "Infrastruktur renderen...",
+        layout_final: "Layout finaliséieren...",
+        plan_title: "Hydrantenkaart",
+        legend_date: "Stand",
+        legend_res: "Opléisung",
+        details: "Detailer",
+        station: "Pompjeesbau",
+        hydrant: "Hydrant",
+        defib: "Defibrillator (AED)",
+        legal_btn: "Info & Recht"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // JAPANISCH (JA)
+    // --------------------------------------------------------------------------------------
+    ja: {
+        search_placeholder: "場所を検索...",
+        locate_title: "現在地",
+        layers_title: "地図レイヤー切替",
+        export_title: "エクスポート",
+        bg_header: "背景",
+        layer_std: "標準 (Voyager)",
+        layer_print: "印刷 (明)",
+        layer_night: "夜間 (暗)",
+        layer_sat: "衛星 (Esri)",
+        layer_topo: "地形図 (OSM)",
+        layer_osm: "OSM (国際)",
+        layer_osmde: "OSM (ドイツ様式)",
+        export_header: "エクスポート設定",
+        format_label: "形式 (比率)",
+        fmt_free: "自由",
+        fmt_a4l: "A4 横",
+        fmt_a4p: "A4 縦",
+        zoom_label: "詳細レベル (ズーム)",
+        select_area_btn: "地図上で範囲を選択",
+        area_fixed: "範囲固定 ✓",
+        png_btn: "消火栓マップ (PNG)",
+        gpx_btn: "消火栓エクスポート (GPX)",
+        exporting_title: "エクスポート作成中...",
+        loading_tiles: "タイル読み込み中...",
+        cancel_btn: "キャンセル",
+        zoom_info: "ズーム",
+        data_info: "データ",
+        status_current: "最新",
+        status_loading: "読み込み中...",
+        status_waiting: "位置待機中...", // NEU
+        status_standby: "待機中 (ズーム < 12)",
+        status_error: "エラー",
+        geo_error: "位置情報はサポートされていません。",
+        geo_found: "位置を特定しました！",
+        geo_fail: "位置特定に失敗しました。",
+        drag_area: "範囲をドラッグ",
+        no_objects: "選択範囲にオブジェクトがありません！",
+        gpx_success: "GPXとしてエクスポートしました！",
+        too_large: "範囲が広すぎます！",
+        locating: "エリア特定中...",
+        render_bounds: "境界線を描画中...",
+        render_infra: "インフラを描画中...",
+        layout_final: "レイアウト仕上げ中...",
+        plan_title: "消火栓マップ",
+        legend_date: "日付",
+        legend_res: "解像度",
+        details: "詳細",
+        station: "消防署",
+        hydrant: "消火栓",
+        defib: "AED (自動体外式除細動器)",
+        legal_btn: "情報・法的"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // KOREANISCH (KO)
+    // --------------------------------------------------------------------------------------
+    ko: {
+        search_placeholder: "장소 검색...",
+        locate_title: "내 위치",
+        layers_title: "지도 레이어 전환",
+        export_title: "내보내기",
+        bg_header: "배경",
+        layer_std: "표준 (Voyager)",
+        layer_print: "인쇄 (밝음)",
+        layer_night: "야간 (어두움)",
+        layer_sat: "위성 (Esri)",
+        layer_topo: "지형도 (OSM)",
+        layer_osm: "OSM (국제)",
+        layer_osmde: "OSM (독일 스타일)",
+        export_header: "내보내기 속성",
+        format_label: "형식 (비율)",
+        fmt_free: "자유",
+        fmt_a4l: "A4 가로",
+        fmt_a4p: "A4 세로",
+        zoom_label: "상세 레벨 (줌)",
+        select_area_btn: "지도에서 영역 선택",
+        area_fixed: "영역 고정됨 ✓",
+        png_btn: "소화전 지도 (PNG)",
+        gpx_btn: "소화전 내보내기 (GPX)",
+        exporting_title: "내보내기 생성 중...",
+        loading_tiles: "타일 로딩 중...",
+        cancel_btn: "취소",
+        zoom_info: "줌",
+        data_info: "데이터",
+        status_current: "최신",
+        status_loading: "로딩 중...",
+        status_waiting: "위치 대기 중...", // NEU
+        status_standby: "대기 (줌 < 12)",
+        status_error: "오류",
+        geo_error: "위치 정보가 지원되지 않습니다.",
+        geo_found: "위치 찾음!",
+        geo_fail: "위치 찾기 실패.",
+        drag_area: "영역 드래그",
+        no_objects: "선택된 영역에 개체가 없습니다!",
+        gpx_success: "GPX로 내보내기 성공!",
+        too_large: "영역이 너무 큽니다!",
+        locating: "영역 찾는 중...",
+        render_bounds: "경계 렌더링 중...",
+        render_infra: "인프라 렌더링 중...",
+        layout_final: "레이아웃 마무리 중...",
+        plan_title: "소화전 지도",
+        legend_date: "날짜",
+        legend_res: "해상도",
+        details: "상세",
+        station: "소방서",
+        hydrant: "소화전",
+        defib: "제세동기 (AED)",
+        legal_btn: "정보 및 법적 고지"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // MALAIISCH (MS)
+    // --------------------------------------------------------------------------------------
+    ms: {
+        search_placeholder: "Cari lokasi...",
+        locate_title: "Lokasi Saya",
+        layers_title: "Tukar Lapisan Peta",
+        export_title: "Eksport",
+        bg_header: "Latar Belakang",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Cetak (Terang)",
+        layer_night: "Malam (Gelap)",
+        layer_sat: "Satelit (Esri)",
+        layer_topo: "Topografi (OSM)",
+        layer_osm: "OSM (Antarabangsa)",
+        layer_osmde: "OSM (Gaya DE)",
+        export_header: "Sifat Eksport",
+        format_label: "Format (Nisbah)",
+        fmt_free: "BEBAS",
+        fmt_a4l: "A4 LANDSKAP",
+        fmt_a4p: "A4 POTRET",
+        zoom_label: "Tahap Perincian (Zoom)",
+        select_area_btn: "Pilih Kawasan di Peta",
+        area_fixed: "Kawasan ditetapkan ✓",
+        png_btn: "Peta Pili Bomba (PNG)",
+        gpx_btn: "Eksport Pili Bomba (GPX)",
+        exporting_title: "Mencipta Eksport...",
+        loading_tiles: "Memuatkan Jubin...",
+        cancel_btn: "Batal",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "TERKINI",
+        status_loading: "MEMUATKAN...",
+        status_waiting: "MENUNGGU POS...", // NEU
+        status_standby: "SEDIA (Zoom < 12)",
+        status_error: "RALAT",
+        geo_error: "Geolokasi tidak disokong.",
+        geo_found: "Lokasi ditemui!",
+        geo_fail: "Gagal mengesan lokasi.",
+        drag_area: "Seret kawasan",
+        no_objects: "Tiada objek di kawasan yang dipilih!",
+        gpx_success: "Objek dieksport sebagai GPX!",
+        too_large: "Kawasan terlalu besar!",
+        locating: "Mengesan kawasan...",
+        render_bounds: "Memapar sempadan...",
+        render_infra: "Memapar infrastruktur...",
+        layout_final: "Menyiapkan susun atur...",
+        plan_title: "Peta Pili Bomba",
+        legend_date: "Tarikh",
+        legend_res: "Resolusi",
+        details: "Butiran",
+        station: "Balai Bomba",
+        hydrant: "Pili Bomba",
+        defib: "Defibrilator (AED)",
+        legal_btn: "Info & Undang-undang"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // THAI (TH)
+    // --------------------------------------------------------------------------------------
+    th: {
+        search_placeholder: "ค้นหาสถานที่...",
+        locate_title: "ตำแหน่งของฉัน",
+        layers_title: "เปลี่ยนชั้นข้อมูลแผนที่",
+        export_title: "ส่งออก",
+        bg_header: "พื้นหลัง",
+        layer_std: "มาตรฐาน (Voyager)",
+        layer_print: "พิมพ์ (สว่าง)",
+        layer_night: "กลางคืน (มืด)",
+        layer_sat: "ดาวเทียม (Esri)",
+        layer_topo: "ภูมิประเทศ (OSM)",
+        layer_osm: "OSM (สากล)",
+        layer_osmde: "OSM (สไตล์เยอรมัน)",
+        export_header: "คุณสมบัติการส่งออก",
+        format_label: "รูปแบบ (อัตราส่วน)",
+        fmt_free: "อิสระ",
+        fmt_a4l: "A4 แนวนอน",
+        fmt_a4p: "A4 แนวตั้ง",
+        zoom_label: "ระดับรายละเอียด (ซูม)",
+        select_area_btn: "เลือกพื้นที่บนแผนที่",
+        area_fixed: "พื้นที่ถูกกำหนดแล้ว ✓",
+        png_btn: "แผนที่หัวดับเพลิง (PNG)",
+        gpx_btn: "ส่งออกหัวดับเพลิง (GPX)",
+        exporting_title: "กำลังสร้างการส่งออก...",
+        loading_tiles: "กำลังโหลดกระเบื้อง...",
+        cancel_btn: "ยกเลิก",
+        zoom_info: "ซูม",
+        data_info: "ข้อมูล",
+        status_current: "ปัจจุบัน",
+        status_loading: "กำลังโหลด...",
+        status_waiting: "กำลังรอตำแหน่ง...", // NEU
+        status_standby: "รอพร้อม (ซูม < 12)",
+        status_error: "ข้อผิดพลาด",
+        geo_error: "ไม่รองรับการระบุตำแหน่งทางภูมิศาสตร์",
+        geo_found: "พบตำแหน่ง!",
+        geo_fail: "ระบุตำแหน่งล้มเหลว",
+        drag_area: "ลากพื้นที่",
+        no_objects: "ไม่มีวัตถุในพื้นที่ที่เลือก!",
+        gpx_success: "ส่งออกวัตถุเป็น GPX แล้ว!",
+        too_large: "พื้นที่ใหญ่เกินไป!",
+        locating: "กำลังระบุพื้นที่...",
+        render_bounds: "กำลังแสดงผลขอบเขต...",
+        render_infra: "กำลังแสดงผลโครงสร้างพื้นฐาน...",
+        layout_final: "กำลังสรุปรูปแบบ...",
+        plan_title: "แผนที่หัวดับเพลิง",
+        legend_date: "วันที่",
+        legend_res: "ความละเอียด",
+        details: "รายละเอียด",
+        station: "สถานีดับเพลิง",
+        hydrant: "หัวดับเพลิง",
+        defib: "เครื่องกระตุกหัวใจ (AED)",
+        legal_btn: "ข้อมูลและกฎหมาย"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // MANDARIN CHINESISCH (ZH)
+    // --------------------------------------------------------------------------------------
+    zh: {
+        search_placeholder: "搜索地点...",
+        locate_title: "我的位置",
+        layers_title: "切换图层",
+        export_title: "导出",
+        bg_header: "背景",
+        layer_std: "标准 (Voyager)",
+        layer_print: "打印 (亮色)",
+        layer_night: "夜间 (暗色)",
+        layer_sat: "卫星 (Esri)",
+        layer_topo: "地形 (OSM)",
+        layer_osm: "OSM (国际)",
+        layer_osmde: "OSM (德国样式)",
+        export_header: "导出属性",
+        format_label: "格式 (比例)",
+        fmt_free: "自由",
+        fmt_a4l: "A4 横向",
+        fmt_a4p: "A4 纵向",
+        zoom_label: "详细程度 (缩放)",
+        select_area_btn: "在地图上选择区域",
+        area_fixed: "区域已固定 ✓",
+        png_btn: "消火栓地图 (PNG)",
+        gpx_btn: "导出消火栓 (GPX)",
+        exporting_title: "正在创建导出...",
+        loading_tiles: "加载瓦片中...",
+        cancel_btn: "取消",
+        zoom_info: "缩放",
+        data_info: "数据",
+        status_current: "最新",
+        status_loading: "加载中...",
+        status_waiting: "等待定位...", // NEU
+        status_standby: "待机 (缩放 < 12)",
+        status_error: "错误",
+        geo_error: "不支持地理定位。",
+        geo_found: "已找到位置！",
+        geo_fail: "定位失败。",
+        drag_area: "拖动区域",
+        no_objects: "选定区域内无对象！",
+        gpx_success: "对象已导出为 GPX！",
+        too_large: "区域太大！",
+        locating: "定位区域...",
+        render_bounds: "渲染边界...",
+        render_infra: "渲染基础设施...",
+        layout_final: "最终布局...",
+        plan_title: "消火栓地图",
+        legend_date: "日期",
+        legend_res: "分辨率",
+        details: "详细信息",
+        station: "消防站",
+        hydrant: "消火栓",
+        defib: "除颤器 (AED)",
+        legal_btn: "信息与法律"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // KANTONESISCH (YUE)
+    // --------------------------------------------------------------------------------------
+    yue: {
+        search_placeholder: "搜尋地點...",
+        locate_title: "我嘅位置",
+        layers_title: "切換圖層",
+        export_title: "匯出",
+        bg_header: "背景",
+        layer_std: "標準 (Voyager)",
+        layer_print: "列印 (淺色)",
+        layer_night: "夜間 (深色)",
+        layer_sat: "衛星 (Esri)",
+        layer_topo: "地形 (OSM)",
+        layer_osm: "OSM (國際)",
+        layer_osmde: "OSM (德國樣式)",
+        export_header: "匯出屬性",
+        format_label: "格式 (比例)",
+        fmt_free: "自由",
+        fmt_a4l: "A4 橫向",
+        fmt_a4p: "A4 縱向",
+        zoom_label: "詳細程度 (縮放)",
+        select_area_btn: "喺地圖上選擇區域",
+        area_fixed: "區域已鎖定 ✓",
+        png_btn: "消防喉地圖 (PNG)",
+        gpx_btn: "匯出消防喉 (GPX)",
+        exporting_title: "建立緊匯出...",
+        loading_tiles: "載入緊圖磚...",
+        cancel_btn: "取消",
+        zoom_info: "縮放",
+        data_info: "數據",
+        status_current: "最新",
+        status_loading: "載入緊...",
+        status_waiting: "等待定位...", // NEU
+        status_standby: "待機 (縮放 < 12)",
+        status_error: "錯誤",
+        geo_error: "唔支援地理定位。",
+        geo_found: "搵到位置！",
+        geo_fail: "定位失敗。",
+        drag_area: "拖曳區域",
+        no_objects: "選定區域內冇物件！",
+        gpx_success: "物件已匯出做 GPX！",
+        too_large: "區域太大！",
+        locating: "定位區域...",
+        render_bounds: "渲染邊界...",
+        render_infra: "渲染基礎設施...",
+        layout_final: "最終佈局...",
+        plan_title: "消防喉地圖",
+        legend_date: "日期",
+        legend_res: "解像度",
+        details: "詳細資訊",
+        station: "消防局",
+        hydrant: "消防喉",
+        defib: "除顫器 (AED)",
+        legal_btn: "資訊與法律"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // TAIWANESISCH / TRADITIONELLES CHINESISCH (TW)
+    // --------------------------------------------------------------------------------------
+    tw: {
+        search_placeholder: "搜尋地點...",
+        locate_title: "我的位置",
+        layers_title: "切換圖層",
+        export_title: "匯出",
+        bg_header: "背景",
+        layer_std: "標準 (Voyager)",
+        layer_print: "列印 (淺色)",
+        layer_night: "夜間 (深色)",
+        layer_sat: "衛星 (Esri)",
+        layer_topo: "地形 (OSM)",
+        layer_osm: "OSM (國際)",
+        layer_osmde: "OSM (德國樣式)",
+        export_header: "匯出屬性",
+        format_label: "格式 (比例)",
+        fmt_free: "自由",
+        fmt_a4l: "A4 橫向",
+        fmt_a4p: "A4 縱向",
+        zoom_label: "詳細程度 (縮放)",
+        select_area_btn: "在地圖上選擇區域",
+        area_fixed: "區域已固定 ✓",
+        png_btn: "消防栓地圖 (PNG)",
+        gpx_btn: "匯出消防栓 (GPX)",
+        exporting_title: "正在建立匯出...",
+        loading_tiles: "載入圖磚中...",
+        cancel_btn: "取消",
+        zoom_info: "縮放",
+        data_info: "數據",
+        status_current: "最新",
+        status_loading: "載入中...",
+        status_waiting: "等待定位...", // NEU
+        status_standby: "待機 (縮放 < 12)",
+        status_error: "錯誤",
+        geo_error: "不支援地理定位。",
+        geo_found: "已找到位置！",
+        geo_fail: "定位失敗。",
+        drag_area: "拖曳區域",
+        no_objects: "選定區域內無物件！",
+        gpx_success: "物件已匯出為 GPX！",
+        too_large: "區域太大！",
+        locating: "定位區域...",
+        render_bounds: "渲染邊界...",
+        render_infra: "渲染基礎設施...",
+        layout_final: "最終佈局...",
+        plan_title: "消防栓地圖",
+        legend_date: "日期",
+        legend_res: "解析度",
+        details: "詳細資訊",
+        station: "消防局",
+        hydrant: "消防栓",
+        defib: "去顫器 (AED)",
+        legal_btn: "資訊與法律"
     }
-
-    // Erzeugt das HTML für den Tooltip (Daten aus den Tags)
-    function generateTooltip(tags) {
-        let tooltipTitle = tags.name || t('details');
-        if (tags.emergency === 'defibrillator') tooltipTitle = t('defib');
-
-        let html = `<div class="p-2 min-w-[180px]">
-            <div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div>
-            <div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
-        for (const [key, val] of Object.entries(tags)) {
-            html += `<div class="text-slate-400 text-right">${key}:</div><div class="text-slate-200 break-words">${val}</div>`;
-        }
-        html += `</div></div>`;
-        return html;
-    }
-
-    // Setzt den Mittelpunkt für den 100m Kreis
-    function showRangeCircle(lat, lon) {
-        activeRangeCenter = {lat, lon};
-        updateRangeCircle();
-    }
-
-    // Zeichnet den 100m Radius-Kreis
-    function updateRangeCircle() {
-        rangeLayerGroup.clearLayers();
-        if (!activeRangeCenter) return;
-        const zoom = map.getZoom();
-        if (zoom < 16) return; // Macht bei wenig Zoom keinen Sinn
-
-        L.circle([activeRangeCenter.lat, activeRangeCenter.lon], {
-            color: '#f97316', fillColor: '#f97316', fillOpacity: 0.15, radius: 100, weight: 2, dashArray: '5, 8', interactive: false 
-        }).addTo(rangeLayerGroup);
-
-        // Beschriftung "100 m" hinzufügen
-        if (zoom >= 17) {
-            const latRad = activeRangeCenter.lat * Math.PI / 180;
-            const kmPerDegLon = 111.32 * Math.cos(latRad);
-            const offsetLon = 0.05 / kmPerDegLon; 
-            const labelPos = [activeRangeCenter.lat, activeRangeCenter.lon + offsetLon];
-            const labelMarker = L.marker(labelPos, {opacity: 0, interactive: false}).addTo(rangeLayerGroup);
-            labelMarker.bindTooltip("100 m", { permanent: true, direction: 'center', className: 'range-label', offset: [0, 0] }).openTooltip();
-        }
-    }
-
-    // GPS Funktion: Fragt den Browser nach Position
-    function locateUser() {
-        if (!navigator.geolocation) { showNotification(t('geo_error')); return; }
-        const btn = document.getElementById('locate-btn');
-        const icon = btn ? btn.querySelector('svg') : null;
-        if(icon) icon.classList.add('animate-spin'); 
-
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const { latitude, longitude } = pos.coords;
-                map.flyTo([latitude, longitude], 18, { animate: true, duration: 1.5 });
-                if(icon) icon.classList.remove('animate-spin');
-                showNotification(t('geo_found'));
-            },
-            (err) => {
-                console.warn("Geolocation Fehler:", err);
-                if(icon) icon.classList.remove('animate-spin');
-                showNotification(t('geo_fail'));
-            },
-            { enableHighAccuracy: true, timeout: 5000 }
-        );
-    }
-
-    /* =========================================================================
-       5. MENU & EXPORT FUNKTIONEN
-       Steuerung der UI-Elemente und der Export-Logik.
-       ========================================================================= */
-
-    // Schließt alle offenen Menüs (damit nicht 2 gleichzeitig offen sind)
-    function closeAllMenus() {
-        const layerMenu = document.getElementById('layer-menu');
-        const layerBtn = document.getElementById('layer-btn-trigger');
-        if (layerMenu && !layerMenu.classList.contains('hidden')) {
-            layerMenu.classList.add('hidden');
-            if(layerBtn) layerBtn.setAttribute('aria-expanded', 'false');
-        }
-
-        const exportMenu = document.getElementById('export-menu');
-        const exportBtn = document.getElementById('export-btn-trigger');
-        if (exportMenu && !exportMenu.classList.contains('hidden')) {
-            exportMenu.classList.add('hidden');
-            if(exportBtn) exportBtn.setAttribute('aria-expanded', 'false');
-        }
-
-        const legalModal = document.getElementById('legal-modal');
-        const legalBtn = document.getElementById('btn-legal-trigger');
-        if (legalModal && legalModal.style.display !== 'none' && legalModal.style.display !== '') {
-            legalModal.style.display = 'none';
-            if(legalBtn) legalBtn.setAttribute('aria-expanded', 'false');
-        }
-    }
-
-    // Timer-Logik: Menüs schließen sich nach 10s von selbst
-    function setupMenuAutoClose() {
-        ['layer-menu', 'export-menu', 'legal-modal'].forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            let closeTimer = null;
-            el.addEventListener('mouseleave', () => {
-                const isHidden = id === 'legal-modal' ? (el.style.display === 'none' || el.style.display === '') : el.classList.contains('hidden');
-                if (isHidden) return;
-                closeTimer = setTimeout(() => {
-                    if (id === 'legal-modal') {
-                        el.style.display = 'none';
-                        const btn = document.getElementById('btn-legal-trigger');
-                        if(btn) btn.setAttribute('aria-expanded', 'false');
-                    } else {
-                        el.classList.add('hidden');
-                        const btnId = id === 'layer-menu' ? 'layer-btn-trigger' : 'export-btn-trigger';
-                        const btn = document.getElementById(btnId);
-                        if(btn) btn.setAttribute('aria-expanded', 'false');
-                    }
-                }, 10000); 
-            });
-            el.addEventListener('mouseenter', () => {
-                if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
-            });
-        });
-    }
-
-    // Export Einstellungen setzen
-    function setExportFormat(fmt) {
-        exportFormat = fmt;
-        document.querySelectorAll('.fmt-btn').forEach(b => {
-            b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
-            b.classList.add('bg-white/5');
-        });
-        document.getElementById(`fmt-${fmt}`).classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
-        clearSelection(); 
-    }
-
-    function setExportZoom(z) {
-        if (activeLayerConfig === 'topo' && z > 17) return; 
-        exportZoomLevel = z;
-        document.querySelectorAll('.zoom-btn').forEach(b => {
-            b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
-            b.classList.add('bg-white/5');
-        });
-        document.getElementById(`zoom-${z}`).classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
-    }
-
-    // Startet den Modus "Ausschnitt wählen"
-    function startSelection() {
-        isSelecting = true;
-        clearSelection();
-        map.dragging.disable(); 
-        map.getContainer().classList.add('selection-mode'); 
-        showNotification(t('drag_area')); 
-    }
-
-    function clearSelection() {
-        if (selectionRect) { map.removeLayer(selectionRect); selectionRect = null; }
-        finalBounds = null;
-        document.getElementById('selection-info').classList.add('hidden');
-    }
-
-    // Maus-Logik für Rechteck-Auswahl
-    function onMouseDown(e) {
-        if (!isSelecting) return;
-        startPoint = e.latlng;
-        selectionRect = L.rectangle([startPoint, startPoint], {
-            color: '#3b82f6', weight: 2, fillOpacity: 0.2, interactive: false
-        }).addTo(map);
-    }
-
-    function onMouseMove(e) {
-        if (!isSelecting || !startPoint || !selectionRect) return;
-        let current = e.latlng;
-        // Seitenverhältnis erzwingen bei DIN Formaten
-        if (exportFormat !== 'free') {
-            const ratio = (exportFormat === 'a4l') ? 1.4142 : 0.7071; 
-            const lngScale = Math.cos(startPoint.lat * Math.PI / 180);
-            const dy = Math.abs(current.lat - startPoint.lat);
-            const dx = (dy * ratio) / lngScale;
-            const latDir = current.lat > startPoint.lat ? 1 : -1;
-            const lngDir = current.lng > startPoint.lng ? 1 : -1;
-            current = L.latLng(startPoint.lat + (latDir * dy), startPoint.lng + (lngDir * dx));
-        }
-        selectionRect.setBounds([startPoint, current]);
-    }
-
-    function onMouseUp(e) {
-        if (!isSelecting || !startPoint) return;
-        finalBounds = selectionRect.getBounds(); 
-        isSelecting = false; startPoint = null;
-        map.dragging.enable(); 
-        map.getContainer().classList.remove('selection-mode');
-        document.getElementById('selection-info').classList.remove('hidden');
-    }
-
-    // Hintergrundkarte wechseln
-    function setBaseLayer(key) {
-        activeLayerConfig = key;
-        map.eachLayer(layer => { if (layer instanceof L.TileLayer) map.removeLayer(layer); });
-        const attribution = layerAttributions[key] || '&copy; OSM';
-        L.tileLayer(layerUrls[key], { attribution: attribution }).addTo(map);
-        
-        document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
-        document.getElementById(`btn-${key}`).classList.add('active');
-        const btn18 = document.getElementById('zoom-18');
-        if (key === 'topo') {
-            btn18.disabled = true;
-            if (exportZoomLevel > 17) setExportZoom(17);
-        } else {
-            btn18.disabled = false;
-        }
-    }
-
-    // Menüs öffnen/schließen
-    function toggleExportMenu() { 
-        const menu = document.getElementById('export-menu');
-        const btn = document.getElementById('export-btn-trigger');
-        const isCurrentlyHidden = menu.classList.contains('hidden');
-        closeAllMenus();
-        if (isCurrentlyHidden) {
-            menu.classList.remove('hidden');
-            btn.setAttribute('aria-expanded', 'true');
-            resetExportUI();
-        }
-    }
-
-    function toggleLayerMenu() { 
-        const menu = document.getElementById('layer-menu');
-        const btn = document.getElementById('layer-btn-trigger');
-        const isCurrentlyHidden = menu.classList.contains('hidden');
-        closeAllMenus();
-        if (isCurrentlyHidden) {
-            menu.classList.remove('hidden');
-            btn.setAttribute('aria-expanded', 'true');
-        }
-    }
-
-    function toggleLegalModal() { 
-        const modal = document.getElementById('legal-modal');
-        const btn = document.getElementById('btn-legal-trigger');
-        const isCurrentlyVisible = (modal.style.display === 'flex');
-        closeAllMenus();
-        if (!isCurrentlyVisible) {
-            modal.style.display = 'flex';
-            btn.setAttribute('aria-expanded', 'true');
-        }
-    }
-
-    function resetExportUI() {
-        document.getElementById('export-setup').classList.remove('hidden');
-        document.getElementById('export-progress').classList.add('hidden');
-        document.getElementById('progress-bar').style.width = '0%';
-    }
-    function cancelExport() { if(exportAbortController) exportAbortController.abort(); }
-
-    // Adresssuche (Nominatim)
-    function searchLocation() {
-        const q = document.getElementById('search-input').value;
-        if (!q) return;
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`)
-            .then(r => r.json())
-            .then(d => { if(d.length) map.flyTo([d[0].lat, d[0].lon], 18); });
-    }
-
-    // GPX Export Funktion
-    function exportAsGPX() {
-        const bounds = finalBounds || map.getBounds();
-        const pointsToExport = cachedElements.filter(el => {
-            const lat = el.lat || el.center?.lat;
-            const lon = el.lon || el.center?.lon;
-            if (!lat || !lon) return false;
-            return bounds.contains(L.latLng(lat, lon));
-        });
-
-        if (pointsToExport.length === 0) {
-            showNotification(t('no_objects'));
-            return;
-        }
-
-        let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
-        gpx += '<gpx version="1.1" creator="OpenFireMap V2" xmlns="http://www.topografix.com/GPX/1/1">\n';
-        gpx += `  <metadata><name>Hydranten Export</name><time>${new Date().toISOString()}</time></metadata>\n`;
-
-        pointsToExport.forEach(el => {
-            const lat = el.lat || el.center?.lat;
-            const lon = el.lon || el.center?.lon;
-            const tags = el.tags || {};
-            
-            const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
-            const isHydrant = tags.emergency && ['fire_hydrant', 'water_tank', 'suction_point', 'fire_water_pond', 'cistern'].some(t => tags.emergency.includes(t));
-            const isDefib = tags.emergency === 'defibrillator';
-
-            if (!isStation && !isHydrant && !isDefib) return;
-
-            let name = tags.name || (isStation ? t('station') : (isDefib ? t('defib') : t('hydrant')));
-            if (!tags.name && tags['fire_hydrant:type']) name = `H ${tags['fire_hydrant:type']}`;
-            if (!tags.name && tags['ref']) name = `${isStation ? 'Wache' : 'H'} ${tags['ref']}`;
-
-            let desc = [];
-            for (const [k, v] of Object.entries(tags)) desc.push(`${k}: ${v}`);
-            
-            gpx += `  <wpt lat="${lat}" lon="${lon}">\n`;
-            gpx += `    <name>${escapeXML(name)}</name>\n`;
-            gpx += `    <desc>${escapeXML(desc.join('\n'))}</desc>\n`;
-            gpx += `    <sym>${isStation ? 'Fire Station' : 'Hydrant'}</sym>\n`;
-            gpx += `  </wpt>\n`;
-        });
-        gpx += '</gpx>';
-
-        const blob = new Blob([gpx], {type: 'application/gpx+xml'});
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `OpenFireMap_Export_${new Date().toISOString().slice(0,10)}.gpx`;
-        link.href = url;
-        link.click();
-        URL.revokeObjectURL(url);
-        
-        showNotification(`${pointsToExport.length} ${t('gpx_success')}`);
-        toggleExportMenu();
-    }
-
-    // Hilfsfunktion: Sonderzeichen für GPX escapen
-    function escapeXML(str) {
-        return str.replace(/[<>&'"]/g, c => {
-            switch (c) {
-                case '<': return '&lt;'; case '>': return '&gt;'; case '&': return '&amp;'; case '\'': return '&apos;'; case '"': return '&quot;';
-            }
-        });
-    }
-
-    const ZOOM_LIMITS_KM = { 12: 30, 13: 25, 14: 20, 15: 15, 16: 10, 17: 8, 18: 5 };
-
-    // PNG Export Funktion (Die komplexe Logik)
-    async function exportAsPNG() {
-        exportAbortController = new AbortController();
-        const signal = exportAbortController.signal;
-        
-        document.getElementById('export-setup').classList.add('hidden');
-        document.getElementById('export-progress').classList.remove('hidden');
-        const progressBar = document.getElementById('progress-bar'), progressPercent = document.getElementById('progress-percent'), progressLabel = document.getElementById('progress-label');
-        
-        const targetZoom = exportZoomLevel;
-        const fallbackZoom = targetZoom - 1; 
-        const bounds = finalBounds || map.getBounds(); 
-        const nw = bounds.getNorthWest(), se = bounds.getSouthEast();
-
-        progressLabel.innerText = t('locating'); 
-        
-        let displayTitle = "OpenFireMap.org";
-        const centerLat = bounds.getCenter().lat;
-        const centerLon = bounds.getCenter().lng;
-
-        // Versuchen, den Stadtnamen zu finden
-        try {
-            const fetchAddress = async (lat, lon) => {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`); 
-                const d = await res.json();
-                const addr = d.address || {};
-                const city = addr.city || addr.town || addr.village || addr.municipality || "";
-                const suburb = addr.suburb || addr.neighbourhood || addr.hamlet || "";
-                return { city, suburb };
-            };
-            const centerLoc = await fetchAddress(centerLat, centerLon);
-            if (centerLoc.city) displayTitle = centerLoc.suburb ? `${centerLoc.city} - ${centerLoc.suburb}` : centerLoc.city;
-        } catch (e) { console.error("Titel Fehler:", e); }
-
-        // Mathe-Magie zur Berechnung der Kacheln
-        const worldSize = (z) => Math.pow(2, z);
-        const lat2tile = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * worldSize(z);
-        const lon2tile = (lon, z) => (lon + 180) / 360 * worldSize(z);
-        
-        const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
-        const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
-        const x2 = Math.floor(lon2tile(se.lng, targetZoom));
-        const y2 = Math.floor(lat2tile(se.lat, targetZoom));
-
-        const margin = 40, footerH = 60; 
-        const mapWidth = (x2 - x1 + 1) * 256;
-        const mapHeight = (y2 - y1 + 1) * 256;
-
-        // Sicherheitscheck: Bild zu groß?
-        if (canvas.width > 14000 || canvas.height > 14000) { 
-            showNotification(t('too_large'), 5000); toggleExportMenu(); return; 
-        }
-
-        const mPerPx = (Math.cos(bounds.getCenter().lat * Math.PI / 180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, targetZoom));
-        const maxKm = ZOOM_LIMITS_KM[targetZoom] || 5; 
-        const maxMeters = maxKm * 1000;
-        const widthMeters = mapWidth * mPerPx, heightMeters = mapHeight * mPerPx;
-
-        if (widthMeters > maxMeters || heightMeters > maxMeters) {
-             const currentMax = Math.max(widthMeters, heightMeters) / 1000;
-             showNotification(`Zoom ${targetZoom}: Max. ${maxKm}km! (Aktuell: ~${currentMax.toFixed(1)}km)`, 6000); 
-             toggleExportMenu(); return;
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = mapWidth + (margin * 2); canvas.height = mapHeight + margin + footerH + margin; 
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Kacheln laden
-        const totalTiles = (x2 - x1 + 1) * (y2 - y1 + 1);
-        let loaded = 0;
-        const baseUrlTpl = layerUrls[activeLayerConfig].replace('{s}', 'a').replace('{r}', '');
-
-        progressLabel.innerText = `${t('loading_tiles')} (Z${targetZoom})...`;
-        const tileQueue = [];
-        for (let x = x1; x <= x2; x++) for (let y = y1; y <= y2; y++) tileQueue.push({x, y});
-
-        const processQueue = async () => {
-            while (tileQueue.length > 0 && !signal.aborted) {
-                const {x, y} = tileQueue.shift();
-                await new Promise(resolve => {
-                    const img = new Image(); img.crossOrigin = "anonymous";
-                    const zTargetUrl = baseUrlTpl.replace('{z}', targetZoom).replace('{x}', x).replace('{y}', y);
-                    img.onload = () => { ctx.drawImage(img, (x - x1) * 256 + margin, (y - y1) * 256 + margin); loaded++; updateProgress(); resolve(); };
-                    img.onerror = () => {
-                        // Fallback: Wenn Z18 fehlt, lade Z17 und skaliere hoch
-                        const zFallback_x = Math.floor(x/2); const zFallback_y = Math.floor(y/2);
-                        const off_x = (x % 2) * 128; const off_y = (y % 2) * 128;
-                        const zFallbackUrl = baseUrlTpl.replace('{z}', fallbackZoom).replace('{x}', zFallback_x).replace('{y}', zFallback_y);
-                        const fImg = new Image(); fImg.crossOrigin = "anonymous"; fImg.src = zFallbackUrl;
-                        fImg.onload = () => { ctx.drawImage(fImg, off_x, off_y, 128, 128, (x - x1) * 256 + margin, (y - y1) * 256 + margin, 256, 256); loaded++; updateProgress(); resolve(); };
-                        fImg.onerror = () => { loaded++; resolve(); };
-                    };
-                    img.src = zTargetUrl;
-                });
-            }
-        };
-
-        const workers = [];
-        for (let i = 0; i < 8; i++) workers.push(processQueue()); // 8 gleichzeitige Downloads
-        await Promise.all(workers);
-
-        function updateProgress() { const p = Math.round((loaded / totalTiles) * 80); progressBar.style.width = p + "%"; progressPercent.innerText = p + "%"; }
-        if(signal.aborted) { toggleExportMenu(); return; }
-        
-        // Grenzen zeichnen
-        progressLabel.innerText = t('render_bounds');
-        ctx.save(); ctx.translate((-x1 * 256) + margin, (-y1 * 256) + margin); 
-        ctx.strokeStyle = "#333333"; ctx.lineWidth = 2; ctx.setLineDash([20, 20]); ctx.lineCap = "round";
-
-        for (let el of cachedElements) {
-            if (el.tags && el.tags.boundary === 'administrative' && el.geometry) {
-                if (targetZoom < 14) continue; 
-                ctx.beginPath();
-                let first = true;
-                for (let p of el.geometry) {
-                    const px = lon2tile(p.lon, targetZoom) * 256;
-                    const py = lat2tile(p.lat, targetZoom) * 256;
-                    if (first) { ctx.moveTo(px, py); first = false; } else { ctx.lineTo(px, py); }
-                }
-                ctx.stroke();
-            }
-        }
-        ctx.restore();
-
-        // Icons zeichnen
-        progressLabel.innerText = t('render_infra');
-        ctx.save(); ctx.translate((-x1 * 256) + margin, (-y1 * 256) + margin);
-        const iconCache = {};
-        const renderedExportLocations = []; 
-
-        for (let el of cachedElements) {
-            const tags = el.tags || {};
-            if (tags.boundary === 'administrative') continue;
-            const lat = el.lat || el.center?.lat;
-            const lon = el.lon || el.center?.lon;
-            const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
-            
-            if (isStation) {
-                const alreadyDrawn = renderedExportLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
-                if (alreadyDrawn) continue;
-                renderedExportLocations.push({lat, lon});
-            }
-
-            const type = isStation ? 'station' : (tags.emergency === 'defibrillator' ? 'defibrillator' : (tags['fire_hydrant:type'] || tags.emergency));
-            const tx = lon2tile(lon, targetZoom) * 256;
-            const ty = lat2tile(lat, targetZoom) * 256;
-            
-            if (tx < x1*256 || tx > (x2+1)*256 || ty < y1*256 || ty > (y2+1)*256) continue;
-
-            if (isStation && targetZoom < 12) continue;
-            if (type === 'defibrillator') { if (targetZoom < 15) continue; } else if (!isStation && targetZoom < 15) continue;
-
-            const drawAsStationSquare = isStation && targetZoom < 14;
-            const drawAsHydrantDot = !isStation && type !== 'defibrillator' && targetZoom < 17;
-            const drawAsDefibDot = type === 'defibrillator' && targetZoom >= 15 && targetZoom < 17;
-
-            if (drawAsHydrantDot || drawAsStationSquare || drawAsDefibDot) {
-                const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-                const color = isStation ? '#ef4444' : (type === 'defibrillator' ? '#16a34a' : (isWater ? '#3b82f6' : '#ef4444'));
-                ctx.beginPath();
-                if (drawAsStationSquare) ctx.rect(tx - 5, ty - 5, 10, 10); else ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
-                ctx.fillStyle = color; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = "white"; ctx.stroke();
-            } else {
-                if (!iconCache[type]) {
-                    const svgB = new Blob([getSVGContent(type)], {type: 'image/svg+xml;charset=utf-8'}), url = URL.createObjectURL(svgB), img = new Image();
-                    img.src = url; await new Promise(res => img.onload = res); iconCache[type] = img;
-                }
-                ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
-                const iconScale = targetZoom < 17 ? 0.8 : 1.0; 
-                const size = (type === 'station' ? 38 : 34) * iconScale;
-                ctx.drawImage(iconCache[type], tx - size/2, ty - size/2, size, size);
-                ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-            }
-        }
-        ctx.restore();
-
-        // Footer & Header (Titel, Maßstab, Datum)
-        progressLabel.innerText = t('layout_final');
-        const bannerH = 170; 
-        ctx.fillStyle = "rgba(255, 255, 255, 0.98)"; ctx.fillRect(margin, margin, mapWidth, bannerH);
-        ctx.strokeStyle = "rgba(15, 23, 42, 0.2)"; ctx.lineWidth = 3; 
-        ctx.strokeRect(margin, margin, mapWidth, bannerH);
-        ctx.strokeRect(margin, margin + bannerH, mapWidth, mapHeight - bannerH);
-        
-        const centerX = margin + (mapWidth / 2);
-        ctx.fillStyle = "#0f172a"; ctx.textAlign = "center";
-        const finalTitle = displayTitle === "OpenFireMap.org" ? "OpenFireMap.org" : `${t('plan_title')} ${displayTitle}`;
-        ctx.font = "bold 44px Arial, sans-serif"; ctx.fillText(finalTitle, centerX, margin + 55);
-        
-        const now = new Date();
-        ctx.font = "22px Arial, sans-serif"; ctx.fillStyle = "#334155";
-        
-        const localeMap = { 'de': 'de-DE', 'en': 'en-US', 'fr': 'fr-FR', 'es': 'es-ES', 'it': 'it-IT', 'pl': 'pl-PL', 'nl': 'nl-NL', 'cs': 'cs-CZ', 'da': 'da-DK', 'fi': 'fi-FI', 'sv': 'sv-SE', 'no': 'nb-NO', 'pt': 'pt-PT', 'fl': 'nl-BE', 'lb': 'lb-LU', 'ja': 'ja-JP', 'ko': 'ko-KR', 'ms': 'ms-MY', 'th': 'th-TH', 'zh': 'zh-CN', 'yue': 'zh-HK', 'tw': 'zh-TW' };
-        const dateLocale = localeMap[currentLang] || 'en-US';
-        const dateStr = now.toLocaleDateString(dateLocale, { year: 'numeric', month: 'long' });
-        
-        ctx.fillText(`${t('legend_date')}: ${dateStr} | ${t('legend_res')}: Zoom ${targetZoom} (~${mPerPx.toFixed(2)} m/px)`, centerX, margin + 95);
-        ctx.font = "italic 16px Arial, sans-serif"; ctx.fillStyle = "#64748b";
-        ctx.fillText(layerAttributionsText[activeLayerConfig] || '© OpenStreetMap contributors', centerX, margin + 125);
-
-        // Maßstabsbalken zeichnen
-        const prettyD = [1000, 500, 250, 100, 50]; 
-        let distM = 100, scaleW = 100 / mPerPx;
-        for (let d of prettyD) { let w = d / mPerPx; if (w <= mapWidth * 0.3) { distM = d; scaleW = w; break; } }
-        
-        const sX = margin + mapWidth - scaleW - 40; const sY = margin + mapHeight - 40;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; ctx.fillRect(sX - 10, sY - 50, scaleW + 20, 60);
-        ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 3; 
-        ctx.beginPath(); ctx.moveTo(sX, sY - 10); ctx.lineTo(sX, sY); ctx.lineTo(sX + scaleW, sY); ctx.lineTo(sX + scaleW, sY - 10); ctx.stroke();
-        ctx.fillStyle = "#0f172a"; ctx.font = "bold 18px Arial"; ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
-
-        const footerY = margin + mapHeight + (footerH / 2) + 10; 
-        ctx.fillStyle = "#334155";
-        ctx.textAlign = "left"; ctx.font = "16px Arial, sans-serif"; ctx.fillText("OpenFireMap.org", margin, footerY);
-        ctx.textAlign = "right";
-        const timeStr = now.toLocaleString(dateLocale, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-        ctx.fillText(timeStr, margin + mapWidth, footerY);
-
-        progressBar.style.width = "100%";
-        // Download auslösen
-        const link = document.createElement('a'); 
-        link.download = `Hydrantenplan_${finalTitle.replace(/[\s\.]/g, '_')}_Z${targetZoom}_${activeLayerConfig}_${now.toISOString().slice(0,10)}.png`;
-        link.href = canvas.toDataURL("image/png"); 
-        link.click();
-        Object.values(iconCache).forEach(img => URL.revokeObjectURL(img.src)); 
-        setTimeout(toggleExportMenu, 800);
-    }
-
-    // App starten, sobald HTML geladen ist
-    document.addEventListener('DOMContentLoaded', initMap);
-</script>
-</body>
-</html>
+};
