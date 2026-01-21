@@ -1,13 +1,13 @@
 /**
  * ==========================================================================================
- * DATEI: export.js (DIAGNOSE VERSION)
- * ZWECK: Export mit erweitertem Error-Handling und Logging
+ * DATEI: export.js (FINAL DESIGN RESTORED)
+ * ZWECK: Export mit originalem Layout (Header, Footer, Maßstab)
  * ==========================================================================================
  */
 
 import { State } from './state.js';
 import { Config } from './config.js';
-import { t, getLang } from './i18n.js';
+import { t, getLang } from './i18n.js'; // getLang ist wichtig für das Datumsformat!
 import { showNotification, toggleExportMenu } from './ui.js';
 
 // --- TEIL 1: AUSWAHL-WERKZEUG ---
@@ -157,7 +157,7 @@ export function exportAsGPX() {
     }
 }
 
-// --- TEIL 3: PNG EXPORT (Debug Version) ---
+// --- TEIL 3: PNG EXPORT ---
 
 export function cancelExport() { 
     if(State.controllers.export) State.controllers.export.abort(); 
@@ -192,7 +192,7 @@ function getSVGContentForExport(type) {
     return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
 }
 
-// HAUPTFUNKTION MIT FEHLERBEHANDLUNG
+// HAUPTFUNKTION (Design + Fehlerbehandlung)
 export async function exportAsPNG() {
     console.log("=== EXPORT START ===");
     
@@ -204,11 +204,9 @@ export async function exportAsPNG() {
         document.getElementById('export-setup').classList.add('hidden');
         document.getElementById('export-progress').classList.remove('hidden');
         const progressBar = document.getElementById('progress-bar');
-        const progressLabel = document.getElementById('progress-label'); // Kann null sein, wenn nicht im HTML
-
+        
         function setStatus(msg) {
             console.log("Status:", msg);
-            // Wir nutzen den Titel der Progress-Bar als Status-Anzeige
             const titleEl = document.querySelector('.exporting-active');
             if(titleEl) titleEl.innerText = msg;
         }
@@ -221,8 +219,6 @@ export async function exportAsPNG() {
         const nw = bounds.getNorthWest();
         const se = bounds.getSouthEast();
 
-        console.log(`Parameter: Zoom ${targetZoom}, Bounds:`, bounds);
-
         // 3. Titel holen
         let displayTitle = "OpenFireMap.org";
         try {
@@ -233,7 +229,6 @@ export async function exportAsPNG() {
             const city = addr.city || addr.town || addr.village || "";
             const suburb = addr.suburb || addr.neighbourhood || "";
             if (city) displayTitle = suburb ? `${city} - ${suburb}` : city;
-            console.log("Titel gefunden:", displayTitle);
         } catch(e) { console.warn("Titel Warnung (ignoriert):", e); }
 
         // 4. Kacheln berechnen
@@ -249,7 +244,7 @@ export async function exportAsPNG() {
         const totalWidth = mapWidth + (margin * 2);
         const totalHeight = mapHeight + margin + footerH + margin;
 
-        console.log(`Canvas Größe: ${totalWidth}x${totalHeight}px`);
+        const mPerPx = (Math.cos(bounds.getCenter().lat * Math.PI / 180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, targetZoom));
 
         if (totalWidth > 14000 || totalHeight > 14000) { 
             throw new Error(t('too_large') + " (>14000px)");
@@ -278,7 +273,7 @@ export async function exportAsPNG() {
                 const {x, y} = tileQueue.shift();
                 await new Promise(resolve => {
                     const img = new Image(); 
-                    img.crossOrigin = "anonymous"; // WICHTIG FÜR EXPORT
+                    img.crossOrigin = "anonymous"; 
                     img.src = baseUrlTpl.replace('{z}', targetZoom).replace('{x}', x).replace('{y}', y);
                     
                     img.onload = () => { 
@@ -286,7 +281,6 @@ export async function exportAsPNG() {
                         loaded++; updateProgress(); resolve(); 
                     };
                     img.onerror = () => { 
-                        console.warn(`Kachelfehler bei ${x}/${y}`);
                         loaded++; resolve(); 
                     };
                 });
@@ -329,9 +323,7 @@ export async function exportAsPNG() {
         ctx.save(); 
         ctx.translate((-x1 * 256) + margin, (-y1 * 256) + margin);
         
-        const iconCache = {}; // Cache für SVG Bilder
-
-        // Helper um SVG zu laden
+        const iconCache = {};
         const loadSVG = async (type) => {
             if(iconCache[type]) return iconCache[type];
             const svgStr = getSVGContentForExport(type);
@@ -345,8 +337,6 @@ export async function exportAsPNG() {
             return img;
         };
 
-        // Wir müssen die Marker asynchron laden (wegen Bildern)
-        // Daher erst alle sammeln, dann malen.
         for (let el of State.cachedElements) {
             const tags = el.tags || {};
             if (tags.boundary === 'administrative') continue;
@@ -356,24 +346,19 @@ export async function exportAsPNG() {
             const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
             const type = isStation ? 'station' : (tags.emergency === 'defibrillator' ? 'defibrillator' : (tags['fire_hydrant:type'] || tags.emergency));
             
-            // Check ob sichtbar
             const tx = lon2tile(lon, targetZoom) * 256;
             const ty = lat2tile(lat, targetZoom) * 256;
             if (tx < x1*256 || tx > (x2+1)*256 || ty < y1*256 || ty > (y2+1)*256) continue;
             
-            // Filter
             if (isStation && targetZoom < 12) continue;
             if (!isStation && targetZoom < 15) continue;
 
-            // Malen
             if (targetZoom < 17 && !isStation) {
-                 // Einfacher Punkt
                  ctx.beginPath();
                  ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
                  ctx.fillStyle = type === 'defibrillator' ? '#16a34a' : '#ef4444'; 
                  ctx.fill(); ctx.stroke();
             } else {
-                // Bild laden & Malen
                 try {
                     const img = await loadSVG(type);
                     const size = 32;
@@ -383,39 +368,77 @@ export async function exportAsPNG() {
         }
         ctx.restore();
 
-        // 9. Footer
+        // 9. LAYOUT & FOOTER (Das fehlende Design!)
         setStatus(t('layout_final'));
+        
+        // Weißer Hintergrund-Kasten oben
+        const bannerH = 170;
         ctx.fillStyle = "rgba(255, 255, 255, 0.98)";
-        ctx.fillRect(margin, margin, mapWidth, 170);
-        ctx.strokeRect(margin, margin, mapWidth, 170); // Header Rahmen
-        ctx.strokeRect(margin, margin + 170, mapWidth, mapHeight - 170); // Karten Rahmen
+        ctx.fillRect(margin, margin, mapWidth, bannerH);
+        
+        // Rahmen
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.2)"; ctx.lineWidth = 3;
+        ctx.strokeRect(margin, margin, mapWidth, bannerH); // Header
+        ctx.strokeRect(margin, margin + bannerH, mapWidth, mapHeight - bannerH); // Karte
         
         const centerX = margin + (mapWidth / 2);
+        
+        // Haupttitel (Ort)
         ctx.fillStyle = "#0f172a"; ctx.textAlign = "center";
         ctx.font = "bold 44px Arial, sans-serif"; 
         ctx.fillText(displayTitle, centerX, margin + 55);
+        
+        // Datum & Auflösung
+        const now = new Date();
+        ctx.font = "22px Arial, sans-serif"; ctx.fillStyle = "#334155";
+        
+        // Lokales Datumsformat
+        const localeMap = { 'de': 'de-DE', 'en': 'en-US' };
+        const dateLocale = localeMap[getLang()] || 'en-US';
+        const dateStr = now.toLocaleDateString(dateLocale, { year: 'numeric', month: 'long' });
+        
+        ctx.fillText(`${t('legend_date')}: ${dateStr} | ${t('legend_res')}: Zoom ${targetZoom} (~${mPerPx.toFixed(2)} m/px)`, centerX, margin + 95);
         
         // Copyright
         ctx.font = "italic 16px Arial, sans-serif"; ctx.fillStyle = "#64748b";
         ctx.fillText(Config.layers[State.activeLayerKey].textAttr || "© OpenStreetMap", centerX, margin + 125);
 
-        // 10. DOWNLOAD (Der kritische Teil)
-        setStatus("Speichere Datei...");
-        console.log("Erstelle Blob...");
+        // Maßstabsbalken (Unten rechts im Bild)
+        const prettyD = [1000, 500, 250, 100, 50]; 
+        let distM = 100, scaleW = 100 / mPerPx;
+        for (let d of prettyD) { let w = d / mPerPx; if (w <= mapWidth * 0.3) { distM = d; scaleW = w; break; } }
         
-        // Wir nutzen toBlob statt toDataURL (verhindert Abstürze)
+        const sX = margin + mapWidth - scaleW - 40; 
+        const sY = margin + mapHeight - 40;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; ctx.fillRect(sX - 10, sY - 50, scaleW + 20, 60);
+        ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 3; 
+        ctx.beginPath(); ctx.moveTo(sX, sY - 10); ctx.lineTo(sX, sY); ctx.lineTo(sX + scaleW, sY); ctx.lineTo(sX + scaleW, sY - 10); ctx.stroke();
+        ctx.fillStyle = "#0f172a"; ctx.font = "bold 18px Arial"; ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
+
+        // Footer Text (Unten unter dem Bild)
+        const footerY = margin + mapHeight + (footerH / 2) + 10; 
+        ctx.fillStyle = "#334155";
+        
+        ctx.textAlign = "left"; 
+        ctx.font = "16px Arial, sans-serif"; 
+        ctx.fillText("OpenFireMap.org", margin, footerY);
+
+        ctx.textAlign = "right";
+        ctx.font = "16px Arial, sans-serif";
+        const timeStr = now.toLocaleString(dateLocale, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        ctx.fillText(timeStr, margin + mapWidth, footerY);
+
+        // 10. DOWNLOAD
+        setStatus("Speichere Datei...");
+        
         canvas.toBlob((blob) => {
             if (!blob) {
-                showNotification("Fehler: Bild konnte nicht erstellt werden.", 5000);
-                toggleExportMenu();
-                return;
+                throw new Error("Blob fehlgeschlagen");
             }
-            
-            console.log("Blob erstellt, Größe:", blob.size);
             const link = document.createElement('a');
             link.download = `Plan_${displayTitle.replace(/\s/g,'_')}.png`;
             link.href = URL.createObjectURL(blob);
-            document.body.appendChild(link); // Wichtig für Firefox
+            document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             
@@ -428,9 +451,8 @@ export async function exportAsPNG() {
 
     } catch (e) {
         console.error("CRITICAL EXPORT ERROR:", e);
-        showNotification("FEHLER: " + e.message, 10000); // 10 Sekunden anzeigen
+        showNotification("FEHLER: " + e.message, 10000);
         
-        // Reset UI nach Fehler
         setTimeout(() => {
             document.getElementById('export-progress').classList.add('hidden');
             document.getElementById('export-setup').classList.remove('hidden');
