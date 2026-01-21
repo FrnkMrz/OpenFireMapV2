@@ -1,227 +1,250 @@
 /**
  * ==========================================================================================
- * DATEI: map.js
- * ZWECK: Karte und Marker (Mit Smart-Tooltips)
+ * DATEI: ui.js (Benutzeroberfläche)
+ * ZWECK: Verknüpft die HTML-Buttons mit den JavaScript-Funktionen.
+ * LERN-ZIEL: DOM-Manipulation & Event-Handling verstehen.
  * ==========================================================================================
+ * * Diese Datei ist der "Vermittler". Wenn der Nutzer klickt, sagt diese Datei
+ * den anderen Modulen (map.js, export.js) Bescheid, was zu tun ist.
  */
 
 import { State } from './state.js';
-import { Config } from './config.js';
 import { t } from './i18n.js';
-import { fetchOSMData } from './api.js';
+// Wir importieren Funktionen aus export.js, um sie auf Buttons zu legen
+import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, cancelExport } from './export.js';
+// Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
+import { setBaseLayer } from './map.js';
 
-export function initMapLogic() {
-    State.markerLayer = L.layerGroup();
-    State.boundaryLayer = L.layerGroup();
-    State.rangeLayerGroup = L.layerGroup();
+/**
+ * HILFSFUNKTION: addClick
+ * Fügt einem Button eine Funktion hinzu, aber prüft erst, ob er existiert.
+ * Das verhindert Abstürze, wenn man mal einen Button im HTML löscht.
+ */
+function addClick(id, fn) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.onclick = fn;
+    } else {
+        // Nur Warnung für Entwickler, kein Absturz für den User
+        console.warn(`Warnung: Button mit ID '${id}' fehlt im HTML.`);
+    }
+}
 
-    State.map = L.map('map', { 
-        zoomControl: false, 
-        center: Config.defaultCenter, 
-        zoom: Config.defaultZoom 
-    });
-
-    State.boundaryLayer.addTo(State.map);
-    State.rangeLayerGroup.addTo(State.map);
-    State.markerLayer.addTo(State.map);
-
-    setBaseLayer('voyager');
-
-    let debounceTimer;
-    State.map.on('moveend zoomend', () => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        const statusEl = document.getElementById('data-status');
-        if(statusEl) {
-            statusEl.innerText = t('status_waiting');
-            statusEl.className = 'text-amber-400 font-bold';
-        }
-        debounceTimer = setTimeout(() => fetchOSMData(), 200);
-    });
-
-    State.map.on('click', () => {
-        if (!State.selection.active) {
-            State.rangeLayerGroup.clearLayers();
-        }
-    });
+/**
+ * HAUPTFUNKTION: showNotification
+ * Zeigt die kleinen Meldungen oben rechts an (z.B. "GPS gefunden").
+ * * WICHTIG: Das Wort "export" muss hier stehen, damit api.js die Funktion nutzen kann!
+ */
+export function showNotification(msg, duration = 3000) {
+    const box = document.getElementById('notification-box');
+    if (!box) return;
     
-    State.map.on('zoom', () => {
-        const el = document.getElementById('zoom-val');
-        if(el) el.innerText = State.map.getZoom().toFixed(1);
+    box.innerText = msg;
+    box.style.display = 'block'; // Sichtbar machen
+    
+    // Alten Timer löschen, falls gerade einer läuft
+    if(box.hideTimeout) clearTimeout(box.hideTimeout);
+    
+    // Neuen Timer starten: Nach 3 Sekunden (duration) wieder ausblenden
+    box.hideTimeout = setTimeout(() => {
+        box.style.display = 'none';
+    }, duration); 
+}
+
+/**
+ * Menü-Steuerung: Schließt alle Popups.
+ * Wird aufgerufen, bevor ein neues Fenster geöffnet wird (Exklusivität).
+ */
+export function closeAllMenus() {
+    // 1. Normale Menüs (Layer & Export) ausblenden
+    ['layer-menu', 'export-menu'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden'); // 'hidden' ist eine Tailwind-Klasse
     });
 
-    fetchOSMData();
-}
-
-export function setBaseLayer(key) {
-    State.activeLayerKey = key;
-    State.map.eachLayer(layer => { 
-        if (layer instanceof L.TileLayer) State.map.removeLayer(layer); 
-    });
-    const conf = Config.layers[key];
-    L.tileLayer(conf.url, { attribution: conf.attr, maxZoom: conf.maxZoom }).addTo(State.map);
+    // 2. Info-Modal schließen (hat spezielles Display-Attribut)
+    const legal = document.getElementById('legal-modal');
+    if(legal) legal.style.display = 'none';
     
-    document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
-    const btn = document.getElementById(`btn-${key}`);
-    if(btn) btn.classList.add('active');
+    // 3. Barrierefreiheit: Screenreadern sagen "Alles ist zu"
+    document.getElementById('layer-btn-trigger')?.setAttribute('aria-expanded', 'false');
+    document.getElementById('export-btn-trigger')?.setAttribute('aria-expanded', 'false');
 }
 
-function getSVGContent(type) {
-    if (type === 'defibrillator') {
-         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#16a34a" stroke="white" stroke-width="5"/><path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/><path d="M55 45 L45 55 L55 55 L45 65" stroke="#16a34a" stroke-width="3" fill="none"/></svg>`;
-    }
-    const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-    const color = isWater ? '#3b82f6' : '#ef4444';
+/* =============================================================================
+   TOGGLE FUNKTIONEN (Auf/Zu machen)
+   ============================================================================= */
+
+export function toggleLayerMenu() {
+    const menu = document.getElementById('layer-menu');
+    if(!menu) return;
     
-    if (type === 'wall') {
-         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/><circle cx="42" cy="52" r="18" fill="none" stroke="white" stroke-width="6" /><line x1="64" y1="34" x2="64" y2="70" stroke="white" stroke-width="6" stroke-linecap="round" /></svg>`;
-    }
+    const isHidden = menu.classList.contains('hidden');
+    closeAllMenus(); // Erst alles andere zu
     
-    let char = '';
-    switch(type) {
-        case 'underground': char = 'U'; break; 
-        case 'pillar':      char = 'O'; break; 
-        case 'pipe':        char = 'I'; break;
-        case 'dry_barrel':  char = 'Ø'; break; 
-        default:            char = '';
-    }
-    if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="#ef4444" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
-    return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
-}
-
-function generateTooltip(tags) {
-    let tooltipTitle = tags.name || t('details');
-    if (tags.emergency === 'defibrillator') tooltipTitle = t('defib');
-    let html = `<div class="p-2 min-w-[180px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div><div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
-    for (const [key, val] of Object.entries(tags)) {
-        html += `<div class="text-slate-400 text-right">${key}:</div><div class="text-slate-200 break-words">${val}</div>`;
-    }
-    html += `</div></div>`;
-    return html;
-}
-
-export function showRangeCircle(lat, lon) {
-    State.rangeLayerGroup.clearLayers();
-    const zoom = State.map.getZoom();
-    if (zoom < 16) return; 
-    L.circle([lat, lon], { color: '#f97316', fillColor: '#f97316', fillOpacity: 0.15, radius: 100, weight: 2, dashArray: '5, 8', interactive: false }).addTo(State.rangeLayerGroup);
-    if (zoom >= 17) {
-        const latRad = lat * Math.PI / 180;
-        const kmPerDegLon = 111.32 * Math.cos(latRad);
-        const offsetLon = 0.05 / kmPerDegLon; 
-        const labelMarker = L.marker([lat, lon + offsetLon], {opacity: 0, interactive: false}).addTo(State.rangeLayerGroup);
-        labelMarker.bindTooltip("100 m", { permanent: true, direction: 'center', className: 'range-label', offset: [0, 0] }).openTooltip();
+    if (isHidden) {
+        menu.classList.remove('hidden'); // Dann dieses auf
+        document.getElementById('layer-btn-trigger')?.setAttribute('aria-expanded', 'true');
     }
 }
 
-export function renderMarkers(elements, zoom) {
-    State.markerLayer.clearLayers();
-    State.boundaryLayer.clearLayers();
-    const renderedLocations = []; 
+export function toggleExportMenu() {
+    const menu = document.getElementById('export-menu');
+    if(!menu) return;
+    
+    const isHidden = menu.classList.contains('hidden');
+    closeAllMenus();
+    
+    if (isHidden) {
+        menu.classList.remove('hidden');
+        document.getElementById('export-btn-trigger')?.setAttribute('aria-expanded', 'true');
+        
+        // UI zurücksetzen (Ladebalken weg, Setup zeigen)
+        document.getElementById('export-setup')?.classList.remove('hidden');
+        document.getElementById('export-progress')?.classList.add('hidden');
+    }
+}
 
-    elements.forEach(el => {
-        const tags = el.tags || {};
-        if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
-            const latlngs = el.geometry.map(p => [p.lat, p.lon]);
-            L.polyline(latlngs, { color: '#333333', weight: 1, dashArray: '10, 10', opacity: 0.7 }).addTo(State.boundaryLayer);
-            return;
-        }
+export function toggleLegalModal() {
+    const modal = document.getElementById('legal-modal');
+    if(!modal) return;
+    
+    // Prüfen ob es schon offen ist (bei Flexbox ist 'flex' = offen)
+    const isVisible = modal.style.display === 'flex';
+    closeAllMenus();
+    
+    if (!isVisible) {
+        modal.style.display = 'flex';
+    }
+}
 
-        const lat = el.lat || el.center?.lat;
-        const lon = el.lon || el.center?.lon;
-        if (!lat || !lon) return;
+/* =============================================================================
+   SUCHE & GPS
+   ============================================================================= */
 
-        const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
-        const isDefib = tags.emergency === 'defibrillator';
-        let type = isStation ? 'station' : (isDefib ? 'defibrillator' : (tags['fire_hydrant:type'] || tags.emergency));
-
-        if (isStation && zoom < 12) return; 
-        if (!isStation && !isDefib && zoom < 15) return; 
-        if (isDefib && zoom < 15) return; 
-
-        const alreadyDrawn = renderedLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
-        if (isStation && alreadyDrawn) return;
-        if (isStation) renderedLocations.push({lat, lon});
-
-        let marker;
-        let iconHtml;
-        let className = '';
-        let size = [28, 28];
-        let zIndex = 0;
-
-        if (isStation) {
-            if (zoom < 14) { 
-                marker = L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10, 10] }) }).addTo(State.markerLayer);
+export function searchLocation() {
+    const input = document.getElementById('search-input');
+    if (!input || !input.value) return;
+    
+    // Anfrage an OpenStreetMap (Nominatim)
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input.value)}`)
+        .then(r => r.json())
+        .then(data => {
+            if(data.length > 0 && State.map) {
+                // Hinfliegen (Zoom 18)
+                State.map.flyTo([data[0].lat, data[0].lon], 18);
             } else {
-                iconHtml = getSVGContent(type); className = 'icon-container'; size = [32, 32]; zIndex = 1000;
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: zIndex }).addTo(State.markerLayer);
+                showNotification(t('no_results') || "Ort nicht gefunden");
             }
-        } 
-        else if (isDefib) {
-            if (zoom < 17) {
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) }).addTo(State.markerLayer);
-            } else {
-                iconHtml = getSVGContent(type); className = 'icon-container'; size = [28, 28]; zIndex = 2000;
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: zIndex }).addTo(State.markerLayer);
-            }
-        } 
-        else { 
-            if (zoom < 17) {
-                const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-                className = isWater ? 'tank-dot' : 'hydrant-dot';
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10,10] }) }).addTo(State.markerLayer);
-            } else {
-                iconHtml = getSVGContent(type); className = 'icon-container';
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: 0 }).addTo(State.markerLayer);
-                marker.on('click', (e) => { 
-                    L.DomEvent.stopPropagation(e);
-                    showRangeCircle(lat, lon); 
-                });
-            }
+        });
+}
+
+export function locateUser() {
+    if (!navigator.geolocation) { 
+        showNotification("GPS nicht verfügbar"); 
+        return; 
+    }
+    
+    // Lade-Icon drehen lassen
+    const btn = document.getElementById('locate-btn');
+    const icon = btn ? btn.querySelector('svg') : null;
+    if(icon) icon.classList.add('animate-spin'); 
+
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            if(State.map) State.map.flyTo([pos.coords.latitude, pos.coords.longitude], 18);
+            if(icon) icon.classList.remove('animate-spin'); // Stoppen
+            showNotification(t('geo_found') || "Gefunden!");
+        },
+        (err) => {
+            if(icon) icon.classList.remove('animate-spin');
+            showNotification("GPS Fehler");
         }
+    );
+}
 
-        // --- HIER IST DIE SMART TOOLTIP LOGIK ---
-        if (marker && zoom === 18 && className === 'icon-container') {
-             marker.bindTooltip(generateTooltip(tags), { 
-                interactive: true, permanent: false, direction: 'top', opacity: 0.95 
-            });
+/* =============================================================================
+   SETUP (Initialisierung)
+   Diese Funktion wird einmalig beim Start von app.js aufgerufen.
+   ============================================================================= */
 
-            // Standard-Verhalten deaktivieren
-            marker.off('mouseover'); 
-            marker.off('mouseout');
-            marker._tooltipCloseTimer = null;
+export function setupUI() {
+    // 1. Haupt-Buttons verbinden
+    addClick('layer-btn-trigger', toggleLayerMenu);
+    addClick('export-btn-trigger', toggleExportMenu);
+    
+    // Info & Recht Button (öffnet das Modal)
+    addClick('btn-legal-trigger', toggleLegalModal);
+    
+    // Schließen-Buttons (das X oben rechts in den Fenstern)
+    addClick('legal-close-btn', toggleLegalModal);
+    addClick('export-close-btn', toggleExportMenu);
+    
+    // 2. Suche (Enter-Taste Unterstützung)
+    const searchInp = document.getElementById('search-input');
+    if (searchInp) {
+        searchInp.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchLocation();
+        });
+    }
+    addClick('search-btn', searchLocation);
+    addClick('locate-btn', locateUser);
 
-            // Eigene Öffnen-Logik
-            marker.on('mouseover', function() {
-                if (this._tooltipCloseTimer) {
-                    clearTimeout(this._tooltipCloseTimer); 
-                    this._tooltipCloseTimer = null;
-                }
-                this.openTooltip();
-            });
+    // 3. Layer-Auswahl (Hintergrundbilder)
+    ['voyager', 'positron', 'dark', 'satellite', 'topo', 'osm', 'osmde'].forEach(key => {
+        addClick(`btn-${key}`, () => setBaseLayer(key));
+    });
 
-            // Eigene Schließen-Logik (3 Sekunden warten)
-            marker.on('mouseout', function() {
-                this._tooltipCloseTimer = setTimeout(() => {
-                    this.closeTooltip();
-                }, 3000); // <--- HIER SIND DIE 3 SEKUNDEN
-            });
+    // 4. Export-Format (A4, Frei, etc.)
+    ['free', 'a4l', 'a4p'].forEach(fmt => {
+        addClick(`fmt-${fmt}`, () => setExportFormat(fmt));
+    });
+    
+    // 5. Export-Zoom (15-18)
+    [15, 16, 17, 18].forEach(z => {
+        addClick(`zoom-${z}`, () => setExportZoom(z));
+    });
 
-            // Wenn Maus auf den Text geht: Timer stoppen
-            marker.on('tooltipopen', function(e) {
-                const tooltipNode = e.tooltip._container;
-                if (!tooltipNode) return;
-                L.DomEvent.on(tooltipNode, 'mouseenter', () => {
-                    if (this._tooltipCloseTimer) {
-                        clearTimeout(this._tooltipCloseTimer);
-                        this._tooltipCloseTimer = null;
-                    }
-                });
-                L.DomEvent.on(tooltipNode, 'mouseleave', () => {
-                    this._tooltipCloseTimer = setTimeout(() => {
-                        this.closeTooltip();
-                    }, 3000);
-                });
-            });
-        }
+    // 6. Export-Aktionen
+    addClick('select-btn', startSelection);
+    addClick('png-btn', exportAsPNG);
+    addClick('gpx-btn', exportAsGPX);
+    addClick('cancel-export-btn', cancelExport);
+
+    // Automatische Schließ-Logik aktivieren
+    setupMenuAutoClose();
+}
+
+/**
+ * FEATURE: Menüs automatisch schließen
+ * Wenn die Maus den Bereich verlässt, schließt sich das Menü nach 10 Sekunden.
+ */
+function setupMenuAutoClose() {
+    ['layer-menu', 'export-menu', 'legal-modal'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        
+        let closeTimer = null;
+        
+        // Maus raus -> Timer an
+        el.addEventListener('mouseleave', () => {
+            // Nur schließen, wenn es gerade offen ist
+            const isHidden = id === 'legal-modal' ? (el.style.display === 'none') : el.classList.contains('hidden');
+            if (isHidden) return;
+            
+            closeTimer = setTimeout(() => {
+                if (id === 'legal-modal') el.style.display = 'none';
+                else el.classList.add('hidden');
+                
+                // ARIA Status zurücksetzen
+                const btnId = id === 'layer-menu' ? 'layer-btn-trigger' : (id === 'export-menu' ? 'export-btn-trigger' : 'btn-legal-trigger');
+                document.getElementById(btnId)?.setAttribute('aria-expanded', 'false');
+            }, 10000); // 10 Sekunden
+        });
+        
+        // Maus rein -> Timer aus (User liest noch)
+        el.addEventListener('mouseenter', () => {
+            if (closeTimer) clearTimeout(closeTimer);
+        });
     });
 }
