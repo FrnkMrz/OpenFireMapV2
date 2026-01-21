@@ -1,85 +1,154 @@
-/**
- * ==========================================================================================
- * DATEI: config.js (Die Einstellungen)
- * LERN-ZIEL: Zentrale Konfiguration
- * ==========================================================================================
- * * In dieser Datei speichern wir alle Werte, die sich während der Laufzeit der App
- * NICHT ändern (sogenannte Konstanten).
- * * Vorteil: Wenn wir z.B. die Start-Position der Karte ändern wollen, müssen wir
- * nicht im komplizierten Code suchen, sondern ändern es einfach hier oben.
- * * "export const": Macht diese Variable für andere Dateien verfügbar.
- */
-
-export const Config = {
-    // Start-Position der Karte: [Breitengrad, Längengrad] (Koordinaten für Schnaittach)
-    defaultCenter: [49.555, 11.350],
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenFireMap.org</title>
     
-    // Wie nah soll beim Start hereingezoomt werden? (Kleiner = Weltraum, Größer = Haus)
-    defaultZoom: 14,
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://a.basemaps.cartocdn.com">
+    <link rel="preconnect" href="https://overpass-api.de">
 
-    // LISTE DER SERVER (API Endpunkte)
-    // Wir fragen diese Server nach den Hydranten-Daten.
-    // Wir nutzen eine Liste (Array), damit wir Alternativen haben, falls einer ausfällt.
-    overpassEndpoints: [
-        'https://overpass-api.de/api/interpreter',             // Hauptserver (Deutschland)
-        'https://overpass.kumi.systems/api/interpreter',       // Starker Alternativserver
-        'https://maps.mail.ru/osm/tools/overpass/api/interpreter' // Backup
-    ],
+    <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
 
-    // Adresse für die Ortssuche (Wenn du oben links einen Städtenamen eingibst)
-    nominatimUrl: 'https://nominatim.openstreetmap.org',
+    <link rel="stylesheet" href="assets/css/main.css">
 
-    // KARTEN-HINTERGRÜNDE (Layer)
-    // Hier definieren wir, welche Kacheln (Tiles) geladen werden sollen.
-    // {z} = Zoomstufe, {x}/{y} = Koordinaten der Kachel
-    layers: {
-        voyager: {
-            url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-            attr: '&copy; OpenStreetMap contributors &copy; CARTO', // Urheberrechtshinweis
-            maxZoom: 18 // Wie tief darf man zoomen?
-        },
-        positron: {
-            url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-            attr: '&copy; OpenStreetMap contributors &copy; CARTO',
-            maxZoom: 18
-        },
-        dark: { // Dunkler Modus (gut für Nachts)
-            url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-            attr: '&copy; OpenStreetMap contributors &copy; CARTO',
-            maxZoom: 18
-        },
-        satellite: { // Satellitenbilder
-            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            attr: 'Tiles &copy; Esri &mdash; Source: Esri et al.',
-            maxZoom: 18
-        },
-        topo: { // Topographische Karte (Höhenlinien) - Achtung: Geht oft nur bis Zoom 17!
-            url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-            attr: 'Daten: OSM, SRTM | Darstellung: OpenTopoMap',
-            maxZoom: 17
-        },
-        osm: { // Das klassische OpenStreetMap Aussehen
-            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            attr: '&copy; OpenStreetMap contributors',
-            maxZoom: 18
-        },
-        osmde: { // Deutscher Stil (Beschriftungen in Deutsch)
-            url: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
-            attr: '&copy; OpenStreetMap contributors',
-            maxZoom: 18
-        }
-    },
+    <script type="module" src="assets/js/app.js" defer></script>
+</head>
+<body>
+    <h1 class="sr-only">OpenFireMap - Interaktive Karte</h1>
+
+    <div id="map" aria-label="Karte" role="application"></div>
     
-    // EXPORT LIMITS
-    // Um den Browser nicht abstürzen zu lassen, erlauben wir bei niedrigen Zoomstufen
-    // (wo man viel Fläche sieht) nur kleine Export-Bereiche.
-    exportZoomLimitsKm: {
-        12: 30, // Bei Zoom 12 max. 30km Breite
-        13: 25,
-        14: 20,
-        15: 15, 
-        16: 10,
-        17: 8,  
-        18: 5   // Bei Zoom 18 (sehr detailliert) nur 5km
-    }
-};
+    <div id="notification-box" role="alert" aria-live="polite"></div>
+
+    <div class="absolute top-5 left-5 z-[1000] flex gap-3">
+        <div class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5 focus-within:ring-2 focus-within:ring-blue-500">
+            <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" class="bg-transparent px-4 py-2 text-sm text-white outline-none focus:ring-0 w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-400">
+            <button id="search-btn" aria-label="Suchen" class="p-2 text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-xl">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </button>
+        </div>
+        
+        <button id="locate-btn" data-i18n-title="locate_title" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </button>
+
+        <button id="layer-btn-trigger" data-i18n-title="layers_title" aria-haspopup="true" aria-expanded="false" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+        </button>
+
+        <button id="export-btn-trigger" data-i18n-title="export_title" aria-haspopup="true" aria-expanded="false" class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+        </button>
+    </div>
+
+    <div class="absolute bottom-8 left-5 z-[1000]">
+        <button id="btn-legal-trigger" class="glass-panel p-1.5 rounded-xl text-slate-400 hover:text-white shadow-xl transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span class="text-[10px] font-bold hidden md:inline" data-i18n="legal_btn">Info & Recht</span>
+        </button>
+    </div>
+
+    <div class="absolute bottom-10 right-10 z-[1000] glass-panel p-4 rounded-2xl text-[10px] text-slate-400 font-mono border border-white/5">
+        <div class="flex justify-between gap-4"><span data-i18n="zoom_info">ZOOM</span><span id="zoom-val" class="text-white font-bold">14.0</span></div>
+        <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status" class="text-green-400">AKTUELL</span></div>
+    </div>
+
+    <div id="layer-menu" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center" data-i18n="bg_header">Hintergrund</h3>
+        <div class="grid grid-cols-1 gap-1">
+            <button id="btn-voyager" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-blue-500"></div> <span data-i18n="layer_std">Standard</span></button>
+            <button id="btn-positron" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-slate-300"></div> <span data-i18n="layer_print">Druck</span></button>
+            <button id="btn-dark" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-slate-800"></div> <span data-i18n="layer_night">Nacht</span></button>
+            <button id="btn-satellite" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-green-600"></div> <span data-i18n="layer_sat">Satellit</span></button>
+            <button id="btn-topo" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-amber-600"></div> <span data-i18n="layer_topo">Topographisch</span></button>
+            <button id="btn-osm" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-emerald-500"></div> <span data-i18n="layer_osm">OSM</span></button>
+            <button id="btn-osmde" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-emerald-700"></div> <span data-i18n="layer_osmde">OSM DE</span></button>
+        </div>
+    </div>
+
+    <div id="export-menu" class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
+        <div id="export-setup" class="space-y-5">
+            <div class="flex justify-between items-center">
+                <h3 id="export-title" class="font-bold text-lg" data-i18n="export_header">Export</h3>
+                <button id="export-close-btn" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div class="space-y-2">
+                <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider" data-i18n="format_label">Format</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="fmt-free" class="fmt-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active" data-i18n="fmt_free">FREI</button>
+                    <button id="fmt-a4l" class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10" data-i18n="fmt_a4l">DIN QUER</button>
+                    <button id="fmt-a4p" class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10" data-i18n="fmt_a4p">DIN HOCH</button>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider" data-i18n="zoom_label">Zoom</label>
+                <div class="grid grid-cols-4 gap-2">
+                    <button id="zoom-15" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">15</button>
+                    <button id="zoom-16" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">16</button>
+                    <button id="zoom-17" class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">17</button>
+                    <button id="zoom-18" class="zoom-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active">18</button>
+                </div>
+            </div>
+
+            <button id="select-btn" class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10">
+                <span data-i18n="select_area_btn">Ausschnitt wählen</span>
+            </button>
+            <div id="selection-info" class="hidden text-[11px] text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20" data-i18n="area_fixed">Fixiert ✓</div>
+            
+            <button id="png-btn" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
+                <span data-i18n="png_btn">PNG Speichern</span>
+            </button>
+            <button id="gpx-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg border border-emerald-400/30">
+                <span data-i18n="gpx_btn">GPX Speichern</span>
+            </button>
+        </div>
+        
+        <div id="export-progress" class="hidden">
+            <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg text-blue-400 exporting-active" data-i18n="exporting_title">Export läuft...</h3></div>
+            <div class="space-y-4">
+                <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden"><div id="progress-bar" class="h-full bg-blue-500 w-0 transition-all duration-300"></div></div>
+                <button id="cancel-export-btn" class="w-full bg-red-500/10 text-red-400 py-2 rounded-xl text-sm font-semibold border border-red-500/20" data-i18n="cancel_btn">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="legal-modal" class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
+            <h2 id="legal-title" class="text-lg font-bold text-white flex items-center gap-2">Rechtliches</h2>
+            <button id="legal-close-btn" class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-lg p-1">&times;</button>
+        </div>
+        
+        <div class="overflow-y-auto custom-scroll pr-2 text-xs space-y-6">
+            <section>
+                <h3 class="text-sm font-bold text-white mb-1">Impressum</h3>
+                <p class="leading-relaxed text-slate-400">
+                    Angaben gemäß § 5 TMG:<br><br>
+                    <strong>Frank März</strong><br>
+                    Kersbacher Weg 3<br>
+                    91220 Schnaittach<br>
+                    Deutschland<br><br>
+                    Kontakt:<br>
+                    Telefon: +499153/9229501<br>
+                    E-Mail: info@openfiremap.org
+                </p>
+            </section>
+            
+            <section>
+                <h3 class="text-sm font-bold text-white mb-1">Datenschutz (Kurzfassung)</h3>
+                <p class="leading-relaxed text-slate-400">
+                    Diese App läuft im Browser. Daten werden direkt von externen Servern (OSM, Overpass) geladen. Ihre IP-Adresse wird technisch bedingt dorthin übertragen.
+                </p>
+            </section>
+        </div>
+    </div>
+
+</body>
+</html>
