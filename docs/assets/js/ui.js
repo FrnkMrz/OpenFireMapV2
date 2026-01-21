@@ -122,20 +122,31 @@ export function toggleLegalModal() {
    SUCHE & GPS
    ============================================================================= */
 
+/**
+ * Sucht einen Ort über die Nominatim API (OpenStreetMap).
+ * LERN-INFO: Wir nutzen jetzt Config.searchZoom für die Ansicht.
+ */
 export function searchLocation() {
     const input = document.getElementById('search-input');
     if (!input || !input.value) return;
     
-    // Anfrage an OpenStreetMap (Nominatim)
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input.value)}`)
+    const query = input.value;
+    
+    fetch(`${Config.nominatimUrl}/search?format=json&q=${encodeURIComponent(query)}`)
         .then(r => r.json())
         .then(data => {
             if(data.length > 0 && State.map) {
-                // Hinfliegen (Zoom 18)
-                State.map.flyTo([data[0].lat, data[0].lon], 18);
+                // Wir nutzen den zentral konfigurierten Zoom-Wert
+                State.map.flyTo([data[0].lat, data[0].lon], Config.searchZoom);
+                
+                input.blur(); // Tastatur am Handy einklappen
             } else {
-                showNotification(t('no_results') || "Ort nicht gefunden");
+                showNotification(t('no_results'));
             }
+        })
+        .catch(err => {
+            console.error("Suchfehler:", err);
+            showNotification("Suche fehlgeschlagen");
         });
 }
 

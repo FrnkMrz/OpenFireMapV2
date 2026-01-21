@@ -110,4 +110,13 @@ export const Config = {
         textSub: '#334155',       // Grau-Blau (Datum/Footer)
         bgHeader: 'rgba(255, 255, 255, 0.98)' // Weißer Kasten (Hintergrund)
     }
+    export const Config = {
+    // START-POSITION
+    defaultCenter: [49.555, 11.350],
+    
+    // ZOOM-EINSTELLUNGEN
+    defaultZoom: 14,      // Zoom beim ersten Laden der Seite
+    searchZoom: 14,       // NEU: Zoom-Stufe nach einer erfolgreichen Suche
+    
+    // ... Rest der Konfiguration bleibt gleich ...
 };
