@@ -2,7 +2,7 @@
     =============================================================================
     PROJEKT: OpenFireMap V2 - Lernversion (Refactored)
     AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-21 (Final: Mit Taiwan & erweiterten Asien-Support)
+    DATUM: 2026-01-21 (Final: Mit Debounce & Wartestatus)
     =============================================================================
     
     PROJEKT-BESCHREIBUNG & LERNZIELE:
@@ -29,8 +29,7 @@
        (unterstützt DE, EN, FR, ES, IT, PL, NL, CS, DA, FI, SV, NO, PT, FL, LB, JA, KO, MS, TH, ZH, YUE, TW).
     6. Smart UX (NEU): 
        - Menüs schließen automatisch nach 10 Sekunden Inaktivität.
-       - Es ist immer nur ein Menü gleichzeitig offen.
-       - Tooltips (Zoom 18) bleiben nun zuverlässig 3 Sekunden offen, damit man sie lesen kann.
+       - Debounce: Daten werden erst 500ms nach Ende der Bewegung geladen.
        
     TECHNISCHER AUFBAU (REFACTORED):
     Die Anwendung wurde in zwei Dateien aufgeteilt, um die Übersichtlichkeit zu verbessern:
@@ -475,6 +474,9 @@
     let exportZoomLevel = 18;   // Gewünschte Qualität für Export
     let isSelecting = false, selectionRect = null, startPoint = null, finalBounds = null; // Für das Auswahl-Rechteck
 
+    // NEU: Debounce Timer (Wartezeit-Logik)
+    let debounceTimer = null;
+
     // Adressen der Karten-Server (Woher kommen die Bilder?)
     const layerUrls = {
         voyager: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
@@ -525,8 +527,8 @@
 
     function initMap() {
         updatePageLanguage(); // Sprache setzen
-        setupMenuAutoClose(); // NEU: Menü-Timer Logik starten
-
+        setupMenuAutoClose(); // Smart Menu Logic
+        
         // Erstelle die "Folien" (Layer Groups)
         markerLayer = L.layerGroup();
         boundaryLayer = L.layerGroup(); 
@@ -544,7 +546,10 @@
         markerLayer.addTo(map);   
         
         // Event Listener: Was passiert wann?
-        map.on('moveend zoomend', fetchOSMData); 
+        
+        // UPDATE: Nutze jetzt die "debounced" (verzögerte) Funktion
+        map.on('moveend zoomend', onMapMoveDebounced); 
+        
         map.on('zoomend', updateRangeCircle);    
         map.on('zoom', () => document.getElementById('zoom-val').innerText = map.getZoom().toFixed(1)); 
         
@@ -559,7 +564,27 @@
             }
         });
 
-        fetchOSMData();
+        fetchOSMData(); // Erstes Laden ohne Verzögerung
+    }
+
+    /* =========================================================================
+       NEU: DEBOUNCE LOGIK (Verzögertes Laden)
+       ========================================================================= */
+    function onMapMoveDebounced() {
+        // 1. Alten Timer löschen (falls der Nutzer noch weiter schiebt)
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+
+        // 2. Status sofort auf "WARTE..." (Orange) setzen
+        const statusEl = document.getElementById('data-status');
+        statusEl.innerText = t('status_waiting');
+        statusEl.className = 'text-amber-400 font-bold'; // Gelb/Orange für "Warten"
+
+        // 3. Neuen Timer starten (500ms warten)
+        debounceTimer = setTimeout(() => {
+            fetchOSMData(); // Erst jetzt wirklich laden!
+        }, 500);
     }
 
     /* =========================================================================
@@ -654,9 +679,12 @@
 
     async function fetchOSMData() {
         const zoom = map.getZoom();
+        const status = document.getElementById('data-status');
         
+        // Standby-Modus (Rausgezoomt)
         if (zoom < 12) {
-            document.getElementById('data-status').innerText = t('status_standby'); 
+            status.innerText = t('status_standby');
+            status.className = 'text-green-400'; // Grün für "Alles OK" (auch wenn Standby) 
             cachedElements = [];
             markerLayer.clearLayers();
             boundaryLayer.clearLayers();
@@ -666,8 +694,9 @@
         const b = map.getBounds();
         const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
         
-        const status = document.getElementById('data-status');
+        // Status auf "LADEN" setzen
         status.innerText = t('status_loading'); 
+        status.className = 'text-green-400'; // Oder Blau? Ich lasse es Grün wie zuvor
         
         if (currentRequestController) currentRequestController.abort();
         currentRequestController = new AbortController();
@@ -704,7 +733,13 @@
             cachedElements = data.elements; // Daten merken
             renderMarkers(data.elements, zoom); // Auf Karte malen
             status.innerText = t('status_current'); 
-        } catch (e) { if (e.name !== 'AbortError') status.innerText = t('status_error'); }
+            status.className = 'text-green-400';
+        } catch (e) { 
+            if (e.name !== 'AbortError') {
+                status.innerText = t('status_error');
+                status.className = 'text-red-500 font-bold';
+            }
+        }
     }
 
     /* =========================================================================
