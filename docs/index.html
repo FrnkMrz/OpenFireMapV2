@@ -2,7 +2,7 @@
     =============================================================================
     PROJEKT: OpenFireMap V2 - Lernversion (Refactored)
     AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-21 (Final: Mit Debounce & Wartestatus)
+    DATUM: 2026-01-21 (Final: Mit Debounce, Wartestatus & Robuster Fehlerbehandlung)
     =============================================================================
     
     PROJEKT-BESCHREIBUNG & LERNZIELE:
@@ -27,9 +27,11 @@
        - GPX-Export: Exportiert die sichtbaren Punkte für Navigationsgeräte.
     5. Internationalisierung: Die Oberfläche passt sich automatisch der Browsersprache an
        (unterstützt DE, EN, FR, ES, IT, PL, NL, CS, DA, FI, SV, NO, PT, FL, LB, JA, KO, MS, TH, ZH, YUE, TW).
-    6. Smart UX (NEU): 
+    6. Smart UX: 
        - Menüs schließen automatisch nach 10 Sekunden Inaktivität.
        - Debounce: Daten werden erst 200ms nach Ende der Bewegung geladen.
+       - [NEU] Robuste Fehlerbehandlung: Unterscheidet zwischen "Kein Internet", "Server überlastet"
+         und "Datenfehler" und gibt dem Nutzer klares Feedback.
        
     TECHNISCHER AUFBAU (REFACTORED):
     Die Anwendung wurde in zwei Dateien aufgeteilt, um die Übersichtlichkeit zu verbessern:
@@ -661,20 +663,64 @@
     }
 
     /* =========================================================================
-       4. DATEN LADEN (OVERPASS API)
+       4. DATEN LADEN (OVERPASS API) - UPDATE: ROBUSTE FEHLERBEHANDLUNG
        ========================================================================= */
     
+    // UPDATE: Diese Funktion wurde komplett überarbeitet, um Fehler besser zu erkennen
     async function fetchWithRetry(query) {
+        // SCHRITT A: Offline-Check (Prüfen, ob überhaupt Internet da ist)
+        if (!navigator.onLine) {
+            // Werfen eines speziellen "Offline"-Fehlers, den wir später übersetzen
+            throw new Error('err_offline');
+        }
+
+        // SCHRITT B: Loop durch verschiedene Server (Redundanz)
         for (let endpoint of overpassEndpoints) {
             try {
+                // Versuche Daten abzurufen
                 const res = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, { signal: currentRequestController.signal });
-                if (!res.ok) continue; 
+                
+                // SCHRITT C: HTTP Status Code Analyse
+                if (!res.ok) {
+                    // Status 429 = "Too Many Requests" (Zu viele Anfragen)
+                    if (res.status === 429) {
+                        throw new Error('err_ratelimit'); // Spezieller Fehlercode für Übersetzung
+                    }
+                    // Status 5xx = Server Fehler (z.B. 504 Gateway Timeout)
+                    if (res.status >= 500) {
+                        throw new Error('err_timeout');   // Spezieller Fehlercode
+                    }
+                    // Bei anderen Fehlern (z.B. 404) versuchen wir den nächsten Server
+                    continue; 
+                }
+
+                // Daten als Text lesen (um XML/HTML Fehlerseiten zu erkennen)
                 const text = await res.text();
-                if (text.trim().startsWith('<?xml') || text.trim().startsWith('<html')) continue;
+                
+                // SCHRITT D: Inhalts-Validierung
+                // Manchmal sendet der Server "200 OK", aber der Inhalt ist eine HTML-Fehlerseite
+                if (text.trim().startsWith('<?xml') || text.trim().startsWith('<html')) {
+                    continue; // Das ist kein JSON -> Nächster Server
+                }
+                
+                // Wenn alles gut ist: JSON parsen und zurückgeben
                 return JSON.parse(text); 
-            } catch (e) { if (e.name === 'AbortError') throw e; } 
+
+            } catch (e) { 
+                // SCHRITT E: Fehler-Weiterleitung
+                // Wenn wir oben einen spezifischen Fehler (Rate Limit, Offline, Timeout) geworfen haben,
+                // leiten wir diesen direkt weiter nach oben zur Anzeige.
+                if (['err_ratelimit', 'err_timeout', 'err_offline'].includes(e.message)) {
+                    throw e;
+                }
+                // Wenn der User abgebrochen hat (AbortError), leiten wir das auch weiter
+                if (e.name === 'AbortError') throw e; 
+                
+                // Bei allen anderen "kleinen" Netzwerkfehlern versuchen wir einfach den nächsten Server (Loop läuft weiter)
+            } 
         }
-        throw new Error("API Fehler");
+        // Wenn alle Server versagt haben: Allgemeiner Fehler
+        throw new Error("err_generic"); 
     }
 
     async function fetchOSMData() {
@@ -735,9 +781,21 @@
             status.innerText = t('status_current'); 
             status.className = 'text-green-400';
         } catch (e) { 
+            // UPDATE: Erweiterte Fehleranzeige für den User
             if (e.name !== 'AbortError') {
-                status.innerText = t('status_error');
-                status.className = 'text-red-500 font-bold';
+                console.error("Fetch Error:", e);
+                
+                // Wir holen den übersetzten Text für den Fehlercode (z.B. "err_ratelimit" -> "Zu viele Anfragen!")
+                // Falls es kein bekannter Code ist, nutzen wir "err_generic"
+                const errorKey = (['err_ratelimit', 'err_timeout', 'err_offline'].includes(e.message)) ? e.message : 'err_generic';
+                const errorText = t(errorKey);
+                
+                // 1. Status unten rechts rot und mit Text aktualisieren
+                status.innerText = errorText; 
+                status.className = 'text-red-500 font-bold'; // Rot und Fett
+                
+                // 2. Auffälliges Popup oben rechts anzeigen
+                showNotification(errorText, 5000); 
             }
         }
     }
