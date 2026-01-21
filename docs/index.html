@@ -2,7 +2,7 @@
     =============================================================================
     PROJEKT: OpenFireMap V2 - Lernversion (Vollständig, Barrierefrei & Schnell)
     AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-21 (Update: Smart Auto-Close für Menüs & Tooltips)
+    DATUM: 2026-01-21 (Update: Fix für Tooltip-Verzögerung)
     =============================================================================
     
     PROJEKT-BESCHREIBUNG & LERNZIELE:
@@ -30,7 +30,7 @@
     6. Smart UX (NEU): 
        - Menüs schließen automatisch nach 10 Sekunden Inaktivität.
        - Es ist immer nur ein Menü gleichzeitig offen.
-       - Tooltips (Zoom 18) sind interaktiv und schließen intelligent nach 3 Sekunden.
+       - Tooltips (Zoom 18) bleiben nun zuverlässig 3 Sekunden offen, damit man sie lesen kann.
        
     TECHNISCHER AUFBAU:
     Es handelt sich um eine "Single Page Application" (SPA). Das bedeutet, der gesamte
@@ -46,7 +46,7 @@
        - Karten-Logik (Leaflet Bibliothek)
        - Daten-Abruf (Live-Abfrage der Overpass API)
        - Export-Logik (Zeichnen auf Canvas für PNG, XML-Generierung für GPX)
-       - NEU: Smart Close Logik für Menüs und Tooltips
+       - NEU: Manuelle Steuerung der Tooltip-Events (Zeile ~950)
 
     RECHTLICHE HINWEISE:
     Impressum und Datenschutzerklärung sind fest integriert ("Info & Recht"-Button),
@@ -1217,41 +1217,50 @@
 
             // --- NEU: SMART TOOLTIP LOGIK (Nur bei Zoom 18) ---
             if (marker && zoom === 18) {
-                // 1. Tooltip Konfiguration (interactive, nicht permanent, nicht sticky)
+                // 1. Tooltip Konfiguration (binden, damit Leaflet Position kennt)
                 marker.bindTooltip(generateTooltip(tags), { 
-                    interactive: true,    // Erlaubt Maus-Events auf dem Tooltip (für Hover)
-                    permanent: false,     // Nur bei Bedarf anzeigen
-                    sticky: false,        // Feste Position, folgt nicht der Maus
-                    direction: 'top',     // Immer oben drüber
+                    interactive: true,    // Erlaubt Interaktion (wichtig für Copy/Paste)
+                    permanent: false,     // Nicht dauerhaft anzeigen
+                    sticky: false,        // Feste Position relativ zum Marker
+                    direction: 'top',     // Immer oberhalb
                     opacity: 0.95 
                 });
 
-                // Timer-Variable direkt am Marker-Objekt speichern, damit wir sie wiederfinden
+                // 2. WICHTIG: Standard-Verhalten von Leaflet deaktivieren!
+                // Leaflet fügt beim bindTooltip automatisch Listener für 'mouseover' (öffnen)
+                // und 'mouseout' (sofort schließen) hinzu. Diese müssen weg, damit wir
+                // die Kontrolle über den Schließ-Zeitpunkt haben.
+                marker.off('mouseover'); 
+                marker.off('mouseout');
+
+                // Timer-Variable initialisieren
                 marker._tooltipCloseTimer = null;
 
-                // 2. Maus fährt auf Marker -> Öffnen
+                // 3. Eigene Öffnen-Logik (Sofort bei MouseOver)
                 marker.on('mouseover', function() {
+                    // Falls gerade ein Schließ-Timer läuft (User kam zurück), abbrechen!
                     if (this._tooltipCloseTimer) {
-                        clearTimeout(this._tooltipCloseTimer); // Schließen abbrechen
+                        clearTimeout(this._tooltipCloseTimer); 
                         this._tooltipCloseTimer = null;
                     }
-                    this.openTooltip();
+                    this.openTooltip(); // Manuell öffnen
                 });
 
-                // 3. Maus verlässt Marker -> Timer starten (3 Sekunden)
+                // 4. Eigene Schließen-Logik (Verzögert bei MouseOut)
                 marker.on('mouseout', function() {
+                    // Timer starten: Schließe erst in 3000ms (3 Sekunden)
                     this._tooltipCloseTimer = setTimeout(() => {
                         this.closeTooltip();
                     }, 3000);
                 });
 
-                // 4. Sonderlogik: Maus fährt auf den Tooltip-Text selbst
+                // 5. Sonderlogik: Maus fährt auf den Tooltip-Text selbst
                 // Wir müssen warten, bis der Tooltip wirklich "da" ist ('tooltipopen' Event)
                 marker.on('tooltipopen', function(e) {
                     const tooltipNode = e.tooltip._container; // Das HTML-Element des Tooltips
                     if (!tooltipNode) return;
 
-                    // Maus auf Tooltip -> Timer stoppen (User liest gerade)
+                    // Wenn Maus AUF den Tooltip geht -> Timer stoppen (User liest gerade)
                     L.DomEvent.on(tooltipNode, 'mouseenter', () => {
                         if (this._tooltipCloseTimer) {
                             clearTimeout(this._tooltipCloseTimer);
@@ -1259,7 +1268,7 @@
                         }
                     });
 
-                    // Maus verlässt Tooltip -> Timer neu starten (3 Sekunden)
+                    // Wenn Maus den Tooltip verlässt -> Timer neu starten (3 Sekunden)
                     L.DomEvent.on(tooltipNode, 'mouseleave', () => {
                         this._tooltipCloseTimer = setTimeout(() => {
                             this.closeTooltip();
