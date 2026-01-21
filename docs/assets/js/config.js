@@ -99,4 +99,23 @@ export const Config = {
         17: 8,  
         18: 5   // Bei Zoom 18 (sehr detailliert) nur 5km
     }
+    export const Config = {
+    // ... (deine bisherigen Einstellungen oben lassen) ...
+
+    // NEU: Zentrale Farbpalette
+    colors: {
+        station: '#ef4444',       // Rot (Feuerwachen)
+        hydrant: '#ef4444',       // Rot (Standard Hydranten)
+        water: '#3b82f6',         // Blau (Wasser/Zisternen/Teiche)
+        defib: '#16a34a',         // Grün (Defibrillatoren)
+        
+        rangeCircle: '#f97316',   // Orange (100m Radius Kreis)
+        selection: '#3b82f6',     // Blau (Auswahl-Rechteck Export)
+        bounds: '#333333',        // Dunkelgrau (Gemeindegrenzen)
+        
+        // Export Design
+        textMain: '#0f172a',      // Dunkelblau (Titel)
+        textSub: '#334155',       // Grau-Blau (Datum/Footer)
+        bgHeader: 'rgba(255, 255, 255, 0.98)' // Weißer Kasten
+    }
 };
