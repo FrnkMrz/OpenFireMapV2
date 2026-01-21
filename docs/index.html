@@ -2,7 +2,7 @@
     =============================================================================
     PROJEKT: OpenFireMap V2 - Lernversion (Vollständig, Barrierefrei & Schnell)
     AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-18 (Update: OSM DE Fix - CORS)
+    DATUM: 2026-01-21 (Update: Smart Auto-Close für Menüs & Tooltips)
     =============================================================================
     
     PROJEKT-BESCHREIBUNG & LERNZIELE:
@@ -27,6 +27,10 @@
        - GPX-Export: Exportiert die sichtbaren Punkte für Navigationsgeräte.
     5. Internationalisierung: Die Oberfläche passt sich automatisch der Browsersprache an
        (unterstützt DE, EN, FR, ES, IT, PL, NL, CS).
+    6. Smart UX (NEU): 
+       - Menüs schließen automatisch nach 10 Sekunden Inaktivität.
+       - Es ist immer nur ein Menü gleichzeitig offen.
+       - Tooltips (Zoom 18) sind interaktiv und schließen intelligent nach 3 Sekunden.
        
     TECHNISCHER AUFBAU:
     Es handelt sich um eine "Single Page Application" (SPA). Das bedeutet, der gesamte
@@ -42,38 +46,11 @@
        - Karten-Logik (Leaflet Bibliothek)
        - Daten-Abruf (Live-Abfrage der Overpass API)
        - Export-Logik (Zeichnen auf Canvas für PNG, XML-Generierung für GPX)
+       - NEU: Smart Close Logik für Menüs und Tooltips
 
     RECHTLICHE HINWEISE:
     Impressum und Datenschutzerklärung sind fest integriert ("Info & Recht"-Button),
     um einen rechtssicheren Betrieb zu ermöglichen.
-
-    =============================================================================
-    NEU: ÄNDERUNGEN FÜR BARRIEREFREIHEIT (Accessibility / a11y)
-    =============================================================================
-    Damit die Seite auch von Menschen mit Einschränkungen (z.B. Blinde mit Screenreadern)
-    genutzt werden kann, wurden folgende Anpassungen vorgenommen:
-
-    1.  Semantik: Eine unsichtbare Hauptüberschrift (H1) hinzugefügt, damit Screenreader
-        die Struktur der Seite verstehen.
-    2.  Labels: Alle Buttons ohne sichtbaren Text (nur Icons) haben jetzt ein 'aria-label',
-        damit Vorlese-Software weiß, was der Knopf tut.
-    3.  Formulare: Das Suchfeld hat ein verstecktes <label> bekommen.
-    4.  Fokus-Indikatoren: Alle interaktiven Elemente haben jetzt sichtbare Rahmen
-        (focus:ring), wenn man sie mit der Tastatur (Tab-Taste) ansteuert.
-    5.  Live-Regionen: Die Nachrichtenbox (notification-box) hat 'role="alert"',
-        damit neue Meldungen sofort vorgelesen werden.
-    6.  Kontrast: Einige Textfarben wurden leicht aufgehellt, um die Lesbarkeit
-        auf dem dunklen Hintergrund zu verbessern.
-
-    =============================================================================
-    NEU: PERFORMANCE OPTIMIERUNGEN (Schnelleres Laden)
-    =============================================================================
-    1.  Preconnect: Verbindungen zu wichtigen Servern (Kartenbilder, API) werden
-        ganz früh aufgebaut, noch bevor sie gebraucht werden.
-    2.  Defer: Skripte (Javascript) laden jetzt parallel im Hintergrund und blockieren
-        nicht mehr den Seitenaufbau.
-    3.  DOMContentLoaded: Die Karte startet sofort, wenn das HTML gelesen ist, und
-        wartet nicht mehr auf alle Bilder/Icons.
 -->
 
 <!DOCTYPE html>
@@ -99,8 +76,6 @@
     <!-- 
         FAVICONS & APP ICONS (ANGEPASST)
         Diese Icons sorgen dafür, dass die Seite als Lesezeichen oder App auf dem Homescreen gut aussieht.
-        WICHTIG: Die Dateien liegen nun im Unterordner "favicon/".
-        Der Pfad wurde entsprechend von "/" auf "favicons/" geändert.
     -->
     <link rel="apple-touch-icon" sizes="57x57" href="favicons/apple-icon-57x57.png">
     <link rel="apple-touch-icon" sizes="60x60" href="favicons/apple-icon-60x60.png">
@@ -116,23 +91,17 @@
     <link rel="icon" type="image/png" sizes="96x96" href="favicons/favicon-96x96.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
     
-    <!-- Die Manifest-Datei liegt ebenfalls im Unterordner -->
     <link rel="manifest" href="favicons/sitemanifest">
     
     <meta name="msapplication-TileColor" content="#ffffff">
     <meta name="msapplication-TileImage" content="favicon/ms-icon-144x144.png">
     <meta name="theme-color" content="#ffffff">
     
-    <!-- Das Standard-Favicon für alte Browser -->
     <link rel="icon" type="image/x-icon" href="favicons/favicon.ico">
     
     <!-- 
         EXTERNE WERKZEUGE (BIBLIOTHEKEN) 
         Wir laden fertige Code-Pakete aus dem Internet.
-        
-        PERFORMANCE (Defer):
-        Das Attribut 'defer' sorgt dafür, dass diese Skripte parallel geladen werden,
-        ohne den Seitenaufbau anzuhalten.
     -->
     
     <!-- Leaflet CSS: Das Design für die Karte -->
@@ -227,44 +196,20 @@
 
 <!-- HTML STRUKTUR -->
 
-<!-- 
-    BARRIEREFREIHEIT (Accessibility):
-    Diese unsichtbare Überschrift ("sr-only" = Screen Reader Only) hilft blinden Nutzern,
-    sofort zu verstehen, auf welcher Seite sie sind.
--->
 <h1 class="sr-only">OpenFireMap - Interaktive Karte für Feuerwehr-Infrastruktur</h1>
 
 <div id="map" aria-label="Interaktive Karte" role="application"></div>
 
-<!-- 
-    BARRIEREFREIHEIT (Live Region):
-    'role="alert"' sorgt dafür, dass Änderungen in diesem Bereich (z.B. "Standort gefunden")
-    sofort vom Screenreader vorgelesen werden, auch wenn der Fokus gerade woanders ist.
--->
+<!-- Live Region für Meldungen -->
 <div id="notification-box" role="alert" aria-live="polite"></div>
 
 <!-- STEUERLEISTE (Oben Links) -->
 <div class="absolute top-5 left-5 z-[1000] flex gap-3">
     <!-- Suche -->
     <div class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5 focus-within:ring-2 focus-within:ring-blue-500">
-        <!-- 
-            BARRIEREFREIHEIT (Formular-Label):
-            Jedes Eingabefeld braucht ein Label. Mit "sr-only" verstecken wir es optisch,
-            aber es bleibt für Screenreader lesbar.
-        -->
         <label for="search-input" class="sr-only" data-i18n="search_placeholder">Ort suchen</label>
-        <!-- 
-            BARRIEREFREIHEIT (Fokus):
-            'outline-none' entfernt den Standard-Rahmen. Wir ersetzen ihn durch
-            'focus:ring-0', da der Container außenherum (Zeile 175) den Fokus-Ring übernimmt.
-        -->
         <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Ort suchen..." class="bg-transparent px-4 py-2 text-sm text-white outline-none focus:ring-0 w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-400">
         
-        <!-- 
-            BARRIEREFREIHEIT (Buttons):
-            'aria-label' beschreibt die Funktion des Buttons für Blinde.
-            Das SVG-Icon bekommt 'aria-hidden="true"', damit es ignoriert wird.
-        -->
         <button onclick="searchLocation()" aria-label="Suchen" class="p-2 text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-xl">
             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </button>
@@ -276,8 +221,6 @@
     </button>
     
     <!-- Layer -->
-    <!-- 'aria-expanded' zeigt an, ob das Menü offen ist (wird per JS gesteuert) -->
-    <!-- 'aria-controls' verbindet den Button mit dem Menü -->
     <button onclick="toggleLayerMenu()" id="layer-btn-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="layer-menu" aria-label="Kartenhintergrund wechseln" data-i18n-title="layers_title" class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500" title="Karte wechseln">
         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
         </svg>
@@ -385,10 +328,6 @@
 <div id="layer-menu" role="menu" aria-labelledby="layer-btn-trigger" class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center" data-i18n="bg_header">Hintergrund</h3>
     <div class="grid grid-cols-1 gap-1">
-        <!-- 
-            BARRIEREFREIHEIT (Menü-Buttons):
-            Auch hier: Sichtbarer Fokus-Ring (focus:ring-2) für Tastatur-Nutzer.
-        -->
         <button onclick="setBaseLayer('voyager')" role="menuitem" id="btn-voyager" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-blue-500" aria-hidden="true"></div> <span data-i18n="layer_std">Standard (Voyager)</span></button>
         <button onclick="setBaseLayer('positron')" role="menuitem" id="btn-positron" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-slate-300" aria-hidden="true"></div> <span data-i18n="layer_print">Druck (Hell)</span></button>
         <button onclick="setBaseLayer('dark')" role="menuitem" id="btn-dark" class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="w-3 h-3 rounded-full bg-slate-800" aria-hidden="true"></div> <span data-i18n="layer_night">Nacht (Dunkel)</span></button>
@@ -949,7 +888,6 @@
         osmde: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png'
     };
     
-    // WICHTIG: Die HTML-Texte für die Lizenzangaben unten rechts auf der interaktiven Karte
     const layerAttributions = {
         voyager: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         positron: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -960,7 +898,6 @@
         osmde: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     };
 
-    // NEU: Text-Versionen für den PNG Export (Da HTML im Bild nicht funktioniert, brauchen wir reinen Text)
     const layerAttributionsText = {
         voyager: '© OpenStreetMap contributors, © CARTO',
         positron: '© OpenStreetMap contributors, © CARTO',
@@ -971,10 +908,7 @@
         osmde: '© OpenStreetMap contributors'
     };
 
-    // Manche Karten gehen nicht bis Zoom 18 (z.B. Topo nur bis 16/17)
     const layerMaxZoom = { voyager: 18, positron: 18, dark: 18, satellite: 18, topo: 17, osm: 18, osmde: 18 };
-    
-    // Server, die wir fragen können (Overpass API). Falls einer ausfällt, nehmen wir den anderen.
     const overpassEndpoints = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
     /* =========================================================================
@@ -982,19 +916,18 @@
        Diese Funktion läuft los, sobald die Webseite geladen ist.
        ========================================================================= */
     
-    // NEU: Zeigt Nachrichten mit variabler Dauer an
     function showNotification(msg, duration = 3000) {
         const box = document.getElementById('notification-box');
         if (!box) return;
         box.innerText = msg;
         box.style.display = 'block';
-        // Falls vorher schon ein Timer lief, löschen wir ihn, damit die Nachricht nicht sofort verschwindet
         if(box.hideTimeout) clearTimeout(box.hideTimeout);
         box.hideTimeout = setTimeout(() => box.style.display = 'none', duration); 
     }
 
     function initMap() {
         updatePageLanguage(); // Sprache setzen
+        setupMenuAutoClose(); // NEU: Menü-Timer Logik starten
 
         // Erstelle die "Folien" (Layer Groups)
         markerLayer = L.layerGroup();
@@ -1013,19 +946,14 @@
         markerLayer.addTo(map);   
         
         // Event Listener: Was passiert wann?
-        // Wenn Karte bewegt wird -> Daten neu laden
         map.on('moveend zoomend', fetchOSMData); 
-        // Wenn gezoomt wird -> Kreis anpassen
         map.on('zoomend', updateRangeCircle);    
-        // Zoom-Anzeige unten rechts aktualisieren
         map.on('zoom', () => document.getElementById('zoom-val').innerText = map.getZoom().toFixed(1)); 
         
-        // Maus-Events für das "Ausschnitt wählen" Werkzeug
         map.on('mousedown', onMouseDown);
         map.on('mousemove', onMouseMove);
         map.on('mouseup', onMouseUp);
         
-        // Klick ins Leere -> Auswahl aufheben
         map.on('click', () => {
             if (activeRangeCenter && !isSelecting) {
                 activeRangeCenter = null;
@@ -1033,23 +961,92 @@
             }
         });
 
-        // Einmal initial Daten laden
         fetchOSMData();
     }
 
     /* =========================================================================
+       NEU: INTELLIGENTE MENÜ-STEUERUNG
+       "Smart Auto-Close" für Layer-, Export- und Info-Menüs.
+       ========================================================================= */
+
+    // Schließt alle offenen Menüs sofort
+    function closeAllMenus() {
+        // 1. Layer Menü
+        const layerMenu = document.getElementById('layer-menu');
+        const layerBtn = document.getElementById('layer-btn-trigger');
+        if (layerMenu && !layerMenu.classList.contains('hidden')) {
+            layerMenu.classList.add('hidden');
+            if(layerBtn) layerBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        // 2. Export Menü
+        const exportMenu = document.getElementById('export-menu');
+        const exportBtn = document.getElementById('export-btn-trigger');
+        if (exportMenu && !exportMenu.classList.contains('hidden')) {
+            exportMenu.classList.add('hidden');
+            if(exportBtn) exportBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        // 3. Info / Recht Modal (hat spezielles "flex" styling)
+        const legalModal = document.getElementById('legal-modal');
+        const legalBtn = document.getElementById('btn-legal-trigger');
+        if (legalModal && legalModal.style.display !== 'none' && legalModal.style.display !== '') {
+            legalModal.style.display = 'none';
+            if(legalBtn) legalBtn.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    // Initialisiert die 10-Sekunden Timer für alle Menü-Container
+    function setupMenuAutoClose() {
+        const menuIds = ['layer-menu', 'export-menu', 'legal-modal'];
+        
+        menuIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            let closeTimer = null;
+
+            // Wenn Maus das Menü verlässt -> 10s Timer starten
+            el.addEventListener('mouseleave', () => {
+                // Nur starten, wenn das Menü auch wirklich offen ist
+                const isHidden = id === 'legal-modal' ? (el.style.display === 'none' || el.style.display === '') : el.classList.contains('hidden');
+                if (isHidden) return;
+
+                closeTimer = setTimeout(() => {
+                    if (id === 'legal-modal') {
+                        el.style.display = 'none';
+                        const btn = document.getElementById('btn-legal-trigger');
+                        if(btn) btn.setAttribute('aria-expanded', 'false');
+                    } else {
+                        el.classList.add('hidden');
+                        // Finde den passenden Trigger-Button für ARIA
+                        const btnId = id === 'layer-menu' ? 'layer-btn-trigger' : 'export-btn-trigger';
+                        const btn = document.getElementById(btnId);
+                        if(btn) btn.setAttribute('aria-expanded', 'false');
+                    }
+                }, 10000); // 10 Sekunden
+            });
+
+            // Wenn Maus zurückkehrt -> Timer abbrechen
+            el.addEventListener('mouseenter', () => {
+                if (closeTimer) {
+                    clearTimeout(closeTimer);
+                    closeTimer = null;
+                }
+            });
+        });
+    }
+
+    /* =========================================================================
        4. DATEN LADEN (OVERPASS API)
-       Hier fragen wir die OpenStreetMap-Datenbank ab.
        ========================================================================= */
     
-    // Helfer: Versucht Server A, bei Fehler Server B (Retry Pattern)
     async function fetchWithRetry(query) {
         for (let endpoint of overpassEndpoints) {
             try {
                 const res = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, { signal: currentRequestController.signal });
                 if (!res.ok) continue; 
                 const text = await res.text();
-                // Prüfen ob Antwort Müll ist (HTML Fehlerseite statt JSON Daten)
                 if (text.trim().startsWith('<?xml') || text.trim().startsWith('<html')) continue;
                 return JSON.parse(text); 
             } catch (e) { if (e.name === 'AbortError') throw e; } 
@@ -1057,11 +1054,9 @@
         throw new Error("API Fehler");
     }
 
-    // Die Hauptlogik für das Datenladen
     async function fetchOSMData() {
         const zoom = map.getZoom();
         
-        // Wenn wir zu weit weg sind (Zoom < 12), laden wir nichts (zu viele Daten!)
         if (zoom < 12) {
             document.getElementById('data-status').innerText = t('status_standby'); 
             cachedElements = [];
@@ -1070,35 +1065,28 @@
             return; 
         }
         
-        // Bounding Box berechnen: Wo schaut der User gerade hin? (Süd, West, Nord, Ost)
         const b = map.getBounds();
         const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
         
         const status = document.getElementById('data-status');
         status.innerText = t('status_loading'); 
         
-        // Alte Anfrage abbrechen, falls noch eine läuft
         if (currentRequestController) currentRequestController.abort();
         currentRequestController = new AbortController();
         
-        // Abfrage (Query) zusammenbauen
         let queryParts = [];
         
-        // Wachen ab Zoom 12
         if (zoom >= 12) {
             queryParts.push(`nwr["amenity"="fire_station"](${bbox});`);
             queryParts.push(`nwr["building"="fire_station"](${bbox});`);
         }
-        // Hydranten ab Zoom 15
         if (zoom >= 15) {
             queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});`);
         }
-        // Defibrillatoren ab Zoom 15 (Update!)
         if (zoom >= 15) {
             queryParts.push(`node["emergency"="defibrillator"](${bbox});`);
         }
 
-        // Grenzen ab Zoom 14
         let boundaryQuery = '';
         if (zoom >= 14) {
             boundaryQuery = `(way["boundary"="administrative"]["admin_level"="8"](${bbox});)->.boundaries; .boundaries out geom;`;
@@ -1106,7 +1094,6 @@
 
         if (queryParts.length === 0 && boundaryQuery === '') return;
 
-        // Der Code, den wir an den Server schicken (Overpass QL Sprache)
         let q = `[out:json][timeout:90];
         (
           ${queryParts.join('\n')}
@@ -1124,12 +1111,9 @@
 
     /* =========================================================================
        5. DARSTELLUNG (RENDERING)
-       Hier werden die Daten in bunte Punkte und Icons verwandelt.
        ========================================================================= */
     
-    // Erzeugt den SVG-Code (das Bild) für ein Icon
     function getSVGContent(type) {
-        // Spezialfall: Defibrillator (Grünes Icon mit Herz)
         if (type === 'defibrillator') {
              return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="50" cy="50" r="45" fill="#16a34a" stroke="white" stroke-width="5"/>
@@ -1163,15 +1147,14 @@
         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
     }
 
-    // Platziert die Marker auf der Karte
+    // Platziert die Marker auf der Karte (MIT NEUER TOOLTIP LOGIK)
     function renderMarkers(elements, zoom) {
         markerLayer.clearLayers(); 
         boundaryLayer.clearLayers(); 
-        const renderedLocations = []; // Merken, wo wir schon was gemalt haben (gegen Überlappung)
+        const renderedLocations = []; 
         
         elements.forEach(el => {
             const tags = el.tags || {};
-            // Grenzen zeichnen
             if (tags.boundary === 'administrative' && el.geometry) {
                 if (zoom < 14) return; 
                 const latlngs = el.geometry.map(p => [p.lat, p.lon]);
@@ -1179,7 +1162,6 @@
                 return; 
             }
             
-            // Koordinaten bestimmen
             const lat = el.lat || el.center?.lat;
             const lon = el.lon || el.center?.lon;
             if (!lat || !lon) return;
@@ -1192,57 +1174,102 @@
             else if (isDefib) type = 'defibrillator';
             else type = tags['fire_hydrant:type'] || tags.emergency;
 
-            // Filterlogik: Was zeigen wir wann?
             if (isStation && zoom < 12) return; 
             if (!isStation && !isDefib && zoom < 15) return; 
-            if (isDefib && zoom < 15) return; // Defib ab Zoom 15
+            if (isDefib && zoom < 15) return; 
 
-            // Überlappungsschutz
             const alreadyDrawn = renderedLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
             if (isStation && alreadyDrawn) return;
             if (isStation) renderedLocations.push({lat, lon});
 
-            // Darstellungslogik
+            let marker = null;
+
+            // --- STATIONEN ---
             if (isStation) {
                 if (zoom < 14) {
-                     // Wache weit weg: Rotes Quadrat
                      L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10,10] }) }).addTo(markerLayer);
                 } else {
-                     // Wache nah: Großes Haus-Icon
                      const iconHtml = getSVGContent(type);
-                     const marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [32, 32] }), zIndexOffset: 1000 }).addTo(markerLayer);
-                    if (zoom === 18) { marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 }); }
+                     marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [32, 32] }), zIndexOffset: 1000 }).addTo(markerLayer);
                 }
-            } else if (isDefib) {
+            } 
+            // --- DEFIBRILLATOREN ---
+            else if (isDefib) {
                 if (zoom < 17) {
-                    // Defib mittel: Grüner Punkt (Zoom 15 & 16)
                     L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) }).addTo(markerLayer);
                 } else {
-                    // Defib nah: Großes Icon (ab Zoom 17)
                     const iconHtml = getSVGContent(type);
-                    const marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), zIndexOffset: 2000 }).addTo(markerLayer);
-                    // Tooltip (Text) NUR bei Zoom 18
-                    if (zoom === 18) {
-                        marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 });
-                    }
+                    marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), zIndexOffset: 2000 }).addTo(markerLayer);
                 }
-            } else {
+            } 
+            // --- HYDRANTEN ---
+            else {
                 if (zoom < 17) {
-                    // Hydrant mittel: Roter Punkt
                     const color = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type) ? 'tank-dot' : 'hydrant-dot';
                     L.marker([lat, lon], { icon: L.divIcon({ className: color, iconSize: [10,10] }) }).addTo(markerLayer);
                 } else {
-                    // Hydrant nah: Großes Icon
                     const iconHtml = getSVGContent(type);
-                    const marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), zIndexOffset: 0 }).addTo(markerLayer);
-                    if (zoom === 18) { marker.bindTooltip(generateTooltip(tags), { sticky: true, opacity: 0.95 }); }
+                    marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'icon-container', html: iconHtml, iconSize: [28, 28] }), zIndexOffset: 0 }).addTo(markerLayer);
+                    // Radius-Kreis beim Klicken
                     marker.on('click', (e) => { L.DomEvent.stopPropagation(e); showRangeCircle(lat, lon); });
                 }
+            }
+
+            // --- NEU: SMART TOOLTIP LOGIK (Nur bei Zoom 18) ---
+            if (marker && zoom === 18) {
+                // 1. Tooltip Konfiguration (interactive, nicht permanent, nicht sticky)
+                marker.bindTooltip(generateTooltip(tags), { 
+                    interactive: true,    // Erlaubt Maus-Events auf dem Tooltip (für Hover)
+                    permanent: false,     // Nur bei Bedarf anzeigen
+                    sticky: false,        // Feste Position, folgt nicht der Maus
+                    direction: 'top',     // Immer oben drüber
+                    opacity: 0.95 
+                });
+
+                // Timer-Variable direkt am Marker-Objekt speichern, damit wir sie wiederfinden
+                marker._tooltipCloseTimer = null;
+
+                // 2. Maus fährt auf Marker -> Öffnen
+                marker.on('mouseover', function() {
+                    if (this._tooltipCloseTimer) {
+                        clearTimeout(this._tooltipCloseTimer); // Schließen abbrechen
+                        this._tooltipCloseTimer = null;
+                    }
+                    this.openTooltip();
+                });
+
+                // 3. Maus verlässt Marker -> Timer starten (3 Sekunden)
+                marker.on('mouseout', function() {
+                    this._tooltipCloseTimer = setTimeout(() => {
+                        this.closeTooltip();
+                    }, 3000);
+                });
+
+                // 4. Sonderlogik: Maus fährt auf den Tooltip-Text selbst
+                // Wir müssen warten, bis der Tooltip wirklich "da" ist ('tooltipopen' Event)
+                marker.on('tooltipopen', function(e) {
+                    const tooltipNode = e.tooltip._container; // Das HTML-Element des Tooltips
+                    if (!tooltipNode) return;
+
+                    // Maus auf Tooltip -> Timer stoppen (User liest gerade)
+                    L.DomEvent.on(tooltipNode, 'mouseenter', () => {
+                        if (this._tooltipCloseTimer) {
+                            clearTimeout(this._tooltipCloseTimer);
+                            this._tooltipCloseTimer = null;
+                        }
+                    });
+
+                    // Maus verlässt Tooltip -> Timer neu starten (3 Sekunden)
+                    L.DomEvent.on(tooltipNode, 'mouseleave', () => {
+                        this._tooltipCloseTimer = setTimeout(() => {
+                            this.closeTooltip();
+                        }, 3000);
+                    });
+                });
             }
         });
     }
 
-    // Erstellt den HTML-Text für den Tooltip (das kleine Info-Schildchen)
     function generateTooltip(tags) {
         let tooltipTitle = tags.name || t('details');
         if (tags.emergency === 'defibrillator') tooltipTitle = t('defib');
@@ -1262,7 +1289,6 @@
         updateRangeCircle();
     }
 
-    // Zeichnet den 100m Kreis
     function updateRangeCircle() {
         rangeLayerGroup.clearLayers();
         if (!activeRangeCenter) return;
@@ -1273,7 +1299,6 @@
             color: '#f97316', fillColor: '#f97316', fillOpacity: 0.15, radius: 100, weight: 2, dashArray: '5, 8', interactive: false 
         }).addTo(rangeLayerGroup);
 
-        // Berechnet, wo der Text "100m" stehen soll, damit er schön am Rand des Kreises liegt
         if (zoom >= 17) {
             const latRad = activeRangeCenter.lat * Math.PI / 180;
             const kmPerDegLon = 111.32 * Math.cos(latRad);
@@ -1284,7 +1309,6 @@
         }
     }
 
-    // GPS Funktion
     function locateUser() {
         if (!navigator.geolocation) { showNotification(t('geo_error')); return; }
         const btn = document.getElementById('locate-btn');
@@ -1308,7 +1332,7 @@
     }
 
     /* =========================================================================
-       5. EXPORT & MENÜ FUNKTIONEN
+       6. EXPORT & MENÜ FUNKTIONEN (UPDATE: EXKLUSIVES ÖFFNEN)
        ========================================================================= */
     function setExportFormat(fmt) {
         exportFormat = fmt;
@@ -1384,14 +1408,7 @@
         activeLayerConfig = key;
         map.eachLayer(layer => { if (layer instanceof L.TileLayer) map.removeLayer(layer); });
         
-        // Update Layer with correct Attribution
         const attribution = layerAttributions[key] || '&copy; OSM';
-        
-        // BUG FIX (FRANK MÄRZ): 'tile.openstreetmap.de' (FOSSGIS e.V.) unterstützt manchmal
-        // kein 'crossOrigin: anonymous' für einfache GET-Requests im Browser.
-        // Das führte dazu, dass die Karte weiß blieb ("Karte lädt nicht").
-        // LÖSUNG: Wir entfernen 'crossOrigin' für die Anzeige-Ebene.
-        // Für den Export laden wir die Bilder sowieso neu, daher ist das hier sicher.
         L.tileLayer(layerUrls[key], { attribution: attribution }).addTo(map);
         
         document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
@@ -1406,28 +1423,47 @@
         }
     }
 
-    // ACCESSIBILITY UPDATE: ARIA-Attribute beim Öffnen/Schließen umschalten
+    // UPDATE: Toggle-Funktionen nutzen jetzt closeAllMenus() für exklusives Öffnen
     function toggleExportMenu() { 
         const menu = document.getElementById('export-menu');
         const btn = document.getElementById('export-btn-trigger');
-        const isHidden = menu.classList.toggle('hidden');
-        btn.setAttribute('aria-expanded', !isHidden);
-        if(!isHidden) resetExportUI();
+        const isCurrentlyHidden = menu.classList.contains('hidden');
+        
+        // Erst alles schließen (damit Layer-Menü zugeht, falls offen)
+        closeAllMenus();
+
+        // Wenn es vorher zu war, machen wir es jetzt auf (ansonsten bleibt es zu, weil closeAllMenus es schon zugemacht hat)
+        if (isCurrentlyHidden) {
+            menu.classList.remove('hidden');
+            btn.setAttribute('aria-expanded', 'true');
+            resetExportUI();
+        }
     }
 
     function toggleLayerMenu() { 
         const menu = document.getElementById('layer-menu');
         const btn = document.getElementById('layer-btn-trigger');
-        const isHidden = menu.classList.toggle('hidden');
-        btn.setAttribute('aria-expanded', !isHidden);
+        const isCurrentlyHidden = menu.classList.contains('hidden');
+        
+        closeAllMenus(); // Andere Menüs schließen
+
+        if (isCurrentlyHidden) {
+            menu.classList.remove('hidden');
+            btn.setAttribute('aria-expanded', 'true');
+        }
     }
 
     function toggleLegalModal() { 
         const modal = document.getElementById('legal-modal');
         const btn = document.getElementById('btn-legal-trigger');
-        const isVisible = (modal.style.display === 'flex');
-        modal.style.display = isVisible ? 'none' : 'flex';
-        btn.setAttribute('aria-expanded', !isVisible);
+        const isCurrentlyVisible = (modal.style.display === 'flex');
+        
+        closeAllMenus(); // Andere Menüs schließen
+
+        if (!isCurrentlyVisible) {
+            modal.style.display = 'flex';
+            btn.setAttribute('aria-expanded', 'true');
+        }
     }
 
     function resetExportUI() {
@@ -1444,7 +1480,7 @@
     }
 
     /* =========================================================================
-       6. EXPORT FUNKTIONEN (GPX & PNG)
+       7. EXPORT FUNKTIONEN (GPX & PNG)
        ========================================================================= */
     
     function exportAsGPX() {
@@ -1518,8 +1554,6 @@
         });
     }
 
-    // NEU: Konfiguration der maximalen Kantenlänge pro Zoomstufe (in Kilometern)
-    // Dient als Schutz, damit keine riesigen Datenmengen bei hohem Zoom geladen werden müssen.
     const ZOOM_LIMITS_KM = {
         12: 30, // Weit rausgezoomt: Großer Ausschnitt erlaubt (30km)
         13: 25,
@@ -1587,49 +1621,39 @@
         const x2 = Math.floor(lon2tile(se.lng, targetZoom));
         const y2 = Math.floor(lat2tile(se.lat, targetZoom));
 
-        // NEU: Berechne Map-Größe + Rand (Margin)
-        const margin = 40; // Rand an allen Seiten
-        const footerH = 60; // Extra Platz unten für Text
+        const margin = 40; 
+        const footerH = 60; 
         
         const mapWidth = (x2 - x1 + 1) * 256;
         const mapHeight = (y2 - y1 + 1) * 256;
 
-        // Berechne Auflösung (Meter pro Pixel) für Limits
-        // Dies ist der "reale" Maßstab an diesem Ort
         const mPerPx = (Math.cos(bounds.getCenter().lat * Math.PI / 180) * 2 * Math.PI * 6378137) / (256 * Math.pow(2, targetZoom));
 
         const canvas = document.createElement('canvas');
         canvas.width = mapWidth + (margin * 2); 
-        canvas.height = mapHeight + margin + footerH + margin; // Oben 40, Unten 40 + 60
+        canvas.height = mapHeight + margin + footerH + margin; 
         
-        // LIMIT-CHECK 1: Pixel-Limit (Technischer Schutz vor Browser-Absturz)
-        // 14.000px ist eine sichere Obergrenze für Canvas in den meisten Browsern.
         if (canvas.width > 14000 || canvas.height > 14000) { 
-            showNotification(t('too_large'), 5000); // Längere Anzeigezeit (5s)
+            showNotification(t('too_large'), 5000); 
             toggleExportMenu(); return; 
         }
 
-        // LIMIT-CHECK 2: Intelligentes Zoom-Limit (Logische Einschränkung)
-        // Wir prüfen, ob der Ausschnitt für die gewählte Zoomstufe zu groß ist.
-        const maxKm = ZOOM_LIMITS_KM[targetZoom] || 5; // Standard 5km falls Zoom nicht definiert
+        const maxKm = ZOOM_LIMITS_KM[targetZoom] || 5; 
         const maxMeters = maxKm * 1000;
         
-        // Tatsächliche Größe in Metern berechnen
         const widthMeters = mapWidth * mPerPx;
         const heightMeters = mapHeight * mPerPx;
 
         if (widthMeters > maxMeters || heightMeters > maxMeters) {
-             // Berechne, wie viel zu groß es ist, für eine gute Fehlermeldung
              const currentMax = Math.max(widthMeters, heightMeters) / 1000;
              const msg = `Zoom ${targetZoom}: Max. ${maxKm}km erlaubt! (Aktuell: ~${currentMax.toFixed(1)}km)`;
-             showNotification(msg, 6000); // 6 Sekunden anzeigen, damit man es lesen kann
+             showNotification(msg, 6000); 
              toggleExportMenu(); 
              return;
         }
 
         const ctx = canvas.getContext('2d');
         
-        // Hintergrund weiß füllen (der Rand)
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -1653,7 +1677,6 @@
                 await new Promise(resolve => {
                     const img = new Image(); img.crossOrigin = "anonymous";
                     const zTargetUrl = baseUrlTpl.replace('{z}', targetZoom).replace('{x}', x).replace('{y}', y);
-                    // NEU: Zeichne Tiles verschoben um 'margin'
                     img.onload = () => { 
                         ctx.drawImage(img, (x - x1) * 256 + margin, (y - y1) * 256 + margin); 
                         loaded++; updateProgress(); resolve(); 
@@ -1683,7 +1706,6 @@
         
         progressLabel.innerText = t('render_bounds');
         ctx.save(); 
-        // NEU: Verschiebe Koordinatensystem für Vektoren (Grenzen)
         ctx.translate((-x1 * 256) + margin, (-y1 * 256) + margin); 
         ctx.strokeStyle = "#333333"; ctx.lineWidth = 2; ctx.setLineDash([20, 20]); ctx.lineCap = "round";
 
@@ -1704,7 +1726,6 @@
 
         progressLabel.innerText = t('render_infra');
         ctx.save(); 
-        // NEU: Verschiebe Koordinatensystem für Icons
         ctx.translate((-x1 * 256) + margin, (-y1 * 256) + margin);
         const iconCache = {};
         const renderedExportLocations = []; 
@@ -1760,19 +1781,14 @@
 
         progressLabel.innerText = t('layout_final');
         const bannerH = 170; 
-        // Banner wird auch relativ zum neuen Margin gezeichnet
         ctx.fillStyle = "rgba(255, 255, 255, 0.98)"; 
         ctx.fillRect(margin, margin, mapWidth, bannerH);
         ctx.strokeStyle = "rgba(15, 23, 42, 0.2)"; ctx.lineWidth = 3; 
         
-        // Titel-Rahmen (Header Border)
         ctx.strokeRect(margin, margin, mapWidth, bannerH);
         
-        // --- ÄNDERUNG: Rahmen um die Karte ---
-        // Zeichnet einen Rahmen um den Rest der Karte (unterhalb des Banners)
         ctx.strokeRect(margin, margin + bannerH, mapWidth, mapHeight - bannerH);
         
-        // Text-Positionen anpassen (+ margin)
         const centerX = margin + (mapWidth / 2);
 
         ctx.fillStyle = "#0f172a"; ctx.textAlign = "center";
@@ -1780,23 +1796,18 @@
         ctx.font = "bold 44px Arial, sans-serif"; ctx.fillText(finalTitle, centerX, margin + 55);
         
         const now = new Date();
-        // mPerPx wurde schon oben berechnet
         ctx.font = "22px Arial, sans-serif"; ctx.fillStyle = "#334155";
         
         const localeMap = { 'de': 'de-DE', 'en': 'en-US', 'fr': 'fr-FR', 'es': 'es-ES', 'it': 'it-IT', 'pl': 'pl-PL', 'nl': 'nl-NL', 'cs': 'cs-CZ' };
         const dateLocale = localeMap[currentLang] || 'en-US';
         const dateStr = now.toLocaleDateString(dateLocale, { year: 'numeric', month: 'long' });
         
-        // Zeile 2: Datum & Zoom
-        // --- ÄNDERUNG: "Z" durch "Zoom" ersetzt ---
         ctx.fillText(`${t('legend_date')}: ${dateStr} | ${t('legend_res')}: Zoom ${targetZoom} (~${mPerPx.toFixed(2)} m/px)`, centerX, margin + 95);
         
-        // Zeile 3: Lizenzen (Im Banner)
         ctx.font = "italic 16px Arial, sans-serif"; ctx.fillStyle = "#64748b";
         const attributionText = layerAttributionsText[activeLayerConfig] || '© OpenStreetMap contributors';
         ctx.fillText(attributionText, centerX, margin + 125);
 
-        // Maßstabsbalken unten rechts (innerhalb der Karte)
         const prettyD = [1000, 500, 250, 100, 50]; 
         let distM = 100, scaleW = 100 / mPerPx;
         for (let d of prettyD) { let w = d / mPerPx; if (w <= mapWidth * 0.3) { distM = d; scaleW = w; break; } }
@@ -1808,17 +1819,13 @@
         ctx.beginPath(); ctx.moveTo(sX, sY - 10); ctx.lineTo(sX, sY); ctx.lineTo(sX + scaleW, sY); ctx.lineTo(sX + scaleW, sY - 10); ctx.stroke();
         ctx.fillStyle = "#0f172a"; ctx.font = "bold 18px Arial"; ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
 
-        // Footer Text (Ganz unten im weißen Rand)
-        const footerY = margin + mapHeight + (footerH / 2) + 10; // Vertikal zentriert im Footer-Bereich
+        const footerY = margin + mapHeight + (footerH / 2) + 10; 
         ctx.fillStyle = "#334155";
         
-        // Links: Projektname
-        // --- ÄNDERUNG: "Export -" entfernt, nur "OpenFireMap.org", NICHT mehr fett ---
         ctx.textAlign = "left"; 
-        ctx.font = "16px Arial, sans-serif"; // "bold" entfernt
+        ctx.font = "16px Arial, sans-serif"; 
         ctx.fillText("OpenFireMap.org", margin, footerY);
 
-        // Rechts: Zeitstempel
         ctx.textAlign = "right";
         ctx.font = "16px Arial, sans-serif";
         const timeStr = now.toLocaleString(dateLocale, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -1833,9 +1840,7 @@
         setTimeout(toggleExportMenu, 800);
     }
 
-    // PERFORMANCE OPTIMIERUNG: 
-    // Statt 'window.onload' (wartet auf ALLE Bilder) nutzen wir 'DOMContentLoaded'.
-    // Das startet die Karte sofort, wenn das HTML-Gerüst steht.
     document.addEventListener('DOMContentLoaded', initMap);
 </script>
 </body>
+</html>
