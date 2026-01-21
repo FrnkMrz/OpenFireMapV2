@@ -115,7 +115,7 @@ export async function fetchOSMData() {
 
     // LEVEL B: Hydranten laden (ERST AB ZOOM 16 - SICHERHEITSHALBER)
     // Ich habe es auf 16 erhöht, damit Zoom 15 (oft noch ganze Stadtteile) nicht crashed.
-    if (zoom >= 16) {
+    if (zoom >= 15) {
         queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});`);
         queryParts.push(`node["emergency"="defibrillator"](${bbox});`);
         logMessage += "+ Hydranten & Defis";
