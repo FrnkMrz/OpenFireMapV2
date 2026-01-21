@@ -1,144 +1,162 @@
 /**
  * ==========================================================================================
- * DATEI: api.js (ZOOM 15 UPDATE)
- * ZWECK: Datenabruf
+ * DATEI: api.js (Der Daten-Holer)
+ * LERN-ZIEL: Kommunikation mit API Servern, Fehlerbehandlung, Async/Await
  * ==========================================================================================
  */
 
-import { State } from './state.js';
-import { Config } from './config.js';
-import { t } from './i18n.js';
-import { renderMarkers } from './map.js'; 
-import { showNotification } from './ui.js'; 
+import { State } from './state.js';   // Zugriff auf unser Gedächtnis
+import { Config } from './config.js'; // Zugriff auf die Server-Liste
+import { t } from './i18n.js';        // Für Fehlermeldungen in richtiger Sprache
+import { renderMarkers } from './map.js'; // Um die Daten später zu malen
+import { showNotification } from './ui.js'; // Um Fehler anzuzeigen
 
 /**
- * Holt Daten vom Server (POST Request) mit Retry-Logik
+ * Hilfsfunktion: fetchWithRetry
+ * Versucht Daten zu laden. Wenn ein Server kaputt ist, probiert er den nächsten.
+ * Das nennt man "Failover".
  */
 async function fetchWithRetry(query) {
+    // 1. Check: Haben wir überhaupt Internet?
     if (!navigator.onLine) throw new Error('err_offline');
-
-    // Liste der Server
-    const endpoints = [
-        'https://overpass-api.de/api/interpreter',
-        'https://overpass.kumi.systems/api/interpreter',
-        'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
-    ];
 
     let lastError = null;
 
-    // Wir probieren jeden Server der Reihe nach
-    for (let endpoint of endpoints) {
+    // Wir gehen die Liste der Server (aus config.js) nacheinander durch
+    for (let endpoint of Config.overpassEndpoints) {
         try {
             console.log(`Versuche Server: ${endpoint}`); 
 
+            // FETCH: Der eigentliche Anruf beim Server.
+            // 'await' bedeutet: Warte hier, bis der Server antwortet (blockiert nicht den Browser).
             const res = await fetch(endpoint, { 
-                method: 'POST',
+                method: 'POST', // POST ist besser für lange Anfragen als GET
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(query),
-                signal: State.controllers.fetch.signal 
+                body: 'data=' + encodeURIComponent(query), // Die Anfrage
+                signal: State.controllers.fetch.signal // Damit wir abbrechen können
             });
             
+            // Wenn der Server "Nicht OK" sagt (z.B. Fehler 500 oder 429)
             if (!res.ok) {
                 console.warn(`Server ${endpoint} Fehler: ${res.status}. Versuche nächsten...`);
+                // Wir merken uns den Fehler, brechen aber NICHT ab, sondern "continue" (nächster Server)
                 lastError = res.status === 429 ? 'err_ratelimit' : 'err_timeout';
-                continue; // Nächster Server
+                continue; 
             }
 
+            // Wenn wir hier sind, hat der Server geantwortet! Text lesen.
             const text = await res.text();
             
+            // Manchmal schicken Server Quatsch (HTML Fehlerseiten statt Daten). Das prüfen wir.
             if (text.trim().startsWith('<') || text.trim().length === 0) {
                 console.warn(`Server ${endpoint} ungültig. Versuche nächsten...`);
                 continue;
             }
 
+            // Alles super! Text in JavaScript-Objekte (JSON) umwandeln und zurückgeben.
             return JSON.parse(text);
 
         } catch (e) {
+            // Wenn der User abgebrochen hat (AbortError), ist das kein Fehler.
             if (e.name === 'AbortError') throw e;
+            
+            // Echter Netzwerkfehler? Nächsten Server probieren.
             console.warn(`Verbindungsfehler bei ${endpoint}:`, e);
             lastError = 'err_generic';
         }
     }
     
+    // Wenn wir HIER ankommen, haben ALLE Server versagt.
     throw new Error(lastError || "err_generic");
 }
 
 /**
- * Hauptfunktion: Entscheidet, WAS geladen wird
+ * HAUPTFUNKTION: fetchOSMData
+ * Wird aufgerufen, wenn die Karte bewegt wird.
+ * Baut die Anfrage zusammen und startet den Download.
  */
 export async function fetchOSMData() {
-    const zoom = State.map.getZoom();
-    const status = document.getElementById('data-status');
+    const zoom = State.map.getZoom(); // Wie nah sind wir dran?
+    const status = document.getElementById('data-status'); // Das Status-Lämpchen unten rechts
 
-    // 1. ZU WEIT WEG (Zoom 0-11): Nichts laden
+    // REGEL 1: Wenn wir zu weit weg sind (Zoom < 12), laden wir NICHTS.
+    // Das schützt den Server vor Überlastung (ganz Deutschland laden geht nicht).
     if (zoom < 12) {
         if(status) {
             status.innerText = t('status_standby');
             status.className = 'text-green-400';
         }
+        // Alles löschen
         State.markerLayer.clearLayers();
         State.boundaryLayer.clearLayers();
         State.cachedElements = [];
         return;
     }
 
-    // Koordinaten holen
+    // Wir holen die Ecken der aktuellen Kartenansicht (Bounding Box)
     const b = State.map.getBounds();
     const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
 
-    // Status auf "Laden" setzen
+    // Status auf GELB ("Lädt...")
     if(status) {
         status.innerText = t('status_loading');
         status.className = 'text-amber-400 font-bold'; 
     }
     
-    // Alten Request abbrechen
+    // Alten Ladevorgang abbrechen (falls man schnell weitergeschoben hat)
     if (State.controllers.fetch) State.controllers.fetch.abort();
     State.controllers.fetch = new AbortController();
 
-    // QUERY ZUSAMMENBAUEN
+    // --- OVERPASS QUERY SPRACHE (OPQL) ZUSAMMENBAUEN ---
+    // Das ist die Sprache, die die OpenStreetMap-Datenbank versteht.
+    
     let queryParts = [];
-    let logMessage = `Zoom ${zoom.toFixed(1)}: `;
-
-    // LEVEL A: Wachen laden (ab Zoom 12)
+    
+    // LEVEL A: Feuerwachen (Schon ab Zoom 12, da es wenige sind)
     if (zoom >= 12) {
         queryParts.push(`nwr["amenity"="fire_station"](${bbox});`);
         queryParts.push(`nwr["building"="fire_station"](${bbox});`);
-        logMessage += "Lade Wachen... ";
     }
 
-    // LEVEL B: Hydranten laden (AB ZOOM 15)
-    // Hier haben wir es auf 15 geändert, wie gewünscht.
+    // LEVEL B: Hydranten (AB ZOOM 15)
+    // Das sind sehr viele Daten. Deshalb laden wir sie erst, wenn man nah genug dran ist.
     if (zoom >= 15) {
         queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});`);
         queryParts.push(`node["emergency"="defibrillator"](${bbox});`);
-        logMessage += "+ Hydranten & Defis";
-    } else {
-        logMessage += "(Hydranten ausgeblendet, zu weit weg)";
     }
 
-    // LEVEL C: Grenzen laden (ab Zoom 14)
+    // LEVEL C: Gemeindegrenzen (Ab Zoom 14)
     let boundaryQuery = (zoom >= 14) ? `(way["boundary"="administrative"]["admin_level"="8"](${bbox});)->.boundaries; .boundaries out geom;` : '';
 
-    console.log(logMessage);
-
+    // Wenn nichts zu tun ist, hören wir auf.
     if (queryParts.length === 0 && boundaryQuery === '') return;
 
-    // Timeout: 90 Sekunden
+    // Die finale Nachricht an den Server:
+    // [timeout:90] = Gib dem Server 90 Sekunden Zeit
+    // [out:json]   = Wir wollen JSON Format zurück
     const q = `[out:json][timeout:90];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 
     try {
+        // Jetzt rufen wir unsere Helper-Funktion von oben auf
         const data = await fetchWithRetry(q);
+        
+        // Speichern (für Export)
         State.cachedElements = data.elements;
+        
+        // Malen (Marker setzen)
         renderMarkers(data.elements, zoom);
         
+        // Status auf GRÜN
         if(status) {
             status.innerText = t('status_current');
             status.className = 'text-green-400';
         }
     } catch (e) {
+        // Fehlerbehandlung (Nur wenn es kein gewollter Abbruch war)
         if (e.name !== 'AbortError') {
-            console.error("Endgültiger Fetch Fehler:", e);
+            console.error("Fehler:", e);
+            
+            // Welchen Text zeigen wir dem User?
             let msgKey = 'err_generic';
             if (e.message.includes('ratelimit')) msgKey = 'err_ratelimit';
             else if (e.message.includes('timeout')) msgKey = 'err_timeout';
@@ -146,11 +164,12 @@ export async function fetchOSMData() {
 
             const txt = t(msgKey);
             
+            // Status auf ROT
             if(status) {
                 status.innerText = txt;
                 status.className = 'text-red-500 font-bold';
             }
-            showNotification(txt, 5000);
+            showNotification(txt, 5000); // Rote Box oben rechts
         }
     }
 }
