@@ -1,233 +1,227 @@
 /**
  * ==========================================================================================
- * DATEI: ui.js
- * ZWECK: Steuerung der Benutzeroberfläche (User Interface)
- * LERN-ZIEL: DOM-Manipulation (HTML ändern) und Event-Listener (Klicks abfangen).
+ * DATEI: map.js
+ * ZWECK: Karte und Marker (Mit Smart-Tooltips)
  * ==========================================================================================
  */
 
 import { State } from './state.js';
+import { Config } from './config.js';
 import { t } from './i18n.js';
-// Wir importieren Funktionen aus anderen Modulen, um sie mit Buttons zu verknüpfen
-import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, cancelExport } from './export.js';
-import { setBaseLayer } from './map.js';
+import { fetchOSMData } from './api.js';
 
-/**
- * HILFSFUNKTION: addClick
- * Fügt einem HTML-Element eine Klick-Funktion hinzu.
- * LERN-ZIEL: Sicheres Programmieren.
- * Wenn wir einfach document.getElementById(...).onclick machen und das Element fehlt,
- * stürzt das Skript ab. Diese Funktion prüft erst, ob das Element da ist.
- */
-function addClick(id, fn) {
-    const el = document.getElementById(id);
-    if (el) {
-        el.onclick = fn;
-    } else {
-        // Nur eine Warnung in der Konsole, kein Absturz der ganzen App.
-        console.warn(`Warnung: Button mit ID '${id}' fehlt im HTML.`);
-    }
-}
+export function initMapLogic() {
+    State.markerLayer = L.layerGroup();
+    State.boundaryLayer = L.layerGroup();
+    State.rangeLayerGroup = L.layerGroup();
 
-/**
- * WICHTIG: Diese Funktion wird von api.js gebraucht!
- * "export" macht sie öffentlich.
- * Zeigt eine Nachricht (Toast) oben rechts an.
- */
-export function showNotification(msg, duration = 3000) {
-    const box = document.getElementById('notification-box');
-    if (!box) return;
-    
-    box.innerText = msg;
-    box.style.display = 'block';
-    
-    // Timer zurücksetzen, falls noch einer läuft
-    if(box.hideTimeout) clearTimeout(box.hideTimeout);
-    
-    // Nach 'duration' Millisekunden (Standard: 3000ms = 3s) wieder ausblenden
-    box.hideTimeout = setTimeout(() => {
-        box.style.display = 'none';
-    }, duration); 
-}
-
-/**
- * Schließt alle offenen Menüs.
- * Das ist wichtig für die "Exklusivität": Wenn ich das Export-Menü öffne,
- * soll das Layer-Menü automatisch zugehen.
- */
-export function closeAllMenus() {
-    ['layer-menu', 'export-menu'].forEach(id => {
-        const el = document.getElementById(id);
-        // 'hidden' ist eine Tailwind-Klasse, die display:none setzt
-        if (el) el.classList.add('hidden');
+    State.map = L.map('map', { 
+        zoomControl: false, 
+        center: Config.defaultCenter, 
+        zoom: Config.defaultZoom 
     });
-    
-    const legal = document.getElementById('legal-modal');
-    if(legal) legal.style.display = 'none'; // Modals nutzen oft flex/block, daher style direkt ändern
-    
-    // ARIA (Barrierefreiheit): Sagt Screenreadern, dass der Button jetzt "zu" ist.
-    document.getElementById('layer-btn-trigger')?.setAttribute('aria-expanded', 'false');
-    document.getElementById('export-btn-trigger')?.setAttribute('aria-expanded', 'false');
-}
 
-// --- TOGGLE FUNKTIONEN (Auf/Zu machen) ---
+    State.boundaryLayer.addTo(State.map);
+    State.rangeLayerGroup.addTo(State.map);
+    State.markerLayer.addTo(State.map);
 
-export function toggleLayerMenu() {
-    const menu = document.getElementById('layer-menu');
-    if(!menu) return;
-    
-    const isHidden = menu.classList.contains('hidden');
-    closeAllMenus(); // Erst alles aufräumen
-    
-    if (isHidden) {
-        // Wenn es zu war, machen wir es auf
-        menu.classList.remove('hidden');
-        document.getElementById('layer-btn-trigger')?.setAttribute('aria-expanded', 'true');
-    }
-}
+    setBaseLayer('voyager');
 
-export function toggleExportMenu() {
-    const menu = document.getElementById('export-menu');
-    if(!menu) return;
-    const isHidden = menu.classList.contains('hidden');
-    closeAllMenus();
-    
-    if (isHidden) {
-        menu.classList.remove('hidden');
-        document.getElementById('export-btn-trigger')?.setAttribute('aria-expanded', 'true');
-        // UI zurücksetzen (Ladebalken ausblenden, falls vom letzten Mal noch da)
-        document.getElementById('export-setup')?.classList.remove('hidden');
-        document.getElementById('export-progress')?.classList.add('hidden');
-    }
-}
-
-export function toggleLegalModal() {
-    const modal = document.getElementById('legal-modal');
-    if(!modal) return;
-    const isVisible = modal.style.display === 'flex';
-    closeAllMenus();
-    if (!isVisible) {
-        modal.style.display = 'flex';
-    }
-}
-
-/**
- * Ortssuche über Nominatim API
- */
-export function searchLocation() {
-    const input = document.getElementById('search-input');
-    if (!input || !input.value) return;
-    
-    // Wir fragen den OpenStreetMap Server nach Koordinaten für den Text
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input.value)}`)
-        .then(r => r.json())
-        .then(data => {
-            if(data.length > 0 && State.map) {
-                // Wenn gefunden: Hinfliegen (Zoom 18)
-                State.map.flyTo([data[0].lat, data[0].lon], 18);
-            } else {
-                showNotification(t('no_results') || "Nicht gefunden");
-            }
-        });
-}
-
-/**
- * GPS Standort Button
- */
-export function locateUser() {
-    if (!navigator.geolocation) { 
-        showNotification("GPS Fehler"); return; 
-    }
-    
-    const btn = document.getElementById('locate-btn');
-    const icon = btn ? btn.querySelector('svg') : null;
-    if(icon) icon.classList.add('animate-spin'); // Kleines visuelles Feedback (Drehen)
-
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            if(State.map) State.map.flyTo([pos.coords.latitude, pos.coords.longitude], 18);
-            if(icon) icon.classList.remove('animate-spin');
-            showNotification(t('geo_found') || "Gefunden!");
-        },
-        (err) => {
-            if(icon) icon.classList.remove('animate-spin');
-            showNotification("GPS nicht möglich");
+    let debounceTimer;
+    State.map.on('moveend zoomend', () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        const statusEl = document.getElementById('data-status');
+        if(statusEl) {
+            statusEl.innerText = t('status_waiting');
+            statusEl.className = 'text-amber-400 font-bold';
         }
-    );
+        debounceTimer = setTimeout(() => fetchOSMData(), 200);
+    });
+
+    State.map.on('click', () => {
+        if (!State.selection.active) {
+            State.rangeLayerGroup.clearLayers();
+        }
+    });
+    
+    State.map.on('zoom', () => {
+        const el = document.getElementById('zoom-val');
+        if(el) el.innerText = State.map.getZoom().toFixed(1);
+    });
+
+    fetchOSMData();
 }
 
-/**
- * INITIALISIERUNG (Wird einmal beim Start ausgeführt)
- * Hier verbinden wir die HTML-Elemente mit unseren JavaScript-Funktionen.
- */
-export function setupUI() {
-    // 1. Menü-Buttons
-    addClick('layer-btn-trigger', toggleLayerMenu);
-    addClick('export-btn-trigger', toggleExportMenu);
-    addClick('btn-legal-trigger', toggleLegalModal);
-    addClick('legal-close-btn', toggleLegalModal);
-    addClick('export-close-btn', toggleExportMenu);
+export function setBaseLayer(key) {
+    State.activeLayerKey = key;
+    State.map.eachLayer(layer => { 
+        if (layer instanceof L.TileLayer) State.map.removeLayer(layer); 
+    });
+    const conf = Config.layers[key];
+    L.tileLayer(conf.url, { attribution: conf.attr, maxZoom: conf.maxZoom }).addTo(State.map);
     
-    // 2. Suche (Enter-Taste unterstützen)
-    const searchInp = document.getElementById('search-input');
-    if (searchInp) {
-        searchInp.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') searchLocation();
-        });
+    document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
+    const btn = document.getElementById(`btn-${key}`);
+    if(btn) btn.classList.add('active');
+}
+
+function getSVGContent(type) {
+    if (type === 'defibrillator') {
+         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#16a34a" stroke="white" stroke-width="5"/><path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/><path d="M55 45 L45 55 L55 55 L45 65" stroke="#16a34a" stroke-width="3" fill="none"/></svg>`;
     }
-    addClick('search-btn', searchLocation);
-    addClick('locate-btn', locateUser);
-
-    // 3. Layer-Auswahl (Dynamisch für alle Layer in der Liste)
-    ['voyager', 'positron', 'dark', 'satellite', 'topo', 'osm', 'osmde'].forEach(key => {
-        addClick(`btn-${key}`, () => setBaseLayer(key));
-    });
-
-    // 4. Export-Einstellungen
-    ['free', 'a4l', 'a4p'].forEach(fmt => {
-        addClick(`fmt-${fmt}`, () => setExportFormat(fmt));
-    });
+    const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
+    const color = isWater ? '#3b82f6' : '#ef4444';
     
-    [15, 16, 17, 18].forEach(z => {
-        addClick(`zoom-${z}`, () => setExportZoom(z));
-    });
-
-    // 5. Export-Aktionen
-    addClick('select-btn', startSelection);
-    addClick('png-btn', exportAsPNG);
-    addClick('gpx-btn', exportAsGPX);
-    addClick('cancel-export-btn', cancelExport);
-
-    // Automatische Schließ-Logik starten
-    setupMenuAutoClose();
+    if (type === 'wall') {
+         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/><circle cx="42" cy="52" r="18" fill="none" stroke="white" stroke-width="6" /><line x1="64" y1="34" x2="64" y2="70" stroke="white" stroke-width="6" stroke-linecap="round" /></svg>`;
+    }
+    
+    let char = '';
+    switch(type) {
+        case 'underground': char = 'U'; break; 
+        case 'pillar':      char = 'O'; break; 
+        case 'pipe':        char = 'I'; break;
+        case 'dry_barrel':  char = 'Ø'; break; 
+        default:            char = '';
+    }
+    if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="#ef4444" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
+    return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
 }
 
-/**
- * Feature: Menüs schließen sich automatisch nach 10 Sekunden, wenn die Maus weg ist.
- */
-function setupMenuAutoClose() {
-    ['layer-menu', 'export-menu', 'legal-modal'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        let closeTimer = null;
-        
-        el.addEventListener('mouseleave', () => {
-            const isHidden = id === 'legal-modal' ? (el.style.display === 'none') : el.classList.contains('hidden');
-            if (isHidden) return; // Wenn schon zu ist, brauchen wir keinen Timer
-            
-            closeTimer = setTimeout(() => {
-                if (id === 'legal-modal') el.style.display = 'none';
-                else el.classList.add('hidden');
-                
-                // Barrierefreiheit zurücksetzen
-                const btnId = id === 'layer-menu' ? 'layer-btn-trigger' : 'export-btn-trigger';
-                document.getElementById(btnId)?.setAttribute('aria-expanded', 'false');
-            }, 10000); // 10000ms = 10 Sekunden
-        });
-        
-        // Wenn Maus zurückkommt, Timer abbrechen
-        el.addEventListener('mouseenter', () => {
-            if (closeTimer) clearTimeout(closeTimer);
-        });
+function generateTooltip(tags) {
+    let tooltipTitle = tags.name || t('details');
+    if (tags.emergency === 'defibrillator') tooltipTitle = t('defib');
+    let html = `<div class="p-2 min-w-[180px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div><div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
+    for (const [key, val] of Object.entries(tags)) {
+        html += `<div class="text-slate-400 text-right">${key}:</div><div class="text-slate-200 break-words">${val}</div>`;
+    }
+    html += `</div></div>`;
+    return html;
+}
+
+export function showRangeCircle(lat, lon) {
+    State.rangeLayerGroup.clearLayers();
+    const zoom = State.map.getZoom();
+    if (zoom < 16) return; 
+    L.circle([lat, lon], { color: '#f97316', fillColor: '#f97316', fillOpacity: 0.15, radius: 100, weight: 2, dashArray: '5, 8', interactive: false }).addTo(State.rangeLayerGroup);
+    if (zoom >= 17) {
+        const latRad = lat * Math.PI / 180;
+        const kmPerDegLon = 111.32 * Math.cos(latRad);
+        const offsetLon = 0.05 / kmPerDegLon; 
+        const labelMarker = L.marker([lat, lon + offsetLon], {opacity: 0, interactive: false}).addTo(State.rangeLayerGroup);
+        labelMarker.bindTooltip("100 m", { permanent: true, direction: 'center', className: 'range-label', offset: [0, 0] }).openTooltip();
+    }
+}
+
+export function renderMarkers(elements, zoom) {
+    State.markerLayer.clearLayers();
+    State.boundaryLayer.clearLayers();
+    const renderedLocations = []; 
+
+    elements.forEach(el => {
+        const tags = el.tags || {};
+        if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
+            const latlngs = el.geometry.map(p => [p.lat, p.lon]);
+            L.polyline(latlngs, { color: '#333333', weight: 1, dashArray: '10, 10', opacity: 0.7 }).addTo(State.boundaryLayer);
+            return;
+        }
+
+        const lat = el.lat || el.center?.lat;
+        const lon = el.lon || el.center?.lon;
+        if (!lat || !lon) return;
+
+        const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
+        const isDefib = tags.emergency === 'defibrillator';
+        let type = isStation ? 'station' : (isDefib ? 'defibrillator' : (tags['fire_hydrant:type'] || tags.emergency));
+
+        if (isStation && zoom < 12) return; 
+        if (!isStation && !isDefib && zoom < 15) return; 
+        if (isDefib && zoom < 15) return; 
+
+        const alreadyDrawn = renderedLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
+        if (isStation && alreadyDrawn) return;
+        if (isStation) renderedLocations.push({lat, lon});
+
+        let marker;
+        let iconHtml;
+        let className = '';
+        let size = [28, 28];
+        let zIndex = 0;
+
+        if (isStation) {
+            if (zoom < 14) { 
+                marker = L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10, 10] }) }).addTo(State.markerLayer);
+            } else {
+                iconHtml = getSVGContent(type); className = 'icon-container'; size = [32, 32]; zIndex = 1000;
+                marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: zIndex }).addTo(State.markerLayer);
+            }
+        } 
+        else if (isDefib) {
+            if (zoom < 17) {
+                marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) }).addTo(State.markerLayer);
+            } else {
+                iconHtml = getSVGContent(type); className = 'icon-container'; size = [28, 28]; zIndex = 2000;
+                marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: zIndex }).addTo(State.markerLayer);
+            }
+        } 
+        else { 
+            if (zoom < 17) {
+                const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
+                className = isWater ? 'tank-dot' : 'hydrant-dot';
+                marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10,10] }) }).addTo(State.markerLayer);
+            } else {
+                iconHtml = getSVGContent(type); className = 'icon-container';
+                marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: 0 }).addTo(State.markerLayer);
+                marker.on('click', (e) => { 
+                    L.DomEvent.stopPropagation(e);
+                    showRangeCircle(lat, lon); 
+                });
+            }
+        }
+
+        // --- HIER IST DIE SMART TOOLTIP LOGIK ---
+        if (marker && zoom === 18 && className === 'icon-container') {
+             marker.bindTooltip(generateTooltip(tags), { 
+                interactive: true, permanent: false, direction: 'top', opacity: 0.95 
+            });
+
+            // Standard-Verhalten deaktivieren
+            marker.off('mouseover'); 
+            marker.off('mouseout');
+            marker._tooltipCloseTimer = null;
+
+            // Eigene Öffnen-Logik
+            marker.on('mouseover', function() {
+                if (this._tooltipCloseTimer) {
+                    clearTimeout(this._tooltipCloseTimer); 
+                    this._tooltipCloseTimer = null;
+                }
+                this.openTooltip();
+            });
+
+            // Eigene Schließen-Logik (3 Sekunden warten)
+            marker.on('mouseout', function() {
+                this._tooltipCloseTimer = setTimeout(() => {
+                    this.closeTooltip();
+                }, 3000); // <--- HIER SIND DIE 3 SEKUNDEN
+            });
+
+            // Wenn Maus auf den Text geht: Timer stoppen
+            marker.on('tooltipopen', function(e) {
+                const tooltipNode = e.tooltip._container;
+                if (!tooltipNode) return;
+                L.DomEvent.on(tooltipNode, 'mouseenter', () => {
+                    if (this._tooltipCloseTimer) {
+                        clearTimeout(this._tooltipCloseTimer);
+                        this._tooltipCloseTimer = null;
+                    }
+                });
+                L.DomEvent.on(tooltipNode, 'mouseleave', () => {
+                    this._tooltipCloseTimer = setTimeout(() => {
+                        this.closeTooltip();
+                    }, 3000);
+                });
+            });
+        }
     });
 }
