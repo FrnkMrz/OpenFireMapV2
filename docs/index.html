@@ -2,7 +2,7 @@
     =============================================================================
     PROJEKT: OpenFireMap V2 - Lernversion (Refactored)
     AUTOR: Gemini (im Auftrag von Frank März)
-    DATUM: 2026-01-21 (Update: Aufteilung in 2 Dateien)
+    DATUM: 2026-01-21 (Final: Mit Taiwan & erweiterten Asien-Support)
     =============================================================================
     
     PROJEKT-BESCHREIBUNG & LERNZIELE:
@@ -26,7 +26,7 @@
          Datum, Maßstab und Lizenzhinweisen.
        - GPX-Export: Exportiert die sichtbaren Punkte für Navigationsgeräte.
     5. Internationalisierung: Die Oberfläche passt sich automatisch der Browsersprache an
-       (unterstützt DE, EN, FR, ES, IT, PL, NL, CS).
+       (unterstützt DE, EN, FR, ES, IT, PL, NL, CS, DA, FI, SV, NO, PT, FL, LB, JA, KO, MS, TH, ZH, YUE, TW).
     6. Smart UX (NEU): 
        - Menüs schließen automatisch nach 10 Sekunden Inaktivität.
        - Es ist immer nur ein Menü gleichzeitig offen.
@@ -395,18 +395,40 @@
 <!-- JAVASCRIPT LOGIK -->
 <script>
     /* =========================================================================
-       1. SPRACH-LOGIK (UPDATE: WÖRTERBUCH IST JETZT EXTERN)
+       1. SPRACH-LOGIK (UPDATE: ERWEITERTE CHINESISCH-ERKENNUNG)
        Die Variable 'translations' kommt jetzt aus der Datei translations.js
        ========================================================================= */
     
-    // Ermitteln der Browsersprache (z.B. "de-DE")
+    // Ermitteln der Browsersprache (z.B. "de-DE", "zh-TW")
     const userLangFull = navigator.language || navigator.userLanguage; 
-    // Nur den ersten Teil nehmen ("de")
+    const userLangFullLower = userLangFull.toLowerCase();
+    
+    // Ermitteln des Kurzcodes (z.B. "de", "zh")
     const userLangShort = userLangFull.split('-')[0];
     
-    // Prüfen, ob wir die Sprache haben, sonst Englisch als Standard
-    // HINWEIS: Wir greifen hier auf 'translations' zu, das in translations.js definiert wurde.
-    const currentLang = (typeof translations !== 'undefined' && translations[userLangShort]) ? userLangShort : 'en';
+    // Standard-Sprache setzen (Default: Englisch)
+    let detectedLang = 'en';
+
+    // Spezial-Logik für Chinesische Varianten
+    if (userLangFullLower === 'zh-tw') {
+        // Taiwan -> Traditionelles Chinesisch (TW)
+        detectedLang = 'tw';
+    } else if (userLangFullLower === 'zh-hk' || userLangFullLower === 'zh-mo') {
+        // Hongkong / Macau -> Kantonesisch / Traditionell (YUE)
+        detectedLang = 'yue';
+    } else if (userLangShort === 'zh') {
+        // Alle anderen "zh" (z.B. zh-CN, zh-SG) -> Mandarin / Vereinfacht (ZH)
+        detectedLang = 'zh';
+    } else {
+        // Standard-Logik für alle anderen Sprachen
+        // Wenn Kurzcode in translations vorhanden ist, nimm ihn, sonst Englisch
+        if (typeof translations !== 'undefined' && translations[userLangShort]) {
+            detectedLang = userLangShort;
+        }
+    }
+
+    // Globale Variable für die aktuelle Sprache setzen
+    const currentLang = detectedLang;
     
     // Hilfsfunktion: Liefert den übersetzten Text für einen Schlüssel
     function t(key) {
@@ -1383,7 +1405,13 @@
         const now = new Date();
         ctx.font = "22px Arial, sans-serif"; ctx.fillStyle = "#334155";
         
-        const localeMap = { 'de': 'de-DE', 'en': 'en-US', 'fr': 'fr-FR', 'es': 'es-ES', 'it': 'it-IT', 'pl': 'pl-PL', 'nl': 'nl-NL', 'cs': 'cs-CZ' };
+        const localeMap = { 
+            'de': 'de-DE', 'en': 'en-US', 'fr': 'fr-FR', 'es': 'es-ES', 'it': 'it-IT', 
+            'pl': 'pl-PL', 'nl': 'nl-NL', 'cs': 'cs-CZ', 'da': 'da-DK', 'fi': 'fi-FI', 
+            'sv': 'sv-SE', 'no': 'nb-NO', 'pt': 'pt-PT', 'fl': 'nl-BE', 'lb': 'lb-LU',
+            'ja': 'ja-JP', 'ko': 'ko-KR', 'ms': 'ms-MY', 'th': 'th-TH', 'zh': 'zh-CN',
+            'yue': 'zh-HK', 'tw': 'zh-TW'
+        };
         const dateLocale = localeMap[currentLang] || 'en-US';
         const dateStr = now.toLocaleDateString(dateLocale, { year: 'numeric', month: 'long' });
         
