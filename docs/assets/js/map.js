@@ -65,17 +65,34 @@ export function setBaseLayer(key) {
     if(btn) btn.classList.add('active');
 }
 
+// Hilfsfunktion für SVGs (jetzt mit Farben aus Config)
 function getSVGContent(type) {
+    // Farben holen
+    const c = Config.colors;
+
+    // 1. Defibrillator
     if (type === 'defibrillator') {
-         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#16a34a" stroke="white" stroke-width="5"/><path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/><path d="M55 45 L45 55 L55 55 L45 65" stroke="#16a34a" stroke-width="3" fill="none"/></svg>`;
+         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="${c.defib}" stroke="white" stroke-width="5"/>
+            <path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/>
+            <path d="M55 45 L45 55 L55 55 L45 65" stroke="${c.defib}" stroke-width="3" fill="none"/>
+        </svg>`;
     }
+    
+    // Entscheidung: Blau oder Rot?
     const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-    const color = isWater ? '#3b82f6' : '#ef4444';
+    const color = isWater ? c.water : c.hydrant;
     
+    // 2. Wandhydrant
     if (type === 'wall') {
-         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/><circle cx="42" cy="52" r="18" fill="none" stroke="white" stroke-width="6" /><line x1="64" y1="34" x2="64" y2="70" stroke="white" stroke-width="6" stroke-linecap="round" /></svg>`;
+         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
+            <circle cx="42" cy="52" r="18" fill="none" stroke="white" stroke-width="6" />
+            <line x1="64" y1="34" x2="64" y2="70" stroke="white" stroke-width="6" stroke-linecap="round" />
+        </svg>`;
     }
     
+    // Buchstabe ermitteln
     let char = '';
     switch(type) {
         case 'underground': char = 'U'; break; 
@@ -84,7 +101,11 @@ function getSVGContent(type) {
         case 'dry_barrel':  char = 'Ø'; break; 
         default:            char = '';
     }
-    if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="#ef4444" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
+    
+    // 3. Wache
+    if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="${c.station}" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
+    
+    // 4. Standard
     return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
 }
 
@@ -99,15 +120,25 @@ function generateTooltip(tags) {
     return html;
 }
 
+// Kreis-Funktion (jetzt mit Config-Farbe)
 export function showRangeCircle(lat, lon) {
     State.rangeLayerGroup.clearLayers();
     const zoom = State.map.getZoom();
     if (zoom < 16) return; 
-    L.circle([lat, lon], { color: '#f97316', fillColor: '#f97316', fillOpacity: 0.15, radius: 100, weight: 2, dashArray: '5, 8', interactive: false }).addTo(State.rangeLayerGroup);
+
+    // Hier nutzen wir Config.colors.rangeCircle
+    L.circle([lat, lon], {
+        color: Config.colors.rangeCircle, 
+        fillColor: Config.colors.rangeCircle, 
+        fillOpacity: 0.15, 
+        radius: 100, weight: 2, dashArray: '5, 8', interactive: false 
+    }).addTo(State.rangeLayerGroup);
+
     if (zoom >= 17) {
         const latRad = lat * Math.PI / 180;
         const kmPerDegLon = 111.32 * Math.cos(latRad);
         const offsetLon = 0.05 / kmPerDegLon; 
+        
         const labelMarker = L.marker([lat, lon + offsetLon], {opacity: 0, interactive: false}).addTo(State.rangeLayerGroup);
         labelMarker.bindTooltip("100 m", { permanent: true, direction: 'center', className: 'range-label', offset: [0, 0] }).openTooltip();
     }
@@ -119,12 +150,17 @@ export function renderMarkers(elements, zoom) {
     const renderedLocations = []; 
 
     elements.forEach(el => {
-        const tags = el.tags || {};
-        if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
-            const latlngs = el.geometry.map(p => [p.lat, p.lon]);
-            L.polyline(latlngs, { color: '#333333', weight: 1, dashArray: '10, 10', opacity: 0.7 }).addTo(State.boundaryLayer);
-            return;
-        }
+    const tags = el.tags || {};
+    
+    // GRENZEN (Boundaries)
+    if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
+        const latlngs = el.geometry.map(p => [p.lat, p.lon]);
+        
+        // HIER IST DIE GEÄNDERTE ZEILE:
+        L.polyline(latlngs, { color: Config.colors.bounds, weight: 1, dashArray: '10, 10', opacity: 0.7 }).addTo(State.boundaryLayer);
+        
+        return;
+    }
 
         const lat = el.lat || el.center?.lat;
         const lon = el.lon || el.center?.lon;
