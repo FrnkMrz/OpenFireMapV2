@@ -1,51 +1,55 @@
 /**
  * ==========================================================================================
- * DATEI: state.js (Das Gedächtnis der Anwendung)
- * ZWECK: Zentraler Speicher für alle Daten, die wir uns merken müssen.
+ * DATEI: state.js
+ * ZWECK: Zentraler Speicher ("Gedächtnis") der App
+ * LERN-ZIEL: Verstehen von "Shared State" (Geteilter Zustand).
  * ==========================================================================================
- * * LERN-HINWEIS:
- * In einer modularen App können wir Variablen nicht einfach "irgendwo" hinlegen.
- * Wenn api.js Daten lädt, muss map.js darauf zugreifen können.
- * Deshalb erstellen wir hier einen "Container" (das Objekt State), den alle anderen
- * Dateien importieren und nutzen dürfen.
+ * * Problem: Datei A lädt Daten, Datei B muss sie anzeigen. Wo legen wir die Daten hin?
+ * Lösung: Wir schaffen hier einen zentralen Ort (Objekt), den ALLE Dateien kennen.
+ * Das ist wie ein schwarzes Brett, auf das jeder Zettel hängen oder lesen kann.
  */
 
 export const State = {
-    // 1. KARTEN-OBJEKTE
-    // Hier speichern wir die Leaflet-Karte, sobald sie erstellt wurde.
+    // Hier speichern wir die "Leaflet Map Instance". 
+    // Das ist das Herzstück der Karte, über das wir zoomen oder pannen können.
     map: null,
     
-    // "LayerGroups" sind wie transparente Folien auf der Karte.
-    // Wir trennen Marker, Grenzen und den Radius-Kreis auf verschiedene Folien.
-    markerLayer: null,      
-    boundaryLayer: null,    
-    rangeLayerGroup: null,  
+    // --- LAYER GRUPPEN (Folien) ---
+    // Leaflet organisiert Dinge in "Layers". Wir nutzen Gruppen, um z.B. alle
+    // Hydranten auf einmal ein- oder ausblenden zu können.
+    markerLayer: null,      // Hier kommen die Icons (Hydranten, Wachen) rein
+    boundaryLayer: null,    // Hier kommen die Gemeindegrenzen rein
+    rangeLayerGroup: null,  // Hier kommt der orangene 100m Kreis rein
     
-    // 2. DATEN-CACHE
-    // Hier merken wir uns die geladenen Hydranten & Wachen.
-    // Wichtig für den Export: Wir müssen nicht alles neu laden, sondern nehmen es von hier.
+    // --- DATEN CACHE ---
+    // Wenn wir Daten vom Server holen, speichern wir sie hier zwischen.
+    // Warum? Wenn der Nutzer auf "Export PNG" klickt, müssen wir nicht nochmal
+    // den Server fragen, sondern nehmen einfach die Daten, die wir schon haben.
     cachedElements: [],
     
-    // Welches Design ist gerade aktiv? (z.B. 'voyager', 'satellite')
+    // Welcher Hintergrund ist gerade an? (Startwert: 'voyager')
     activeLayerKey: 'voyager',
     
-    // 3. EXPORT-EINSTELLUNGEN
-    // Was hat der Nutzer im Export-Menü ausgewählt?
-    exportFormat: 'free',       // 'free', 'a4l' (Quer), 'a4p' (Hoch)
-    exportZoomLevel: 18,        // Wie detailliert soll das Bild sein?
+    // --- EXPORT EINSTELLUNGEN ---
+    // Hier merken wir uns, was der Nutzer im Export-Menü eingestellt hat.
+    exportFormat: 'free',       // 'free' (Frei), 'a4l' (DIN A4 Quer), 'a4p' (DIN A4 Hoch)
+    exportZoomLevel: 18,        // Wie scharf soll das Bild sein? (Zoom 18 = sehr scharf)
     
-    // 4. AUSWAHL-WERKZEUG (Rechteck ziehen)
+    // --- AUSWAHL WERKZEUG ---
+    // Alles was passiert, wenn man auf "Ausschnitt wählen" klickt.
     selection: {
-        active: false,      // Ist der Auswahl-Modus gerade an?
-        rect: null,         // Das gezeichnete Rechteck auf der Karte
+        active: false,      // Ist der Modus gerade an?
+        rect: null,         // Das blaue Rechteck auf der Karte
         startPoint: null,   // Wo hat die Maus angefangen zu ziehen?
-        finalBounds: null   // Das fertige Ergebnis (Koordinaten)
+        finalBounds: null   // Das fertige Ergebnis (Koordinaten Nord/Süd/Ost/West)
     },
 
-    // 5. ABBRUCH-CONTROLLER (Die "Notbremse")
-    // Damit können wir laufende Internet-Anfragen abbrechen.
+    // --- NETZWERK KONTROLLE ---
+    // "AbortController" ist wie eine Notbremse für Internet-Anfragen.
+    // Wenn der Nutzer schnell zoomt, brechen wir die alte (langsame) Anfrage ab,
+    // damit die neue (wichtige) Anfrage sofort starten kann.
     controllers: {
-        fetch: null,    // Für das Laden der Daten (Overpass)
+        fetch: null,    // Für das Laden der Hydranten
         export: null    // Für den PNG Export Prozess
     }
 };
