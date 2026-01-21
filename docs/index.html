@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://overpass-api.de">
 
     <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
     <script src="https://cdn.tailwindcss.com" defer></script>
@@ -120,10 +121,15 @@
         </div>
     </div>
 
-    <div id="legal-modal" class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
+    <div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title" class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
         <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
-            <h2 id="legal-title" class="text-lg font-bold text-white flex items-center gap-2">Rechtliches</h2>
-            <button id="legal-close-btn" class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-lg p-1">&times;</button>
+            <h2 id="legal-title" class="text-lg font-bold text-white flex items-center gap-2">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Rechtliches
+            </h2>
+            <button id="legal-close-btn" aria-label="Schließen" class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-lg p-1">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
         </div>
         
         <div class="overflow-y-auto custom-scroll pr-2 text-xs space-y-6">
@@ -142,9 +148,51 @@
             </section>
             
             <section>
-                <h3 class="text-sm font-bold text-white mb-1">Datenschutz (Kurzfassung)</h3>
+                <h3 class="text-sm font-bold text-white mb-1">Datenschutzerklärung (Kurzfassung)</h3>
+                <p class="leading-relaxed text-slate-400 mb-2">
+                    Diese Anwendung läuft als "Client-Side Application" direkt in Ihrem Browser. Wir speichern keine personenbezogenen Daten auf eigenen Servern.
+                </p>
                 <p class="leading-relaxed text-slate-400">
-                    Diese App läuft im Browser. Daten werden direkt von externen Servern (OSM, Overpass) geladen. Ihre IP-Adresse wird technisch bedingt dorthin übertragen.
+                    Um die Karten anzuzeigen und Daten abzurufen, verbindet sich Ihr Browser jedoch direkt mit folgenden externen Diensten, wobei technisch bedingt Ihre IP-Adresse übertragen wird:
+                </p>
+                <ul class="list-disc list-inside mt-2 space-y-1 text-slate-500">
+                    <li><strong>Karten-Server (OSM, CartoDB, Esri/ArcGIS, OpenTopoMap):</strong> Zum Laden der Kartenbilder (Kacheln).</li>
+                    <li><strong>Overpass API:</strong> Zum Abruf der Hydranten-, Wachen- und Defibrillatordaten.</li>
+                    <li><strong>Nominatim (OSM):</strong> Für die Ortssuche und Adressbestimmung.</li>
+                </ul>
+            </section>
+            
+            <section>
+                <h3 class="text-sm font-bold text-white mb-1">Quellen & Lizenzen</h3>
+                <ul class="list-disc list-inside space-y-1 text-slate-400">
+                    <li>
+                        <strong>Kartendaten:</strong> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">OpenStreetMap</a>-Mitwirkende (ODbL).
+                    </li>
+                    <li>
+                        <strong>Kartenstil (Standard/Dark/Hell):</strong> &copy; <a href="https://carto.com/attributions" target="_blank" class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">CARTO</a>.
+                    </li>
+                    <li>
+                        <strong>Satellitenbilder:</strong> Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community.
+                    </li>
+                    <li>
+                        <strong>Topographische Karte:</strong> Daten &copy; OpenStreetMap-Mitwirkende, SRTM | Darstellung &copy; <a href="http://opentopomap.org" target="_blank" class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">OpenTopoMap</a> (CC-BY-SA).
+                    </li>
+                    <li>
+                        <strong>Software-Bibliotheken:</strong> <a href="https://leafletjs.com/" target="_blank" class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Leaflet</a>, <a href="https://tailwindcss.com/" target="_blank" class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Tailwind CSS</a>.
+                    </li>
+                </ul>
+            </section>
+    
+            <section class="border-t border-white/5 pt-2">
+                <h3 class="text-sm font-bold text-white mb-1">Rechtlicher Hinweis & Kontakt</h3>
+                <p class="leading-relaxed text-slate-400 mb-2">
+                    Dies ist ein rein privates, nicht-kommerzielles Projekt ohne Gewinnerzielungsabsicht.
+                </p>
+                <p class="leading-relaxed text-amber-500/80 italic mb-2 font-semibold">
+                    "Keine Abmahnung ohne vorherigen Kontakt"
+                </p>
+                <p class="leading-relaxed text-slate-500">
+                    Sollte der Inhalt oder die Aufmachung dieser Seiten fremde Rechte Dritter oder gesetzliche Bestimmungen verletzen, so bitte ich um eine entsprechende Nachricht ohne Kostennote. Ich garantiere, dass die zu Recht beanstandeten Passagen unverzüglich entfernt werden, ohne dass von Ihrer Seite die Einschaltung eines Rechtsbeistandes erforderlich ist.
                 </p>
             </section>
         </div>
