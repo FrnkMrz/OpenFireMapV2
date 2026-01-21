@@ -13,9 +13,9 @@ export const Config = {
     defaultCenter: [49.555, 11.350],
     
     // --- ZOOM-EINSTELLUNGEN ---
-    defaultZoom: 14,      // Zoom beim ersten Laden der Seite
-    searchZoom: 14,       // Zoom-Stufe nach einer erfolgreichen Suche
-    locateZoom: 16,       // Zoom-Stufe nach Klick auf den GPS-Button
+    defaultZoom: 14,      // Standard-Zoom beim Laden
+    searchZoom: 14,       // NEU: Zoom-Stufe, auf die bei einer Suche gesprungen wird
+    locateZoom: 16,       // NEU: Zoom-Stufe für die GPS-Standortbestimmung
 
     // --- DATEN-QUELLEN (Overpass API) ---
     // Wir nutzen mehrere Server als Backup, falls einer langsam ist oder ausfällt.

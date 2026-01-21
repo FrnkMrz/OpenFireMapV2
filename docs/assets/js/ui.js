@@ -149,10 +149,9 @@ export function searchLocation() {
             showNotification("Suche fehlgeschlagen");
         });
 }
-
 /**
  * Bestimmt den Standort des Nutzers via Browser-GPS.
- * LERN-INFO: Wir nutzen Leaflet DivIcons für den animierten Punkt.
+ * LERN-INFO: Ein setTimeout sorgt dafür, dass der Marker nach 20s gelöscht wird.
  */
 export function locateUser() {
     if (!navigator.geolocation) { 
@@ -169,25 +168,33 @@ export function locateUser() {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
 
-            // 1. ZUR POSITION SPRINGEN (Zoom 16)
-            // Wir nutzen jetzt Zoom 16, wie von dir gewünscht.
-            State.map.flyTo([lat, lng], 16);
+            // 1. ZUR POSITION SPRINGEN
+            // Wir nutzen den Wert aus der config.js (Zoom 16)
+            State.map.flyTo([lat, lng], Config.locateZoom);
 
-            // 2. BLINKENDEN PUNKT ERZEUGEN
-            // Falls schon ein Punkt existiert, entfernen wir ihn zuerst
+            // 2. ALTEN PUNKT ENTFERNEN (falls vorhanden)
             if (State.userMarker) {
                 State.map.removeLayer(State.userMarker);
             }
 
-            // Wir erstellen ein "DivIcon" – das ist ein Icon, das aus purem HTML/CSS besteht
+            // 3. BLINKENDEN PUNKT ERZEUGEN
             const dotIcon = L.divIcon({
                 className: 'user-location-dot',
                 iconSize: [16, 16],
                 iconAnchor: [8, 8]
             });
 
-            // Marker zur Karte hinzufügen und im State speichern
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
+
+            // 4. AUTOMATISCHES LÖSCHEN NACH 20 SEKUNDEN
+            // LERN-INFO: setTimeout führt eine Funktion verzögert aus.
+            setTimeout(() => {
+                if (State.userMarker) {
+                    State.map.removeLayer(State.userMarker);
+                    State.userMarker = null;
+                    console.log("Standort-Punkt wurde nach 20s automatisch entfernt.");
+                }
+            }, 20000); // 20.000 ms = 20 Sekunden
 
             if(icon) icon.classList.remove('animate-spin');
             showNotification(t('geo_found') || "Standort gefunden!");
