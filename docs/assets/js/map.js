@@ -1,10 +1,7 @@
 /**
  * ==========================================================================================
- * DATEI: map.js
- * ZWECK: Karten-Darstellung und Marker-Verwaltung
- * BESCHREIBUNG:
- * Hier nutzen wir die Bibliothek "Leaflet", um die Karte anzuzeigen, 
- * Marker zu setzen und Interaktionen (Klicks) zu verarbeiten.
+ * DATEI: map.js (Die Karten-Logik)
+ * LERN-ZIEL: Umgang mit der Leaflet-Bibliothek, Layer-System, SVG Rendering
  * ==========================================================================================
  */
 
@@ -14,17 +11,19 @@ import { t } from './i18n.js';
 import { fetchOSMData } from './api.js';
 
 /**
- * Initialisiert die Karte beim Start der Seite.
+ * Startet die Karte (wird einmal am Anfang aufgerufen)
  */
 export function initMapLogic() {
-    // 1. Layer-Gruppen erstellen (wie transparente Folien, die übereinander liegen)
-    State.markerLayer = L.layerGroup();       // Folie für Marker
-    State.boundaryLayer = L.layerGroup();     // Folie für Grenzen
-    State.rangeLayerGroup = L.layerGroup();   // Folie für den Kreis
+    // 1. Layer-Gruppen erstellen
+    // Stell dir vor, wir legen 3 transparente Folien übereinander auf die Karte.
+    State.markerLayer = L.layerGroup();       // Folie 1: Für die Icons (Hydranten)
+    State.boundaryLayer = L.layerGroup();     // Folie 2: Für die Grenzen
+    State.rangeLayerGroup = L.layerGroup();   // Folie 3: Für den orangenen Kreis
 
     // 2. Die Karte selbst erstellen
+    // 'map' ist die ID des HTML-Divs, wo die Karte rein soll.
     State.map = L.map('map', { 
-        zoomControl: false, // Wir bauen eigene Zoom-Buttons, daher false
+        zoomControl: false, // Wir bauen eigene Zoom-Buttons, daher hier 'false'
         center: Config.defaultCenter, 
         zoom: Config.defaultZoom 
     });
@@ -34,94 +33,78 @@ export function initMapLogic() {
     State.rangeLayerGroup.addTo(State.map);
     State.markerLayer.addTo(State.map);
 
-    // 4. Standard-Hintergrund laden
+    // 4. Den Hintergrund laden (Standard: Voyager)
     setBaseLayer('voyager');
 
-    /* EVENT LISTENER: Was passiert, wenn der Nutzer etwas tut?
-       
-       DEBOUNCE LOGIK:
-       Wenn man die Karte verschiebt, feuert Leaflet hunderte Events ("move").
-       Wir wollen aber nicht hunderte Male Daten laden.
-       Deshalb warten wir, bis der Nutzer kurz aufhört zu schieben (200ms).
-    */
+    // --- EVENTS (Was passiert, wenn der User etwas tut?) ---
+
+    // Wenn der User die Karte bewegt (moveend) oder zoomt (zoomend):
     let debounceTimer;
     State.map.on('moveend zoomend', () => {
-        // Alten Timer löschen (falls vorhanden)
+        // TRICK: "Debouncing"
+        // Wenn der User die Karte zieht, feuert das Event hunderte Male.
+        // Wir warten 200ms, ob er aufhört zu ziehen, bevor wir Daten laden.
+        // Das spart extrem viel Serverlast!
         if (debounceTimer) clearTimeout(debounceTimer);
         
-        // Status auf "Warten" setzen
         const statusEl = document.getElementById('data-status');
         if(statusEl) {
             statusEl.innerText = t('status_waiting');
             statusEl.className = 'text-amber-400 font-bold';
         }
 
-        // Neuen Timer starten: Erst in 200ms laden!
         debounceTimer = setTimeout(() => {
-            fetchOSMData();
+            fetchOSMData(); // Daten laden!
         }, 200);
     });
 
-    // Weitere Events
+    // Wenn gezoomt wird: Anzeige unten rechts aktualisieren
     State.map.on('zoom', () => {
-        // Zoom-Anzeige unten rechts aktualisieren
         const el = document.getElementById('zoom-val');
         if(el) el.innerText = State.map.getZoom().toFixed(1);
     });
     
-    // Klick auf leere Karte -> Kreis entfernen (außer wir sind im Auswahlmodus)
+    // Klick auf leere Karte -> Orangenen Kreis entfernen
     State.map.on('click', () => {
         if (!State.selection.active) {
             State.rangeLayerGroup.clearLayers();
         }
     });
 
-    // Erster Datenabruf beim Start
+    // Erster Start: Sofort einmal laden
     fetchOSMData();
 }
 
 /**
- * Wechselt den Kartenhintergrund (z.B. Satellit oder Dark Mode)
+ * Wechselt den Kartenhintergrund (z.B. Satellit)
  */
 export function setBaseLayer(key) {
     State.activeLayerKey = key;
     
-    // Alle alten Kachel-Layer entfernen
+    // Alte Kacheln entfernen
     State.map.eachLayer(layer => { 
         if (layer instanceof L.TileLayer) State.map.removeLayer(layer); 
     });
     
+    // Neue Kacheln hinzufügen
     const conf = Config.layers[key];
-    
-    // Neuen Layer hinzufügen
     L.tileLayer(conf.url, { 
         attribution: conf.attr, 
         maxZoom: conf.maxZoom 
     }).addTo(State.map);
     
-    // UI Update: Button aktiv markieren
+    // Buttons im Menü aktualisieren (Fett machen)
     document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
     const btn = document.getElementById(`btn-${key}`);
     if(btn) btn.classList.add('active');
-
-    // Sonderfall: Topo-Karte geht nur bis Zoom 17. 
-    // Wir müssen den "Zoom 18" Button im Export-Menü deaktivieren.
-    const btn18 = document.getElementById('zoom-18');
-    if(btn18) {
-        if (key === 'topo') {
-            btn18.disabled = true;
-            if (State.exportZoomLevel > 17) State.exportZoomLevel = 17; 
-        } else {
-            btn18.disabled = false;
-        }
-    }
 }
 
 /**
- * Erstellt den HTML-Code für die Icons (SVG)
+ * Erstellt das HTML für die Icons (SVG Grafik)
+ * Je nach Typ (Hydrant, Wache) wird ein anderes Bild zurückgegeben.
  */
 function getSVGContent(type) {
-    // Defibrillator Icon
+    // 1. Defibrillator (Grün)
     if (type === 'defibrillator') {
          return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="45" fill="#16a34a" stroke="white" stroke-width="5"/>
@@ -129,11 +112,12 @@ function getSVGContent(type) {
             <path d="M55 45 L45 55 L55 55 L45 65" stroke="#16a34a" stroke-width="3" fill="none"/>
         </svg>`;
     }
-
-    const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-    const color = isWater ? '#3b82f6' : '#ef4444'; // Blau oder Rot
     
-    // Wandhydrant
+    // 2. Wasser (Blau) oder Feuer (Rot)
+    const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
+    const color = isWater ? '#3b82f6' : '#ef4444'; 
+    
+    // 3. Wandhydrant (spezielles Symbol)
     if (type === 'wall') {
          return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
@@ -142,7 +126,7 @@ function getSVGContent(type) {
         </svg>`;
     }
     
-    // Buchstaben für Typen (U=Unterflur, O=Oberflur)
+    // 4. Buchstaben ermitteln (U=Unterflur, O=Oberflur)
     let char = '';
     switch(type) {
         case 'underground': char = 'U'; break; 
@@ -152,15 +136,15 @@ function getSVGContent(type) {
         default:            char = '';
     }
     
-    // Feuerwache
+    // 5. Feuerwache (Haus-Symbol)
     if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="#ef4444" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
     
-    // Standard Hydrant (Kreis mit Buchstabe)
+    // Standard Rückgabe: Kreis mit Buchstabe
     return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
 }
 
 /**
- * Erstellt das Tooltip (Info-Fenster beim Maus-Hover)
+ * Baut das Info-Fenster (Tooltip), wenn man mit der Maus über ein Icon fährt.
  */
 function generateTooltip(tags) {
     let tooltipTitle = tags.name || t('details');
@@ -171,6 +155,7 @@ function generateTooltip(tags) {
         <div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div>
         <div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
     
+    // Alle Eigenschaften (Tags) auflisten
     for (const [key, val] of Object.entries(tags)) {
         html += `<div class="text-slate-400 text-right">${key}:</div><div class="text-slate-200 break-words">${val}</div>`;
     }
@@ -179,10 +164,10 @@ function generateTooltip(tags) {
 }
 
 /**
- * Zeichnet den orangenen 100m Radius Kreis um einen Punkt.
+ * Zeichnet den orangenen 100m Radius Kreis
  */
 export function showRangeCircle(lat, lon) {
-    State.rangeLayerGroup.clearLayers();
+    State.rangeLayerGroup.clearLayers(); // Alten Kreis löschen
     const zoom = State.map.getZoom();
     
     // Kreis macht erst Sinn, wenn man nah genug dran ist (Zoom 16+)
@@ -196,7 +181,7 @@ export function showRangeCircle(lat, lon) {
 
     // Text "100m" zeichnen (nur ab Zoom 17)
     if (zoom >= 17) {
-        // Berechne Position für Text (etwas rechts vom Zentrum)
+        // Geometrie: Position etwas rechts vom Zentrum berechnen
         const latRad = lat * Math.PI / 180;
         const kmPerDegLon = 111.32 * Math.cos(latRad);
         const offsetLon = 0.05 / kmPerDegLon; 
@@ -209,105 +194,98 @@ export function showRangeCircle(lat, lon) {
 }
 
 /**
- * Hauptfunktion zum Malen der Marker auf die Karte.
+ * HAUPTFUNKTION: Rendert (malt) die Marker auf die Karte
+ * Wird von fetchOSMData aufgerufen, wenn neue Daten da sind.
  */
 export function renderMarkers(elements, zoom) {
-    // Erstmal alles Alte löschen
+    // Alles löschen, um sauber neu zu malen
     State.markerLayer.clearLayers();
     State.boundaryLayer.clearLayers();
     
-    const renderedLocations = []; 
+    const renderedLocations = []; // Um Duplikate zu verhindern
 
+    // Wir gehen durch JEDES geladene Element durch
     elements.forEach(el => {
         const tags = el.tags || {};
         
-        // 1. Gemeindegrenzen zeichnen
-        if (tags.boundary === 'administrative' && el.geometry) {
-            if (zoom < 14) return; // Zu weit weg -> keine Grenzen stören
+        // A. Gemeindegrenzen zeichnen
+        if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
             const latlngs = el.geometry.map(p => [p.lat, p.lon]);
             L.polyline(latlngs, { color: '#333333', weight: 1, dashArray: '10, 10', opacity: 0.7 }).addTo(State.boundaryLayer);
-            return; 
+            return; // Fertig mit diesem Element
         }
-        
-        // Koordinaten holen
+
+        // Koordinaten prüfen
         const lat = el.lat || el.center?.lat;
         const lon = el.lon || el.center?.lon;
         if (!lat || !lon) return;
 
-        // Was ist es?
+        // B. Typ bestimmen (Wache? Defi? Hydrant?)
         const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
         const isDefib = tags.emergency === 'defibrillator';
-        let type = '';
+        let type = isStation ? 'station' : (isDefib ? 'defibrillator' : (tags['fire_hydrant:type'] || tags.emergency));
 
-        if (isStation) type = 'station';
-        else if (isDefib) type = 'defibrillator';
-        else type = tags['fire_hydrant:type'] || tags.emergency;
-
-        // Filter: Wann zeigen wir was an?
+        // C. Filter Logik (Was zeigen wir wann an?)
         if (isStation && zoom < 12) return; 
         if (!isStation && !isDefib && zoom < 15) return; 
         if (isDefib && zoom < 15) return; 
 
-        // Verhindern, dass Wachen doppelt gemalt werden (passiert manchmal in OSM Daten)
+        // Duplikate verhindern (manche Wachen sind in OSM doppelt drin)
         const alreadyDrawn = renderedLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
         if (isStation && alreadyDrawn) return;
         if (isStation) renderedLocations.push({lat, lon});
 
-        let marker = null;
-        let iconHtml = '';
+        // D. Marker erstellen
+        let marker;
+        let iconHtml;
         let className = '';
         let size = [28, 28];
         let zIndex = 0;
 
-        // --- ENTSCHEIDUNG: Punkt oder Icon? ---
         if (isStation) {
             if (zoom < 14) { 
-                // Kleines Quadrat
-                className = 'station-square'; size = [10, 10]; 
-                marker = L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: size }) }).addTo(State.markerLayer);
+                // Zoom 12-13: Nur kleiner Punkt
+                marker = L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10, 10] }) }).addTo(State.markerLayer);
             } else {
-                // Großes Icon
+                // Ab Zoom 14: Großes Icon
                 iconHtml = getSVGContent(type); className = 'icon-container'; size = [32, 32]; zIndex = 1000;
                 marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: zIndex }).addTo(State.markerLayer);
             }
         } 
         else if (isDefib) {
             if (zoom < 17) {
-                // Grüner Punkt
-                className = 'defib-dot'; 
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10,10] }) }).addTo(State.markerLayer);
+                // Kleiner grüner Punkt
+                marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) }).addTo(State.markerLayer);
             } else {
-                // Icon
+                // Großes Icon
                 iconHtml = getSVGContent(type); className = 'icon-container'; size = [28, 28]; zIndex = 2000;
                 marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: zIndex }).addTo(State.markerLayer);
             }
         } 
         else { // Hydranten
             if (zoom < 17) {
-                // Roter oder Blauer Punkt
+                // Kleiner Punkt (rot oder blau)
                 const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
                 className = isWater ? 'tank-dot' : 'hydrant-dot';
                 marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10,10] }) }).addTo(State.markerLayer);
             } else {
-                // Icon
+                // Großes Icon mit Buchstabe
                 iconHtml = getSVGContent(type); className = 'icon-container';
                 marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: 0 }).addTo(State.markerLayer);
                 
                 // Klick Event für den 100m Kreis
                 marker.on('click', (e) => { 
-                    L.DomEvent.stopPropagation(e); // Verhindern, dass Klick auf Karte durchschlägt
+                    L.DomEvent.stopPropagation(e); // Verhindert, dass der Klick "durch" den Marker auf die Karte geht
                     showRangeCircle(lat, lon); 
                 });
             }
         }
 
-        // Tooltips hinzufügen (nur wenn Zoom groß genug und Marker existiert)
+        // Tooltip hinzufügen (Info beim Drüberfahren)
         if (marker && zoom === 18 && className === 'icon-container') {
              marker.bindTooltip(generateTooltip(tags), { 
-                interactive: true, permanent: false, sticky: false, direction: 'top', opacity: 0.95 
+                interactive: true, permanent: false, direction: 'top', opacity: 0.95 
             });
-            // Hier könnte noch die Logik für das verzögerte Schließen rein, 
-            // die ich im HTML Code hatte. Der Übersicht halber hier vereinfacht.
         }
     });
 }
