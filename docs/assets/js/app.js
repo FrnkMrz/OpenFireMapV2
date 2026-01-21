@@ -2,38 +2,39 @@
  * ==========================================================================================
  * DATEI: app.js
  * ZWECK: Haupt-Einstiegspunkt der Anwendung
+ * FIX: Korrekte Importe für State und Event-Handling
  * ==========================================================================================
  */
 
 import { initMapLogic } from './map.js';
 import { updatePageLanguage } from './i18n.js';
 import { setupUI } from './ui.js';
-import { handleSelectionEvents, State } from './export.js'; // Wichtig für Maus-Events beim Export
+
+// KORREKTUR: Wir müssen 'handleSelectionEvents' aus export.js holen...
+import { handleSelectionEvents } from './export.js'; 
+// ...und 'State' aus state.js (NICHT aus export.js!)
+import { State } from './state.js'; 
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("App startet...");
     
-    // 1. Sprache
+    // 1. Sprache initialisieren
     updatePageLanguage(); 
     
-    // 2. UI
+    // 2. UI (Buttons, Menüs) vorbereiten
     setupUI();            
     
-    // 3. Karte
+    // 3. Karte starten
     initMapLogic();       
     
-    // 4. Events für Export-Auswahlrechteck registrieren
-    // (Da State.map jetzt existiert, können wir Listener anhängen)
-    // Achtung: Wir importieren 'State' hier aus export.js oder map.js, 
-    // aber am besten greifen wir über das map-Modul auf die Karte zu.
-    // Vereinfacht: Wir nutzen globale Events oder exportieren Map.
-    
-    // Besserer Weg für Events in Modular:
-    // Wir importieren State aus state.js und hängen Events an.
-    // (Siehe Import oben, muss ergänzt werden: import { State } from './state.js';)
+    // 4. WICHTIG: Auswahl-Rechteck für Export aktivieren
+    // Nachdem initMapLogic() lief, existiert 'State.map'.
+    // Jetzt hängen wir die Maus-Events an die Karte, damit das Ziehen funktioniert.
+    if (State.map) {
+         State.map.on('mousedown', (e) => handleSelectionEvents(e, 'down'));
+         State.map.on('mousemove', (e) => handleSelectionEvents(e, 'move'));
+         State.map.on('mouseup', (e) => handleSelectionEvents(e, 'up'));
+    } else {
+        console.error("Fehler: Karte wurde nicht initialisiert!");
+    }
 });
-
-// Nachtrag: Events für Auswahl müssen registriert werden.
-// Da map.js das Map-Objekt erstellt, machen wir das am besten dort oder hier.
-// Ich habe den Event-Handler in export.js 'handleSelectionEvents' genannt.
-// Wir fügen ihn in map.js bei initMapLogic hinzu (siehe oben).
