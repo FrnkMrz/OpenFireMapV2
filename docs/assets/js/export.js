@@ -7,7 +7,7 @@
  * 1. Mathematik: Wie rechnet man Längen- und Breitengrade in Pixel um? (Mercator-Projektion)
  * 2. Canvas API: Wie nutzt man Clipping (ctx.clip), um überstehende Linien abzuschneiden?
  * 3. Asynchronität: Wie lädt man hunderte Kacheln gleichzeitig?
- * 4. Logik: Wie erkennt man, ob mehrere Gemeinden im Bild sind?
+ * 4. Reverse Geocoding: Wie finden wir den Ortsnamen für den Titel heraus?
  */
 
 import { State } from './state.js';   
@@ -228,48 +228,26 @@ export async function exportAsPNG() {
         const nw = bounds.getNorthWest();
         const se = bounds.getSouthEast();
 
-        // 3. ORTSBESTIMMUNG & TITEL (Verbesserte Logik)
+        // 3. ORTSBESTIMMUNG (Vereinfachte Logik)
+        // Wir nehmen jetzt NUR den Mittelpunkt. Keine Ecken-Prüfung mehr.
         let displayTitle = ""; 
         try {
             const center = bounds.getCenter();
             
-            // Helper für Reverse Geocoding
-            const getLoc = async (lat, lng) => {
-                const res = await fetch(`${Config.nominatimUrl}/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`);
-                const d = await res.json();
-                const a = d.address || {};
-                // Suche den wichtigsten Ortsnamen (Stadt > Dorf > Gemeinde)
-                return a.city || a.town || a.village || a.municipality || ""; 
-            };
-
-            // a) Hauptort (Mitte) bestimmen
+            // Anfrage an Nominatim (OpenStreetMap) für den Mittelpunkt
             const res = await fetch(`${Config.nominatimUrl}/reverse?format=json&lat=${center.lat}&lon=${center.lng}&zoom=18`);
             const d = await res.json();
             const addr = d.address || {};
+            
+            // Hauptort (Stadt/Gemeinde)
             const city = addr.city || addr.town || addr.village || addr.municipality || "";
+            // Ortsteil (Stadtteil/Weiler)
             const suburb = addr.suburb || addr.neighbourhood || addr.hamlet || "";
             
-            // b) Ecken prüfen (Wenn wir viele verschiedene Orte sehen, zeigen wir keinen Namen)
-            const corners = [nw, se, bounds.getNorthEast(), bounds.getSouthWest()];
-            const places = new Set();
-            if (city) places.add(city);
+            // Titel zusammenbauen: "Schnaittach - Rollhofen" oder nur "Schnaittach"
+            displayTitle = city ? (suburb ? `${city} - ${suburb}` : city) : "";
             
-            // Wir prüfen stichprobenartig die Ecken
-            for (let c of corners) {
-                const pName = await getLoc(c.lat, c.lng);
-                if (pName) places.add(pName);
-            }
-
-            console.log("Gefundene Orte:", places);
-
-            // c) Entscheidung: Titel bauen
-            if (places.size > 1) {
-                // Mehrere Gemeinden sichtbar -> Neutraler Titel
-                displayTitle = ""; 
-            } else {
-                // Nur eine Gemeinde -> Name anzeigen (z.B. "Schnaittach - Rollhofen")
-                displayTitle = city ? (suburb ? `${city} - ${suburb}` : city) : "";
-            }
+            console.log("Mittelpunkt-Ort:", displayTitle);
 
         } catch(e) { console.warn("Titel Fehler:", e); }
 
@@ -317,8 +295,6 @@ export async function exportAsPNG() {
                     img.src = baseUrlTpl.replace('{z}', targetZoom).replace('{x}', x).replace('{y}', y);
                     
                     img.onload = () => { 
-                        // LERN-INFO: Zeichnen an der richtigen Stelle (Mapping)
-                        // (x - x1) * 256 ist die X-Position relativ zum linken Rand der Karte
                         ctx.drawImage(img, (x - x1) * 256 + margin, (y - y1) * 256 + margin); 
                         loaded++; updateProgress(); resolve(); 
                     };
@@ -443,12 +419,11 @@ export async function exportAsPNG() {
         
         const centerX = margin + (mapWidth / 2);
         
-        // TITEL LOGIK: "Ort- und Hydrantenplan" + optionaler Ortsname
+        // TITEL LOGIK: "Ort- und Hydrantenplan" + Ortsname (immer vom Mittelpunkt)
         ctx.fillStyle = Config.colors.textMain; 
         ctx.textAlign = "center";
         ctx.font = "bold 44px Arial, sans-serif"; 
         
-        // Wenn displayTitle leer ist (weil mehrere Gemeinden), zeigen wir nur den Hauptteil
         const titleText = displayTitle ? `Ort- und Hydrantenplan ${displayTitle}` : "Ort- und Hydrantenplan";
         ctx.fillText(titleText, centerX, margin + 55);
         
