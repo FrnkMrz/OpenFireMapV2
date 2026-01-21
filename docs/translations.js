@@ -1,13 +1,64 @@
-/* =========================================================================
-   0. WÖRTERBUCH (DICTIONARY)
-   Alle Texte für die automatische Übersetzung.
+/* ==========================================================================================
+   DATEI: translations.js
+   PROJEKT: OpenFireMap V2
+   AUTOR: Gemini (im Auftrag von Frank März)
+   DATUM: 2026-01-21
+   ==========================================================================================
+
+   1. WAS MACHT DIESE DATEI? (FUNKTIONSBESCHREIBUNG)
+   -------------------------------------------------
+   Diese Datei dient als zentrale Datenbank für alle Textinhalte der Webseite. 
+   Sie trennt den Programmiercode (Logik) vom Inhalt (Text). Das ermöglicht:
+   - Einfache Pflege der Texte ohne Risiko, den Code zu beschädigen.
+   - Schnelles Hinzufügen neuer Sprachen.
+   - Automatische Umschaltung der Sprache basierend auf den Browser-Einstellungen des Besuchers.
+
+   2. WO GEHÖRT SIE HIN? (ARCHITEKTUR)
+   -----------------------------------
+   - Diese Datei liegt im selben Verzeichnis wie die 'index.html'.
+   - Sie wird in der 'index.html' im <head>-Bereich über <script src="translations.js"></script> geladen.
+   - Sie muss VOR dem eigentlichen Hauptskript geladen werden, damit die Variable 'translations'
+     bereits existiert, wenn die Seite startet.
+
+   3. CODE-DOKUMENTATION & STRUKTUR
+   --------------------------------
+   Die Datei definiert eine einzige globale Konstante: 'const translations'.
+   Dies ist ein verschachteltes JavaScript-Objekt (JSON-Struktur).
    
-   HINWEIS: Diese Datei wird von der index.html geladen.
-   Änderungen hier wirken sich direkt auf die Texte der Webseite aus.
-   ========================================================================= */
+   Ebene 1: Der Sprach-Code (ISO 639-1)
+            z.B. 'de' für Deutsch, 'en' für Englisch.
+            
+   Ebene 2: Die Schlüssel-Wert-Paare für die Texte.
+            - Schlüssel (Links): Ein eindeutiger Name, z.B. "search_placeholder".
+              Dieser Name wird im HTML-Code verwendet (data-i18n="search_placeholder").
+            - Wert (Rechts): Der tatsächliche Text in der jeweiligen Sprache.
+
+   4. UNTERSTÜTZTE SPRACHEN (LÄNDERCODES)
+   --------------------------------------
+   Die Anwendung unterstützt nun folgende 15 Sprachen:
+   
+   - DE : Deutsch (Basissprache)
+   - EN : Englisch (Weltweit / Fallback)
+   - FR : Französisch
+   - ES : Spanisch
+   - IT : Italienisch
+   - PL : Polnisch
+   - NL : Niederländisch
+   - CS : Tschechisch
+   - DA : Dänisch
+   - FI : Finnisch
+   - SV : Schwedisch
+   - NO : Norwegisch
+   - PT : Portugiesisch
+   - FL : Flämisch (Belgien)
+   - LB : Luxemburgisch (Neu)
+
+   ========================================================================================== */
 
 const translations = {
-    // Deutsch
+    // --------------------------------------------------------------------------------------
+    // DEUTSCH (DE) - Basissprache
+    // --------------------------------------------------------------------------------------
     de: {
         search_placeholder: "Ort suchen...",
         locate_title: "Mein Standort",
@@ -60,7 +111,10 @@ const translations = {
         defib: "Defibrillator (AED)",
         legal_btn: "Info & Recht"
     },
-    // Englisch
+
+    // --------------------------------------------------------------------------------------
+    // ENGLISCH (EN)
+    // --------------------------------------------------------------------------------------
     en: {
         search_placeholder: "Search location...",
         locate_title: "My Location",
@@ -113,7 +167,10 @@ const translations = {
         defib: "Defibrillator (AED)",
         legal_btn: "Info & Legal"
     },
-    // Französisch
+
+    // --------------------------------------------------------------------------------------
+    // FRANZÖSISCH (FR)
+    // --------------------------------------------------------------------------------------
     fr: {
         search_placeholder: "Rechercher...",
         locate_title: "Ma position",
@@ -166,7 +223,10 @@ const translations = {
         defib: "Défibrillateur (DAE)",
         legal_btn: "Info & Droit"
     },
-    // Spanisch
+
+    // --------------------------------------------------------------------------------------
+    // SPANISCH (ES)
+    // --------------------------------------------------------------------------------------
     es: {
         search_placeholder: "Buscar lugar...",
         locate_title: "Mi ubicación",
@@ -219,7 +279,10 @@ const translations = {
         defib: "Desfibrilador (DEA)",
         legal_btn: "Info & Legal"
     },
-    // Italienisch
+
+    // --------------------------------------------------------------------------------------
+    // ITALIENISCH (IT)
+    // --------------------------------------------------------------------------------------
     it: {
         search_placeholder: "Cerca luogo...",
         locate_title: "La mia posizione",
@@ -272,7 +335,10 @@ const translations = {
         defib: "Defibrillatore (DAE)",
         legal_btn: "Info & Legale"
     },
-    // Polnisch
+
+    // --------------------------------------------------------------------------------------
+    // POLNISCH (PL)
+    // --------------------------------------------------------------------------------------
     pl: {
         search_placeholder: "Szukaj miejsca...",
         locate_title: "Moja lokalizacja",
@@ -322,10 +388,13 @@ const translations = {
         details: "Szczegóły",
         station: "Straż pożarna",
         hydrant: "Hydrant",
-        defib: "Defibrrylator (AED)",
+        defib: "Defibrylator (AED)",
         legal_btn: "Info i prawo"
     },
-    // Niederländisch
+
+    // --------------------------------------------------------------------------------------
+    // NIEDERLÄNDISCH (NL)
+    // --------------------------------------------------------------------------------------
     nl: {
         search_placeholder: "Zoek locatie...",
         locate_title: "Mijn locatie",
@@ -378,7 +447,10 @@ const translations = {
         defib: "Defibrillator (AED)",
         legal_btn: "Info & Recht"
     },
-    // Tschechisch
+
+    // --------------------------------------------------------------------------------------
+    // TSCHECHISCH (CS)
+    // --------------------------------------------------------------------------------------
     cs: {
         search_placeholder: "Hledat místo...",
         locate_title: "Moje poloha",
@@ -430,5 +502,397 @@ const translations = {
         hydrant: "Hydrant",
         defib: "Defibrilátor (AED)",
         legal_btn: "Info & Právo"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // DÄNISCH (DA)
+    // --------------------------------------------------------------------------------------
+    da: {
+        search_placeholder: "Søg efter sted...",
+        locate_title: "Min placering",
+        layers_title: "Skift kortlag",
+        export_title: "Eksport",
+        bg_header: "Baggrund",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Udskrift (Lys)",
+        layer_night: "Nat (Mørk)",
+        layer_sat: "Satellit (Esri)",
+        layer_topo: "Topografisk (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stil)",
+        export_header: "Eksportegenskaber",
+        format_label: "Format (Forhold)",
+        fmt_free: "FRI",
+        fmt_a4l: "A4 LIGGENDE",
+        fmt_a4p: "A4 STÅENDE",
+        zoom_label: "Detaljeringsgrad (Zoom)",
+        select_area_btn: "Vælg område på kortet",
+        area_fixed: "Område fastlagt ✓",
+        png_btn: "Hydrantkort (PNG)",
+        gpx_btn: "Eksporter hydranter (GPX)",
+        exporting_title: "Opretter eksport...",
+        loading_tiles: "Indlæser fliser...",
+        cancel_btn: "Annuller proces",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "AKTUEL",
+        status_loading: "INDLÆSER...",
+        status_standby: "STANDBY (Zoom < 12)",
+        status_error: "FEJL",
+        geo_error: "Geolokalisering understøttes ikke.",
+        geo_found: "Placering fundet!",
+        geo_fail: "Placering mislykkedes.",
+        drag_area: "Træk område",
+        no_objects: "Ingen objekter i det valgte område!",
+        gpx_success: "Objekter eksporteret som GPX!",
+        too_large: "Området er for stort!",
+        locating: "Lokaliserer område...",
+        render_bounds: "Renderer grænser...",
+        render_infra: "Renderer infrastruktur...",
+        layout_final: "Afslutter layout...",
+        plan_title: "Hydrantkort",
+        legend_date: "Dato",
+        legend_res: "Opløsning",
+        details: "Detaljer",
+        station: "Brandstation",
+        hydrant: "Brandhane",
+        defib: "Hjertestarter (AED)",
+        legal_btn: "Info & Lov"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // FINNISCH (FI)
+    // --------------------------------------------------------------------------------------
+    fi: {
+        search_placeholder: "Etsi sijainti...",
+        locate_title: "Oma sijainti",
+        layers_title: "Vaihda karttataso",
+        export_title: "Vienti",
+        bg_header: "Tausta",
+        layer_std: "Vakio (Voyager)",
+        layer_print: "Tulostus (Vaalea)",
+        layer_night: "Yö (Tumma)",
+        layer_sat: "Satelliitti (Esri)",
+        layer_topo: "Topografinen (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Tyyli)",
+        export_header: "Viennin ominaisuudet",
+        format_label: "Muoto (Suhde)",
+        fmt_free: "VAPAA",
+        fmt_a4l: "A4 VAAKA",
+        fmt_a4p: "A4 PYSTY",
+        zoom_label: "Yksityiskohtaisuus (Zoom)",
+        select_area_btn: "Valitse alue kartalta",
+        area_fixed: "Alue lukittu ✓",
+        png_btn: "Palopostikartta (PNG)",
+        gpx_btn: "Vie palopostit (GPX)",
+        exporting_title: "Luodaan vientiä...",
+        loading_tiles: "Ladataan tiiliä...",
+        cancel_btn: "Peruuta",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "AJANTASAINEN",
+        status_loading: "LADATAAN...",
+        status_standby: "VALMIUSTILA (Zoom < 12)",
+        status_error: "VIRHE",
+        geo_error: "Paikannusta ei tueta.",
+        geo_found: "Sijainti löytyi!",
+        geo_fail: "Sijainti epäonnistui.",
+        drag_area: "Vedä alue",
+        no_objects: "Ei kohteita valitulla alueella!",
+        gpx_success: "Kohteet viety GPX-muodossa!",
+        too_large: "Alue on liian suuri!",
+        locating: "Paikannetaan aluetta...",
+        render_bounds: "Renderöidään rajoja...",
+        render_infra: "Renderöidään infrastruktuuria...",
+        layout_final: "Viimeistellään...",
+        plan_title: "Palopostikartta",
+        legend_date: "Päiväys",
+        legend_res: "Resoluutio",
+        details: "Tiedot",
+        station: "Paloasema",
+        hydrant: "Paloposti",
+        defib: "Sydämentahdistin (AED)",
+        legal_btn: "Info & Laki"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // SCHWEDISCH (SV)
+    // --------------------------------------------------------------------------------------
+    sv: {
+        search_placeholder: "Sök plats...",
+        locate_title: "Min plats",
+        layers_title: "Byt kartlager",
+        export_title: "Export",
+        bg_header: "Bakgrund",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Utskrift (Ljus)",
+        layer_night: "Natt (Mörk)",
+        layer_sat: "Satellit (Esri)",
+        layer_topo: "Topografisk (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stil)",
+        export_header: "Exportegenskaper",
+        format_label: "Format (Förhållande)",
+        fmt_free: "FRI",
+        fmt_a4l: "A4 LIGGANDE",
+        fmt_a4p: "A4 STÅENDE",
+        zoom_label: "Detaljnivå (Zoom)",
+        select_area_btn: "Välj område på kartan",
+        area_fixed: "Område fastställt ✓",
+        png_btn: "Brandpostkarta (PNG)",
+        gpx_btn: "Exportera brandposter (GPX)",
+        exporting_title: "Skapar export...",
+        loading_tiles: "Laddar kartrutor...",
+        cancel_btn: "Avbryt",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "AKTUELL",
+        status_loading: "LADDAR...",
+        status_standby: "VÄNTELÄGE (Zoom < 12)",
+        status_error: "FEL",
+        geo_error: "Geolokalisering stöds ej.",
+        geo_found: "Plats hittad!",
+        geo_fail: "Plats misslyckades.",
+        drag_area: "Dra område",
+        no_objects: "Inga objekt i valt område!",
+        gpx_success: "Objekt exporterade som GPX!",
+        too_large: "Området är för stort!",
+        locating: "Lokaliserar område...",
+        render_bounds: "Renderar gränser...",
+        render_infra: "Renderar infrastruktur...",
+        layout_final: "Slutför layout...",
+        plan_title: "Brandpostkarta",
+        legend_date: "Datum",
+        legend_res: "Upplösning",
+        details: "Detaljer",
+        station: "Brandstation",
+        hydrant: "Brandpost",
+        defib: "Hjärtstartare (AED)",
+        legal_btn: "Info & Lag"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // NORWEGISCH (NO)
+    // --------------------------------------------------------------------------------------
+    no: {
+        search_placeholder: "Søk etter sted...",
+        locate_title: "Min posisjon",
+        layers_title: "Bytt kartlag",
+        export_title: "Eksport",
+        bg_header: "Bakgrunn",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Utskrift (Lys)",
+        layer_night: "Natt (Mørk)",
+        layer_sat: "Satellitt (Esri)",
+        layer_topo: "Topografisk (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stil)",
+        export_header: "Eksportegenskaper",
+        format_label: "Format (Forhold)",
+        fmt_free: "FRI",
+        fmt_a4l: "A4 LIGGENDE",
+        fmt_a4p: "A4 STÅENDE",
+        zoom_label: "Detaljnivå (Zoom)",
+        select_area_btn: "Velg område på kartet",
+        area_fixed: "Område låst ✓",
+        png_btn: "Brannhydrantkart (PNG)",
+        gpx_btn: "Eksporter hydranter (GPX)",
+        exporting_title: "Oppretter eksport...",
+        loading_tiles: "Laster kartfliser...",
+        cancel_btn: "Avbryt",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "OPPDATERT",
+        status_loading: "LASTER...",
+        status_standby: "STANDBY (Zoom < 12)",
+        status_error: "FEIL",
+        geo_error: "Geolokalisering støttes ikke.",
+        geo_found: "Posisjon funnet!",
+        geo_fail: "Posisjon mislyktes.",
+        drag_area: "Dra område",
+        no_objects: "Ingen objekter i valgt område!",
+        gpx_success: "Objekter eksportert som GPX!",
+        too_large: "Området er for stort!",
+        locating: "Lokaliserer område...",
+        render_bounds: "Tegner grenser...",
+        render_infra: "Tegner infrastruktur...",
+        layout_final: "Fullfører layout...",
+        plan_title: "Brannhydrantkart",
+        legend_date: "Dato",
+        legend_res: "Oppløsning",
+        details: "Detaljer",
+        station: "Brannstasjon",
+        hydrant: "Brannhydrant",
+        defib: "Hjertestarter (AED)",
+        legal_btn: "Info & Lov"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // PORTUGIESISCH (PT)
+    // --------------------------------------------------------------------------------------
+    pt: {
+        search_placeholder: "Pesquisar local...",
+        locate_title: "Minha localização",
+        layers_title: "Mudar camada",
+        export_title: "Exportar",
+        bg_header: "Fundo",
+        layer_std: "Padrão (Voyager)",
+        layer_print: "Impressão (Claro)",
+        layer_night: "Noite (Escuro)",
+        layer_sat: "Satélite (Esri)",
+        layer_topo: "Topográfico (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (Estilo DE)",
+        export_header: "Propriedades de Exportação",
+        format_label: "Formato (Proporção)",
+        fmt_free: "LIVRE",
+        fmt_a4l: "A4 PAISAGEM",
+        fmt_a4p: "A4 RETRATO",
+        zoom_label: "Nível de Detalhe (Zoom)",
+        select_area_btn: "Selecionar área no mapa",
+        area_fixed: "Área fixada ✓",
+        png_btn: "Mapa de Hidrantes (PNG)",
+        gpx_btn: "Exportar Hidrantes (GPX)",
+        exporting_title: "Criando exportação...",
+        loading_tiles: "Carregando azulejos...",
+        cancel_btn: "Cancelar processo",
+        zoom_info: "ZOOM",
+        data_info: "DADOS",
+        status_current: "ATUAL",
+        status_loading: "CARREGANDO...",
+        status_standby: "AGUARDANDO (Zoom < 12)",
+        status_error: "ERRO",
+        geo_error: "Geolocalização não suportada.",
+        geo_found: "Localização encontrada!",
+        geo_fail: "Falha na localização.",
+        drag_area: "Arrastar área",
+        no_objects: "Nenhum objeto na área selecionada!",
+        gpx_success: "Objetos exportados como GPX!",
+        too_large: "Área muito grande!",
+        locating: "Localizando área...",
+        render_bounds: "Renderizando limites...",
+        render_infra: "Renderizando infraestrutura...",
+        layout_final: "Finalizando layout...",
+        plan_title: "Mapa de Hidrantes",
+        legend_date: "Data",
+        legend_res: "Resolução",
+        details: "Detalhes",
+        station: "Corpo de Bombeiros",
+        hydrant: "Hidrante",
+        defib: "Desfibrilador (DEA)",
+        legal_btn: "Info & Legal"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // FLÄMISCH (FL/BE)
+    // --------------------------------------------------------------------------------------
+    fl: {
+        search_placeholder: "Zoek locatie...",
+        locate_title: "Mijn locatie",
+        layers_title: "Kaartlaag wijzigen",
+        export_title: "Exporteren",
+        bg_header: "Achtergrond",
+        layer_std: "Standaard (Voyager)",
+        layer_print: "Afdruk (Licht)",
+        layer_night: "Nacht (Donker)",
+        layer_sat: "Satelliet (Esri)",
+        layer_topo: "Topografisch (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stijl)",
+        export_header: "Export Eigenschappen",
+        format_label: "Formaat (Verhouding)",
+        fmt_free: "VRIJ",
+        fmt_a4l: "A4 LIGGEND",
+        fmt_a4p: "A4 STAAND",
+        zoom_label: "Detailniveau (Zoom)",
+        select_area_btn: "Selecteer gebied op kaart",
+        area_fixed: "Gebied vastgelegd ✓",
+        png_btn: "Hydrantenkaart (PNG)",
+        gpx_btn: "Exporteer hydranten (GPX)",
+        exporting_title: "Export aanmaken...",
+        loading_tiles: "Tegels laden...",
+        cancel_btn: "Annuleren",
+        zoom_info: "ZOOM",
+        data_info: "DATA",
+        status_current: "ACTUEEL",
+        status_loading: "LADEN...",
+        status_standby: "STAND-BY (Zoom < 12)",
+        status_error: "FOUT",
+        geo_error: "Geolocatie niet ondersteund.",
+        geo_found: "Locatie gevonden!",
+        geo_fail: "Locatie mislukt.",
+        drag_area: "Sleep gebied",
+        no_objects: "Geen objecten in geselecteerd gebied!",
+        gpx_success: "Objecten geëxporteerd als GPX!",
+        too_large: "Gebied te groot!",
+        locating: "Gebied lokaliseren...",
+        render_bounds: "Grenzen renderen...",
+        render_infra: "Infrastructuur renderen...",
+        layout_final: "Lay-out voltooien...",
+        plan_title: "Hydrantenkaart",
+        legend_date: "Datum",
+        legend_res: "Resolutie",
+        details: "Details",
+        station: "Brandweerkazerne",
+        hydrant: "Brandkraan",
+        defib: "Defibrillator (AED)",
+        legal_btn: "Info & Recht"
+    },
+
+    // --------------------------------------------------------------------------------------
+    // LUXEMBURGISCH (LB) - NEU
+    // --------------------------------------------------------------------------------------
+    lb: {
+        search_placeholder: "Plaz sichen...",
+        locate_title: "Meng Positioun",
+        layers_title: "Kaart wiesselen",
+        export_title: "Export",
+        bg_header: "Hannergrond",
+        layer_std: "Standard (Voyager)",
+        layer_print: "Drock (Hell)",
+        layer_night: "Nuecht (Däischter)",
+        layer_sat: "Satellit (Esri)",
+        layer_topo: "Topographesch (OSM)",
+        layer_osm: "OSM (Intl)",
+        layer_osmde: "OSM (DE Stil)",
+        export_header: "Export-Eegeschaften",
+        format_label: "Format (Verhältnis)",
+        fmt_free: "FRÄI",
+        fmt_a4l: "A4 QUER",
+        fmt_a4p: "A4 HÉICH",
+        zoom_label: "Detail-Grad (Zoom)",
+        select_area_btn: "Ausschnëtt op der Kaart wielen",
+        area_fixed: "Ausschnëtt fixéiert ✓",
+        png_btn: "Hydrantenplang (PNG)",
+        gpx_btn: "Hydranten exportéieren (GPX)",
+        exporting_title: "Export gëtt erstallt...",
+        loading_tiles: "Lueden Kachelen...",
+        cancel_btn: "Oofbriechen",
+        zoom_info: "ZOOM",
+        data_info: "DATEN",
+        status_current: "AKTUELL",
+        status_loading: "LUEDEN...",
+        status_standby: "STANDBY (Zoom < 12)",
+        status_error: "FEELER",
+        geo_error: "Geolokalisiérung net ënnerstëtzt.",
+        geo_found: "Standuert fonnt!",
+        geo_fail: "Standuert feelgeschloen.",
+        drag_area: "Beräich zéien",
+        no_objects: "Keng Objeten am gewielte Beräich!",
+        gpx_success: "Objeten als GPX exportéiert!",
+        too_large: "Ausschnëtt ze grouss!",
+        locating: "Lokaliséieren Beräich...",
+        render_bounds: "Grenzen renderen...",
+        render_infra: "Infrastruktur renderen...",
+        layout_final: "Layout finaliséieren...",
+        plan_title: "Hydrantenkaart",
+        legend_date: "Stand",
+        legend_res: "Opléisung",
+        details: "Detailer",
+        station: "Pompjeesbau",
+        hydrant: "Hydrant",
+        defib: "Defibrillator (AED)",
+        legal_btn: "Info & Recht"
     }
 };
