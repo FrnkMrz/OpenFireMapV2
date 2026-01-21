@@ -149,3 +149,18 @@ body {
     padding: 12px 24px; 
     border-radius: 12px;
     box-shadow:
+
+
+    /* Animation für den Standort-Punkt */
+@keyframes pulse-blue {
+    0% { transform: scale(0.9); opacity: 0.7; }
+    50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 15px rgba(59, 130, 246, 0.8); }
+    100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+.user-location-dot {
+    background-color: #e80bc0;
+    border: 3px solid white;
+    border-radius: 50%;
+    animation: pulse-blue 2s infinite ease-in-out;
+}

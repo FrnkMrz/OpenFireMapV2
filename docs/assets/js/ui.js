@@ -150,27 +150,53 @@ export function searchLocation() {
         });
 }
 
+/**
+ * Bestimmt den Standort des Nutzers via Browser-GPS.
+ * LERN-INFO: Wir nutzen Leaflet DivIcons für den animierten Punkt.
+ */
 export function locateUser() {
     if (!navigator.geolocation) { 
-        showNotification("GPS nicht verfügbar"); 
+        showNotification("GPS nicht unterstützt"); 
         return; 
     }
     
-    // Lade-Icon drehen lassen
     const btn = document.getElementById('locate-btn');
     const icon = btn ? btn.querySelector('svg') : null;
     if(icon) icon.classList.add('animate-spin'); 
 
     navigator.geolocation.getCurrentPosition(
         (pos) => {
-            if(State.map) State.map.flyTo([pos.coords.latitude, pos.coords.longitude], 18);
-            if(icon) icon.classList.remove('animate-spin'); // Stoppen
-            showNotification(t('geo_found') || "Gefunden!");
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+
+            // 1. ZUR POSITION SPRINGEN (Zoom 16)
+            // Wir nutzen jetzt Zoom 16, wie von dir gewünscht.
+            State.map.flyTo([lat, lng], 16);
+
+            // 2. BLINKENDEN PUNKT ERZEUGEN
+            // Falls schon ein Punkt existiert, entfernen wir ihn zuerst
+            if (State.userMarker) {
+                State.map.removeLayer(State.userMarker);
+            }
+
+            // Wir erstellen ein "DivIcon" – das ist ein Icon, das aus purem HTML/CSS besteht
+            const dotIcon = L.divIcon({
+                className: 'user-location-dot',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+
+            // Marker zur Karte hinzufügen und im State speichern
+            State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
+
+            if(icon) icon.classList.remove('animate-spin');
+            showNotification(t('geo_found') || "Standort gefunden!");
         },
         (err) => {
             if(icon) icon.classList.remove('animate-spin');
-            showNotification("GPS Fehler");
-        }
+            showNotification("GPS-Zugriff verweigert");
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
     );
 }
 

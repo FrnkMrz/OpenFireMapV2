@@ -13,6 +13,7 @@ export const State = {
     // Hier speichern wir die "Leaflet Map Instance". 
     // Das ist das Herzstück der Karte, über das wir zoomen oder pannen können.
     map: null,
+    userMarker: null, // HIER NEU: Speichert den pulsierenden Punkt
     
     // --- LAYER GRUPPEN (Folien) ---
     // Leaflet organisiert Dinge in "Layers". Wir nutzen Gruppen, um z.B. alle
