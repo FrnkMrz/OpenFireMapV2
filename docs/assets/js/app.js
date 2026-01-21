@@ -2,18 +2,23 @@
  * ==========================================================================================
  * DATEI: app.js
  * ZWECK: Haupt-Einstiegspunkt
- * BESCHREIBUNG:
- * Diese Datei wird von der index.html geladen. 
- * Sie importiert alle anderen Module und startet die Anwendung.
  * ==========================================================================================
  */
 
-import { initMapLogic, State } from './map.js';
-import { updatePageLanguage } from './i18n.js';
+// KORREKTUR: "State" entfernt, da es hier nicht gebraucht wird.
+// Wir importieren nur die Start-Funktion aus map.js
+import { initMapLogic } from './map.js'; 
+
+// Importiere Sprach-Funktionen (Achte darauf, dass die Datei so heißt!)
+// Falls du deine Datei 'translations.js' genannt hast, ändere den Pfad hier in './translations.js'
+import { updatePageLanguage } from './i18n.js'; 
+
+// Importiere UI-Funktionen
 import { setupUI } from './ui.js';
-import { handleSelectionEvents } from './export.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("App wird gestartet...");
+    
     // 1. Sprache setzen
     updatePageLanguage(); 
     
@@ -22,10 +27,4 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 3. Karte starten
     initMapLogic();       
-    
-    // 4. Auswahl-Rechteck Events registrieren
-    // (Da Leaflet erst jetzt initialisiert ist)
-    State.map.on('mousedown', (e) => handleSelectionEvents(e, 'down'));
-    State.map.on('mousemove', (e) => handleSelectionEvents(e, 'move'));
-    State.map.on('mouseup', (e) => handleSelectionEvents(e, 'up'));
 });
