@@ -1,88 +1,85 @@
 /**
  * ==========================================================================================
- * DATEI: config.js
- * ZWECK: Zentrale Konfiguration und Einstellungen
- * BESCHREIBUNG:
- * Hier werden alle Werte gespeichert, die sich nicht während der Laufzeit ändern,
- * aber vielleicht später mal angepasst werden müssen (z.B. URLs, Farben, Limits).
- * * WARUM EINE EIGENE DATEI?
- * Wenn sich eine URL ändert, müssen wir nicht im tiefen Code suchen, sondern 
- * ändern es nur hier an einer Stelle.
+ * DATEI: config.js (Die Einstellungen)
+ * LERN-ZIEL: Zentrale Konfiguration
  * ==========================================================================================
+ * * In dieser Datei speichern wir alle Werte, die sich während der Laufzeit der App
+ * NICHT ändern (sogenannte Konstanten).
+ * * Vorteil: Wenn wir z.B. die Start-Position der Karte ändern wollen, müssen wir
+ * nicht im komplizierten Code suchen, sondern ändern es einfach hier oben.
+ * * "export const": Macht diese Variable für andere Dateien verfügbar.
  */
 
 export const Config = {
-    // Start-Position der Karte (Koordinaten für Schnaittach)
-    // Format: [Breitengrad (Lat), Längengrad (Lon)]
+    // Start-Position der Karte: [Breitengrad, Längengrad] (Koordinaten für Schnaittach)
     defaultCenter: [49.555, 11.350],
     
-    // Standard-Zoomstufe beim Start (14 ist gut für eine Ortsübersicht)
+    // Wie nah soll beim Start hereingezoomt werden? (Kleiner = Weltraum, Größer = Haus)
     defaultZoom: 14,
 
-    // Server-Adressen für die Overpass-API (Datenabfrage)
-    // Wir nutzen eine Liste, damit wir wechseln können, falls ein Server ausfällt.
+    // LISTE DER SERVER (API Endpunkte)
+    // Wir fragen diese Server nach den Hydranten-Daten.
+    // Wir nutzen eine Liste (Array), damit wir Alternativen haben, falls einer ausfällt.
     overpassEndpoints: [
-        'https://overpass-api.de/api/interpreter',
-        'https://overpass.kumi.systems/api/interpreter'
+        'https://overpass-api.de/api/interpreter',             // Hauptserver (Deutschland)
+        'https://overpass.kumi.systems/api/interpreter',       // Starker Alternativserver
+        'https://maps.mail.ru/osm/tools/overpass/api/interpreter' // Backup
     ],
-    
-    // Adresse für die Ortssuche (Geocoding)
+
+    // Adresse für die Ortssuche (Wenn du oben links einen Städtenamen eingibst)
     nominatimUrl: 'https://nominatim.openstreetmap.org',
 
-    // Konfiguration der verschiedenen Karten-Hintergründe (Layer)
-    // Jeder Eintrag hat eine URL (woher kommen die Bilder?) und 
-    // einen Copyright-Hinweis (Attribution).
+    // KARTEN-HINTERGRÜNDE (Layer)
+    // Hier definieren wir, welche Kacheln (Tiles) geladen werden sollen.
+    // {z} = Zoomstufe, {x}/{y} = Koordinaten der Kachel
     layers: {
         voyager: {
             url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-            attr: '&copy; OpenStreetMap contributors &copy; CARTO',
-            maxZoom: 18 // Wie weit darf man hineinzoomen?
+            attr: '&copy; OpenStreetMap contributors &copy; CARTO', // Urheberrechtshinweis
+            maxZoom: 18 // Wie tief darf man zoomen?
         },
         positron: {
             url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
             attr: '&copy; OpenStreetMap contributors &copy; CARTO',
             maxZoom: 18
         },
-        dark: {
+        dark: { // Dunkler Modus (gut für Nachts)
             url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
             attr: '&copy; OpenStreetMap contributors &copy; CARTO',
             maxZoom: 18
         },
-        satellite: {
-            // Satellitenbilder kommen von Esri
+        satellite: { // Satellitenbilder
             url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             attr: 'Tiles &copy; Esri &mdash; Source: Esri et al.',
             maxZoom: 18
         },
-        topo: {
-            // Topographische Karte (Höhenlinien etc.)
+        topo: { // Topographische Karte (Höhenlinien) - Achtung: Geht oft nur bis Zoom 17!
             url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
             attr: 'Daten: OSM, SRTM | Darstellung: OpenTopoMap',
-            maxZoom: 17 // Achtung: Dieser Server hat oft weniger Zoom-Stufen!
+            maxZoom: 17
         },
-        osm: {
+        osm: { // Das klassische OpenStreetMap Aussehen
             url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             attr: '&copy; OpenStreetMap contributors',
             maxZoom: 18
         },
-        osmde: {
-            // Deutscher Stil (beschriftet in Deutsch, andere Farben)
+        osmde: { // Deutscher Stil (Beschriftungen in Deutsch)
             url: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
             attr: '&copy; OpenStreetMap contributors',
             maxZoom: 18
         }
     },
     
-    // Sicherheits-Limits für den PNG Export
-    // Damit der Browser nicht abstürzt, begrenzen wir die Größe des 
-    // exportierten Gebiets in Kilometern (km), abhängig vom Zoom-Level.
+    // EXPORT LIMITS
+    // Um den Browser nicht abstürzen zu lassen, erlauben wir bei niedrigen Zoomstufen
+    // (wo man viel Fläche sieht) nur kleine Export-Bereiche.
     exportZoomLimitsKm: {
-        12: 30, // Bei Zoom 12 darf man 30km x 30km exportieren
+        12: 30, // Bei Zoom 12 max. 30km Breite
         13: 25,
         14: 20,
         15: 15, 
         16: 10,
         17: 8,  
-        18: 5   // Bei Zoom 18 (sehr detailliert) nur noch 5km
+        18: 5   // Bei Zoom 18 (sehr detailliert) nur 5km
     }
 };
