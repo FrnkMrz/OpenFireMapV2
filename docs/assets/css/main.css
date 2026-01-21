@@ -150,17 +150,33 @@ body {
     border-radius: 12px;
     box-shadow:
 
-
-    /* Animation für den Standort-Punkt */
+/* ANIMATION: pulse-blue
+   Erzeugt einen Effekt, bei dem das Element rhythmisch 
+   die Größe und Sichtbarkeit ändert.
+*/
 @keyframes pulse-blue {
-    0% { transform: scale(0.9); opacity: 0.7; }
-    50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 15px rgba(59, 130, 246, 0.8); }
-    100% { transform: scale(0.9); opacity: 0.7; }
+    0% {
+        transform: scale(0.9);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+        /* Ein leichter Leuchteffekt nach außen */
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.8);
+    }
+    100% {
+        transform: scale(0.9);
+        opacity: 0.7;
+    }
 }
 
+/* KLASSE: user-location-dot
+   Wird vom JavaScript dem Standort-Marker zugewiesen.
+*/
 .user-location-dot {
-    background-color: #e80bc0;
-    border: 3px solid white;
-    border-radius: 50%;
-    animation: pulse-blue 2s infinite ease-in-out;
+    background-color: #3b82f6; /* Schönes Blau */
+    border: 3px solid white;    /* Weißer Rand für besseren Kontrast auf der Karte */
+    border-radius: 50%;        /* Macht aus dem Quadrat einen Kreis */
+    animation: pulse-blue 2s infinite ease-in-out; /* Startet die Endlos-Animation */
 }

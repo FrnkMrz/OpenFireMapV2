@@ -180,7 +180,7 @@ export function locateUser() {
 
             // 3. BLINKENDEN PUNKT ERZEUGEN
             const dotIcon = L.divIcon({
-                className: 'user-location-dot',
+                className: 'user-location-dot', // Hier verbinden wir JS mit dem CSS von oben!
                 iconSize: [16, 16],
                 iconAnchor: [8, 8]
             });
