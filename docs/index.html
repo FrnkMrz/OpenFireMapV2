@@ -29,7 +29,7 @@
        (unterstützt DE, EN, FR, ES, IT, PL, NL, CS, DA, FI, SV, NO, PT, FL, LB, JA, KO, MS, TH, ZH, YUE, TW).
     6. Smart UX (NEU): 
        - Menüs schließen automatisch nach 10 Sekunden Inaktivität.
-       - Debounce: Daten werden erst 500ms nach Ende der Bewegung geladen.
+       - Debounce: Daten werden erst 200ms nach Ende der Bewegung geladen.
        
     TECHNISCHER AUFBAU (REFACTORED):
     Die Anwendung wurde in zwei Dateien aufgeteilt, um die Übersichtlichkeit zu verbessern:
@@ -581,10 +581,10 @@
         statusEl.innerText = t('status_waiting');
         statusEl.className = 'text-amber-400 font-bold'; // Gelb/Orange für "Warten"
 
-        // 3. Neuen Timer starten (500ms warten)
+        // 3. Neuen Timer starten (200ms warten)
         debounceTimer = setTimeout(() => {
             fetchOSMData(); // Erst jetzt wirklich laden!
-        }, 500);
+        }, 200);
     }
 
     /* =========================================================================
