@@ -211,11 +211,14 @@ export function locateUser() {
                 State.map.removeLayer(State.userMarker);
             }
 
-            // 3. NEUER MARKER (Sauberer Code via CSS-Klasse)
+            // 3. NEUER MARKER (Die Lösung für das "Wandern")
+            // Wir nutzen 'html', um den Punkt IN den Marker zu legen.
+            // So kann Leaflet den Marker bewegen, und CSS den Inhalt animieren.
             const dotIcon = L.divIcon({
-                className: 'user-location-dot', // Holt das Design aus main.css
-                iconSize: [20, 20],   // Reserviert Platz für den Punkt + Animation
-                iconAnchor: [10, 10]  // Zentriert den Punkt exakt
+                className: 'user-location-wrapper', // Leere Hülle (nur für Position)
+                html: '<div class="user-location-inner"></div>', // Der sichtbare Punkt
+                iconSize: [20, 20],   
+                iconAnchor: [10, 10]  // Exakt die Mitte (Zentrum)
             });
 
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
@@ -227,7 +230,6 @@ export function locateUser() {
                 if (State.userMarker) {
                     State.map.removeLayer(State.userMarker);
                     State.userMarker = null;
-                    console.log("Standort-Punkt entfernt.");
                 }
             }, 25000);
 

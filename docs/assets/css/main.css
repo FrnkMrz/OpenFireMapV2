@@ -153,33 +153,38 @@ body {
 } /* FIX: Hier fehlte die schließende Klammer! */
 
 /* =========================================
-   GPS STANDORT MARKER (Final & Zentriert)
+   GPS STANDORT MARKER (Repariert)
    ========================================= */
-.user-location-dot {
-    /* 1. GEOMETRIE (Muss exakt zum JS iconAnchor: [10,10] passen) */
-    width: 20px !important;
-    height: 20px !important;
-    margin: 0 !important;      /* Verhindert ungewolltes Verschieben */
-    box-sizing: border-box;    /* WICHTIG: Damit der Rand die Größe nicht ändert */
-    
-    /* 2. OPTIK */
+
+/* 1. Die äußere Hülle (wird von Leaflet bewegt) */
+.user-location-wrapper {
+    background: transparent;
+    border: none;
+    margin: 0 !important; /* Wichtig: Keine eigenen Ränder, sonst verschiebt es sich */
+}
+
+/* 2. Der innere Punkt (wird animiert) */
+.user-location-inner {
+    width: 100%;       /* Füllt die 20px Hülle aus */
+    height: 100%;
     background-color: #3b82f6; 
-    border: 3px solid white;   /* Dickerer Rand für bessere Sichtbarkeit */
+    border: 3px solid white;
     border-radius: 50%;
+    box-sizing: border-box;
     box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
-    z-index: 1000;             /* Damit er über Straßen liegt */
     
-    /* 3. ANIMATION */
+    /* Animation ist jetzt sicher hier drin */
     animation: pulse-ring 2s infinite;
 }
 
+/* Die Animation */
 @keyframes pulse-ring {
     0% {
         transform: scale(1);
         box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
     }
     70% {
-        transform: scale(1);
+        transform: scale(1); /* Skaliert nur den inneren Punkt, nicht die Position! */
         box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); 
     }
     100% {
