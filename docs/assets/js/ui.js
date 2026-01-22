@@ -202,50 +202,50 @@ export function locateUser() {
             const lng = pos.coords.longitude;
 
             // 1. ZUR POSITION SPRINGEN
-            // Zoom 17 wird hier aus Config.locateZoom genommen
             if (State.map) {
-                State.map.flyTo([lat, lng], Config.locateZoom);
+                // Nutzt den Zoom aus der Config (Standard: 17)
+                State.map.flyTo([lat, lng], Config.locateZoom || 17);
             }
 
-            // 2. ALTEN PUNKT ENTFERNEN (falls einer da ist, z.B. vom vorherigen Klick)
+            // 2. ALTEN PUNKT ENTFERNEN (falls schon einer da ist)
             if (State.userMarker) {
                 State.map.removeLayer(State.userMarker);
             }
 
-            // 3. BLINKENDEN PUNKT ERZEUGEN
-            // Er nutzt die CSS-Klasse 'user-location-dot', die wir gerade erstellt haben
+            // 3. NEUEN PUNKT ERZEUGEN
+            // Wichtig: 'className' muss exakt so heißen wie im CSS (.user-location-dot)
             const dotIcon = L.divIcon({
                 className: 'user-location-dot', 
-                iconSize: [16, 16],   // Größe des Kern-Punkts
-                iconAnchor: [8, 8]    // Genau mittig platzieren (Hälfte von 16)
+                iconSize: [16, 16],   // Größe des inneren blauen Kreises (16px)
+                iconAnchor: [8, 8]    // Exakt mittig setzen (Hälfte von 16)
             });
 
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
 
-            // 4. TIMER FÜR AUTOMATISCHES LÖSCHEN
+            // 4. TIMER FÜR AUTOMATISCHES LÖSCHEN (25 Sekunden)
             
-            // Alten Timer stoppen, falls man schnell hintereinander klickt
+            // Alten Timer stoppen, falls man den Button mehrfach drückt
             if (State.userLocationTimer) {
                 clearTimeout(State.userLocationTimer);
             }
 
-            // Neuen Timer starten (25 Sekunden)
+            // Neuen Timer starten
             State.userLocationTimer = setTimeout(() => {
                 if (State.userMarker) {
-                    State.map.removeLayer(State.userMarker); // Marker von Karte entfernen
-                    State.userMarker = null;                 // Variable leeren
-                    State.userLocationTimer = null;          // Timer-ID löschen
+                    State.map.removeLayer(State.userMarker);
+                    State.userMarker = null;
+                    State.userLocationTimer = null;
                     console.log("Standort-Punkt wurde nach 25s entfernt.");
                 }
-            }, 25000); // <--- HIER GEÄNDERT AUF 25000 (25 Sekunden)
+            }, 25000); // 25000 ms = 25 Sekunden
 
             if(icon) icon.classList.remove('animate-spin');
             showNotification(t('geo_found') || "Standort gefunden!");
         },
         (err) => {
             if(icon) icon.classList.remove('animate-spin');
-            console.error(err);
-            showNotification("GPS-Zugriff verweigert oder Fehler.");
+            console.error("GPS Fehler:", err);
+            showNotification("Standort konnte nicht ermittelt werden.");
         },
         { enableHighAccuracy: true, timeout: 5000 }
     );

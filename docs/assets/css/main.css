@@ -185,29 +185,27 @@ body {
    GPS STANDORT MARKER (Blinkender Punkt)
    ========================================= */
 .user-location-dot {
-    background-color: #3b82f6; /* Ein schönes Leucht-Blau */
-    border: 2px solid white;   /* Weißer Rand für besseren Kontrast */
-    border-radius: 50%;        /* Macht das Viereck zum Kreis */
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6); /* Leichter Schein nach außen */
+    background-color: #3b82f6; /* Leuchtendes Blau */
+    border: 2px solid white;   /* Weißer Rand */
+    border-radius: 50%;        /* Macht es kreisrund */
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); /* Leuchtkraft */
     
-    /* Die Animation: */
-    animation: pulse-animation 2s infinite;
+    /* Die Animation einbinden */
+    animation: pulse-ring 2s infinite;
 }
 
-/* Definition der Animation (Pulsieren) */
-@keyframes pulse-animation {
+/* Die Animation selbst (Wellen-Effekt) */
+@keyframes pulse-ring {
     0% {
         transform: scale(1);
-        opacity: 1;
         box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
     }
     70% {
-        transform: scale(1.5); /* Wird größer */
-        opacity: 0;            /* Wird durchsichtig */
-        box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); /* Schein breitet sich aus */
+        transform: scale(1);
+        box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); /* Ring weitet sich aus */
     }
     100% {
         transform: scale(1);
-        opacity: 0;
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
     }
 }
