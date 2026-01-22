@@ -21,36 +21,6 @@ import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGP
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
 import { setBaseLayer } from './map.js';
 
-// Diese Funktion wird aufgerufen, wenn man auf den Layer-Button klickt
-function toggleLayerMenu() {
-    const btn = document.getElementById('btn-layers'); // Prüfe deine ID!
-    const menu = document.getElementById('layer-menu'); // Dein Menü-Container
-    
-    // Aktuellen Status prüfen
-    const isExpanded = btn.getAttribute('aria-expanded') === 'true';
-    const newState = !isExpanded;
-
-    // 1. Visuelles Umschalten (Deine bestehende Logik)
-    if (newState) {
-        menu.classList.remove('hidden');
-    } else {
-        menu.classList.add('hidden');
-    }
-
-    // 2. ARIA Updates (Für Screenreader)
-    // Wir sagen dem Browser: "Das Menü ist jetzt offen/zu"
-    btn.setAttribute('aria-expanded', newState);
-
-    // WICHTIG: Wir ändern das Label passend zur NÄCHSTEN Aktion.
-    // Wenn offen -> Label ist "Schließen". Wenn zu -> Label ist "Öffnen".
-    const newLabel = newState ? t('menu_layers_close') : t('menu_layers_open');
-    btn.setAttribute('aria-label', newLabel);
-}
-
-
-
-
-
 /**
  * HILFSFUNKTION: addClick
  * Fügt einem Button eine Funktion hinzu, aber prüft erst, ob er existiert.
@@ -111,18 +81,32 @@ export function closeAllMenus() {
    TOGGLE FUNKTIONEN (Auf/Zu machen)
    ============================================================================= */
 
-export function toggleLayerMenu() {
-    const menu = document.getElementById('layer-menu');
-    if(!menu) return;
+// Diese Funktion wird aufgerufen, wenn man auf den Layer-Button klickt
+function toggleLayerMenu() {
+    const btn = document.getElementById('btn-layers'); // Prüfe deine ID!
+    const menu = document.getElementById('layer-menu'); // Dein Menü-Container
     
-    const isHidden = menu.classList.contains('hidden');
-    closeAllMenus(); // Erst alles andere zu
-    
-    if (isHidden) {
-        menu.classList.remove('hidden'); // Dann dieses auf
-        document.getElementById('layer-btn-trigger')?.setAttribute('aria-expanded', 'true');
+    // Aktuellen Status prüfen
+    const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+    const newState = !isExpanded;
+
+    // 1. Visuelles Umschalten (Deine bestehende Logik)
+    if (newState) {
+        menu.classList.remove('hidden');
+    } else {
+        menu.classList.add('hidden');
     }
+
+    // 2. ARIA Updates (Für Screenreader)
+    // Wir sagen dem Browser: "Das Menü ist jetzt offen/zu"
+    btn.setAttribute('aria-expanded', newState);
+
+    // WICHTIG: Wir ändern das Label passend zur NÄCHSTEN Aktion.
+    // Wenn offen -> Label ist "Schließen". Wenn zu -> Label ist "Öffnen".
+    const newLabel = newState ? t('menu_layers_close') : t('menu_layers_open');
+    btn.setAttribute('aria-label', newLabel);
 }
+
 
 export function toggleExportMenu() {
     const menu = document.getElementById('export-menu');
