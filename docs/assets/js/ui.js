@@ -201,8 +201,6 @@ export function locateUser() {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
 
-            console.log(`GPS Position: ${lat}, ${lng}`); // Debug-Log für die Konsole
-
             // 1. Zoom & Pan
             if (State.map) {
                 State.map.flyTo([lat, lng], Config.locateZoom || 17);
@@ -213,20 +211,11 @@ export function locateUser() {
                 State.map.removeLayer(State.userMarker);
             }
 
-            // 3. NEUER MARKER (Mit eingebautem CSS!)
-            // Wir nutzen 'html' statt 'className', um den Stil zu erzwingen.
+            // 3. NEUER MARKER (Sauberer Code via CSS-Klasse)
             const dotIcon = L.divIcon({
-                className: '', // Keine Klasse, damit Leaflet nichts überschreibt
-                html: `<div style="
-                    background-color: #3b82f6; 
-                    width: 16px; 
-                    height: 16px; 
-                    border-radius: 50%; 
-                    border: 2px solid white; 
-                    box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);">
-                </div>`,
-                iconSize: [20, 20], // Größe des Containers
-                iconAnchor: [10, 10] // Genau die Mitte (Hälfte von 20)
+                className: 'user-location-dot', // Holt das Design aus main.css
+                iconSize: [20, 20],   // Reserviert Platz für den Punkt + Animation
+                iconAnchor: [10, 10]  // Zentriert den Punkt exakt
             });
 
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
@@ -238,7 +227,7 @@ export function locateUser() {
                 if (State.userMarker) {
                     State.map.removeLayer(State.userMarker);
                     State.userMarker = null;
-                    console.log("Punkt entfernt.");
+                    console.log("Standort-Punkt entfernt.");
                 }
             }, 25000);
 
@@ -248,7 +237,7 @@ export function locateUser() {
         (err) => {
             if(icon) icon.classList.remove('animate-spin');
             console.error(err);
-            showNotification("GPS Fehler: " + err.message);
+            showNotification("Standort konnte nicht ermittelt werden.");
         },
         { enableHighAccuracy: true, timeout: 5000 }
     );

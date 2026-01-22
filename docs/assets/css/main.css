@@ -186,9 +186,11 @@ body {
    ========================================= */
 .user-location-dot {
     background-color: #3b82f6; /* Leuchtendes Blau */
+    width: 16px;
+    height: 16px;
     border: 2px solid white;   /* Weißer Rand */
     border-radius: 50%;        /* Macht es kreisrund */
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); /* Leuchtkraft */
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6); /* Leuchtkraft */
     
     /* Die Animation einbinden */
     animation: pulse-ring 2s infinite;
