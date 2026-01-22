@@ -153,24 +153,26 @@ body {
 } /* FIX: Hier fehlte die schließende Klammer! */
 
 /* =========================================
-   GPS STANDORT MARKER (Finales Design)
+   GPS STANDORT MARKER (Final & Zentriert)
    ========================================= */
 .user-location-dot {
-    /* 1. Das Aussehen */
-    background-color: #3b82f6;  /* Leuchtendes Blau */
-    width: 16px;                /* Breite ist PFLICHT für Sichtbarkeit */
-    height: 16px;               /* Höhe ist PFLICHT für Sichtbarkeit */
+    /* 1. GEOMETRIE (Muss exakt zum JS iconAnchor: [10,10] passen) */
+    width: 20px !important;
+    height: 20px !important;
+    margin: 0 !important;      /* Verhindert ungewolltes Verschieben */
+    box-sizing: border-box;    /* WICHTIG: Damit der Rand die Größe nicht ändert */
     
-    /* 2. Der Rand & Schatten */
-    border: 2px solid white;    /* Weißer Kontrast-Rand */
-    border-radius: 50%;         /* Macht das Viereck zum Kreis */
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6); /* Leuchtkraft */
+    /* 2. OPTIK */
+    background-color: #3b82f6; 
+    border: 3px solid white;   /* Dickerer Rand für bessere Sichtbarkeit */
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+    z-index: 1000;             /* Damit er über Straßen liegt */
     
-    /* 3. Die Animation */
+    /* 3. ANIMATION */
     animation: pulse-ring 2s infinite;
 }
 
-/* Die Animation (Wellen-Effekt) */
 @keyframes pulse-ring {
     0% {
         transform: scale(1);
@@ -178,7 +180,7 @@ body {
     }
     70% {
         transform: scale(1);
-        box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); /* Ring weitet sich aus & verblasst */
+        box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); 
     }
     100% {
         transform: scale(1);
