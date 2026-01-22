@@ -185,7 +185,6 @@ export function searchLocation() {
 
 /**
  * Bestimmt den Standort des Nutzers via Browser-GPS.
- * LERN-INFO: Ein setTimeout sorgt dafür, dass der Marker nach 20s gelöscht wird.
  */
 export function locateUser() {
     if (!navigator.geolocation) { 
@@ -203,47 +202,50 @@ export function locateUser() {
             const lng = pos.coords.longitude;
 
             // 1. ZUR POSITION SPRINGEN
-            // Wir nutzen den Wert aus der config.js (Zoom 16)
-            State.map.flyTo([lat, lng], Config.locateZoom);
+            // Zoom 17 wird hier aus Config.locateZoom genommen
+            if (State.map) {
+                State.map.flyTo([lat, lng], Config.locateZoom);
+            }
 
-            // 2. ALTEN PUNKT ENTFERNEN (falls vorhanden)
+            // 2. ALTEN PUNKT ENTFERNEN (falls einer da ist, z.B. vom vorherigen Klick)
             if (State.userMarker) {
                 State.map.removeLayer(State.userMarker);
             }
 
             // 3. BLINKENDEN PUNKT ERZEUGEN
+            // Er nutzt die CSS-Klasse 'user-location-dot', die wir gerade erstellt haben
             const dotIcon = L.divIcon({
-                className: 'user-location-dot', // Hier verbinden wir JS mit dem CSS von oben!
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
+                className: 'user-location-dot', 
+                iconSize: [16, 16],   // Größe des Kern-Punkts
+                iconAnchor: [8, 8]    // Genau mittig platzieren (Hälfte von 16)
             });
 
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
 
-            // 4. AUTOMATISCHES LÖSCHEN NACH 20 SEKUNDEN
+            // 4. TIMER FÜR AUTOMATISCHES LÖSCHEN
             
-            // FIX (Punkt 3): Alten Timer stoppen, falls man den Button 2x drückt!
-            // Sonst würde der erste Timer den Punkt zu früh löschen.
+            // Alten Timer stoppen, falls man schnell hintereinander klickt
             if (State.userLocationTimer) {
                 clearTimeout(State.userLocationTimer);
             }
 
-            // Neuen Timer starten und ID im State speichern
+            // Neuen Timer starten (25 Sekunden)
             State.userLocationTimer = setTimeout(() => {
                 if (State.userMarker) {
-                    State.map.removeLayer(State.userMarker);
-                    State.userMarker = null;
-                    State.userLocationTimer = null; // Sauber aufräumen
-                    console.log("Standort-Punkt wurde nach 20s automatisch entfernt.");
+                    State.map.removeLayer(State.userMarker); // Marker von Karte entfernen
+                    State.userMarker = null;                 // Variable leeren
+                    State.userLocationTimer = null;          // Timer-ID löschen
+                    console.log("Standort-Punkt wurde nach 25s entfernt.");
                 }
-            }, 20000); // 20 Sekunden
+            }, 25000); // <--- HIER GEÄNDERT AUF 25000 (25 Sekunden)
 
             if(icon) icon.classList.remove('animate-spin');
             showNotification(t('geo_found') || "Standort gefunden!");
         },
         (err) => {
             if(icon) icon.classList.remove('animate-spin');
-            showNotification("GPS-Zugriff verweigert");
+            console.error(err);
+            showNotification("GPS-Zugriff verweigert oder Fehler.");
         },
         { enableHighAccuracy: true, timeout: 5000 }
     );

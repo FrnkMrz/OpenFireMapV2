@@ -180,3 +180,34 @@ body {
     border-radius: 50%;        /* Macht aus dem Quadrat einen Kreis */
     animation: pulse-blue 2s infinite ease-in-out; /* Startet die Endlos-Animation */
 }
+
+/* =========================================
+   GPS STANDORT MARKER (Blinkender Punkt)
+   ========================================= */
+.user-location-dot {
+    background-color: #3b82f6; /* Ein schönes Leucht-Blau */
+    border: 2px solid white;   /* Weißer Rand für besseren Kontrast */
+    border-radius: 50%;        /* Macht das Viereck zum Kreis */
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6); /* Leichter Schein nach außen */
+    
+    /* Die Animation: */
+    animation: pulse-animation 2s infinite;
+}
+
+/* Definition der Animation (Pulsieren) */
+@keyframes pulse-animation {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    }
+    70% {
+        transform: scale(1.5); /* Wird größer */
+        opacity: 0;            /* Wird durchsichtig */
+        box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); /* Schein breitet sich aus */
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
