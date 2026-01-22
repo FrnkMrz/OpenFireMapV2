@@ -109,25 +109,30 @@ export async function fetchOSMData() {
     // QUERY ZUSAMMENBAUEN
     let queryParts = [];
     
-    // LEVEL A: Wachen (Ab Zoom 12) - Das sind wenige Daten
+   // LEVEL A: Wachen
     if (zoom >= 12) {
-        queryParts.push(`nwr["amenity"="fire_station"](${bbox});`);
-        queryParts.push(`nwr["building"="fire_station"](${bbox});`);
+        // HIER GEÄNDERT: Kein (${bbox}) mehr nötig!
+        queryParts.push(`nwr["amenity"="fire_station"];`);
+        queryParts.push(`nwr["building"="fire_station"];`);
     }
 
-    // LEVEL B: Hydranten (AB ZOOM 15) - Hier wolltest du Zoom 15!
+    // LEVEL B: Hydranten
     if (zoom >= 15) {
-        queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"](${bbox});`);
-        queryParts.push(`node["emergency"="defibrillator"](${bbox});`);
+        // HIER GEÄNDERT
+        queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
+        queryParts.push(`node["emergency"="defibrillator"];`);
     }
 
-    // LEVEL C: Grenzen (Ab Zoom 14)
-    let boundaryQuery = (zoom >= 14) ? `(way["boundary"="administrative"]["admin_level"="8"](${bbox});)->.boundaries; .boundaries out geom;` : '';
+    // LEVEL C: Grenzen
+    // HIER GEÄNDERT: Auch hier entfernen wir die bbox-Einschränkung im Query-Teil
+    let boundaryQuery = (zoom >= 14) ? `(way["boundary"="administrative"]["admin_level"="8"];)->.boundaries; .boundaries out geom;` : '';
+
 
     if (queryParts.length === 0 && boundaryQuery === '') return;
 
-    // Timeout auf 90 Sekunden gesetzt für mehr Stabilität
-    const q = `[out:json][timeout:90];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
+    // Timeout kürzen wir auf 25s (Quick Win D.3) und setzen die bbox global
+    // [bbox:...] setzt den geografischen Filter für ALLE nachfolgenden Befehle
+    const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 
     try {
         const data = await fetchWithRetry(q);
