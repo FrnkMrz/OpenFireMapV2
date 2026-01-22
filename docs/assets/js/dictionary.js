@@ -70,7 +70,7 @@ export const dictionary = {
         legal_btn: "Info & Recht",
         menu_layers_open: "Kartenebenen-Menü öffnen",
         menu_layers_close: "Kartenebenen-Menü schließen",
-        menu_layers_label: "Kartenebenen" // Fallback / Statisch
+        menu_layers_label: "Kartenebenen"
     },
 
     // --------------------------------------------------------------------------------------
@@ -135,7 +135,7 @@ export const dictionary = {
         defib: "Defibrillator (AED)",
         legal_btn: "Info & Legal",
         menu_layers_open: "Open layer menu",
-        menu_layers_close": "Close layer menu",
+        menu_layers_close: "Close layer menu",
         menu_layers_label: "Map layers"
     },
 
