@@ -182,7 +182,6 @@ export function searchLocation() {
             showNotification("Suche fehlgeschlagen");
         });
 }
-
 /**
  * Bestimmt den Standort des Nutzers via Browser-GPS.
  */
@@ -201,9 +200,16 @@ export function locateUser() {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
 
-            // 1. Zoom & Pan
+            // 1. ZUR POSITION SPRINGEN (Mit Zoom-Check)
             if (State.map) {
-                State.map.flyTo([lat, lng], Config.locateZoom || 17);
+                const currentZoom = State.map.getZoom();
+                const defaultZoom = Config.locateZoom || 17;
+                
+                // LOGIK: Wenn wir schon tief drin sind (z.B. 18), nicht rauszoomen!
+                // Sonst den Standard-Wert (17) nehmen.
+                const targetZoom = currentZoom >= 18 ? currentZoom : defaultZoom;
+                
+                State.map.flyTo([lat, lng], targetZoom);
             }
 
             // 2. Alten Marker entfernen
@@ -212,13 +218,11 @@ export function locateUser() {
             }
 
             // 3. NEUER MARKER (Die Lösung für das "Wandern")
-            // Wir nutzen 'html', um den Punkt IN den Marker zu legen.
-            // So kann Leaflet den Marker bewegen, und CSS den Inhalt animieren.
             const dotIcon = L.divIcon({
-                className: 'user-location-wrapper', // Leere Hülle (nur für Position)
-                html: '<div class="user-location-inner"></div>', // Der sichtbare Punkt
+                className: 'user-location-wrapper', 
+                html: '<div class="user-location-inner"></div>', 
                 iconSize: [20, 20],   
-                iconAnchor: [10, 10]  // Exakt die Mitte (Zentrum)
+                iconAnchor: [10, 10]
             });
 
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
