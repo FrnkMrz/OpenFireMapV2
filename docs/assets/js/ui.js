@@ -72,9 +72,21 @@ export function closeAllMenus() {
     const legal = document.getElementById('legal-modal');
     if(legal) legal.style.display = 'none';
     
-    // 3. Barrierefreiheit: Screenreadern sagen "Alles ist zu"
-    document.getElementById('layer-btn-trigger')?.setAttribute('aria-expanded', 'false');
-    document.getElementById('export-btn-trigger')?.setAttribute('aria-expanded', 'false');
+    // 3. Barrierefreiheit: Layer-Button zurücksetzen
+    const layerBtn = document.getElementById('layer-btn-trigger');
+    if (layerBtn) {
+        layerBtn.setAttribute('aria-expanded', 'false');
+        // WICHTIG: Label wieder auf "Öffnen" setzen
+        layerBtn.setAttribute('aria-label', t('menu_layers_open'));
+    }
+
+    // 4. Barrierefreiheit: Export-Button zurücksetzen
+    const exportBtn = document.getElementById('export-btn-trigger');
+    if (exportBtn) {
+        exportBtn.setAttribute('aria-expanded', 'false');
+        // WICHTIG: Label wieder auf "Öffnen" setzen
+        exportBtn.setAttribute('aria-label', t('menu_export_open'));
+    }
 }
 
 /* =============================================================================
