@@ -11,10 +11,45 @@
 import { State } from './state.js';
 import { Config } from './config.js'; // DIESE ZEILE HAT GEFEHLT
 import { t } from './i18n.js';
+
+
+
+
+
 // Wir importieren Funktionen aus export.js, um sie auf Buttons zu legen
 import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, cancelExport } from './export.js';
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
 import { setBaseLayer } from './map.js';
+
+// Diese Funktion wird aufgerufen, wenn man auf den Layer-Button klickt
+function toggleLayerMenu() {
+    const btn = document.getElementById('btn-layers'); // Prüfe deine ID!
+    const menu = document.getElementById('layer-menu'); // Dein Menü-Container
+    
+    // Aktuellen Status prüfen
+    const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+    const newState = !isExpanded;
+
+    // 1. Visuelles Umschalten (Deine bestehende Logik)
+    if (newState) {
+        menu.classList.remove('hidden');
+    } else {
+        menu.classList.add('hidden');
+    }
+
+    // 2. ARIA Updates (Für Screenreader)
+    // Wir sagen dem Browser: "Das Menü ist jetzt offen/zu"
+    btn.setAttribute('aria-expanded', newState);
+
+    // WICHTIG: Wir ändern das Label passend zur NÄCHSTEN Aktion.
+    // Wenn offen -> Label ist "Schließen". Wenn zu -> Label ist "Öffnen".
+    const newLabel = newState ? t('menu_layers_close') : t('menu_layers_open');
+    btn.setAttribute('aria-label', newLabel);
+}
+
+
+
+
 
 /**
  * HILFSFUNKTION: addClick
