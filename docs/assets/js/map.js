@@ -35,7 +35,7 @@ export function initMapLogic() {
             statusEl.innerText = t('status_waiting');
             statusEl.className = 'text-amber-400 font-bold';
         }
-        debounceTimer = setTimeout(() => fetchOSMData(), 800);
+        debounceTimer = setTimeout(() => fetchOSMData(), 400);
     });
 
     State.map.on('click', () => {
