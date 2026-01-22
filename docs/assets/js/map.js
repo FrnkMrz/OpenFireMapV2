@@ -33,6 +33,16 @@ export function initMapLogic() {
 
     let debounceTimer;
     State.map.on('moveend zoomend', () => {
+        // FIX FÜR "RAUSZOOMEN": 
+        // Wir rufen sofort renderMarkers auf, um die Sichtbarkeit basierend auf dem 
+        // NEUEN Zoom-Level zu prüfen. 
+        // Dadurch verschwinden Hydranten (<15) oder Wachen (<12) sofort,
+        // ohne dass wir auf das Neuladen der Daten warten müssen.
+        if (State.cachedElements) {
+            renderMarkers(State.cachedElements, State.map.getZoom());
+        }
+
+        // Der Rest bleibt gleich (Daten neu laden nach kurzer Wartezeit)
         if (debounceTimer) clearTimeout(debounceTimer);
         const statusEl = document.getElementById('data-status');
         if(statusEl) {
@@ -352,6 +362,3 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         type: type
     });
 }
-
-// Deine existierenden Helper-Funktionen (getSVGContent, generateTooltip, etc.) müssen hier drunter stehen bleiben.
-// Diese habe ich oben im Code-Snippet nur referenziert.
