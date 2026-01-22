@@ -14,7 +14,8 @@ export const State = {
     // Das ist das Herzstück der Karte, über das wir zoomen oder pannen können.
     map: null,
     userMarker: null, // HIER NEU: Speichert den pulsierenden Punkt
-    
+    userLocationTimer: null,
+
     // --- LAYER GRUPPEN (Folien) ---
     // Leaflet organisiert Dinge in "Layers". Wir nutzen Gruppen, um z.B. alle
     // Hydranten auf einmal ein- oder ausblenden zu können.

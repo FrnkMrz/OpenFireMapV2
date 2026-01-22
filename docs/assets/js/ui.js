@@ -188,14 +188,22 @@ export function locateUser() {
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
 
             // 4. AUTOMATISCHES LÖSCHEN NACH 20 SEKUNDEN
-            // LERN-INFO: setTimeout führt eine Funktion verzögert aus.
-            setTimeout(() => {
+            
+            // FIX (Punkt 3): Alten Timer stoppen, falls man den Button 2x drückt!
+            // Sonst würde der erste Timer den Punkt zu früh löschen.
+            if (State.userLocationTimer) {
+                clearTimeout(State.userLocationTimer);
+            }
+
+            // Neuen Timer starten und ID im State speichern
+            State.userLocationTimer = setTimeout(() => {
                 if (State.userMarker) {
                     State.map.removeLayer(State.userMarker);
                     State.userMarker = null;
+                    State.userLocationTimer = null; // Sauber aufräumen
                     console.log("Standort-Punkt wurde nach 20s automatisch entfernt.");
                 }
-            }, 20000); // 20.000 ms = 20 Sekunden
+            }, 20000); // 20 Sekunden
 
             if(icon) icon.classList.remove('animate-spin');
             showNotification(t('geo_found') || "Standort gefunden!");
