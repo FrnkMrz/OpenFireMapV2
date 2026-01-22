@@ -9,12 +9,8 @@
  */
 
 import { State } from './state.js';
-import { Config } from './config.js'; // DIESE ZEILE HAT GEFEHLT
+import { Config } from './config.js'; 
 import { t } from './i18n.js';
-
-
-
-
 
 // Wir importieren Funktionen aus export.js, um sie auf Buttons zu legen
 import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, cancelExport } from './export.js';
@@ -89,8 +85,41 @@ export function closeAllMenus() {
     }
 }
 
-https://github.com/FrnkMrz/OpenFireMapV2.git
+/* =============================================================================
+   TOGGLE FUNKTIONEN (Auf/Zu machen)
+   ============================================================================= */
 
+// Diese Funktion wird aufgerufen, wenn man auf den Layer-Button klickt
+function toggleLayerMenu() {
+    // KORREKTUR: Die ID muss exakt so heißen wie im HTML ('layer-btn-trigger')
+    const btn = document.getElementById('layer-btn-trigger'); 
+    const menu = document.getElementById('layer-menu'); 
+    
+    // Sicherheitscheck: Abbrechen, falls der Button nicht gefunden wird (verhindert Absturz)
+    if (!btn || !menu) {
+        console.warn("Fehler: Layer-Button oder Menü nicht gefunden.");
+        return;
+    }
+    
+    // Aktuellen Status prüfen
+    const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+    const newState = !isExpanded;
+
+    // 1. Erst alle anderen Menüs schließen (damit sich nichts überlappt)
+    if (newState) {
+        closeAllMenus(); 
+        menu.classList.remove('hidden');
+    } else {
+        menu.classList.add('hidden');
+    }
+
+    // 2. ARIA Updates (Für Screenreader)
+    btn.setAttribute('aria-expanded', newState);
+
+    // Label anpassen: Wenn offen -> "Schließen", wenn zu -> "Öffnen"
+    const newLabel = newState ? t('menu_layers_close') : t('menu_layers_open');
+    btn.setAttribute('aria-label', newLabel);
+}
 
 export function toggleExportMenu() {
     const menu = document.getElementById('export-menu');
@@ -153,6 +182,7 @@ export function searchLocation() {
             showNotification("Suche fehlgeschlagen");
         });
 }
+
 /**
  * Bestimmt den Standort des Nutzers via Browser-GPS.
  * LERN-INFO: Ein setTimeout sorgt dafür, dass der Marker nach 20s gelöscht wird.
@@ -274,33 +304,40 @@ export function setupUI() {
 /**
  * FEATURE: Menüs automatisch schließen
  * Wenn die Maus den Bereich verlässt, schließt sich das Menü nach 10 Sekunden.
+ * VERBESSERUNG: Timer wird jetzt sicher am Element gespeichert.
  */
 function setupMenuAutoClose() {
     ['layer-menu', 'export-menu', 'legal-modal'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         
-        let closeTimer = null;
+        // Wir speichern den Timer direkt am Element, um Konflikte zu vermeiden
+        el._closeTimer = null;
         
-        // Maus raus -> Timer an
+        // MAUS RAUS -> Timer starten
         el.addEventListener('mouseleave', () => {
-            // Nur schließen, wenn es gerade offen ist
-            const isHidden = id === 'legal-modal' ? (el.style.display === 'none') : el.classList.contains('hidden');
+            // Nur schließen, wenn das Menü auch wirklich sichtbar ist
+            const isHidden = id === 'legal-modal' ? (el.style.display === 'none' || el.style.display === '') : el.classList.contains('hidden');
             if (isHidden) return;
             
-            closeTimer = setTimeout(() => {
+            // Timer starten (10 Sekunden = 10000 ms)
+            el._closeTimer = setTimeout(() => {
                 if (id === 'legal-modal') el.style.display = 'none';
                 else el.classList.add('hidden');
                 
-                // ARIA Status zurücksetzen
+                // Den zugehörigen Button auch zurücksetzen (für Barrierefreiheit)
                 const btnId = id === 'layer-menu' ? 'layer-btn-trigger' : (id === 'export-menu' ? 'export-btn-trigger' : 'btn-legal-trigger');
                 document.getElementById(btnId)?.setAttribute('aria-expanded', 'false');
-            }, 10000); // 10 Sekunden
+                
+            }, 10000); 
         });
         
-        // Maus rein -> Timer aus (User liest noch)
+        // MAUS REIN -> Timer abbrechen (Nutzer liest noch)
         el.addEventListener('mouseenter', () => {
-            if (closeTimer) clearTimeout(closeTimer);
+            if (el._closeTimer) {
+                clearTimeout(el._closeTimer);
+                el._closeTimer = null;
+            }
         });
     });
 }
