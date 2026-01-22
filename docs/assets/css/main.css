@@ -153,27 +153,35 @@ body {
 } /* FIX: Hier fehlte die schließende Klammer! */
 
 /* =========================================
-   DEBUG GPS STANDORT MARKER (Der "Hässliche Rote Punkt")
+   GPS STANDORT MARKER (Finales Design)
    ========================================= */
-
 .user-location-dot {
-    /* 1. EXTREME SICHTBARKEIT */
-    background-color: #ff0000 !important; /* Knallrot */
-    border: 5px solid #ffff00 !important; /* Dicker Gelber Rand */
+    /* 1. Das Aussehen */
+    background-color: #3b82f6;  /* Leuchtendes Blau */
+    width: 16px;                /* Breite ist PFLICHT für Sichtbarkeit */
+    height: 16px;               /* Höhe ist PFLICHT für Sichtbarkeit */
     
-    /* 2. GRÖSSE ERZWINGEN */
-    width: 20px !important;
-    height: 20px !important;
-    display: block !important;
+    /* 2. Der Rand & Schatten */
+    border: 2px solid white;    /* Weißer Kontrast-Rand */
+    border-radius: 50%;         /* Macht das Viereck zum Kreis */
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6); /* Leuchtkraft */
     
-    /* 3. FORM */
-    border-radius: 50%;
-    
-    /* 4. POSITONIERUNG ERZWINGEN (Ganz oben) */
-    z-index: 9999 !important; 
-    position: relative !important; /* Hilft manchmal bei Leaflet Icons */
+    /* 3. Die Animation */
+    animation: pulse-ring 2s infinite;
+}
 
-    /* 5. KEINE ANIMATION (Fehlerquelle ausschließen) */
-    animation: none !important;
-    box-shadow: none !important;
+/* Die Animation (Wellen-Effekt) */
+@keyframes pulse-ring {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); /* Ring weitet sich aus & verblasst */
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
 }
