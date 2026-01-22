@@ -15,6 +15,10 @@ export function initMapLogic() {
     State.boundaryLayer = L.layerGroup();
     State.rangeLayerGroup = L.layerGroup();
 
+    // NEU: Wir initialisieren einen Cache für die Marker-Verwaltung.
+    // Speichert: ID -> { marker: LeafletMarker, type: String, mode: String }
+    State.markerCache = new Map();
+
     State.map = L.map('map', { 
         zoomControl: false, 
         center: Config.defaultCenter, 
@@ -143,121 +147,211 @@ export function showRangeCircle(lat, lon) {
         labelMarker.bindTooltip("100 m", { permanent: true, direction: 'center', className: 'range-label', offset: [0, 0] }).openTooltip();
     }
 }
-
+/**
+ * Rendert die Marker basierend auf den übergebenen Daten (elements).
+ * OPTIMIERUNG: Nutzt "Diffing", um Flackern zu verhindern.
+ * Es werden nur Marker entfernt/hinzugefügt, die sich tatsächlich geändert haben.
+ */
 export function renderMarkers(elements, zoom) {
-    State.markerLayer.clearLayers();
+    // Grenzen (Boundaries) werden weiterhin komplett neu gezeichnet, 
+    // da es meist nur wenige sind und sich die Geometrie bei Zoom ändern kann.
     State.boundaryLayer.clearLayers();
-    const renderedLocations = []; 
+
+    // 1. Vorbereitung: Welche Marker sollen aktuell angezeigt werden?
+    // Wir sammeln hier nur die Daten, wir zeichnen noch nicht.
+    const markersToKeep = new Set();
+    const renderedLocations = []; // Für die Duplikat-Prüfung (z.B. bei Wachen)
 
     elements.forEach(el => {
-    const tags = el.tags || {};
-    
-    // GRENZEN (Boundaries)
-    if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
-        const latlngs = el.geometry.map(p => [p.lat, p.lon]);
-        
-        // HIER IST DIE GEÄNDERTE ZEILE:
-        L.polyline(latlngs, { color: Config.colors.bounds, weight: 1, dashArray: '10, 10', opacity: 0.7 }).addTo(State.boundaryLayer);
-        
-        return;
-    }
+        const tags = el.tags || {};
+        const id = el.id; // WICHTIG: Die eindeutige OSM-ID
 
+        // --- A. Grenzen verarbeiten (wie bisher) ---
+        if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
+            const latlngs = el.geometry.map(p => [p.lat, p.lon]);
+            L.polyline(latlngs, { 
+                color: Config.colors.bounds, 
+                weight: 1, 
+                dashArray: '10, 10', 
+                opacity: 0.7 
+            }).addTo(State.boundaryLayer);
+            return;
+        }
+
+        // --- B. Datenvalidierung ---
         const lat = el.lat || el.center?.lat;
         const lon = el.lon || el.center?.lon;
         if (!lat || !lon) return;
 
+        // --- C. Typ-Bestimmung ---
         const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
         const isDefib = tags.emergency === 'defibrillator';
+        // Fallback für Typen
         let type = isStation ? 'station' : (isDefib ? 'defibrillator' : (tags['fire_hydrant:type'] || tags.emergency));
 
+        // --- D. Zoom-Filter (Sichtbarkeit) ---
+        // Stationen ab Zoom 12, Hydranten/Defis ab Zoom 15
         if (isStation && zoom < 12) return; 
         if (!isStation && !isDefib && zoom < 15) return; 
         if (isDefib && zoom < 15) return; 
 
+        // --- E. Duplikat-Check für Stationen (Räumliche Nähe) ---
         const alreadyDrawn = renderedLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
         if (isStation && alreadyDrawn) return;
         if (isStation) renderedLocations.push({lat, lon});
 
-        let marker;
-        let iconHtml;
-        let className = '';
-        let size = [28, 28];
-        let zIndex = 0;
-
+        // --- F. Darstellungs-Modus bestimmen ---
+        // Wir müssen wissen, ob der Marker als "Punkt" oder als "SVG-Icon" dargestellt werden soll.
+        // Das ändert sich je nach Zoomstufe.
+        let mode = 'standard';
         if (isStation) {
-            if (zoom < 14) { 
-                marker = L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10, 10] }) }).addTo(State.markerLayer);
-            } else {
-                iconHtml = getSVGContent(type); className = 'icon-container'; size = [32, 32]; zIndex = 1000;
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: zIndex }).addTo(State.markerLayer);
-            }
-        } 
-        else if (isDefib) {
-            if (zoom < 17) {
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) }).addTo(State.markerLayer);
-            } else {
-                iconHtml = getSVGContent(type); className = 'icon-container'; size = [28, 28]; zIndex = 2000;
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: zIndex }).addTo(State.markerLayer);
-            }
-        } 
-        else { 
-            if (zoom < 17) {
-                const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-                className = isWater ? 'tank-dot' : 'hydrant-dot';
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10,10] }) }).addTo(State.markerLayer);
-            } else {
-                iconHtml = getSVGContent(type); className = 'icon-container';
-                marker = L.marker([lat, lon], { icon: L.divIcon({ className, html: iconHtml, iconSize: size }), zIndexOffset: 0 }).addTo(State.markerLayer);
-                marker.on('click', (e) => { 
-                    L.DomEvent.stopPropagation(e);
-                    showRangeCircle(lat, lon); 
-                });
-            }
+            mode = (zoom < 14) ? 'dot' : 'svg';
+        } else if (isDefib) {
+            mode = (zoom < 17) ? 'dot' : 'svg';
+        } else {
+            // Hydranten etc.
+            mode = (zoom < 17) ? 'dot' : 'svg';
         }
 
-        // --- HIER IST DIE SMART TOOLTIP LOGIK ---
-        if (marker && zoom === 18 && className === 'icon-container') {
-             marker.bindTooltip(generateTooltip(tags), { 
-                interactive: true, permanent: false, direction: 'top', opacity: 0.95 
+        // Wir merken uns, dass diese ID in diesem Durchlauf gültig ist
+        markersToKeep.add(id);
+
+        // --- G. DIFFING LOGIK (Das Herzstück) ---
+        
+        // Prüfen, ob wir den Marker schon haben
+        const cached = State.markerCache.get(id);
+
+        // Fall 1: Marker existiert UND Modus (Dot vs SVG) ist gleich geblieben
+        if (cached && cached.mode === mode) {
+            // Nichts tun! Der Marker bleibt einfach auf der Karte.
+            // Das verhindert das Flackern und spart Rechenleistung.
+            return; 
+        }
+
+        // Fall 2: Marker existiert, aber Modus hat sich geändert (z.B. Zoom von 16 auf 17 -> Dot zu SVG)
+        if (cached && cached.mode !== mode) {
+            // Alten Marker entfernen, da er neu gezeichnet werden muss
+            State.markerLayer.removeLayer(cached.marker);
+            State.markerCache.delete(id);
+        }
+
+        // Fall 3: Marker ist neu (oder wurde gerade in Fall 2 gelöscht) -> Neu erstellen
+        createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isDefib);
+    });
+
+    // --- H. AUFRÄUMEN (Garbage Collection) ---
+    // Wir entfernen alle Marker von der Karte, die im aktuellen Datensatz NICHT mehr vorkommen.
+    for (const [id, entry] of State.markerCache) {
+        if (!markersToKeep.has(id)) {
+            State.markerLayer.removeLayer(entry.marker);
+            State.markerCache.delete(id);
+        }
+    }
+}
+
+/**
+ * Hilfsfunktion zum Erstellen eines einzelnen Markers.
+ * Ausgelagert für bessere Lesbarkeit.
+ */
+function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isDefib) {
+    let marker;
+    let iconHtml;
+    let className = '';
+    let size = [28, 28];
+    let zIndex = 0;
+
+    // 1. Icon Konfiguration basierend auf Modus
+    if (mode === 'dot') {
+        // Kleine Punkte für niedrige Zoomstufen
+        if (isStation) {
+            marker = L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10, 10] }) });
+        } else if (isDefib) {
+            marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) });
+        } else {
+            // Wasser/Hydranten Unterscheidung für Dots
+            const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
+            className = isWater ? 'tank-dot' : 'hydrant-dot';
+            marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10,10] }) });
+        }
+    } else {
+        // SVG Icons für hohe Zoomstufen
+        iconHtml = getSVGContent(type); // Nutzt deine existierende Funktion
+        className = 'icon-container';
+        
+        if (isStation) {
+            size = [32, 32]; zIndex = 1000;
+        } else if (isDefib) {
+            size = [28, 28]; zIndex = 2000;
+        } else {
+            zIndex = 0;
+        }
+
+        marker = L.marker([lat, lon], { 
+            icon: L.divIcon({ className, html: iconHtml, iconSize: size }), 
+            zIndexOffset: zIndex 
+        });
+
+        // Klick-Event für Hydranten-Radius
+        if (!isStation && !isDefib) {
+            marker.on('click', (e) => { 
+                L.DomEvent.stopPropagation(e);
+                showRangeCircle(lat, lon); 
             });
+        }
+    }
 
-            // Standard-Verhalten deaktivieren
-            marker.off('mouseover'); 
-            marker.off('mouseout');
-            marker._tooltipCloseTimer = null;
+    // 2. Tooltip Logik (Nur für SVG Icons bei hohem Zoom)
+    if (marker && zoom === 18 && className === 'icon-container') {
+         marker.bindTooltip(generateTooltip(tags), { 
+            interactive: true, permanent: false, direction: 'top', opacity: 0.95 
+        });
 
-            // Eigene Öffnen-Logik
-            marker.on('mouseover', function() {
+        // Deine existierende Smart-Tooltip Logik
+        marker.off('mouseover'); 
+        marker.off('mouseout');
+        marker._tooltipCloseTimer = null;
+
+        marker.on('mouseover', function() {
+            if (this._tooltipCloseTimer) {
+                clearTimeout(this._tooltipCloseTimer); 
+                this._tooltipCloseTimer = null;
+            }
+            this.openTooltip();
+        });
+
+        marker.on('mouseout', function() {
+            this._tooltipCloseTimer = setTimeout(() => {
+                this.closeTooltip();
+            }, 3000); 
+        });
+
+        marker.on('tooltipopen', function(e) {
+            const tooltipNode = e.tooltip._container;
+            if (!tooltipNode) return;
+            L.DomEvent.on(tooltipNode, 'mouseenter', () => {
                 if (this._tooltipCloseTimer) {
-                    clearTimeout(this._tooltipCloseTimer); 
+                    clearTimeout(this._tooltipCloseTimer);
                     this._tooltipCloseTimer = null;
                 }
-                this.openTooltip();
             });
-
-            // Eigene Schließen-Logik (3 Sekunden warten)
-            marker.on('mouseout', function() {
+            L.DomEvent.on(tooltipNode, 'mouseleave', () => {
                 this._tooltipCloseTimer = setTimeout(() => {
                     this.closeTooltip();
-                }, 3000); // <--- HIER SIND DIE 3 SEKUNDEN
+                }, 3000);
             });
+        });
+    }
 
-            // Wenn Maus auf den Text geht: Timer stoppen
-            marker.on('tooltipopen', function(e) {
-                const tooltipNode = e.tooltip._container;
-                if (!tooltipNode) return;
-                L.DomEvent.on(tooltipNode, 'mouseenter', () => {
-                    if (this._tooltipCloseTimer) {
-                        clearTimeout(this._tooltipCloseTimer);
-                        this._tooltipCloseTimer = null;
-                    }
-                });
-                L.DomEvent.on(tooltipNode, 'mouseleave', () => {
-                    this._tooltipCloseTimer = setTimeout(() => {
-                        this.closeTooltip();
-                    }, 3000);
-                });
-            });
-        }
+    // 3. Marker zur Karte hinzufügen
+    marker.addTo(State.markerLayer);
+
+    // 4. In den Cache speichern
+    State.markerCache.set(id, {
+        marker: marker,
+        mode: mode,
+        type: type
     });
 }
+
+// Deine existierenden Helper-Funktionen (getSVGContent, generateTooltip, etc.) müssen hier drunter stehen bleiben.
+// Diese habe ich oben im Code-Snippet nur referenziert.
