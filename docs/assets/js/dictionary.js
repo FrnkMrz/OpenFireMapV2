@@ -67,7 +67,10 @@ export const dictionary = {
         station: "Feuerwache",
         hydrant: "Hydrant",
         defib: "Defibrillator (AED)",
-        legal_btn: "Info & Recht"
+        legal_btn: "Info & Recht",
+        menu_layers_open: "Kartenebenen-Menü öffnen",
+        menu_layers_close: "Kartenebenen-Menü schließen",
+        menu_layers_label: "Kartenebenen" // Fallback / Statisch
     },
 
     // --------------------------------------------------------------------------------------
@@ -130,7 +133,10 @@ export const dictionary = {
         station: "Fire Station",
         hydrant: "Hydrant",
         defib: "Defibrillator (AED)",
-        legal_btn: "Info & Legal"
+        legal_btn: "Info & Legal",
+        menu_layers_open: "Open layer menu",
+        menu_layers_close": "Close layer menu",
+        menu_layers_label: "Map layers"
     },
 
     // --------------------------------------------------------------------------------------
