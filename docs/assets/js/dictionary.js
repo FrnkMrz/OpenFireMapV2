@@ -70,7 +70,9 @@ export const dictionary = {
         legal_btn: "Info & Recht",
         "menu_layers_open": "Kartenebenen-Menü öffnen",
         "menu_layers_close": "Kartenebenen-Menü schließen",
-        "menu_layers_label": "Kartenebenen"
+        "menu_layers_label": "Kartenebenen",
+        "menu_export_open": "Export-Menü öffnen",
+        "menu_export_close": "Export-Menü schließen"
     },
 
     // --------------------------------------------------------------------------------------
@@ -136,7 +138,9 @@ export const dictionary = {
         legal_btn: "Info & Legal",
         "menu_layers_open": "Open layer menu",
         "menu_layers_close": "Close layer menu",
-        "menu_layers_label": "Map layers"
+        "menu_layers_label": "Map layers",
+        "menu_export_open": "Open export menu",
+        "menu_export_close": "Close export menu"
     },
 
     // --------------------------------------------------------------------------------------
