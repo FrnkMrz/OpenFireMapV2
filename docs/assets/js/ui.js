@@ -201,51 +201,54 @@ export function locateUser() {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
 
-            // 1. ZUR POSITION SPRINGEN
+            console.log(`GPS Position: ${lat}, ${lng}`); // Debug-Log für die Konsole
+
+            // 1. Zoom & Pan
             if (State.map) {
-                // Nutzt den Zoom aus der Config (Standard: 17)
                 State.map.flyTo([lat, lng], Config.locateZoom || 17);
             }
 
-            // 2. ALTEN PUNKT ENTFERNEN (falls schon einer da ist)
+            // 2. Alten Marker entfernen
             if (State.userMarker) {
                 State.map.removeLayer(State.userMarker);
             }
 
-            // 3. NEUEN PUNKT ERZEUGEN
-            // Wichtig: 'className' muss exakt so heißen wie im CSS (.user-location-dot)
+            // 3. NEUER MARKER (Mit eingebautem CSS!)
+            // Wir nutzen 'html' statt 'className', um den Stil zu erzwingen.
             const dotIcon = L.divIcon({
-                className: 'user-location-dot', 
-                iconSize: [16, 16],   // Größe des inneren blauen Kreises (16px)
-                iconAnchor: [8, 8]    // Exakt mittig setzen (Hälfte von 16)
+                className: '', // Keine Klasse, damit Leaflet nichts überschreibt
+                html: `<div style="
+                    background-color: #3b82f6; 
+                    width: 16px; 
+                    height: 16px; 
+                    border-radius: 50%; 
+                    border: 2px solid white; 
+                    box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);">
+                </div>`,
+                iconSize: [20, 20], // Größe des Containers
+                iconAnchor: [10, 10] // Genau die Mitte (Hälfte von 20)
             });
 
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
 
-            // 4. TIMER FÜR AUTOMATISCHES LÖSCHEN (25 Sekunden)
+            // 4. Timer (25 Sekunden)
+            if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
             
-            // Alten Timer stoppen, falls man den Button mehrfach drückt
-            if (State.userLocationTimer) {
-                clearTimeout(State.userLocationTimer);
-            }
-
-            // Neuen Timer starten
             State.userLocationTimer = setTimeout(() => {
                 if (State.userMarker) {
                     State.map.removeLayer(State.userMarker);
                     State.userMarker = null;
-                    State.userLocationTimer = null;
-                    console.log("Standort-Punkt wurde nach 25s entfernt.");
+                    console.log("Punkt entfernt.");
                 }
-            }, 25000); // 25000 ms = 25 Sekunden
+            }, 25000);
 
             if(icon) icon.classList.remove('animate-spin');
             showNotification(t('geo_found') || "Standort gefunden!");
         },
         (err) => {
             if(icon) icon.classList.remove('animate-spin');
-            console.error("GPS Fehler:", err);
-            showNotification("Standort konnte nicht ermittelt werden.");
+            console.error(err);
+            showNotification("GPS Fehler: " + err.message);
         },
         { enableHighAccuracy: true, timeout: 5000 }
     );
