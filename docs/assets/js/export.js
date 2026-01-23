@@ -24,9 +24,13 @@ export function setExportFormat(fmt) {
     document.querySelectorAll('.fmt-btn').forEach(b => {
         b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
         b.classList.add('bg-white/5');
+        b.setAttribute('aria-pressed', 'false');
     });
     const btn = document.getElementById(`fmt-${fmt}`);
-    if(btn) btn.classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
+    if(btn) {
+        btn.classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
+        btn.setAttribute('aria-pressed', 'true');
+    } 
     clearSelection();
 }
 
@@ -36,9 +40,13 @@ export function setExportZoom(z) {
     document.querySelectorAll('.zoom-btn').forEach(b => {
         b.classList.remove('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
         b.classList.add('bg-white/5');
+        b.setAttribute('aria-pressed', 'false');
     });
     const btn = document.getElementById(`zoom-${z}`);
-    if(btn) btn.classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
+    if(btn) {
+        btn.classList.add('active', 'text-blue-400', 'border-blue-400/50', 'bg-white/10');
+        btn.setAttribute('aria-pressed', 'true');
+    }
 }
 
 export function startSelection() {
