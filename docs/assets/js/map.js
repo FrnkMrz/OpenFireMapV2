@@ -21,6 +21,7 @@ export function initMapLogic() {
 
     State.map = L.map('map', { 
         zoomControl: false, 
+        preferCanvas: true, // <--- WICHTIG: Beschleunigt das Rendering massiv
         center: Config.defaultCenter, 
         zoom: Config.defaultZoom 
     });
@@ -316,25 +317,58 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             interactive: true, permanent: false, direction: 'top', opacity: 0.95 
         });
 
-        // Deine existierende Smart-Tooltip Logik
-        marker.off('mouseover'); 
-        marker.off('mouseout');
+// ---------------------------------------------------------
+        // NEUE SMART-TOOLTIP LOGIK (Mit Zoom-Check & Inhalt)
+        // ---------------------------------------------------------
+        
+        // 1. Tooltip-Inhalt generieren (Tags & Ort)
+        let content = `<strong>ID: ${hydrant.id}</strong>`;
+        if (hydrant.tags) {
+            content += '<div style="margin-top:5px; font-size:0.9em; border-top:1px solid #ccc; padding-top:3px;">';
+            
+            // Ort für Feuerwachen hervorheben
+            if (hydrant.tags['amenity'] === 'fire_station') {
+                const ort = hydrant.tags['addr:city'] || hydrant.tags['addr:municipality'] || '';
+                if (ort) content += `<strong>Ort: ${ort}</strong><br>`;
+            }
+
+            // Alle Tags auflisten
+            for (const [key, value] of Object.entries(hydrant.tags)) {
+                content += `${key}: ${value}<br>`;
+            }
+            content += '</div>';
+        }
+
+        // 2. Tooltip anbinden (noch nicht öffnen!)
+        marker.bindTooltip(content, {
+            direction: 'top',
+            offset: [0, -10],
+            opacity: 0.9
+        });
+
+        // 3. Event-Logik für Zoom & Auto-Close
+        marker.off('mouseover mouseout'); // Alte Listener entfernen
         marker._tooltipCloseTimer = null;
 
         marker.on('mouseover', function() {
+            // CHECK: Ist Zoom Level hoch genug? (Erst ab Zoom 18 anzeigen)
+            if (State.map.getZoom() < 18) return;
+
             if (this._tooltipCloseTimer) {
-                clearTimeout(this._tooltipCloseTimer); 
+                clearTimeout(this._tooltipCloseTimer);
                 this._tooltipCloseTimer = null;
             }
             this.openTooltip();
         });
 
         marker.on('mouseout', function() {
+            // Nach 3 Sekunden automatisch schließen
             this._tooltipCloseTimer = setTimeout(() => {
                 this.closeTooltip();
-            }, 3000); 
+            }, 3000);
         });
-
+        // ---------------------------------------------------------
+        
         marker.on('tooltipopen', function(e) {
             const tooltipNode = e.tooltip._container;
             if (!tooltipNode) return;
