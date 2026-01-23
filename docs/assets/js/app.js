@@ -2,7 +2,6 @@
  * ==========================================================================================
  * DATEI: app.js
  * ZWECK: Haupt-Einstiegspunkt der Anwendung
- * FIX: Korrekte Importe für State und Event-Handling
  * ==========================================================================================
  */
 
@@ -10,9 +9,8 @@ import { initMapLogic } from './map.js';
 import { updatePageLanguage } from './i18n.js';
 import { setupUI } from './ui.js';
 
-// KORREKTUR: Wir müssen 'handleSelectionEvents' aus export.js holen...
-import { handleSelectionEvents } from './export.js'; 
-// ...und 'State' aus state.js (NICHT aus export.js!)
+// NEU: Wir importieren jetzt die Init-Funktion statt der einzelnen Events
+import { initSelectionLogic } from './export.js'; 
 import { State } from './state.js'; 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -27,13 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. Karte starten
     initMapLogic();       
     
-    // 4. WICHTIG: Auswahl-Rechteck für Export aktivieren
-    // Nachdem initMapLogic() lief, existiert 'State.map'.
-    // Jetzt hängen wir die Maus-Events an die Karte, damit das Ziehen funktioniert.
+    // 4. CLEANUP ERLEDIGT: Export-Logik initialisieren
+    // Wir rufen nur noch die Funktion auf. Die app.js muss nicht mehr wissen,
+    // wie das Auswahl-Rechteck technisch funktioniert.
     if (State.map) {
-         State.map.on('mousedown', (e) => handleSelectionEvents(e, 'down'));
-         State.map.on('mousemove', (e) => handleSelectionEvents(e, 'move'));
-         State.map.on('mouseup', (e) => handleSelectionEvents(e, 'up'));
+        initSelectionLogic();
     } else {
         console.error("Fehler: Karte wurde nicht initialisiert!");
     }

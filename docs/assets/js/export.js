@@ -493,3 +493,23 @@ export async function exportAsPNG() {
         }, 5000);
     }
 }
+
+// ... (Code davor bleibt unverändert)
+
+/**
+ * NEU: Initialisiert die Auswahl-Logik (Maus-Events).
+ * Damit muss die app.js nicht mehr die Details kennen.
+ */
+export function initSelectionLogic() {
+    if (!State.map) {
+        console.error("Export-Logik Fehler: Karte noch nicht bereit.");
+        return;
+    }
+    
+    // Die Event-Listener direkt an die Karte hängen
+    State.map.on('mousedown', (e) => handleSelectionEvents(e, 'down'));
+    State.map.on('mousemove', (e) => handleSelectionEvents(e, 'move'));
+    State.map.on('mouseup', (e) => handleSelectionEvents(e, 'up'));
+    
+    console.log("Auswahl-Werkzeug wurde initialisiert.");
+}
