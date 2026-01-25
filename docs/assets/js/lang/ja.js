@@ -59,6 +59,11 @@ export const strings = {
         station: "消防署",
         hydrant: "消火栓",
         defib: "AED (自動体外式除細動器)",
-        legal_btn: "情報・法的"
+        legal_btn: "情報・法的",
+        menu_layers_open: "レイヤーを開く",
+        menu_layers_close: "レイヤーを閉じる",
+        menu_layers_label: "レイヤー",
+        menu_export_open: "エクスポートを開く",
+        menu_export_close: "エクスポートを閉じる",
     };
 export default strings;

@@ -9,7 +9,8 @@
   "scripts": {
   "build:static": "node ./scripts/build-static.mjs",
   "build:css": "tailwindcss -c tailwind.config.js -i ./src/input.css -o ./docs/assets/css/main.css --minify",
-  "build": "npm run build:static && npm run build:css"
+  "build": "npm run build:static && npm run build:css",
+  "i18n:check": "node ./scripts/i8n-check.mjs"
   },
   "repository": {
     "type": "git",

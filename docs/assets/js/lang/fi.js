@@ -59,6 +59,11 @@ export const strings = {
         station: "Paloasema",
         hydrant: "Paloposti",
         defib: "Sydämentahdistin (AED)",
-        legal_btn: "Info & Laki"
+        legal_btn: "Info & Laki",
+        menu_layers_open: "Avaa tasot",
+        menu_layers_close: "Sulje tasot",
+        menu_layers_label: "Tasot",
+        menu_export_open: "Avaa vienti",
+        menu_export_close: "Sulje vienti",
     };
 export default strings;

@@ -59,6 +59,11 @@ export const strings = {
         station: "消防局",
         hydrant: "消防喉",
         defib: "除顫器 (AED)",
-        legal_btn: "資訊與法律"
+        legal_btn: "資訊與法律",
+        menu_layers_open: "打開圖層",
+        menu_layers_close: "閂埋圖層",
+        menu_layers_label: "圖層",
+        menu_export_open: "打開匯出",
+        menu_export_close: "閂埋匯出",
     };
 export default strings;

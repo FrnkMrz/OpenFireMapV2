@@ -1,164 +1,74 @@
 # OpenFireMapV2
 
-Interaktive Web-Karte für Feuerwachen, Löschwasser-Objekte und
-Defibrillatoren auf Basis von **OpenStreetMap**.\
-Clientseitig, ohne Backend, mit Fokus auf Stabilität und
-Nachvollziehbarkeit.
+## Deutsch
 
-------------------------------------------------------------------------
+Interaktive Web‑Karte für Feuerwachen, Löschwasser‑Objekte und Defibrillatoren auf Basis von **OpenStreetMap**.  
+Clientseitig, ohne Backend, mit Fokus auf Stabilität und Nachvollziehbarkeit.
 
-## Kurzüberblick
+---
 
--   **Frontend only** (kein Server, kein Framework)
--   **GitHub Pages** als Hosting (`docs/`)
--   **Overpass & Nominatim** mit Cache, Abort, Backoff
--   **Saubere Trennung**: Quellcode (`src/`) vs. Deploy-Artefakte
-    (`docs/`)
+### Kurzüberblick
 
-------------------------------------------------------------------------
+- **Frontend only** (kein Server, kein Framework)
+- **GitHub Pages** als Hosting (`docs/`)
+- **Overpass & Nominatim** mit Cache, Abort, Backoff
+- **Saubere Trennung**: Quellcode (`src/`) vs. Deploy‑Artefakte (`docs/`)
 
-## Einordnung & Motivation
+---
 
-Dieses Projekt ist ein **privates Schulungs- und Übungsprojekt**.
+### Einordnung & Motivation
 
-Ziele: - praktische Erfahrung mit **Vanilla JavaScript
-(Vibe-Coding)** - sicherer Umgang mit **Git und GitHub** - saubere
-Projektstruktur ohne Framework-Abhängigkeiten
+Dieses Projekt ist ein **privates Schulungs‑ und Übungsprojekt**.
 
-OpenFireMap.org entstand ursprünglich um **2011** als am OSM Stammtichin Nürnberg.
-OpenFireMapV2 ist der bewusste Versuch, diese Idee **neu
-aufzusetzen**: - mit aktueller Web-Technik - mit besserer Struktur - mit
-Fokus auf Wartbarkeit und Robustheit
+Ziele:
+- praktische Erfahrung mit **Vanilla JavaScript (White‑Coding)**
+- sicherer Umgang mit **Git und GitHub**
+- saubere Projektstruktur ohne Framework‑Abhängigkeiten
 
-Das Projekt ist **nicht kommerziell** und dient dem Lernen und der
-technischen Weiterentwicklung.\
+OpenFireMap entstand ursprünglich um **2011** als einfache Website.  
+OpenFireMapV2 ist der bewusste Versuch, diese Idee **neu aufzusetzen**:
+- mit aktueller Web‑Technik
+- mit besserer Struktur
+- mit Fokus auf Wartbarkeit und Robustheit
 
+Das Projekt ist **nicht kommerziell**, dient dem Lernen und der technischen Weiterentwicklung.  
+Ich bin mit dem aktuellen Stand **sehr zufrieden**.
 
-------------------------------------------------------------------------
+---
 
-## Repository-Struktur
+### Internationalisierung (i18n)
 
-    OpenFireMapV2/
-    ├─ src/            # Quellcode (hier wird gearbeitet)
-    │  ├─ js/          # JavaScript-Module
-    │  ├─ static/      # index.html, Assets, Favicons
-    │  └─ input.css    # Tailwind Entry
-    │
-    ├─ docs/           # Deploy-Output (GitHub Pages)
-    │  ├─ index.html
-    │  └─ assets/
-    │     ├─ css/
-    │     └─ js/
-    │
-    ├─ scripts/        # Build-/Copy-Skripte
-    ├─ package.json
-    └─ README.md
+- **Standard:** Deutsch (`de`)
+- **Fallback:** Englisch (`en`)
+- weitere Sprachen unter `src/js/lang/`
 
-**Merksatz:** - `src/` = Quelle - `docs/` = Ergebnis
-
-GitHub Pages liest **ausschließlich `docs/`**.
-
-------------------------------------------------------------------------
-
-## Build & Deploy
-
-Der Build ist bewusst minimalistisch. Kein Vite, kein Webpack.
-
-### Was der Build macht
-
--   **Tailwind CSS**
-    -   scannt Klassen in `src/`
-    -   erzeugt `docs/assets/css/main.css`
--   **Statische Dateien**
-    -   `src/static/*` → `docs/*`
-
-### Build ausführen
-
-``` bash
-npm install      # einmal pro Rechner
-npm run build    # nach Änderungen
+Qualitätsprüfung:
+```bash
+npm run i18n:check
 ```
 
-Ohne Build bleibt `docs/` unverändert → GitHub Pages zeigt den alten
-Stand.
+---
 
-------------------------------------------------------------------------
+## English
 
-## API-Architektur (kurz)
+Interactive web map for fire stations, firefighting water sources and defibrillators based on **OpenStreetMap**.  
+Client‑side only, no backend, focused on stability and transparency.
 
--   **api.js**
-    -   Overpass-Queries
-    -   Nominatim-Geocoding
-    -   Cache, Abort, Backoff
--   **net.js**
-    -   Einheitlicher fetch-Wrapper
-    -   Timeout & HTTP-Fehlerklassifikation
--   **cache.js**
-    -   In-Memory Cache (BBox + Zoom)
-    -   TTL, keine Persistenz
+---
 
-**Warum:** - Overpass ist langsam und rate-limitiert - Nutzer
-zoomen/pannen häufig - Alte Requests müssen abbrechen
+### Internationalization (i18n)
 
-------------------------------------------------------------------------
+- **Default:** German (`de`)
+- **Fallback:** English (`en`)
+- additional languages in `src/js/lang/`
 
-## Karten-Logik
-
--   Requests nur bei `moveend` / `zoomend`
--   Debounce (\~400 ms)
--   Abbruch alter Requests bei neuen Aktionen
--   BBox-Rundung für Cache-Treffer
-
-Ergebnis: - deutlich weniger Requests - flüssigere UI - reproduzierbares
-Verhalten
-
-------------------------------------------------------------------------
-
-## Arbeiten auf mehreren Rechnern
-
-Voraussetzungen: - Git - Node.js (LTS)
-
-Setup:
-
-``` bash
-git clone https://github.com/FrnkMrz/OpenFireMapV2.git
-cd OpenFireMapV2
-npm install
-npm run build
+Quality check:
+```bash
+npm run i18n:check
 ```
 
-Workflow:
+---
 
-``` bash
-# ändern
-npm run build
-git commit
-git push
-```
-
-------------------------------------------------------------------------
-
-## Typische Stolperfallen
-
--   **Seite zeigt alten Stand** → Build vergessen
--   **CSS fehlt** → Tailwind nicht gebaut
--   **Overpass 504** → Serverproblem, Code reagiert korrekt
--   \*\*404 auf \*.map\*\* → SourceMaps fehlen, harmlos
-
-------------------------------------------------------------------------
-
-## Design-Entscheidungen
-
--   Kein Framework
--   Kein Bundler
--   Kein Backend
--   Maximale Transparenz
--   Lange Lebensdauer
-
-Ziel ist Verständlichkeit auch nach Jahren.
-
-------------------------------------------------------------------------
-
-## Lizenz
+### License
 
 MIT

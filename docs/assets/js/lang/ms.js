@@ -59,6 +59,11 @@ export const strings = {
         station: "Balai Bomba",
         hydrant: "Pili Bomba",
         defib: "Defibrilator (AED)",
-        legal_btn: "Info & Undang-undang"
+        legal_btn: "Info & Undang-undang",
+        menu_layers_open: "Buka lapisan",
+        menu_layers_close: "Tutup lapisan",
+        menu_layers_label: "Lapisan",
+        menu_export_open: "Buka eksport",
+        menu_export_close: "Tutup eksport",
     };
 export default strings;

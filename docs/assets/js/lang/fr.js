@@ -59,6 +59,11 @@ export const strings = {
         station: "Caserne",
         hydrant: "Poteau incendie",
         defib: "Défibrillateur (DAE)",
-        legal_btn: "Info & Droit"
+        legal_btn: "Info & Droit",
+        menu_layers_open: "Ouvrir les couches",
+        menu_layers_close: "Fermer les couches",
+        menu_layers_label: "Couches",
+        menu_export_open: "Ouvrir l’export",
+        menu_export_close: "Fermer l’export",
     };
 export default strings;

@@ -59,6 +59,11 @@ export const strings = {
         station: "소방서",
         hydrant: "소화전",
         defib: "제세동기 (AED)",
-        legal_btn: "정보 및 법적 고지"
+        legal_btn: "정보 및 법적 고지",
+        menu_layers_open: "레이어 열기",
+        menu_layers_close: "레이어 닫기",
+        menu_layers_label: "레이어",
+        menu_export_open: "내보내기 열기",
+        menu_export_close: "내보내기 닫기",
     };
 export default strings;

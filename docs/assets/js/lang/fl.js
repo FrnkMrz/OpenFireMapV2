@@ -59,6 +59,11 @@ export const strings = {
         station: "Brandweerkazerne",
         hydrant: "Brandkraan",
         defib: "Defibrillator (AED)",
-        legal_btn: "Info & Recht"
+        legal_btn: "Info & Recht",
+        menu_layers_open: "Buksan ang mga layer",
+        menu_layers_close: "Isara ang mga layer",
+        menu_layers_label: "Mga layer",
+        menu_export_open: "Buksan ang export",
+        menu_export_close: "Isara ang export",
     };
 export default strings;

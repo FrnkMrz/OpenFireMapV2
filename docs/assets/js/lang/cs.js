@@ -59,6 +59,11 @@ export const strings = {
         station: "Hasičská stanice",
         hydrant: "Hydrant",
         defib: "Defibrilátor (AED)",
-        legal_btn: "Info & Právo"
+        legal_btn: "Info & Právo",
+        menu_layers_open: "Otevřít vrstvy",
+        menu_layers_close: "Zavřít vrstvy",
+        menu_layers_label: "Vrstvy",
+        menu_export_open: "Otevřít export",
+        menu_export_close: "Zavřít export",
     };
 export default strings;

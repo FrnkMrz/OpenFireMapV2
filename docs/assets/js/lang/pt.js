@@ -59,6 +59,11 @@ export const strings = {
         station: "Corpo de Bombeiros",
         hydrant: "Hidrante",
         defib: "Desfibrilador (DEA)",
-        legal_btn: "Info & Legal"
+        legal_btn: "Info & Legal",
+        menu_layers_open: "Abrir camadas",
+        menu_layers_close: "Fechar camadas",
+        menu_layers_label: "Camadas",
+        menu_export_open: "Abrir exportação",
+        menu_export_close: "Fechar exportação",
     };
 export default strings;

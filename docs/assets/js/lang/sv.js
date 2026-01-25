@@ -59,6 +59,11 @@ export const strings = {
         station: "Brandstation",
         hydrant: "Brandpost",
         defib: "Hjärtstartare (AED)",
-        legal_btn: "Info & Lag"
+        legal_btn: "Info & Lag",
+        menu_layers_open: "Öppna lager",
+        menu_layers_close: "Stäng lager",
+        menu_layers_label: "Lager",
+        menu_export_open: "Öppna export",
+        menu_export_close: "Stäng export",
     };
 export default strings;
