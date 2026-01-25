@@ -2,12 +2,15 @@
   "name": "openfiremapv2",
   "version": "1.0.0",
   "description": "OpenFireMapV2 is a personal, non-commercial project focused on learning Git, GitHub, and modern CI/CD workflows, using OpenStreetMap (OSM) data and ideas inspired by the original OpenFireMap.",
-  "main": "tailwind.config.js",
+  "private": true,
   "directories": {
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:css": "tailwindcss -c tailwind.config.js -i ./src/input.css -o ./docs/assets/css/main.css --minify",
+    "watch:css": "tailwindcss -c tailwind.config.js -i ./src/input.css -o ./docs/assets/css/main.css --watch",
+    "build": "npm run build:css",
+    "test": "echo \"no tests\""
   },
   "repository": {
     "type": "git",
