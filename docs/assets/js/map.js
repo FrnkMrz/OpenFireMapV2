@@ -131,6 +131,166 @@ function getSVGContent(type) {
     return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
 }
 
+
+/**
+ * ==========================================================================================
+ * INTELLIGENTES CLUSTERING (NUR FEUERWACHEN)
+ * ==========================================================================================
+ * Ziel:
+ * - Mehrere OSM-Objekte, die faktisch dasselbe Feuerwehrhaus beschreiben (z.B. Node + Way),
+ *   sollen innerhalb eines Radius von 150 m zu EINEM Marker zusammengefasst werden.
+ * - Strikt nur für amenity=fire_station.
+ * - Hydranten, Löschwasser-Objekte, Sirenen, Defis etc. bleiben komplett unberührt.
+ *
+ * Umsetzung:
+ * - Pre-Processing der Overpass-Elemente VOR dem Rendering.
+ * - Basis-Objekt ("Master") ist das Element mit den meisten Tags (höchste Detailtiefe).
+ * - Fehlende Tags werden vom Kandidaten in den Master kopiert.
+ * - Position wird auf den geometrischen Mittelpunkt des Clusters gesetzt.
+ *
+ * Hinweis zur Laufzeit:
+ * - Kommentare kosten keine CPU.
+ * - Der Cluster-Loop läuft nur über Feuerwehrwachen (typisch: wenige Dutzend) und ist damit
+ *   in der Praxis günstig.
+ */
+
+function isFireStation(element) {
+    // Strikt nach Plan: nur amenity=fire_station. building=fire_station zählt hier NICHT.
+    return !!(element && element.tags && element.tags.amenity === 'fire_station');
+}
+
+function getElementLatLon(el) {
+    const lat = el.lat ?? el.center?.lat;
+    const lon = el.lon ?? el.center?.lon;
+    if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+    return { lat, lon };
+}
+
+/**
+ * Haversine-Distanz in Metern.
+ * Genau genug für 150 m Cluster-Radius.
+ */
+function distanceMeters(a, b) {
+    const R = 6371000; // Meter
+    const toRad = (deg) => deg * Math.PI / 180;
+
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lon - a.lon);
+
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+
+    const sin1 = Math.sin(dLat / 2);
+    const sin2 = Math.sin(dLon / 2);
+
+    const h = sin1 * sin1 + Math.cos(lat1) * Math.cos(lat2) * sin2 * sin2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function countTags(tags) {
+    if (!tags) return 0;
+    // Nur eigene Keys zählen, keine Prototyp-Spielereien.
+    return Object.keys(tags).length;
+}
+
+/**
+ * Clustert Fire-Station-Elemente innerhalb von 150 m.
+ * Gibt eine neue Element-Liste zurück: clusteredFireStations + others
+ */
+function clusterFireStations(rawElements, radiusMeters = 150) {
+    if (!Array.isArray(rawElements) || rawElements.length === 0) return rawElements;
+
+    // Schritt A: Trennen
+    const fireStations = [];
+    const others = [];
+
+    for (const el of rawElements) {
+        if (isFireStation(el)) fireStations.push(el);
+        else others.push(el);
+    }
+
+    // Keine Wachen? Dann nix zu tun.
+    if (fireStations.length < 2) return rawElements;
+
+    // Schritt B: Sortierung nach "Qualität" (Anzahl Tags), absteigend.
+    fireStations.sort((a, b) => countTags(b.tags) - countTags(a.tags));
+
+    // Schritt C: Clustering
+    const processed = new Set();
+    const clustered = [];
+
+    for (const master of fireStations) {
+        if (!master || processed.has(master.id)) continue;
+
+        const masterPos = getElementLatLon(master);
+        if (!masterPos) {
+            // Wenn wir keine Koordinate haben, können wir nicht sinnvoll clustern.
+            clustered.push(master);
+            processed.add(master.id);
+            continue;
+        }
+
+        // Aggregation für sauberen Mittelpunkt bei mehreren Kandidaten
+        let sumLat = masterPos.lat;
+        let sumLon = masterPos.lon;
+        let count = 1;
+
+        // Master bekommt garantiert ein tags-Objekt
+        master.tags = master.tags || {};
+
+        // Kandidaten durchsuchen (nur die übrigen Wachen)
+        for (const cand of fireStations) {
+            if (!cand || cand.id === master.id || processed.has(cand.id)) continue;
+
+            const candPos = getElementLatLon(cand);
+            if (!candPos) continue;
+
+            if (distanceMeters(masterPos, candPos) < radiusMeters) {
+                // Kandidat gehört zum Cluster -> wird nicht als eigener Marker gerendert
+                processed.add(cand.id);
+
+                // Merge: Fehlende Tags in den Master kopieren
+                if (cand.tags) {
+                    for (const [k, v] of Object.entries(cand.tags)) {
+                        // Nur "fehlend" ergänzen. Leere Strings zählen als fehlend.
+                        if (master.tags[k] === undefined || master.tags[k] === '') {
+                            master.tags[k] = v;
+                        }
+                    }
+                }
+
+                // Mittelpunkt updaten (inkrementell)
+                sumLat += candPos.lat;
+                sumLon += candPos.lon;
+                count += 1;
+            }
+        }
+
+        // Master-Position auf Cluster-Mittelpunkt setzen
+        const newLat = sumLat / count;
+        const newLon = sumLon / count;
+
+        // Wichtig: Wir setzen lat/lon direkt, damit der bestehende Render-Code
+        // (el.lat || el.center?.lat) einfach funktioniert.
+        master.lat = newLat;
+        master.lon = newLon;
+
+        // Falls es ein center-Objekt gibt (z.B. Way/Relation), ziehen wir es nach.
+        if (master.center && typeof master.center === 'object') {
+            master.center.lat = newLat;
+            master.center.lon = newLon;
+        }
+
+        // Master als verarbeitet markieren (Kandidaten sind es schon).
+        processed.add(master.id);
+        clustered.push(master);
+    }
+
+    // Schritt D: Zusammenfügen
+    return clustered.concat(others);
+}
+
+
 function generateTooltip(tags) {
     const safeTags = tags || {};
     const tooltipTitleRaw = safeTags.name || t('details');
@@ -176,6 +336,14 @@ export function showRangeCircle(lat, lon) {
  * Es werden nur Marker entfernt/hinzugefügt, die sich tatsächlich geändert haben.
  */
 export function renderMarkers(elements, zoom) {
+    // ------------------------------------------------------------
+    // Pre-Processing: intelligentes Clustering NUR für Feuerwehrwachen
+    // ------------------------------------------------------------
+    // Wir clustern hier bewusst VOR dem Rendering, damit:
+    // - alle nachfolgenden Logiken (Zoom-Filter, Diffing, Tooltip, etc.) unverändert bleiben
+    // - nur amenity=fire_station betroffen ist
+    // - Hydranten/Defis/Wasserstellen/Sirenen etc. exakt so bleiben, wie sie aus Overpass kommen
+    const preprocessedElements = clusterFireStations(elements, 150);
     // Grenzen (Boundaries) werden weiterhin komplett neu gezeichnet, 
     // da es meist nur wenige sind und sich die Geometrie bei Zoom ändern kann.
     State.boundaryLayer.clearLayers();
@@ -185,7 +353,7 @@ export function renderMarkers(elements, zoom) {
     const markersToKeep = new Set();
     const renderedLocations = []; // Für die Duplikat-Prüfung (z.B. bei Wachen)
 
-    elements.forEach(el => {
+    preprocessedElements.forEach(el => {
         const tags = el.tags || {};
         const id = el.id; // WICHTIG: Die eindeutige OSM-ID
 
