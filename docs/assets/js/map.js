@@ -19,6 +19,13 @@ export function initMapLogic() {
     // Speichert: ID -> { marker: LeafletMarker, type: String, mode: String }
     State.markerCache = new Map();
 
+    // Tooltip-State (global, weil Tooltips über viele Marker hinweg koordiniert werden müssen)
+    // - openTooltipMarker: Referenz auf den Marker, dessen Tooltip gerade sichtbar ist.
+    //   Damit erzwingen wir: "max. 1 Tooltip gleichzeitig".
+    //   Öffnet ein neuer Tooltip, schließen wir den alten sofort.
+    State.openTooltipMarker = null;
+
+
     State.map = L.map('map', { 
         zoomControl: false, 
         preferCanvas: true, // <--- WICHTIG: Beschleunigt das Rendering massiv
@@ -319,6 +326,27 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
     // 2. Tooltip Logik (Smart Tooltips ab Zoom-Level 18)
     if (marker && className === 'icon-container') {
         // Tooltip-Inhalt einmalig binden; öffnen/schließen wir per Event-Logik
+
+        /**
+         * ----------------------------------------------------------------------------------
+         * SMART-TOOLTIP-LOGIK
+         * ----------------------------------------------------------------------------------
+         * Anforderungen:
+         * 1) Tooltip öffnet bei Mouseover (nicht bei Klick).
+         *    Klick bleibt frei für andere Features (z.B. 100 m Radius um die Position).
+         * 2) Tooltip bleibt offen, solange der User:
+         *    - auf dem Marker ist ODER
+         *    - mit der Maus im Tooltip selbst steht (Tooltip ist "interactive").
+         * 3) Wenn der User raus geht, schließt der Tooltip nach 3 Sekunden.
+         *    (kleiner Puffer, damit man den Tooltip bequem "anfahren" kann).
+         * 4) Es darf immer nur ein Tooltip offen sein:
+         *    Öffnet ein neuer Tooltip, schließen wir den vorherigen sofort.
+         *
+         * Performance-Hinweis:
+         * Kommentare kosten keine Laufzeit. Die Event-Handler bleiben klein,
+         * und wir binden Tooltip-DOM-Listener pro Tooltip-Container nur einmal.
+         */
+
         marker.unbindTooltip();
         marker.bindTooltip(generateTooltip(tags), {
             interactive: true,
@@ -327,9 +355,15 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             opacity: 0.95
         });
 
+        // Timer-Handle für das verzögerte Schließen (3 s).
+        // Wir verwenden setTimeout statt "sofort schließen", weil das UX-mäßig
+        // sonst nervt: Marker verlassen -> Tooltip wäre weg, bevor man ihn erreicht.
         let closeTimer = null;
 
-        // Nur ein Tooltip gleichzeitig offen: neuer Tooltip schließt den alten sofort.
+        // Nur ein Tooltip gleichzeitig offen:
+        // - Wenn bereits ein Tooltip offen ist (State.openTooltipMarker),
+        //   schließen wir ihn, sobald ein anderer Marker seinen Tooltip öffnen will.
+        // - Wenn der "neue" Marker identisch ist, tun wir nichts.
         const closeOtherOpenTooltip = (currentMarker) => {
             const openMarker = State.openTooltipMarker;
             if (!openMarker) return;
@@ -344,6 +378,8 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         marker.off('tooltipopen');
         marker.off('tooltipclose');
 
+        // Mouseover auf den Marker: Tooltip sofort öffnen (ab Zoom >= 18).
+        // Wichtig: Das passiert unabhängig vom Klick-Handling (Radius etc.).
         marker.on('mouseover', function() {
             if (State.map.getZoom() < 18) return;
 
@@ -356,6 +392,9 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             State.openTooltipMarker = this;
         });
 
+        // Mouseout vom Marker: Tooltip nicht sofort schließen,
+        // sondern nach 3 s. Der Timer wird abgebrochen, wenn der User
+        // in den Tooltip fährt (mouseenter auf Tooltip-DOM).
         marker.on('mouseout', function() {
             if (State.map.getZoom() < 18) return;
 
@@ -364,7 +403,12 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             }, 3000);
         });
 
-        // Wenn der User in den Tooltip fährt, Timer stoppen (sonst nervt's)
+        // Tooltip-DOM ist sichtbar:
+        // - Hier greifen wir den Tooltip-Container ab, um 'mouseenter'/'mouseleave'
+        //   direkt auf dem Tooltip zu hören (nicht nur auf dem Marker).
+        // - So bleibt der Tooltip offen, während man ihn liest oder anklickt.
+        // - Gleichzeitig erzwingen wir die "nur ein Tooltip offen"-Regel auch dann,
+        //   wenn Leaflet den Tooltip aus anderen Gründen öffnet (Touch/Keyboard).
         marker.on('tooltipopen', function(e) {
             // Tooltip kann auch über Touch / Keyboard öffnen: Regel trotzdem durchziehen.
             closeOtherOpenTooltip(marker);
@@ -373,7 +417,9 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             const tooltipNode = e?.tooltip?._container;
             if (!tooltipNode) return;
 
-            // Listener nur einmal pro Tooltip-DOM binden (sonst stapelt sich das pro Öffnen).
+            // Listener nur einmal pro Tooltip-Container binden.
+            // Ohne diese Flagge würden wir bei jedem tooltipopen erneut Listener anheften
+            // und der Timer würde mehrfach feuern (klassischer Event-Leak).
             if (tooltipNode.__ofmBound) return;
             tooltipNode.__ofmBound = true;
 
@@ -390,6 +436,9 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
                 }, 3000);
             });
         });
+        // Tooltip schließt (egal wodurch): Aufräumen.
+        // - globalen "openTooltipMarker" zurücksetzen, falls er auf diesen Marker zeigt
+        // - laufenden closeTimer abbrechen
         marker.on('tooltipclose', function() {
             if (State.openTooltipMarker === marker) {
                 State.openTooltipMarker = null;
