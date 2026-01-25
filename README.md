@@ -1,74 +1,86 @@
 # OpenFireMapV2
 
-## Deutsch
+## 🇩🇪 Deutsch
 
-Interaktive Web‑Karte für Feuerwachen, Löschwasser‑Objekte und Defibrillatoren auf Basis von **OpenStreetMap**.  
-Clientseitig, ohne Backend, mit Fokus auf Stabilität und Nachvollziehbarkeit.
+### Überblick
 
----
+**OpenFireMapV2** ist eine interaktive, rein clientseitige Webkarte für feuerwehrrelevante Objekte wie  
+Feuerwachen, Löschwasserentnahmestellen, Hydranten und Defibrillatoren auf Basis von **OpenStreetMap (OSM)**.
 
-### Kurzüberblick
+Das Projekt ist **nicht kommerziell** und dient als **Schulungs- und Übungsprojekt**.  
+Ziel ist es, moderne Webentwicklung ohne Framework-Overhead praxisnah zu verstehen.
 
-- **Frontend only** (kein Server, kein Framework)
-- **GitHub Pages** als Hosting (`docs/`)
-- **Overpass & Nominatim** mit Cache, Abort, Backoff
-- **Saubere Trennung**: Quellcode (`src/`) vs. Deploy‑Artefakte (`docs/`)
-
----
-
-### Einordnung & Motivation
-
-Dieses Projekt ist ein **privates Schulungs‑ und Übungsprojekt**.
-
-Ziele:
-- praktische Erfahrung mit **Vanilla JavaScript (White‑Coding)**
-- sicherer Umgang mit **Git und GitHub**
-- saubere Projektstruktur ohne Framework‑Abhängigkeiten
-
-OpenFireMap entstand ursprünglich um **2011** als einfache Website.  
-OpenFireMapV2 ist der bewusste Versuch, diese Idee **neu aufzusetzen**:
-- mit aktueller Web‑Technik
-- mit besserer Struktur
-- mit Fokus auf Wartbarkeit und Robustheit
-
-Das Projekt ist **nicht kommerziell**, dient dem Lernen und der technischen Weiterentwicklung.  
-Ich bin mit dem aktuellen Stand **sehr zufrieden**.
+Die ursprüngliche OpenFireMap entstand um **2011**.  
+OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik, klarer Struktur und guter Wartbarkeit.
 
 ---
 
-### Internationalisierung (i18n)
+### Ziele des Projekts
 
-- **Standard:** Deutsch (`de`)
-- **Fallback:** Englisch (`en`)
-- weitere Sprachen unter `src/js/lang/`
+- White-Coding mit **Vanilla JavaScript**
+- Saubere Projekt- und Dateistruktur
+- Sicherer Umgang mit **Git & GitHub**
+- Nutzung von **GitHub Pages** inkl. Actions
+- Verständnis von Build-Pipelines ohne SPA-Frameworks
+- Klare Trennung von Quellcode und Build-Output
 
-Qualitätsprüfung:
-```bash
-npm run i18n:check
+---
+
+### Technische Eigenschaften
+
+- **Frontend only** (kein Backend)
+- **Leaflet** für Kartenlogik (lokal eingebunden)
+- **OpenStreetMap**, **Overpass API**, **Nominatim**
+- **Tailwind CSS** (nur Build-Step)
+- Mehrsprachigkeit mit Fallback (Deutsch / Englisch)
+- Keine externen CDN-Abhängigkeiten zur Laufzeit
+
+---
+
+### Projektstruktur
+
+```
+OpenFireMapV2/
+├─ src/
+│  ├─ js/
+│  ├─ lang/
+│  ├─ static/
+│  └─ input.css
+├─ scripts/
+├─ docs/
+├─ package.json
+└─ README.md
 ```
 
 ---
 
-## English
+### Build & Entwicklung
 
-Interactive web map for fire stations, firefighting water sources and defibrillators based on **OpenStreetMap**.  
-Client‑side only, no backend, focused on stability and transparency.
+```bash
+npm install
+npm run build
+```
 
 ---
 
-### Internationalization (i18n)
+### Lizenz
 
-- **Default:** German (`de`)
-- **Fallback:** English (`en`)
-- additional languages in `src/js/lang/`
+MIT License
 
-Quality check:
-```bash
-npm run i18n:check
-```
+---
+
+## 🇬🇧 English
+
+### Overview
+
+**OpenFireMapV2** is a fully client-side interactive web map for fire-service-related objects such as  
+fire stations, water supply points, hydrants and defibrillators based on **OpenStreetMap (OSM)**.
+
+This is a **non-commercial learning project** focused on clean JavaScript, maintainable structure and GitHub workflows.
 
 ---
 
 ### License
 
-MIT
+MIT License
+
