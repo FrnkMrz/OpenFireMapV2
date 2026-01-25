@@ -125,15 +125,20 @@ function getSVGContent(type) {
 }
 
 function generateTooltip(tags) {
-    let tooltipTitle = tags.name || t('details');
-    if (tags.emergency === 'defibrillator') tooltipTitle = t('defib');
+    const safeTags = tags || {};
+    const tooltipTitleRaw = safeTags.name || t('details');
+    const tooltipTitle = escapeHtml(tooltipTitleRaw);
+
     let html = `<div class="p-2 min-w-[180px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div><div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
-    for (const [key, val] of Object.entries(tags)) {
-        html += `<div class="text-slate-400 text-right">${key}:</div><div class="text-slate-200 break-words">${val}</div>`;
+
+    for (const [key, val] of Object.entries(safeTags)) {
+        html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 break-words">${escapeHtml(val)}</div>`;
     }
+
     html += `</div></div>`;
     return html;
 }
+
 
 // Kreis-Funktion (jetzt mit Config-Farbe)
 export function showRangeCircle(lat, lon) {
@@ -258,10 +263,6 @@ export function renderMarkers(elements, zoom) {
             State.markerCache.delete(id);
         }
     }
-    // --- NEU: Smart Tooltips aktivieren (für Hydranten & Co) ---
-    enableSmartTooltips(State.markerLayer, State.map);
-
-
 }
 
 /**
@@ -315,161 +316,80 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         }
     }
 
-    // 2. Tooltip Logik (Nur für SVG Icons bei hohem Zoom)
-    if (marker && zoom === 18 && className === 'icon-container') {
-         marker.bindTooltip(generateTooltip(tags), { 
-            interactive: true, permanent: false, direction: 'top', opacity: 0.95 
-        });
-
-// ---------------------------------------------------------
-        // NEUE SMART-TOOLTIP LOGIK (Mit Zoom-Check & Inhalt)
-        // ---------------------------------------------------------
-        
-        // 1. Tooltip-Inhalt generieren (Tags & Ort)
-        let content = `<strong>ID: ${hydrant.id}</strong>`;
-        if (hydrant.tags) {
-            content += '<div style="margin-top:5px; font-size:0.9em; border-top:1px solid #ccc; padding-top:3px;">';
-            
-            // Ort für Feuerwachen hervorheben
-            if (hydrant.tags['amenity'] === 'fire_station') {
-                const ort = hydrant.tags['addr:city'] || hydrant.tags['addr:municipality'] || '';
-                if (ort) content += `<strong>Ort: ${ort}</strong><br>`;
-            }
-
-            // Alle Tags auflisten
-            for (const [key, value] of Object.entries(hydrant.tags)) {
-                content += `${key}: ${value}<br>`;
-            }
-            content += '</div>';
-        }
-
-        // 2. Tooltip anbinden (noch nicht öffnen!)
-        marker.bindTooltip(content, {
+    // 2. Tooltip Logik (Smart Tooltips ab Zoom-Level 18)
+    if (marker && className === 'icon-container') {
+        // Tooltip-Inhalt einmalig binden; öffnen/schließen wir per Event-Logik
+        marker.unbindTooltip();
+        marker.bindTooltip(generateTooltip(tags), {
+            interactive: true,
+            permanent: false,
             direction: 'top',
-            offset: [0, -10],
-            opacity: 0.9
+            opacity: 0.95
         });
 
-        // 3. Event-Logik für Zoom & Auto-Close
-        marker.off('mouseover mouseout'); // Alte Listener entfernen
-        marker._tooltipCloseTimer = null;
+        let closeTimer = null;
+
+        // Alte Listener sicher entfernen, damit wir nichts stapeln
+        marker.off('mouseover');
+        marker.off('mouseout');
+        marker.off('tooltipopen');
 
         marker.on('mouseover', function() {
-            // CHECK: Ist Zoom Level hoch genug? (Erst ab Zoom 18 anzeigen)
             if (State.map.getZoom() < 18) return;
 
-            if (this._tooltipCloseTimer) {
-                clearTimeout(this._tooltipCloseTimer);
-                this._tooltipCloseTimer = null;
+            if (closeTimer) {
+                clearTimeout(closeTimer);
+                closeTimer = null;
             }
             this.openTooltip();
         });
 
         marker.on('mouseout', function() {
-            // Nach 3 Sekunden automatisch schließen
-            this._tooltipCloseTimer = setTimeout(() => {
+            if (State.map.getZoom() < 18) return;
+
+            closeTimer = setTimeout(() => {
                 this.closeTooltip();
             }, 3000);
         });
-        // ---------------------------------------------------------
-        
+
+        // Wenn der User in den Tooltip fährt, Timer stoppen (sonst nervt's)
         marker.on('tooltipopen', function(e) {
-            const tooltipNode = e.tooltip._container;
+            const tooltipNode = e?.tooltip?._container;
             if (!tooltipNode) return;
+
             L.DomEvent.on(tooltipNode, 'mouseenter', () => {
-                if (this._tooltipCloseTimer) {
-                    clearTimeout(this._tooltipCloseTimer);
-                    this._tooltipCloseTimer = null;
+                if (closeTimer) {
+                    clearTimeout(closeTimer);
+                    closeTimer = null;
                 }
             });
+
             L.DomEvent.on(tooltipNode, 'mouseleave', () => {
-                this._tooltipCloseTimer = setTimeout(() => {
-                    this.closeTooltip();
+                closeTimer = setTimeout(() => {
+                    marker.closeTooltip();
                 }, 3000);
             });
         });
     }
 
     // 3. Marker zur Karte hinzufügen
-    marker.addTo(State.markerLayer);
+    if (marker) {
+        marker.addTo(State.markerLayer);
 
-    // 4. In den Cache speichern
-    State.markerCache.set(id, {
-        marker: marker,
-        mode: mode,
-        type: type
-    });
-
-
-    /**
- * ==========================================================================================
- * SMART TOOLTIP LOGIK (Neu)
- * Zeigt OSM-Daten nur ab Zoom-Level 18 an.
- * Schließt den Tooltip erst nach 3 Sekunden Verzögerung.
- * ==========================================================================================
- */
-
-/**
- * Aktiviert intelligente Tooltips für eine Layer-Gruppe.
- * @param {L.LayerGroup} layerGroup - Die Gruppe von Markern (z.B. Hydranten).
- * @param {L.Map} map - Die Karten-Instanz.
- */
-function enableSmartTooltips(layerGroup, map) {
-    layerGroup.eachLayer(function(marker) {
-        let tooltipTimeout;
-
-        marker.on('mouseover', function(e) {
-            // 1. Zoom-Prüfung: Nur ab Level 18 anzeigen (18, 19, 20...)
-            if (map.getZoom() < 18) {
-                return; 
-            }
-
-            // Falls ein Schließ-Timer läuft (User kam zurück), stoppen wir ihn
-            if (tooltipTimeout) {
-                clearTimeout(tooltipTimeout);
-                tooltipTimeout = null;
-            }
-
-            // Daten holen
-            const props = marker.feature ? marker.feature.properties : null;
-            if (!props) return;
-
-            // Tooltip-Inhalt bauen (nur wenn noch nicht gebunden)
-            if (!marker.getTooltip()) {
-                let content = '<div class="osm-tooltip-container" style="text-align: left; font-size: 12px; line-height: 1.4;">';
-                
-                // Alle Eigenschaften durchgehen und sicher einfügen
-                for (const key in props) {
-                    if (Object.prototype.hasOwnProperty.call(props, key)) {
-                        const safeKey = escapeHtml(key);
-                        const safeValue = escapeHtml(props[key]);
-                        // Wichtige Tags hervorheben oder alle anzeigen
-                        content += `<b>${safeKey}:</b> ${safeValue}<br>`;
-                    }
-                }
-                content += '</div>';
-
-                marker.bindTooltip(content, {
-                    permanent: false, // Wichtig: false, damit wir das Öffnen/Schließen steuern
-                    direction: 'top',
-                    offset: [0, -10],
-                    opacity: 0.9,
-                    className: 'custom-osm-tooltip'
-                });
-            }
-
-            // Tooltip anzeigen
-            marker.openTooltip();
+        // 4. In den Cache speichern (inkl. Tags, damit wir später nicht raten müssen)
+        State.markerCache.set(id, {
+            marker,
+            mode,
+            type,
+            tags,
+            lat,
+            lon,
+            isStation,
+            isDefib
         });
-
-        marker.on('mouseout', function(e) {
-            // Timer starten: Nach 3000ms (3 Sekunden) schließen
-            tooltipTimeout = setTimeout(() => {
-                marker.closeTooltip();
-            }, 3000);
-        });
-    });
+    }
 }
+
 
 /**
  * Sicherheitsfunktion gegen Code-Injection (XSS)
