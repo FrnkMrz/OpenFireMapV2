@@ -1,7 +1,9 @@
 /**
  * ==========================================================================================
  * DATEI: api.js
- * ZWECK: Kommunikation mit OSM-Services (Overpass + Nominatim) + Overpass Cache (P2b-3)
+ * ZWECK: Kommunikation mit OSM-Services (Overpass + Nominatim)
+ *        + Overpass Cache (P2b-3)
+ *        + Backoff/Fallback (P2b-4)
  * ==========================================================================================
  */
 
@@ -31,6 +33,10 @@ function mapError(err) {
   if (err?.message === 'err_offline') return 'err_offline';
 
   return 'err_generic';
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
 }
 
 /**
@@ -74,8 +80,7 @@ export async function geocodeNominatim(query, { signal } = {}) {
 }
 
 /**
- * Cache helpers
- * Rounding verhindert, dass Micropans den Cache nutzlos machen.
+ * Cache helpers (BBox-Rounding verhindert Cache-Miss bei Micropan)
  */
 function roundCoord(x, decimals = 3) {
   const m = 10 ** decimals;
@@ -95,8 +100,9 @@ function makeOverpassCacheKey({ zoom, bboxKey, queryKind }) {
 }
 
 /**
- * Overpass: Fallback über mehrere Endpoints, POST statt URL-Query,
- * Timeout + Abort, JSON-Check + Cache (P2b-3).
+ * Overpass: Fallback über mehrere Endpoints, POST, Timeout + Abort, JSON-Check
+ * + Cache (P2b-3)
+ * + Backoff bei 429/5xx (P2b-4)
  */
 async function fetchWithRetry(overpassQueryString, { cacheKey = null, cacheTtlMs = 60000 } = {}) {
   if (!navigator.onLine) throw new Error('err_offline');
@@ -138,6 +144,16 @@ async function fetchWithRetry(overpassQueryString, { cacheKey = null, cacheTtlMs
       if (err?.name === 'AbortError') throw err;
 
       lastErr = err;
+
+      // Backoff: nicht sofort alle Endpoints abklappern
+      if (err instanceof HttpError) {
+        if (err.status === 429) await sleep(1500);
+        else if (err.status >= 500) await sleep(800);
+      } else {
+        // bei "sonstigem" Fehler (Netz/JSON) kurz warten
+        await sleep(300);
+      }
+
       console.warn(`Fehler bei ${endpoint}:`, err);
       continue;
     }
@@ -148,13 +164,11 @@ async function fetchWithRetry(overpassQueryString, { cacheKey = null, cacheTtlMs
 
 /**
  * Hauptfunktion: lädt OSM-Daten passend zum Zoom-Level und BBox.
- * Arbeitet mit AbortController, damit Zoom/Pan alte Requests killt.
  */
 export async function fetchOSMData() {
   const zoom = State.map.getZoom();
   const status = document.getElementById('data-status');
 
-  // Wenn Zoom klein: standby + Layers leeren
   if (zoom < 12) {
     if (status) {
       status.innerText = t('status_standby');
@@ -179,7 +193,7 @@ export async function fetchOSMData() {
     status.className = 'text-amber-400 font-bold';
   }
 
-  // Alte Anfrage abbrechen + neuen Controller setzen (Reihenfolge ist wichtig)
+  // Alte Anfrage abbrechen + neuen Controller setzen
   if (State.controllers.fetch) State.controllers.fetch.abort();
   State.controllers.fetch = new AbortController();
 
@@ -201,15 +215,12 @@ export async function fetchOSMData() {
 
   if (queryParts.length === 0 && boundaryQuery === '') return;
 
-  // Query-Typ für Cache-Key (grob, reicht)
   const queryKind =
     zoom >= 15 ? 'pois+boundary' :
     zoom >= 14 ? 'stations+boundary' :
     'stations';
 
   const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
-
-  // TTL nach Zoom (höherer Zoom = kürzer)
   const cacheTtlMs = zoom >= 15 ? 30000 : 60000;
 
   const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
@@ -225,7 +236,6 @@ export async function fetchOSMData() {
       status.className = 'text-green-400';
     }
   } catch (err) {
-    // Abbruch still schlucken (Zoom/Pan)
     if (err?.name === 'AbortError') return;
 
     const msgKey = mapError(err);
