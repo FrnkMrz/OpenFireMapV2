@@ -15,6 +15,160 @@ import { Config } from './config.js';
 import { t, getLang } from './i18n.js'; 
 import { showNotification, toggleExportMenu } from './ui.js'; 
 
+
+/* =============================================================================
+   HILFSFUNKTIONEN: PRE-PROCESSING FÜR EXPORT (Clustering nur für Feuerwachen)
+   -----------------------------------------------------------------------------
+   Warum hier?
+   - Export (PNG/GPX) nutzt State.cachedElements direkt.
+   - Auf der Karte clustern wir Feuerwachen (150 m), damit nicht mehrere Haus-Icons
+     auf einem Gelände erscheinen (z.B. mehrere Gebäude einer Wache).
+   - Damit Export und Karte identisch sind, wenden wir das gleiche Clustering auch
+     im Export an – aber strikt NUR für Fire Stations.
+   ============================================================================= */
+
+const EXPORT_FIRE_STATION_CLUSTER_RADIUS_M = 150;
+
+function isFireStation(el) {
+    const tags = el?.tags;
+    return !!(tags && (tags.amenity === 'fire_station' || tags.building === 'fire_station'));
+}
+
+function getLatLon(el) {
+    const lat = el?.lat ?? el?.center?.lat;
+    const lon = el?.lon ?? el?.center?.lon;
+    if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+    return { lat, lon };
+}
+
+function elementKey(el) {
+    // Overpass IDs können sich zwischen node/way/relation überschneiden.
+    // Daher immer type + id kombinieren.
+    const t = el?.type || 'node';
+    return `${t}:${el?.id}`;
+}
+
+function tagCount(el) {
+    const t = el?.tags;
+    return t ? Object.keys(t).length : 0;
+}
+
+function mergeMissingTags(targetTags, sourceTags) {
+    if (!sourceTags) return;
+    for (const [k, v] of Object.entries(sourceTags)) {
+        if (targetTags[k] === undefined || targetTags[k] === null || targetTags[k] === '') {
+            targetTags[k] = v;
+        }
+    }
+}
+
+// Haversine (Meter)
+function distanceMeters(a, b) {
+    const R = 6371000;
+    const toRad = (x) => (x * Math.PI) / 180;
+
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lon - a.lon);
+
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+
+    const s1 = Math.sin(dLat / 2);
+    const s2 = Math.sin(dLon / 2);
+
+    const h = (s1 * s1) + Math.cos(lat1) * Math.cos(lat2) * (s2 * s2);
+    const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    return R * c;
+}
+
+/**
+ * Clustert ausschließlich Feuerwachen (amenity/building=fire_station) innerhalb radiusM.
+ * Alle anderen Elemente bleiben unverändert.
+ *
+ * Strategie:
+ * - Master: Element mit den meisten Tags (höchste "Qualität")
+ * - Merge: fehlende Tags in den Master übernehmen
+ * - Position: geometrischer Mittelpunkt aller Cluster-Mitglieder
+ */
+function preprocessElementsForExport(rawElements, radiusM = EXPORT_FIRE_STATION_CLUSTER_RADIUS_M) {
+    if (!Array.isArray(rawElements) || rawElements.length === 0) return rawElements || [];
+
+    const fireStations = [];
+    const others = [];
+
+    for (const el of rawElements) {
+        if (isFireStation(el)) fireStations.push(el);
+        else others.push(el);
+    }
+
+    if (fireStations.length <= 1) return rawElements;
+
+    // Sortierung: "beste" Elemente zuerst
+    fireStations.sort((a, b) => tagCount(b) - tagCount(a));
+
+    const processed = new Set();
+    const clustered = [];
+
+    for (let i = 0; i < fireStations.length; i++) {
+        const master = fireStations[i];
+        const masterKey = elementKey(master);
+        if (processed.has(masterKey)) continue;
+
+        const masterPos = getLatLon(master);
+        if (!masterPos) {
+            // Ohne Position macht Clustering keinen Sinn.
+            processed.add(masterKey);
+            clustered.push(master);
+            continue;
+        }
+
+        processed.add(masterKey);
+
+        // Master klonen, damit wir State.cachedElements nicht “nebenbei” kaputt mutieren.
+        const merged = {
+            ...master,
+            tags: { ...(master.tags || {}) }
+        };
+
+        let sumLat = masterPos.lat;
+        let sumLon = masterPos.lon;
+        let count = 1;
+
+        for (let j = i + 1; j < fireStations.length; j++) {
+            const cand = fireStations[j];
+            const candKey = elementKey(cand);
+            if (processed.has(candKey)) continue;
+
+            const candPos = getLatLon(cand);
+            if (!candPos) continue;
+
+            if (distanceMeters(masterPos, candPos) < radiusM) {
+                processed.add(candKey);
+                mergeMissingTags(merged.tags, cand.tags || {});
+                sumLat += candPos.lat;
+                sumLon += candPos.lon;
+                count++;
+            }
+        }
+
+        // Mittelpunkt setzen (inkrementell über sum/count)
+        const avgLat = sumLat / count;
+        const avgLon = sumLon / count;
+
+        // Für node-basierte Exporte erwarten wir lat/lon.
+        merged.lat = avgLat;
+        merged.lon = avgLon;
+
+        // Für way/relation-Objekte erwartet der Rest oft center.* (zur Sicherheit beides).
+        merged.center = { lat: avgLat, lon: avgLon };
+
+        clustered.push(merged);
+    }
+
+    // Reihenfolge ist für Export egal; wir lassen "clustered + others".
+    return clustered.concat(others);
+}
+
 /* =============================================================================
    TEIL 1: DAS AUSWAHL-WERKZEUG (Das blaue Rechteck)
    ============================================================================= */
@@ -116,7 +270,8 @@ function escapeXML(str) {
 export function exportAsGPX() {
     try {
         const bounds = State.selection.finalBounds || State.map.getBounds();
-        const pointsToExport = State.cachedElements.filter(el => {
+        const elementsForExport = preprocessElementsForExport(State.cachedElements);
+        const pointsToExport = elementsForExport.filter(el => {
             const lat = el.lat || el.center?.lat;
             const lon = el.lon || el.center?.lon;
             if (!lat || !lon) return false;
@@ -233,6 +388,8 @@ export async function exportAsPNG() {
         // 2. PARAMETER
         const targetZoom = State.exportZoomLevel;
         const bounds = State.selection.finalBounds || State.map.getBounds(); 
+        // Export soll identisch zur Kartenlogik sein: Feuerwachen vorher clustern (150 m).
+        const elementsForExport = preprocessElementsForExport(State.cachedElements);
         const nw = bounds.getNorthWest();
         const se = bounds.getSouthEast();
 
@@ -339,7 +496,7 @@ export async function exportAsPNG() {
         ctx.lineWidth = 2; ctx.setLineDash([20, 20]); ctx.lineCap = "round";
         
         // C) Linien malen
-        State.cachedElements.forEach(el => {
+        elementsForExport.forEach(el => {
             if (el.tags && el.tags.boundary === 'administrative' && el.geometry && targetZoom >= 14) {
                  ctx.beginPath();
                  let first = true;
@@ -380,7 +537,7 @@ export async function exportAsPNG() {
             return img;
         };
 
-        for (let el of State.cachedElements) {
+        for (let el of elementsForExport) {
             const tags = el.tags || {};
             if (tags.boundary === 'administrative') continue;
 
