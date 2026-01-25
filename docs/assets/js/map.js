@@ -40,24 +40,70 @@ export function initMapLogic() {
     setBaseLayer('voyager');
 
     let debounceTimer;
+    // Merkt sich, für welchen "Daten-Modus" + Karten-Ausschnitt wir zuletzt geladen haben.
+    // Damit vermeiden wir unnötige Requests beim minimalen Verschieben oder bei Zoom-Änderungen,
+    // die am Ladeumfang nichts ändern.
+    let lastFetchKey = null;
+
+    // Ab wann wird was geladen? Muss 1:1 zur Logik in api.js passen.
+    // - < 12: gar nichts
+    // - 12-14: nur Feuerwachen (Stations)
+    // - >= 15: alles (Stations + Hydranten/AED/Wasserstellen)
+    const getLoadMode = (zoom) => {
+        if (zoom < 12) return 'none';
+        if (zoom < 15) return 'stations';
+        return 'all';
+    };
+
+    // Hilfsfunktion: Bounding Box des aktuellen Viewports als stabiler String.
+    // Wir runden bewusst, damit winzige Bewegungen nicht sofort neue Requests auslösen.
+    const getRoundedBBox = () => {
+        const b = State.map.getBounds();
+        const r = (v) => Number(v).toFixed(4); // ~11 m Auflösung, reicht für Request-Gating
+        return `${r(b.getSouth())},${r(b.getWest())},${r(b.getNorth())},${r(b.getEast())}`;
+    };
+
     State.map.on('moveend zoomend', () => {
-        // FIX FÜR "RAUSZOOMEN": 
-        // Wir rufen sofort renderMarkers auf, um die Sichtbarkeit basierend auf dem 
-        // NEUEN Zoom-Level zu prüfen. 
-        // Dadurch verschwinden Hydranten (<15) oder Wachen (<12) sofort,
-        // ohne dass wir auf das Neuladen der Daten warten müssen.
+        const zoom = State.map.getZoom();
+
+        // 1) Sofortiges Re-Rendering aus Cache:
+        // Beim Rauszoomen sollen Marker sofort verschwinden, ohne neue Daten zu laden.
         if (State.cachedElements) {
-            renderMarkers(State.cachedElements, State.map.getZoom());
+            renderMarkers(State.cachedElements, zoom);
         }
 
-        // Der Rest bleibt gleich (Daten neu laden nach kurzer Wartezeit)
-        if (debounceTimer) clearTimeout(debounceTimer);
+        // Tooltips gibt es nur ab Zoom 18. Bei Zoom-Out: offenen Tooltip sofort schließen.
+        if (zoom < 18 && State.openTooltipMarker) {
+            try { State.openTooltipMarker.closeTooltip(); } catch (e) { /* ignore */ }
+            State.openTooltipMarker = null;
+        }
+
+        // 2) Daten-Loading nur, wenn es auch Sinn ergibt
+        const mode = getLoadMode(zoom);
+        if (mode === 'none') {
+            // Unter Zoom 12 laden wir gar nichts. api.js räumt zusätzlich auf.
+            return;
+        }
+
+        // 3) Request-Gating: nur neu laden, wenn sich Mode oder Viewport sinnvoll geändert hat
+        const bboxKey = getRoundedBBox();
+        const boundaryFlag = (zoom >= 14) ? 'b1' : 'b0';
+        const fetchKey = `${mode}|${boundaryFlag}|${bboxKey}`;
+
+        // Status "Warten" setzen (UX)
         const statusEl = document.getElementById('data-status');
-        if(statusEl) {
+        if (statusEl) {
             statusEl.innerText = t('status_waiting');
             statusEl.className = 'text-amber-400 font-bold';
         }
-        debounceTimer = setTimeout(() => fetchOSMData(), 400);
+
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            // Wenn sich seit dem letzten erfolgreichen (oder gestarteten) Fetch nichts geändert hat: skip.
+            if (fetchKey === lastFetchKey) return;
+            lastFetchKey = fetchKey;
+            fetchOSMData();
+        }, 400);
     });
 
     State.map.on('click', () => {
@@ -370,7 +416,7 @@ export function renderMarkers(elements, zoom) {
 
     preprocessedElements.forEach(el => {
         const tags = el.tags || {};
-        const id = el.id; // WICHTIG: Die eindeutige OSM-ID
+        const id = `${el.type || 'node'}:${el.id}`; // Stabiler Key: type:id (node/way/relation können gleiche id haben)
 
         // --- A. Grenzen verarbeiten (wie bisher) ---
         if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
