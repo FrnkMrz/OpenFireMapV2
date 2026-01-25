@@ -560,6 +560,20 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         marker.off('mouseout');
         marker.off('tooltipopen');
         marker.off('tooltipclose');
+        // Leaflet hängt standardmäßig auch ein Click-Handler für Tooltips an (besonders relevant auf Touch-Geräten).
+        // Das kollidiert bei uns mit "Click = 100 m Radius" und mit "Tooltip nur per Hover".
+        // Daher: alle Click-Listener entfernen und unseren Radius-Click danach gezielt wieder anbinden.
+        marker.off('click');
+
+        // Klick bleibt ausschließlich für den 100 m Radius (Hydranten/Wasser etc.),
+        // NICHT für Tooltips.
+        if (!isStation && !isDefib) {
+            marker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                showRangeCircle(lat, lon);
+            });
+        }
+
 
         // Mouseover auf den Marker: Tooltip sofort öffnen (ab Zoom >= 18).
         // Wichtig: Das passiert unabhängig vom Klick-Handling (Radius etc.).
@@ -593,6 +607,11 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         // - Gleichzeitig erzwingen wir die "nur ein Tooltip offen"-Regel auch dann,
         //   wenn Leaflet den Tooltip aus anderen Gründen öffnet (Touch/Keyboard).
         marker.on('tooltipopen', function(e) {
+            // Tooltips gibt es nur ab Zoom-Level 18. Falls Leaflet ihn aus anderen Gründen öffnet: sofort schließen.
+            if (State.map.getZoom() < 18) {
+                try { marker.closeTooltip(); } catch (e) { /* ignore */ }
+                return;
+            }
             // Tooltip kann auch über Touch / Keyboard öffnen: Regel trotzdem durchziehen.
             closeOtherOpenTooltip(marker);
             State.openTooltipMarker = marker;
