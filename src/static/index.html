@@ -18,192 +18,340 @@
     <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
 
     <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css">
-
     <link rel="stylesheet" href="assets/css/main.css">
+
+    <!--
+      WICHTIG:
+      Scripts werden am Ende des <body> geladen.
+      So bleibt die Reihenfolge stabil (Leaflet -> config -> app),
+      ohne Timing-Probleme mit defer/module.
+    -->
 </head>
 
-<body class="bg-gray-900 text-white overflow-hidden">
+<body>
+    <h1 class="sr-only">OpenFireMap.org</h1>
 
-    <!-- Map -->
-    <div id="map"></div>
+    <main>
+        <div id="map" aria-label="Karte" role="application"></div>
 
-    <!-- Top left: search box -->
-    <div class="absolute top-6 left-6 z-[1000] flex items-start gap-2 pointer-events-auto">
+        <div id="notification-box" role="alert" aria-live="polite"></div>
 
-        <div class="glass-panel rounded-2xl px-3 py-2 flex items-center gap-2 shadow-lg">
-            <input id="search-input" type="text" data-i18n-placeholder="search_placeholder"
-                placeholder="Ort / Adresse / POI…" class="bg-transparent outline-none w-56 md:w-72 text-sm">
-            <button id="search-btn" class="opacity-80 hover:opacity-100 transition" aria-label="Search">
-                🔎
+        <div class="absolute top-5 left-5 z-[1000] flex gap-3">
+
+            <div
+                class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5 focus-within:ring-2 focus-within:ring-blue-500">
+                <label for="search-input" class="sr-only" data-i18n="search_placeholder">Ort suchen</label>
+
+                <input type="text" id="search-input" data-i18n-placeholder="search_placeholder"
+                    class="bg-transparent px-4 py-2 text-sm text-white outline-none focus:ring-0 w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-400">
+
+                <button id="search-btn" aria-label="Suchen"
+                    class="p-2 text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-xl">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </button>
+            </div>
+
+            <button id="locate-btn" data-i18n-title="locate_title" aria-label="Meinen Standort bestimmen"
+                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+
+            <button id="layer-btn-trigger" data-i18n-title="layers_title" aria-haspopup="true" aria-expanded="false"
+                aria-controls="layer-menu" aria-label="Kartenebenen-Menü öffnen"
+                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+            </button>
+
+            <button id="export-btn-trigger" data-i18n-title="export_title" aria-haspopup="true" aria-expanded="false"
+                aria-controls="export-menu" aria-label="Export-Menü öffnen"
+                class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
             </button>
         </div>
 
-        <!-- Locate -->
-        <button id="locate-btn" class="glass-panel rounded-2xl px-3 py-2 shadow-lg hover:bg-white/10 transition"
-            aria-label="Locate">
-            📍
-        </button>
-
-        <!-- Layers -->
-        <div class="relative">
-            <button id="layer-btn-trigger" class="glass-panel rounded-2xl px-3 py-2 shadow-lg hover:bg-white/10 transition"
-                data-i18n-title="menu_layers_label" title="Layer" aria-expanded="false" aria-label="Layer">
-                🗺️
+        <div class="absolute bottom-8 left-5 z-[1000]">
+            <button id="btn-legal-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="legal-modal"
+                class="glass-panel p-1.5 rounded-xl text-slate-400 hover:text-white shadow-xl transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-[10px] font-bold hidden md:inline" data-i18n="legal_btn">Info & Recht</span>
             </button>
+        </div>
 
-            <div id="layer-menu"
-                class="hidden absolute left-0 mt-2 w-72 glass-panel rounded-2xl p-4 shadow-lg z-[1001]">
-                <div class="font-semibold text-sm mb-3" data-i18n="menu_layers_label">Layer</div>
+        <div
+            class="absolute bottom-10 right-10 z-[1000] glass-panel p-4 rounded-2xl text-[10px] text-slate-400 font-mono border border-white/5">
+            <div class="flex justify-between gap-4"><span data-i18n="zoom_info">ZOOM</span><span id="zoom-val"
+                    class="text-white font-bold">14.0</span></div>
+            <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status"
+                    class="text-green-400">AKTUELL</span></div>
+        </div>
 
-                <div class="space-y-2 text-sm">
-                    <div class="flex items-center justify-between">
-                        <span>Voyager</span>
-                        <button id="btn-voyager" class="pill-btn">OK</button>
+        <div id="layer-menu" role="menu" aria-labelledby="layer-btn-trigger"
+            class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center"
+                data-i18n="bg_header">Hintergrund</h3>
+            <div class="grid grid-cols-1 gap-1">
+
+                <button id="btn-voyager" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-blue-500" aria-hidden="true"></div>
+                    <span data-i18n="layer_std">Standard</span>
+                </button>
+
+                <button id="btn-positron" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-slate-300" aria-hidden="true"></div>
+                    <span data-i18n="layer_print">Druck</span>
+                </button>
+
+                <button id="btn-dark" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-slate-800" aria-hidden="true"></div>
+                    <span data-i18n="layer_night">Nacht</span>
+                </button>
+
+                <button id="btn-satellite" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-green-600" aria-hidden="true"></div>
+                    <span data-i18n="layer_sat">Satellit</span>
+                </button>
+
+                <button id="btn-topo" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-amber-600" aria-hidden="true"></div>
+                    <span data-i18n="layer_topo">Topographisch</span>
+                </button>
+
+                <button id="btn-osm" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 border-t border-white/5 mt-1 pt-2">
+                    <div class="w-3 h-3 rounded-full bg-emerald-500" aria-hidden="true"></div>
+                    <span data-i18n="layer_osm">OSM</span>
+                </button>
+
+                <button id="btn-osmde" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-emerald-700" aria-hidden="true"></div>
+                    <span data-i18n="layer_osmde">OSM DE</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="export-menu" role="dialog" aria-labelledby="export-title" aria-modal="true"
+            class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
+
+            <div id="export-setup" class="space-y-5">
+                <div class="flex justify-between items-center">
+                    <h3 id="export-title" class="font-bold text-lg" data-i18n="export_header">Export</h3>
+                    <button id="export-close-btn" class="text-slate-400 hover:text-white text-2xl leading-none"
+                        aria-label="Schließen">&times;</button>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider"
+                        data-i18n="format_label">Format</label>
+                    <div class="grid grid-cols-3 gap-2" role="group" aria-label="Format Auswahl">
+                        <button id="fmt-free" aria-pressed="true"
+                            class="fmt-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active"
+                            data-i18n="fmt_free">FREI</button>
+                        <button id="fmt-a4l" aria-pressed="false"
+                            class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10"
+                            data-i18n="fmt_a4l">DIN QUER</button>
+                        <button id="fmt-a4p" aria-pressed="false"
+                            class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10"
+                            data-i18n="fmt_a4p">DIN HOCH</button>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span>Positron</span>
-                        <button id="btn-positron" class="pill-btn">OK</button>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider"
+                        data-i18n="zoom_label">Zoom</label>
+                    <div class="grid grid-cols-4 gap-2" role="group" aria-label="Zoom Stufe Auswahl">
+                        <button id="zoom-15" aria-pressed="false"
+                            class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">15</button>
+                        <button id="zoom-16" aria-pressed="false"
+                            class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">16</button>
+                        <button id="zoom-17" aria-pressed="false"
+                            class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">17</button>
+                        <button id="zoom-18" aria-pressed="true"
+                            class="zoom-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active">18</button>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span>Dark</span>
-                        <button id="btn-dark" class="pill-btn">OK</button>
+                </div>
+
+                <button id="select-btn"
+                    class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10">
+                    <span data-i18n="select_area_btn">Ausschnitt wählen</span>
+                </button>
+                <div id="selection-info"
+                    class="hidden text-[11px] text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20"
+                    data-i18n="area_fixed">Fixiert ✓</div>
+
+                <button id="png-btn"
+                    class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
+                    <span data-i18n="png_btn">PNG Speichern</span>
+                </button>
+                <button id="gpx-btn"
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg border border-emerald-400/30">
+                    <span data-i18n="gpx_btn">GPX Speichern</span>
+                </button>
+            </div>
+
+            <div id="export-progress" class="hidden" role="status" aria-live="polite">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-blue-400 exporting-active" data-i18n="exporting_title">Export
+                        läuft...</h3>
+                </div>
+                <div class="space-y-4">
+                    <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-blue-500 w-0 transition-all duration-300"></div>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span>Satellite</span>
-                        <button id="btn-satellite" class="pill-btn">OK</button>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span>Topo</span>
-                        <button id="btn-topo" class="pill-btn">OK</button>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span>OSM</span>
-                        <button id="btn-osm" class="pill-btn">OK</button>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span>OSM.de</span>
-                        <button id="btn-osmde" class="pill-btn">OK</button>
-                    </div>
+                    <button id="cancel-export-btn"
+                        class="w-full bg-red-500/10 text-red-400 py-2 rounded-xl text-sm font-semibold border border-red-500/20"
+                        data-i18n="cancel_btn">Abbrechen</button>
                 </div>
             </div>
         </div>
 
-        <!-- Export -->
-        <div class="relative">
-            <button id="export-btn-trigger"
-                class="glass-panel rounded-2xl px-3 py-2 shadow-lg hover:bg-white/10 transition"
-                data-i18n-title="menu_export_open" title="Export" aria-expanded="false" aria-label="Export">
-                ⬇️
-            </button>
-
-            <div id="export-menu"
-                class="hidden absolute left-0 mt-2 w-80 glass-panel rounded-2xl p-4 shadow-lg z-[1001]">
-
-                <div class="flex items-center justify-between mb-3">
-                    <div class="font-semibold text-sm" data-i18n="menu_export_label">Export</div>
-                    <button id="export-close-btn" class="text-sm opacity-70 hover:opacity-100" aria-label="Close">✕</button>
-                </div>
-
-                <div id="export-setup" class="space-y-3">
-                    <div class="text-xs opacity-70" data-i18n="export_format">Format</div>
-                    <div class="flex gap-2">
-                        <button id="fmt-free" class="pill-btn">Free</button>
-                        <button id="fmt-a4l" class="pill-btn">A4 L</button>
-                        <button id="fmt-a4p" class="pill-btn">A4 P</button>
-                    </div>
-
-                    <div class="text-xs opacity-70 mt-2" data-i18n="export_zoom">Zoom</div>
-                    <div class="flex gap-2">
-                        <button id="zoom-15" class="pill-btn">15</button>
-                        <button id="zoom-16" class="pill-btn">16</button>
-                        <button id="zoom-17" class="pill-btn">17</button>
-                        <button id="zoom-18" class="pill-btn">18</button>
-                    </div>
-
-                    <div class="flex gap-2 pt-2">
-                        <button id="select-btn" class="primary-btn flex-1" data-i18n="export_select">Bereich wählen</button>
-                        <button id="cancel-export-btn" class="pill-btn" data-i18n="export_cancel">Abbrechen</button>
-                    </div>
-
-                    <div class="flex gap-2">
-                        <button id="png-btn" class="primary-btn flex-1" data-i18n="export_png">PNG</button>
-                        <button id="gpx-btn" class="primary-btn flex-1" data-i18n="export_gpx">GPX</button>
-                    </div>
-                </div>
-
-                <div id="export-progress" class="hidden">
-                    <div class="text-sm mb-2" data-i18n="export_progress">Export läuft…</div>
-                    <div class="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div id="export-progress-bar" class="h-2 bg-white/60 w-1/3"></div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <!-- Bottom left: Info & Recht -->
-    <div class="absolute bottom-6 left-6 z-[1000] pointer-events-auto">
-        <button id="btn-legal-trigger" class="glass-panel rounded-2xl px-3 py-2 shadow-lg hover:bg-white/10 transition"
-            aria-label="Info & Recht">
-            <span class="text-xs font-semibold" data-i18n="legal_btn">Info & Recht</span>
-        </button>
-    </div>
-
-    <!-- Legal modal -->
-    <div id="legal-modal" class="hidden fixed inset-0 z-[2000] items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/60"></div>
-
-        <div class="relative glass-panel rounded-2xl p-5 max-w-2xl w-full shadow-xl pointer-events-auto">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <div class="text-lg font-semibold" data-i18n="legal_title">Info & Recht</div>
-                    <div class="text-xs opacity-70" data-i18n="legal_subtitle">OpenFireMapV2</div>
-                </div>
-                <button id="legal-close-btn" class="opacity-70 hover:opacity-100 transition" aria-label="Close">✕</button>
+        <div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title"
+            class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
+                <h2 id="legal-title" class="text-lg font-bold text-white flex items-center gap-2">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Rechtliches
+                </h2>
+                <button id="legal-close-btn" aria-label="Schließen"
+                    class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-lg p-1">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
 
-            <div class="mt-4 text-sm space-y-3">
-                <p data-i18n="legal_text_1">
-                    Daten: © OpenStreetMap-Mitwirkende. Darstellung: siehe Layer-Attribution.
-                </p>
-                <p data-i18n="legal_text_2">
-                    Dieses Projekt ist privat und nicht kommerziell. Keine Gewähr für Richtigkeit/Vollständigkeit.
-                </p>
+            <div class="overflow-y-auto custom-scroll pr-2 text-xs space-y-6">
+
+                <section>
+                    <h3 class="text-sm font-bold text-white mb-1">Impressum</h3>
+                    <p class="leading-relaxed text-slate-400">
+                        Angaben gemäß § 5 TMG:<br><br>
+                        <strong>Frank März</strong><br>
+                        Kersbacher Weg 3<br>
+                        91220 Schnaittach<br>
+                        Deutschland<br><br>
+                        Kontakt:<br>
+                        Telefon: +499153/9229501<br>
+                        E-Mail: info@openfiremap.org
+                    </p>
+                </section>
+
+                <section>
+                    <h3 class="text-sm font-bold text-white mb-1">Datenschutzerklärung (Kurzfassung)</h3>
+                    <p class="leading-relaxed text-slate-400 mb-2">
+                        Diese Anwendung läuft als "Client-Side Application" direkt in Ihrem Browser. Wir speichern keine
+                        personenbezogenen Daten auf eigenen Servern.
+                    </p>
+                    <p class="leading-relaxed text-slate-400">
+                        Um die Karten anzuzeigen und Daten abzurufen, verbindet sich Ihr Browser jedoch direkt mit
+                        folgenden externen Diensten, wobei technisch bedingt Ihre IP-Adresse übertragen wird:
+                    </p>
+                    <ul class="list-disc list-inside mt-2 space-y-1 text-slate-500">
+                        <li><strong>Karten-Server (OSM, CartoDB, Esri/ArcGIS, OpenTopoMap):</strong> Zum Laden der
+                            Kartenbilder (Kacheln).</li>
+                        <li><strong>Overpass API:</strong> Zum Abruf der Hydranten-, Wachen- und Defibrillatordaten.
+                        </li>
+                        <li><strong>Nominatim (OSM):</strong> Für die Ortssuche und Adressbestimmung.</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-sm font-bold text-white mb-1">Quellen & Lizenzen</h3>
+                    <ul class="list-disc list-inside space-y-1 text-slate-400">
+                        <li>
+                            <strong>Kartendaten:</strong> &copy; <a href="https://www.openstreetmap.org/copyright"
+                                target="_blank" rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">OpenStreetMap</a>-Mitwirkende
+                            (ODbL).
+                        </li>
+                        <li>
+                            <strong>Kartenstil (Standard/Dark/Hell):</strong> &copy; <a
+                                href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">CARTO</a>.
+                        </li>
+                        <li>
+                            <strong>Satellitenbilder:</strong> Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA,
+                            USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community.
+                        </li>
+                        <li>
+                            <strong>Topographische Karte:</strong> Daten &copy; OpenStreetMap-Mitwirkende, SRTM |
+                            Darstellung &copy; <a href="http://opentopomap.org" target="_blank"
+                                rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">OpenTopoMap</a>
+                            (CC-BY-SA).
+                        </li>
+                        <li>
+                            <strong>Software-Bibliotheken:</strong> <a href="https://leafletjs.com/" target="_blank"
+                                rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Leaflet</a>, <a
+                                href="https://tailwindcss.com/" target="_blank" rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Tailwind CSS</a>.
+                        </li>
+                    </ul>
+                </section>
+
+                <section class="border-t border-white/5 pt-2">
+                    <h3 class="text-sm font-bold text-white mb-1">Rechtlicher Hinweis & Kontakt</h3>
+                    <p class="leading-relaxed text-slate-400 mb-2">
+                        Dies ist ein rein privates, nicht-kommerzielles Projekt ohne Gewinnerzielungsabsicht.
+                    </p>
+                    <p class="leading-relaxed text-amber-500/80 italic mb-2 font-semibold">
+                        "Keine Abmahnung ohne vorherigen Kontakt"
+                    </p>
+                    <p class="leading-relaxed text-slate-500">
+                        Sollte der Inhalt oder die Aufmachung dieser Seiten fremde Rechte Dritter oder gesetzliche
+                        Bestimmungen verletzen, so bitte ich um eine entsprechende Nachricht ohne Kostennote. Ich
+                        garantiere, dass die zu Recht beanstandeten Passagen unverzüglich entfernt werden, ohne dass von
+                        Ihrer Seite die Einschaltung eines Rechtsbeistandes erforderlich ist.
+                    </p>
+                </section>
             </div>
         </div>
-    </div>
 
-    <!-- Bottom right: Status box -->
-    <div id="status-box"
-        class="absolute bottom-10 right-10 z-[1000] glass-panel rounded-2xl p-4 shadow-lg text-xs font-mono opacity-90 pointer-events-none">
-        <div class="flex justify-between gap-6">
-            <span class="opacity-70" data-i18n="status_zoom">Zoom</span>
-            <span id="status-zoom">-</span>
-        </div>
-        <div class="flex justify-between gap-6">
-            <span class="opacity-70" data-i18n="status_bbox">BBox</span>
-            <span id="status-bbox">-</span>
-        </div>
-        <div class="flex justify-between gap-6">
-            <span class="opacity-70" data-i18n="status_items">Objekte</span>
-            <span id="status-items">-</span>
-        </div>
-    </div>
+    </main>
 
-    <!-- Notification box -->
-    <div id="notification-box"
-        class="hidden fixed top-6 right-6 z-[3000] glass-panel rounded-2xl px-4 py-3 shadow-xl text-sm pointer-events-none">
-        Notification
-    </div>
-
-    <!-- ==================================================================================
-         Script-Ladereihenfolge (wichtig):
-         1) Leaflet als klassisches Script -> stellt globales `L` bereit
-         2) App als ES-Module -> importiert die restlichen Module (ui.js, map.js, i18n.js, ...)
-         Hinweis: Kein `defer` nötig, weil wir am Ende des <body> laden.
-         ================================================================================== -->
+    <!-- =====================================================================
+         Script-Reihenfolge (Fix, ohne Layout-Änderung):
+         1) Leaflet (globales L)
+         2) config.js (stellt window.config bereit)
+         3) app.js (ES-Module)
+         ===================================================================== -->
     <script src="assets/vendor/leaflet/leaflet.js"></script>
+    <script src="assets/js/config.js"></script>
     <script type="module" src="assets/js/app.js?v=3"></script>
 
 </body>
