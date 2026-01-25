@@ -1,7 +1,7 @@
 /**
  * ==========================================================================================
  * DATEI: api.js
- * ZWECK: Kommunikation mit OSM-Services (Overpass + Nominatim)
+ * ZWECK: Kommunikation mit OSM-Services (Overpass + Nominatim) + Overpass Cache (P2b-3)
  * ==========================================================================================
  */
 
@@ -12,10 +12,10 @@ import { renderMarkers } from './map.js';
 import { showNotification } from './ui.js';
 
 import { fetchJson, HttpError } from './net.js';
+import { getCache, setCache } from './cache.js';
 
 /**
  * Vereinheitlichte Fehlercodes für UI/i18n.
- * api.js wirft/benutzt nur Keys wie "err_timeout", UI übersetzt via t().
  */
 function mapError(err) {
   if (err?.name === 'AbortError') return 'err_timeout';
@@ -35,9 +35,6 @@ function mapError(err) {
 
 /**
  * P2b-2: Nominatim Geocoding
- * - limit=1
- * - accept-language
- * - klare Fehlercodes
  */
 export async function geocodeNominatim(query, { signal } = {}) {
   const q = (query || '').trim();
@@ -77,11 +74,38 @@ export async function geocodeNominatim(query, { signal } = {}) {
 }
 
 /**
- * Overpass: Fallback über mehrere Endpoints, POST statt URL-Query,
- * Timeout + Abort, JSON-Check.
+ * Cache helpers
+ * Rounding verhindert, dass Micropans den Cache nutzlos machen.
  */
-async function fetchWithRetry(overpassQueryString) {
+function roundCoord(x, decimals = 3) {
+  const m = 10 ** decimals;
+  return Math.round(Number(x) * m) / m;
+}
+
+function makeBBoxKey(bounds, decimals = 3) {
+  const s = roundCoord(bounds.getSouth(), decimals);
+  const w = roundCoord(bounds.getWest(), decimals);
+  const n = roundCoord(bounds.getNorth(), decimals);
+  const e = roundCoord(bounds.getEast(), decimals);
+  return `${s},${w},${n},${e}`;
+}
+
+function makeOverpassCacheKey({ zoom, bboxKey, queryKind }) {
+  return `overpass:v1:${queryKind}:z${zoom}:bbox:${bboxKey}`;
+}
+
+/**
+ * Overpass: Fallback über mehrere Endpoints, POST statt URL-Query,
+ * Timeout + Abort, JSON-Check + Cache (P2b-3).
+ */
+async function fetchWithRetry(overpassQueryString, { cacheKey = null, cacheTtlMs = 60000 } = {}) {
   if (!navigator.onLine) throw new Error('err_offline');
+
+  // Cache hit?
+  if (cacheKey) {
+    const cached = getCache(cacheKey, cacheTtlMs);
+    if (cached) return cached;
+  }
 
   const endpoints = Config.overpassEndpoints || [];
   let lastErr = null;
@@ -100,19 +124,19 @@ async function fetchWithRetry(overpassQueryString) {
         signal: State.controllers.fetch.signal
       });
 
-      // Overpass liefert json.elements
       if (!json || typeof json !== 'object') {
         lastErr = new Error('err_generic');
         continue;
       }
 
+      // Cache save nur bei Erfolg
+      if (cacheKey) setCache(cacheKey, json);
+
       return json;
 
     } catch (err) {
-      // Abbruch ist kein Fehler, sondern Steuerung
       if (err?.name === 'AbortError') throw err;
 
-      // 429/5xx/sonstiges: nächster Endpoint
       lastErr = err;
       console.warn(`Fehler bei ${endpoint}:`, err);
       continue;
@@ -143,7 +167,12 @@ export async function fetchOSMData() {
   }
 
   const b = State.map.getBounds();
+
+  // exakte bbox für Overpass
   const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+
+  // gerundete bbox für Cache-Key
+  const bboxKey = makeBBoxKey(b, 3);
 
   if (status) {
     status.innerText = t('status_loading');
@@ -172,10 +201,21 @@ export async function fetchOSMData() {
 
   if (queryParts.length === 0 && boundaryQuery === '') return;
 
+  // Query-Typ für Cache-Key (grob, reicht)
+  const queryKind =
+    zoom >= 15 ? 'pois+boundary' :
+    zoom >= 14 ? 'stations+boundary' :
+    'stations';
+
+  const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
+
+  // TTL nach Zoom (höherer Zoom = kürzer)
+  const cacheTtlMs = zoom >= 15 ? 30000 : 60000;
+
   const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 
   try {
-    const data = await fetchWithRetry(q);
+    const data = await fetchWithRetry(q, { cacheKey, cacheTtlMs });
 
     State.cachedElements = data.elements || [];
     renderMarkers(State.cachedElements, zoom);
