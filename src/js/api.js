@@ -1,165 +1,200 @@
 /**
  * ==========================================================================================
  * DATEI: api.js
- * ZWECK: Kommunikation mit den OpenStreetMap-Servern (Overpass API)
- * LERN-ZIEL: Asynchrone Datenabrufe (Fetch), Fehlerbehandlung, Retry-Strategien.
+ * ZWECK: Kommunikation mit OSM-Services (Overpass + Nominatim)
  * ==========================================================================================
  */
 
 import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
-import { renderMarkers } from './map.js'; 
-import { showNotification } from './ui.js'; // WICHTIG: Hier importieren wir die Funktion aus ui.js
+import { renderMarkers } from './map.js';
+import { showNotification } from './ui.js';
+
+import { fetchJson, HttpError } from './net.js';
 
 /**
- * HILFSFUNKTION: fetchWithRetry
- * Versucht Daten zu laden. Wenn ein Server zickt, nehmen wir den nächsten.
+ * Vereinheitlichte Fehlercodes für UI/i18n.
+ * api.js wirft/benutzt nur Keys wie "err_timeout", UI übersetzt via t().
  */
-async function fetchWithRetry(query) {
-    // 1. Haben wir Internet?
-    if (!navigator.onLine) throw new Error('err_offline');
+function mapError(err) {
+  if (err?.name === 'AbortError') return 'err_timeout';
 
-    // Wir holen die Server-Liste aus der Config
-    const endpoints = Config.overpassEndpoints;
-    let lastError = null;
+  // eigene Codes aus geocodeNominatim()
+  if (err?.code === 'query_too_short') return 'err_query_too_short';
+  if (err?.code === 'no_results') return 'err_no_results';
+  if (err?.code === 'bad_response') return 'err_generic';
 
-    // Wir probieren Server 1, dann 2, dann 3...
-    for (let endpoint of endpoints) {
-        try {
-            console.log(`Versuche Server: ${endpoint}`); 
+  // Netzwerk / HTTP
+  if (err instanceof HttpError && err.status === 429) return 'err_ratelimit';
+  if (err instanceof HttpError && err.status >= 500) return 'err_server';
+  if (err?.message === 'err_offline') return 'err_offline';
 
-            // FETCH: Der eigentliche Anruf
-            // POST Methode ist robuster bei großen Datenmengen als GET.
-            const res = await fetch(endpoint, { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(query),
-                signal: State.controllers.fetch.signal // Abbruch-Signal verbinden
-            });
-            
-            // Wenn der Server einen Fehler meldet (z.B. 504 Timeout oder 429 Zu Viele Anfragen)
-            if (!res.ok) {
-                console.warn(`Server ${endpoint} Fehler: ${res.status}. Versuche nächsten...`);
-                // Wir speichern den Fehlertyp für später, brechen aber NICHT ab!
-                lastError = res.status === 429 ? 'err_ratelimit' : 'err_timeout';
-                continue; // Springe zum nächsten Durchlauf der Schleife (nächster Server)
-            }
-
-            const text = await res.text();
-            
-            // Manchmal senden Server HTML-Fehlerseiten statt Daten. Das prüfen wir.
-            if (text.trim().startsWith('<') || text.trim().length === 0) {
-                console.warn(`Server ${endpoint} lieferte ungültige Daten. Versuche nächsten...`);
-                continue;
-            }
-
-            // Erfolg! JSON parsen und zurückgeben.
-            return JSON.parse(text);
-
-        } catch (e) {
-            // Wenn der User abgebrochen hat (AbortError), ist das okay.
-            if (e.name === 'AbortError') throw e;
-            
-            // Bei Netzwerkfehlern (DNS, Verbindung weg): Warnung und nächster Server.
-            console.warn(`Verbindungsfehler bei ${endpoint}:`, e);
-            lastError = 'err_generic';
-        }
-    }
-    
-    // Wenn wir hier sind, haben ALLE Server versagt. Wir werfen den letzten Fehler.
-    throw new Error(lastError || "err_generic");
+  return 'err_generic';
 }
 
 /**
- * HAUPTFUNKTION: fetchOSMData
- * Entscheidet basierend auf Zoom-Level, WAS geladen wird.
+ * P2b-2: Nominatim Geocoding
+ * - limit=1
+ * - accept-language
+ * - klare Fehlercodes
+ */
+export async function geocodeNominatim(query, { signal } = {}) {
+  const q = (query || '').trim();
+
+  if (q.length < 3) {
+    const e = new Error('query_too_short');
+    e.code = 'query_too_short';
+    throw e;
+  }
+
+  const url = new URL('https://nominatim.openstreetmap.org/search');
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('q', q);
+  url.searchParams.set('limit', '1');
+  url.searchParams.set('addressdetails', '0');
+  url.searchParams.set('accept-language', (navigator.language || 'en').toLowerCase());
+
+  const data = await fetchJson(url.toString(), { timeoutMs: 8000, signal });
+
+  if (!Array.isArray(data) || data.length === 0) {
+    const e = new Error('no_results');
+    e.code = 'no_results';
+    throw e;
+  }
+
+  const hit = data[0];
+  const lat = Number(hit.lat);
+  const lon = Number(hit.lon);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    const e = new Error('bad_response');
+    e.code = 'bad_response';
+    throw e;
+  }
+
+  return { lat, lon, label: hit.display_name || q };
+}
+
+/**
+ * Overpass: Fallback über mehrere Endpoints, POST statt URL-Query,
+ * Timeout + Abort, JSON-Check.
+ */
+async function fetchWithRetry(overpassQueryString) {
+  if (!navigator.onLine) throw new Error('err_offline');
+
+  const endpoints = Config.overpassEndpoints || [];
+  let lastErr = null;
+
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`Versuche Server: ${endpoint}`);
+
+      const body = new URLSearchParams({ data: overpassQueryString }).toString();
+
+      const json = await fetchJson(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+        body,
+        timeoutMs: 25000,
+        signal: State.controllers.fetch.signal
+      });
+
+      // Overpass liefert json.elements
+      if (!json || typeof json !== 'object') {
+        lastErr = new Error('err_generic');
+        continue;
+      }
+
+      return json;
+
+    } catch (err) {
+      // Abbruch ist kein Fehler, sondern Steuerung
+      if (err?.name === 'AbortError') throw err;
+
+      // 429/5xx/sonstiges: nächster Endpoint
+      lastErr = err;
+      console.warn(`Fehler bei ${endpoint}:`, err);
+      continue;
+    }
+  }
+
+  throw lastErr || new Error('err_generic');
+}
+
+/**
+ * Hauptfunktion: lädt OSM-Daten passend zum Zoom-Level und BBox.
+ * Arbeitet mit AbortController, damit Zoom/Pan alte Requests killt.
  */
 export async function fetchOSMData() {
-    const zoom = State.map.getZoom();
-    const status = document.getElementById('data-status');
+  const zoom = State.map.getZoom();
+  const status = document.getElementById('data-status');
 
-    // 1. ZU WEIT WEG (Zoom 0-11): Nichts laden, um Server zu schonen.
-    if (zoom < 12) {
-        if(status) {
-            status.innerText = t('status_standby');
-            status.className = 'text-green-400';
-        }
-        // Karte aufräumen
-        State.markerLayer.clearLayers();
-        State.boundaryLayer.clearLayers();
-        State.cachedElements = [];
-        return;
+  // Wenn Zoom klein: standby + Layers leeren
+  if (zoom < 12) {
+    if (status) {
+      status.innerText = t('status_standby');
+      status.className = 'text-green-400';
     }
+    State.markerLayer.clearLayers();
+    State.boundaryLayer.clearLayers();
+    State.cachedElements = [];
+    return;
+  }
 
-    // Koordinaten des sichtbaren Bereichs holen
-    const b = State.map.getBounds();
-    const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+  const b = State.map.getBounds();
+  const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
 
-    // Status auf "LADEN" (Gelb)
-    if(status) {
-        status.innerText = t('status_loading');
-        status.className = 'text-amber-400 font-bold'; 
+  if (status) {
+    status.innerText = t('status_loading');
+    status.className = 'text-amber-400 font-bold';
+  }
+
+  // Alte Anfrage abbrechen + neuen Controller setzen (Reihenfolge ist wichtig)
+  if (State.controllers.fetch) State.controllers.fetch.abort();
+  State.controllers.fetch = new AbortController();
+
+  const queryParts = [];
+
+  if (zoom >= 12) {
+    queryParts.push(`nwr["amenity"="fire_station"];`);
+    queryParts.push(`nwr["building"="fire_station"];`);
+  }
+
+  if (zoom >= 15) {
+    queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
+    queryParts.push(`node["emergency"="defibrillator"];`);
+  }
+
+  const boundaryQuery = (zoom >= 14)
+    ? `(way["boundary"="administrative"]["admin_level"="8"];)->.boundaries; .boundaries out geom;`
+    : '';
+
+  if (queryParts.length === 0 && boundaryQuery === '') return;
+
+  const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
+
+  try {
+    const data = await fetchWithRetry(q);
+
+    State.cachedElements = data.elements || [];
+    renderMarkers(State.cachedElements, zoom);
+
+    if (status) {
+      status.innerText = t('status_current');
+      status.className = 'text-green-400';
     }
-    
-    // Wenn noch eine alte Anfrage läuft: Abbrechen!
-    if (State.controllers.fetch) State.controllers.fetch.abort();
-    State.controllers.fetch = new AbortController();
+  } catch (err) {
+    // Abbruch still schlucken (Zoom/Pan)
+    if (err?.name === 'AbortError') return;
 
-    // QUERY ZUSAMMENBAUEN
-    let queryParts = [];
-    
-   // LEVEL A: Wachen
-    if (zoom >= 12) {
-        // HIER GEÄNDERT: Kein (${bbox}) mehr nötig!
-        queryParts.push(`nwr["amenity"="fire_station"];`);
-        queryParts.push(`nwr["building"="fire_station"];`);
+    const msgKey = mapError(err);
+    const txt = t(msgKey);
+
+    if (status) {
+      status.innerText = txt;
+      status.className = 'text-red-500 font-bold';
     }
-
-    // LEVEL B: Hydranten
-    if (zoom >= 15) {
-        // HIER GEÄNDERT
-        queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
-        queryParts.push(`node["emergency"="defibrillator"];`);
-    }
-
-    // LEVEL C: Grenzen
-    // HIER GEÄNDERT: Auch hier entfernen wir die bbox-Einschränkung im Query-Teil
-    let boundaryQuery = (zoom >= 14) ? `(way["boundary"="administrative"]["admin_level"="8"];)->.boundaries; .boundaries out geom;` : '';
-
-
-    if (queryParts.length === 0 && boundaryQuery === '') return;
-
-    // Timeout kürzen wir auf 25s (Quick Win D.3) und setzen die bbox global
-    // [bbox:...] setzt den geografischen Filter für ALLE nachfolgenden Befehle
-    const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
-
-    try {
-        const data = await fetchWithRetry(q);
-        State.cachedElements = data.elements;
-        renderMarkers(data.elements, zoom);
-        
-        // Status auf GRÜN
-        if(status) {
-            status.innerText = t('status_current');
-            status.className = 'text-green-400';
-        }
-    } catch (e) {
-        if (e.name !== 'AbortError') {
-            console.error("Fetch Fehler:", e);
-            // Fehlertext übersetzen
-            let msgKey = 'err_generic';
-            if (e.message.includes('ratelimit')) msgKey = 'err_ratelimit';
-            else if (e.message.includes('timeout')) msgKey = 'err_timeout';
-            else if (e.message.includes('offline')) msgKey = 'err_offline';
-
-            const txt = t(msgKey);
-            
-            if(status) {
-                status.innerText = txt;
-                status.className = 'text-red-500 font-bold';
-            }
-            showNotification(txt, 5000);
-        }
-    }
+    showNotification(txt, 5000);
+  }
 }
