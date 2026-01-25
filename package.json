@@ -27,5 +27,8 @@
   "homepage": "https://github.com/FrnkMrz/OpenFireMapV2#readme",
   "devDependencies": {
     "tailwindcss": "^3.4.17"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4"
   }
 }
