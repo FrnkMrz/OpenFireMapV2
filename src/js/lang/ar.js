@@ -58,5 +58,10 @@ export const strings = {
   hydrant: "صنبور إطفاء",
   defib: "جهاز مزيل الرجفان",
   legal_btn: "إشعار قانوني",
+  menu_layers_open: "فتح طبقات الخريطة",
+  menu_layers_close: "إغلاق طبقات الخريطة",
+  menu_layers_label: "طبقات الخريطة",
+  menu_export_open: "فتح التصدير",
+  menu_export_close: "إغلاق التصدير",
 };
 export default strings;

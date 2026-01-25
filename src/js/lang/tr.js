@@ -58,5 +58,10 @@ export const strings = {
   hydrant: "Hidrant",
   defib: "Defibrilatör",
   legal_btn: "Yasal bildirim",
+  menu_layers_open: "Harita katmanlarını aç",
+  menu_layers_close: "Harita katmanlarını kapat",
+  menu_layers_label: "Harita katmanları",
+  menu_export_open: "Dışa aktarmayı aç",
+  menu_export_close: "Dışa aktarmayı kapat",
 };
 export default strings;

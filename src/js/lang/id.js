@@ -58,5 +58,10 @@ export const strings = {
   hydrant: "Hidran",
   defib: "Defibrilator",
   legal_btn: "Pemberitahuan hukum",
+  menu_layers_open: "Buka lapisan peta",
+  menu_layers_close: "Tutup lapisan peta",
+  menu_layers_label: "Lapisan peta",
+  menu_export_open: "Buka ekspor",
+  menu_export_close: "Tutup ekspor",
 };
 export default strings;

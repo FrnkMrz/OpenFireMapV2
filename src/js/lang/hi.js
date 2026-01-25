@@ -58,5 +58,10 @@ export const strings = {
   hydrant: "हाइड्रेंट",
   defib: "डीफिब्रिलेटर",
   legal_btn: "कानूनी सूचना",
+  menu_layers_open: "मानचित्र परतें खोलें",
+  menu_layers_close: "मानचित्र परतें बंद करें",
+  menu_layers_label: "मानचित्र परतें",
+  menu_export_open: "निर्यात खोलें",
+  menu_export_close: "निर्यात बंद करें",
 };
 export default strings;

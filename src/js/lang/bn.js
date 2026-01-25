@@ -58,5 +58,10 @@ export const strings = {
   hydrant: "হাইড্র্যান্ট",
   defib: "ডিফিব্রিলেটর",
   legal_btn: "আইনি নোটিস",
+  menu_layers_open: "মানচিত্রের স্তর খুলুন",
+  menu_layers_close: "মানচিত্রের স্তর বন্ধ করুন",
+  menu_layers_label: "মানচিত্রের স্তর",
+  menu_export_open: "রপ্তানি খুলুন",
+  menu_export_close: "রপ্তানি বন্ধ করুন",
 };
 export default strings;

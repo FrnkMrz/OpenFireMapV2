@@ -58,5 +58,10 @@ export const strings = {
   hydrant: "Trụ nước cứu hỏa",
   defib: "Máy khử rung tim",
   legal_btn: "Thông báo pháp lý",
+  menu_layers_open: "Mở lớp bản đồ",
+  menu_layers_close: "Đóng lớp bản đồ",
+  menu_layers_label: "Lớp bản đồ",
+  menu_export_open: "Mở xuất dữ liệu",
+  menu_export_close: "Đóng xuất dữ liệu",
 };
 export default strings;

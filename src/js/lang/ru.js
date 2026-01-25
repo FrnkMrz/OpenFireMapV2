@@ -58,5 +58,10 @@ export const strings = {
   hydrant: "Пожарный гидрант",
   defib: "Дефибриллятор",
   legal_btn: "Правовая информация",
+  menu_layers_open: "Открыть слои карты",
+  menu_layers_close: "Закрыть слои карты",
+  menu_layers_label: "Слои карты",
+  menu_export_open: "Открыть экспорт",
+  menu_export_close: "Закрыть экспорт",
 };
 export default strings;
