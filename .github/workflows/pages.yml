@@ -1,50 +1,126 @@
-name: Deploy GitHub Pages
+# ==========================================================================================
+# WORKFLOW: Build and Deploy (GitHub Pages)
+#
+# ZWECK:
+# - Baut das Projekt automatisch bei jedem Push auf den main-Branch
+# - Führt den lokalen Build-Prozess nach (npm ci + npm run build)
+# - Deployt das Ergebnis aus dem Ordner `docs/` nach GitHub Pages
+#
+# WARUM:
+# - Verhindert, dass ein Commit ohne vorherigen Build live geht
+# - Verhindert "vergessenes npm run build"
+# - Stellt sicher, dass GitHub Pages IMMER aus einem sauberen Build entsteht
+#
+# WICHTIG:
+# - GitHub Pages muss in den Repo-Settings auf "GitHub Actions" als Source stehen
+# - Der Build erzeugt/aktualisiert den Ordner `docs/`
+# ==========================================================================================
 
+name: Build and Deploy (GitHub Pages)
+
+# ------------------------------------------------------------------------------------------
+# Wann soll der Workflow laufen?
+# ------------------------------------------------------------------------------------------
 on:
+  # Bei jedem Push auf den main-Branch
   push:
     branches: ["main"]
+
+  # Zusätzlich manuell auslösbar (Button "Run workflow" in GitHub UI)
   workflow_dispatch:
 
+# ------------------------------------------------------------------------------------------
+# Benötigte Berechtigungen für GitHub Pages Deploy
+# ------------------------------------------------------------------------------------------
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: read        # Quellcode lesen
+  pages: write          # Pages deployen
+  id-token: write       # OIDC Token für Pages Deployment
 
+# ------------------------------------------------------------------------------------------
+# Verhindert parallele Deploys (z.B. bei schnellem Push hintereinander)
+# ------------------------------------------------------------------------------------------
 concurrency:
   group: "pages"
   cancel-in-progress: true
 
+# ==========================================================================================
+# JOB 1: BUILD
+# - Holt den Code
+# - Installiert Abhängigkeiten
+# - Führt den Build aus
+# - Lädt das Ergebnis (docs/) als Pages-Artefakt hoch
+# ==========================================================================================
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      # --------------------------------------------------------------------
+      # Code aus dem Repository auschecken
+      # --------------------------------------------------------------------
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      # --------------------------------------------------------------------
+      # Node.js Umgebung einrichten
+      # - Version 20 (LTS)
+      # - npm Cache aktivieren für schnellere Builds
+      # --------------------------------------------------------------------
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
 
-      - name: Install
+      # --------------------------------------------------------------------
+      # Abhängigkeiten installieren
+      # - npm ci ist reproduzierbar (nutzt package-lock.json)
+      # --------------------------------------------------------------------
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      # --------------------------------------------------------------------
+      # Projekt bauen
+      # - kopiert src/static -> docs/
+      # - baut Tailwind CSS nach docs/assets/css/
+      # --------------------------------------------------------------------
+      - name: Build project
         run: npm run build
 
+      # --------------------------------------------------------------------
+      # Build-Ergebnis für GitHub Pages hochladen
+      # - GitHub Pages erwartet ein Artefakt
+      # - hier: kompletter docs/-Ordner
+      # --------------------------------------------------------------------
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs
 
+# ==========================================================================================
+# JOB 2: DEPLOY
+# - Nimmt das Artefakt aus dem Build-Job
+# - Deployt es nach GitHub Pages
+# - Läuft nur, wenn der Build erfolgreich war
+# ==========================================================================================
   deploy:
-    needs: build
     runs-on: ubuntu-latest
+    needs: build
+
+    # --------------------------------------------------------------------
+    # GitHub Pages Environment
+    # - ermöglicht später manuelle Freigaben (optional)
+    # - stellt page_url als Output bereit
+    # --------------------------------------------------------------------
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
+      # --------------------------------------------------------------------
+      # Deployment nach GitHub Pages
+      # --------------------------------------------------------------------
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
