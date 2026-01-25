@@ -1,71 +1,211 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
-  <!-- Zeichensatz -->
-  <meta charset="utf-8">
+    <meta charset="UTF-8">
 
-  <!-- Seitentitel -->
-  <title>OpenFireMapV2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Viewport-Einstellungen für Mobile & Desktop -->
-  <!-- Wichtig für korrektes Zoomen und Touch-Gesten -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenFireMap.org</title>
 
-  <!-- Favicon -->
-  <link rel="icon" href="assets/favicons/favicon.ico">
+    <meta property="og:title" content="OpenFireMap.org">
+    <meta property="og:description"
+        content="Interaktive Karte für Feuerwachen, Hydranten und Defibrillatoren basierend auf OpenStreetMap.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://openfiremap.org/">
+    <meta property="og:image" content="https://openfiremap.org/favicons/android-icon-192x192.png">
 
-  <!--
-    Leaflet CSS
-    Lokal eingebunden, damit GitHub Pages offline & stabil funktioniert
-    Muss VOR dem Rendern der Karte geladen werden
-  -->
-  <link
-    rel="stylesheet"
-    href="assets/vendor/leaflet/leaflet.css"
-  >
+    <link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
 
-  <!--
-    Haupt-CSS der App
-    Generiert via Tailwind (npm run build)
-    Enthält Layout, Farben, UI-Komponenten
-  -->
-  <link
-    rel="stylesheet"
-    href="assets/css/main.css"
-  >
+    <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css">
+
+    <link rel="stylesheet" href="assets/css/main.css">
 </head>
 
-<body class="bg-slate-900 text-slate-100">
+<body class="bg-gray-900 text-white overflow-hidden">
 
-  <!--
-    Karten-Container
-    Leaflet rendert die komplette Karte in dieses Element
-    Positionierung erfolgt ausschließlich per CSS
-  -->
-  <main id="map" class="absolute inset-0"></main>
+    <!-- Map -->
+    <div id="map"></div>
 
-  <!--
-    Leaflet JavaScript (lokal)
-    Wird bewusst NICHT als ES-Module geladen
-    -> stellt das globale Objekt `L` bereit
-  -->
-  <script src="assets/vendor/leaflet/leaflet.js"></script>
+    <!-- Top left: search box -->
+    <div class="absolute top-6 left-6 z-[1000] flex items-start gap-2 pointer-events-auto">
 
-  <!--
-    Zentrale Konfigurationsdatei
-    - definiert `window.config`
-    - MUSS vor app.js geladen werden
-    - kein ES-Module
-  -->
-  <script src="assets/js/config.js"></script>
+        <div class="glass-panel rounded-2xl px-3 py-2 flex items-center gap-2 shadow-lg">
+            <input id="search-input" type="text" data-i18n-placeholder="search_placeholder"
+                placeholder="Ort / Adresse / POI…" class="bg-transparent outline-none w-56 md:w-72 text-sm">
+            <button id="search-btn" class="opacity-80 hover:opacity-100 transition" aria-label="Search">
+                🔎
+            </button>
+        </div>
 
-  <!--
-    Haupt-Applikation
-    - ES-Module
-    - greift auf `window.config` zu
-    - initialisiert Map, Layer, UI
-  -->
-  <script type="module" src="assets/js/app.js"></script>
+        <!-- Locate -->
+        <button id="locate-btn" class="glass-panel rounded-2xl px-3 py-2 shadow-lg hover:bg-white/10 transition"
+            aria-label="Locate">
+            📍
+        </button>
+
+        <!-- Layers -->
+        <div class="relative">
+            <button id="layer-btn-trigger" class="glass-panel rounded-2xl px-3 py-2 shadow-lg hover:bg-white/10 transition"
+                data-i18n-title="menu_layers_label" title="Layer" aria-expanded="false" aria-label="Layer">
+                🗺️
+            </button>
+
+            <div id="layer-menu"
+                class="hidden absolute left-0 mt-2 w-72 glass-panel rounded-2xl p-4 shadow-lg z-[1001]">
+                <div class="font-semibold text-sm mb-3" data-i18n="menu_layers_label">Layer</div>
+
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span>Voyager</span>
+                        <button id="btn-voyager" class="pill-btn">OK</button>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Positron</span>
+                        <button id="btn-positron" class="pill-btn">OK</button>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Dark</span>
+                        <button id="btn-dark" class="pill-btn">OK</button>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Satellite</span>
+                        <button id="btn-satellite" class="pill-btn">OK</button>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Topo</span>
+                        <button id="btn-topo" class="pill-btn">OK</button>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>OSM</span>
+                        <button id="btn-osm" class="pill-btn">OK</button>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>OSM.de</span>
+                        <button id="btn-osmde" class="pill-btn">OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export -->
+        <div class="relative">
+            <button id="export-btn-trigger"
+                class="glass-panel rounded-2xl px-3 py-2 shadow-lg hover:bg-white/10 transition"
+                data-i18n-title="menu_export_open" title="Export" aria-expanded="false" aria-label="Export">
+                ⬇️
+            </button>
+
+            <div id="export-menu"
+                class="hidden absolute left-0 mt-2 w-80 glass-panel rounded-2xl p-4 shadow-lg z-[1001]">
+
+                <div class="flex items-center justify-between mb-3">
+                    <div class="font-semibold text-sm" data-i18n="menu_export_label">Export</div>
+                    <button id="export-close-btn" class="text-sm opacity-70 hover:opacity-100" aria-label="Close">✕</button>
+                </div>
+
+                <div id="export-setup" class="space-y-3">
+                    <div class="text-xs opacity-70" data-i18n="export_format">Format</div>
+                    <div class="flex gap-2">
+                        <button id="fmt-free" class="pill-btn">Free</button>
+                        <button id="fmt-a4l" class="pill-btn">A4 L</button>
+                        <button id="fmt-a4p" class="pill-btn">A4 P</button>
+                    </div>
+
+                    <div class="text-xs opacity-70 mt-2" data-i18n="export_zoom">Zoom</div>
+                    <div class="flex gap-2">
+                        <button id="zoom-15" class="pill-btn">15</button>
+                        <button id="zoom-16" class="pill-btn">16</button>
+                        <button id="zoom-17" class="pill-btn">17</button>
+                        <button id="zoom-18" class="pill-btn">18</button>
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button id="select-btn" class="primary-btn flex-1" data-i18n="export_select">Bereich wählen</button>
+                        <button id="cancel-export-btn" class="pill-btn" data-i18n="export_cancel">Abbrechen</button>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button id="png-btn" class="primary-btn flex-1" data-i18n="export_png">PNG</button>
+                        <button id="gpx-btn" class="primary-btn flex-1" data-i18n="export_gpx">GPX</button>
+                    </div>
+                </div>
+
+                <div id="export-progress" class="hidden">
+                    <div class="text-sm mb-2" data-i18n="export_progress">Export läuft…</div>
+                    <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div id="export-progress-bar" class="h-2 bg-white/60 w-1/3"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom left: Info & Recht -->
+    <div class="absolute bottom-6 left-6 z-[1000] pointer-events-auto">
+        <button id="btn-legal-trigger" class="glass-panel rounded-2xl px-3 py-2 shadow-lg hover:bg-white/10 transition"
+            aria-label="Info & Recht">
+            <span class="text-xs font-semibold" data-i18n="legal_btn">Info & Recht</span>
+        </button>
+    </div>
+
+    <!-- Legal modal -->
+    <div id="legal-modal" class="hidden fixed inset-0 z-[2000] items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60"></div>
+
+        <div class="relative glass-panel rounded-2xl p-5 max-w-2xl w-full shadow-xl pointer-events-auto">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <div class="text-lg font-semibold" data-i18n="legal_title">Info & Recht</div>
+                    <div class="text-xs opacity-70" data-i18n="legal_subtitle">OpenFireMapV2</div>
+                </div>
+                <button id="legal-close-btn" class="opacity-70 hover:opacity-100 transition" aria-label="Close">✕</button>
+            </div>
+
+            <div class="mt-4 text-sm space-y-3">
+                <p data-i18n="legal_text_1">
+                    Daten: © OpenStreetMap-Mitwirkende. Darstellung: siehe Layer-Attribution.
+                </p>
+                <p data-i18n="legal_text_2">
+                    Dieses Projekt ist privat und nicht kommerziell. Keine Gewähr für Richtigkeit/Vollständigkeit.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom right: Status box -->
+    <div id="status-box"
+        class="absolute bottom-10 right-10 z-[1000] glass-panel rounded-2xl p-4 shadow-lg text-xs font-mono opacity-90 pointer-events-none">
+        <div class="flex justify-between gap-6">
+            <span class="opacity-70" data-i18n="status_zoom">Zoom</span>
+            <span id="status-zoom">-</span>
+        </div>
+        <div class="flex justify-between gap-6">
+            <span class="opacity-70" data-i18n="status_bbox">BBox</span>
+            <span id="status-bbox">-</span>
+        </div>
+        <div class="flex justify-between gap-6">
+            <span class="opacity-70" data-i18n="status_items">Objekte</span>
+            <span id="status-items">-</span>
+        </div>
+    </div>
+
+    <!-- Notification box -->
+    <div id="notification-box"
+        class="hidden fixed top-6 right-6 z-[3000] glass-panel rounded-2xl px-4 py-3 shadow-xl text-sm pointer-events-none">
+        Notification
+    </div>
+
+    <!-- ==================================================================================
+         Script-Ladereihenfolge (wichtig):
+         1) Leaflet als klassisches Script -> stellt globales `L` bereit
+         2) App als ES-Module -> importiert die restlichen Module (ui.js, map.js, i18n.js, ...)
+         Hinweis: Kein `defer` nötig, weil wir am Ende des <body> laden.
+         ================================================================================== -->
+    <script src="assets/vendor/leaflet/leaflet.js"></script>
+    <script type="module" src="assets/js/app.js?v=3"></script>
 
 </body>
+
 </html>
