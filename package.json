@@ -7,10 +7,9 @@
     "doc": "docs"
   },
   "scripts": {
-    "build:css": "tailwindcss -c tailwind.config.js -i ./src/input.css -o ./docs/assets/css/main.css --minify",
-    "watch:css": "tailwindcss -c tailwind.config.js -i ./src/input.css -o ./docs/assets/css/main.css --watch",
-    "build": "npm run build:css",
-    "test": "echo \"no tests\""
+  "build:static": "node ./scripts/build-static.mjs",
+  "build:css": "tailwindcss -c tailwind.config.js -i ./src/input.css -o ./docs/assets/css/main.css --minify",
+  "build": "npm run build:static && npm run build:css"
   },
   "repository": {
     "type": "git",
