@@ -258,6 +258,10 @@ export function renderMarkers(elements, zoom) {
             State.markerCache.delete(id);
         }
     }
+    // --- NEU: Smart Tooltips aktivieren (für Hydranten & Co) ---
+    enableSmartTooltips(State.markerLayer, State.map);
+
+
 }
 
 /**
@@ -480,4 +484,4 @@ function escapeHtml(text) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
-}
+
