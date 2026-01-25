@@ -19,6 +19,10 @@ export function initMapLogic() {
     // Speichert: ID -> { marker: LeafletMarker, type: String, mode: String }
     State.markerCache = new Map();
 
+    // NEU: Wir merken uns den Marker, dessen Tooltip aktuell offen ist.
+    // Öffnet der User einen zweiten Tooltip, schließen wir den ersten sofort.
+    State.openTooltipMarker = null;
+
     State.map = L.map('map', { 
         zoomControl: false, 
         preferCanvas: true, // <--- WICHTIG: Beschleunigt das Rendering massiv
@@ -56,6 +60,12 @@ export function initMapLogic() {
     State.map.on('click', () => {
         if (!State.selection.active) {
             State.rangeLayerGroup.clearLayers();
+        }
+
+        // Optional, aber sinnvoll: Klick ins Leere schließt den aktuell offenen Tooltip.
+        if (State.openTooltipMarker) {
+            try { State.openTooltipMarker.closeTooltip(); } catch (e) { /* ignore */ }
+            State.openTooltipMarker = null;
         }
     });
     
@@ -247,6 +257,9 @@ export function renderMarkers(elements, zoom) {
         // Fall 2: Marker existiert, aber Modus hat sich geändert (z.B. Zoom von 16 auf 17 -> Dot zu SVG)
         if (cached && cached.mode !== mode) {
             // Alten Marker entfernen, da er neu gezeichnet werden muss
+            if (State.openTooltipMarker === cached.marker) {
+                State.openTooltipMarker = null;
+            }
             State.markerLayer.removeLayer(cached.marker);
             State.markerCache.delete(id);
         }
@@ -259,6 +272,9 @@ export function renderMarkers(elements, zoom) {
     // Wir entfernen alle Marker von der Karte, die im aktuellen Datensatz NICHT mehr vorkommen.
     for (const [id, entry] of State.markerCache) {
         if (!markersToKeep.has(id)) {
+            if (State.openTooltipMarker === entry.marker) {
+                State.openTooltipMarker = null;
+            }
             State.markerLayer.removeLayer(entry.marker);
             State.markerCache.delete(id);
         }
@@ -329,10 +345,22 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
 
         let closeTimer = null;
 
+        // Schließt einen ggf. bereits offenen Tooltip eines ANDEREN Markers.
+        // Damit bleibt genau ein Tooltip gleichzeitig offen.
+        const closeOtherOpenTooltip = (currentMarker) => {
+            const openMarker = State.openTooltipMarker;
+            if (!openMarker) return;
+            if (openMarker === currentMarker) return;
+
+            try { openMarker.closeTooltip(); } catch (e) { /* ignore */ }
+            State.openTooltipMarker = null;
+        };
+
         // Alte Listener sicher entfernen, damit wir nichts stapeln
         marker.off('mouseover');
         marker.off('mouseout');
         marker.off('tooltipopen');
+        marker.off('tooltipclose');
 
         marker.on('mouseover', function() {
             if (State.map.getZoom() < 18) return;
@@ -341,7 +369,10 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
                 clearTimeout(closeTimer);
                 closeTimer = null;
             }
+
+            closeOtherOpenTooltip(this);
             this.openTooltip();
+            State.openTooltipMarker = this;
         });
 
         marker.on('mouseout', function() {
@@ -354,6 +385,11 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
 
         // Wenn der User in den Tooltip fährt, Timer stoppen (sonst nervt's)
         marker.on('tooltipopen', function(e) {
+            // Falls Leaflet den Tooltip auf anderem Weg öffnet (z.B. touch),
+            // stellen wir trotzdem die "nur-einer-offen"-Regel sicher.
+            closeOtherOpenTooltip(marker);
+            State.openTooltipMarker = marker;
+
             const tooltipNode = e?.tooltip?._container;
             if (!tooltipNode) return;
 
@@ -369,6 +405,12 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
                     marker.closeTooltip();
                 }, 3000);
             });
+        });
+
+        marker.on('tooltipclose', function() {
+            if (State.openTooltipMarker === marker) {
+                State.openTooltipMarker = null;
+            }
         });
     }
 
