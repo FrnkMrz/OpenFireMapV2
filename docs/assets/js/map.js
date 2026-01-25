@@ -155,8 +155,23 @@ function getSVGContent(type) {
  */
 
 function isFireStation(element) {
-    // Strikt nach Plan: nur amenity=fire_station. building=fire_station zählt hier NICHT.
-    return !!(element && element.tags && element.tags.amenity === 'fire_station');
+    /**
+     * Fire-Station-Erkennung (nur für das Clustering).
+     *
+     * Praxis-Problem: In OSM werden Wachen nicht immer sauber als *ein* Objekt mit
+     * amenity=fire_station gemappt. Häufig gibt es:
+     * - amenity=fire_station (klassisch, oft Node/Way/Relation)
+     * - building=fire_station (einzelne Gebäude auf dem Gelände)
+     *
+     * Damit wir bei Standorten wie „FW Nürnberg Süd“ nicht 10 Haus-Icons bekommen,
+     * behandeln wir beides als „Fire Station“ für das Clustering.
+     *
+     * WICHTIG: Hydranten, Löschwasserstellen, Sirenen, Defis etc. bleiben außen vor,
+     * weil wir hier weiterhin NUR auf diese Fire-Station-Tags matchen.
+     */
+    if (!element || !element.tags) return false;
+    const t = element.tags;
+    return (t.amenity === 'fire_station' || t.building === 'fire_station');
 }
 
 function getElementLatLon(el) {
