@@ -395,4 +395,89 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         mode: mode,
         type: type
     });
+
+
+    /**
+ * ==========================================================================================
+ * SMART TOOLTIP LOGIK (Neu)
+ * Zeigt OSM-Daten nur ab Zoom-Level 18 an.
+ * Schließt den Tooltip erst nach 3 Sekunden Verzögerung.
+ * ==========================================================================================
+ */
+
+/**
+ * Aktiviert intelligente Tooltips für eine Layer-Gruppe.
+ * @param {L.LayerGroup} layerGroup - Die Gruppe von Markern (z.B. Hydranten).
+ * @param {L.Map} map - Die Karten-Instanz.
+ */
+function enableSmartTooltips(layerGroup, map) {
+    layerGroup.eachLayer(function(marker) {
+        let tooltipTimeout;
+
+        marker.on('mouseover', function(e) {
+            // 1. Zoom-Prüfung: Nur ab Level 18 anzeigen (18, 19, 20...)
+            if (map.getZoom() < 18) {
+                return; 
+            }
+
+            // Falls ein Schließ-Timer läuft (User kam zurück), stoppen wir ihn
+            if (tooltipTimeout) {
+                clearTimeout(tooltipTimeout);
+                tooltipTimeout = null;
+            }
+
+            // Daten holen
+            const props = marker.feature ? marker.feature.properties : null;
+            if (!props) return;
+
+            // Tooltip-Inhalt bauen (nur wenn noch nicht gebunden)
+            if (!marker.getTooltip()) {
+                let content = '<div class="osm-tooltip-container" style="text-align: left; font-size: 12px; line-height: 1.4;">';
+                
+                // Alle Eigenschaften durchgehen und sicher einfügen
+                for (const key in props) {
+                    if (Object.prototype.hasOwnProperty.call(props, key)) {
+                        const safeKey = escapeHtml(key);
+                        const safeValue = escapeHtml(props[key]);
+                        // Wichtige Tags hervorheben oder alle anzeigen
+                        content += `<b>${safeKey}:</b> ${safeValue}<br>`;
+                    }
+                }
+                content += '</div>';
+
+                marker.bindTooltip(content, {
+                    permanent: false, // Wichtig: false, damit wir das Öffnen/Schließen steuern
+                    direction: 'top',
+                    offset: [0, -10],
+                    opacity: 0.9,
+                    className: 'custom-osm-tooltip'
+                });
+            }
+
+            // Tooltip anzeigen
+            marker.openTooltip();
+        });
+
+        marker.on('mouseout', function(e) {
+            // Timer starten: Nach 3000ms (3 Sekunden) schließen
+            tooltipTimeout = setTimeout(() => {
+                marker.closeTooltip();
+            }, 3000);
+        });
+    });
+}
+
+/**
+ * Sicherheitsfunktion gegen Code-Injection (XSS)
+ * Wandelt gefährliche Zeichen in harmlose HTML-Entities um.
+ */
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 }
