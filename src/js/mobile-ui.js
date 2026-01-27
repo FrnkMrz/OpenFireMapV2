@@ -109,6 +109,27 @@
   // Wenn Markup fehlt: lieber gar nichts machen als Desktop kaputt.
   if (!mobileControls || !mobileBurger || !mobileLocate || !mobileMenu) return;
 
+  function moveLocateToBottomCenter() {
+  const btn = mobileLocate;
+  if (!btn) return;
+
+  // Container unten mittig
+  let dock = document.getElementById('mobile-locate-dock');
+  if (!dock) {
+    dock = document.createElement('div');
+    dock.id = 'mobile-locate-dock';
+    dock.style.position = 'fixed';
+    dock.style.left = '50%';
+    dock.style.bottom = '32px';
+    dock.style.transform = 'translateX(-50%)';
+    dock.style.zIndex = '2500';
+    dock.style.pointerEvents = 'auto';
+    document.body.appendChild(dock);
+  }
+
+  dock.appendChild(btn);
+}
+
   // ---------------------------
   // Desktop ausblenden / Mobile einblenden
   // ---------------------------
@@ -116,6 +137,10 @@
   if (desktopLegalBtn) hide(desktopLegalBtn.parentElement || desktopLegalBtn);
 
   show(mobileControls);
+
+  moveLocateToBottomCenter();
+
+  if (mobileClose) hide(mobileClose);
 
   // ---------------------------
   // Burger Menü
