@@ -64,6 +64,7 @@ export const strings = {
         "menu_layers_close": "Close layer menu",
         "menu_layers_label": "Map layers",
         "menu_export_open": "Open export menu",
-        "menu_export_close": "Close export menu"
+        "menu_export_close": "Close export menu",
+        menu_search: "Search"
     };
 export default strings;

@@ -198,3 +198,31 @@ body {
         box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
     }
 }
+
+
+/* =========================
+   Mobile Statusbox only
+   ========================= */
+@media (max-width: 768px) {
+
+  #status-box {
+    top: 1rem;
+    right: 1rem;
+    bottom: auto;
+
+    height: 48px;              /* gleiche Höhe wie Burger */
+    padding: 0 0.75rem;        /* seitlich Luft, vertikal zentriert */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    border-radius: 0.75rem;
+    font-size: 10px;
+    line-height: 1.1;
+  }
+
+  #status-box span[data-i18n] {
+    display: none;
+  }
+
+}
