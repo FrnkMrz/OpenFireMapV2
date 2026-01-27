@@ -36,7 +36,7 @@
 
         <div id="notification-box" role="alert" aria-live="polite"></div>
 
-        <div class="absolute top-5 left-5 z-[1000] flex gap-3">
+        <div id="desktop-controls" class="absolute top-5 left-5 z-[1000] flex gap-3">
 
             <div
                 class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5 focus-within:ring-2 focus-within:ring-blue-500">
@@ -86,6 +86,55 @@
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
             </button>
+        </div>
+
+        <!-- =========================================================
+             MOBILE UI (additiv): nur aktiv auf Smartphones (JS blendet Desktop-Controls aus)
+             - Kein Search, kein Export
+             - Locate + Burger-Menü
+             ========================================================= -->
+        <div id="mobile-controls" class="hidden md:hidden absolute top-5 left-5 z-[1200] flex gap-3">
+            <button id="mobile-locate-btn" aria-label="Locate me (Mobile)"
+                class="glass-panel p-3 rounded-2xl text-slate-200 hover:text-emerald-300 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+
+            <button id="mobile-burger-btn" aria-haspopup="true" aria-expanded="false" aria-controls="mobile-menu"
+                aria-label="Menü öffnen (Mobile)"
+                class="glass-panel p-3 rounded-2xl text-slate-200 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+
+        <div id="mobile-menu"
+            class="hidden md:hidden absolute top-[74px] left-5 z-[2500] w-[260px] glass-panel rounded-2xl p-3 shadow-2xl text-white border border-white/10"
+            role="menu" aria-labelledby="mobile-burger-btn">
+            <div class="flex flex-col gap-2">
+                <button id="mobile-open-layers" type="button"
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10">
+                    <span data-i18n="menu_layers_label">Layer</span>
+                </button>
+
+                <button id="mobile-open-legal" type="button"
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10">
+                    <span data-i18n="legal_btn">Info & Recht</span>
+                </button>
+
+                <button id="mobile-close-menu" type="button"
+                    class="w-full bg-slate-900/40 hover:bg-slate-900/60 py-2.5 rounded-xl text-xs font-semibold border border-white/10">
+                    <span data-i18n="menu_close">Schließen</span>
+                </button>
+            </div>
         </div>
 
         <div class="absolute bottom-8 left-5 z-[1000]">
@@ -353,7 +402,9 @@
     <script src="assets/vendor/leaflet/leaflet.js"></script>
     <script src="assets/js/config.js"></script>
     <script type="module" src="assets/js/app.js?v=3"></script>
+    <script type="module" src="assets/js/mobile-ui.js?v=1"></script>
 
 </body>
 
 </html>
+
