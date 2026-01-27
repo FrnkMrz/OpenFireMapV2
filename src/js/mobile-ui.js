@@ -131,6 +131,34 @@
   dock.appendChild(btn);
 }
 
+function alignBurgerAndStatusTop() {
+  const burger = document.getElementById('mobile-burger-btn');
+
+  // Status-Box: versuche die üblichen Kandidaten
+  const status =
+    document.getElementById('status-box') ||
+    document.getElementById('status-panel') ||
+    document.getElementById('status') ||
+    document.querySelector('[data-ofm-status]');
+
+  if (!burger || !status) return;
+
+  // Einheitliche Position für beide
+  const TOP = '18px';
+  const SIDE = '18px';
+
+  burger.style.position = 'fixed';
+  burger.style.top = TOP;
+  burger.style.left = SIDE;
+  burger.style.marginTop = '0';
+
+  status.style.position = 'fixed';
+  status.style.top = TOP;
+  status.style.right = SIDE;
+  status.style.marginTop = '0';
+}
+
+
   // ---------------------------
   // Desktop ausblenden / Mobile einblenden
   // ---------------------------
@@ -140,6 +168,8 @@
   show(mobileControls);
 
   moveLocateToBottomCenter();
+
+alignBurgerAndStatusTop();
 
   if (mobileClose) hide(mobileClose);
 
