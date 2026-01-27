@@ -35,12 +35,10 @@ export const strings = {
         status_waiting: "WARTE AUF POS...",
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FEHLER",
-        // --- NEUE FEHLERMELDUNGEN ---
         err_generic: "Fehler beim Laden. Server antwortet nicht.",
         err_ratelimit: "Zu viele Anfragen! Bitte kurz warten.",
         err_timeout: "Server überlastet. Bitte näher heranzoomen.",
         err_offline: "Keine Internetverbindung erkannt.",
-        // ----------------------------
         geo_error: "Geolokalisierung nicht unterstützt.",
         geo_found: "Standort gefunden!",
         geo_fail: "Standort fehlerhaft.",
@@ -64,6 +62,7 @@ export const strings = {
         "menu_layers_close": "Kartenebenen-Menü schließen",
         "menu_layers_label": "Kartenebenen",
         "menu_export_open": "Export-Menü öffnen",
-        "menu_export_close": "Export-Menü schließen"
+        "menu_export_close": "Export-Menü schließen",
+        menu_search: "Suche"
     };
 export default strings;

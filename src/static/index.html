@@ -125,6 +125,13 @@
                     <span data-i18n="menu_layers_label">Layer</span>
                 </button>
 
+<button id="mobile-open-search"
+  class="w-full bg-white/5 hover:bg-white/10 pyz py-3 rounded-xl text-sm font-semibold border border-white/10">
+  <span data-i18n="menu_search">Suche</span>
+</button>
+
+
+
                 <button id="mobile-open-legal" type="button"
                     class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10">
                     <span data-i18n="legal_btn">Info & Recht</span>
@@ -157,6 +164,31 @@
             <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status"
                     class="text-green-400">AKTUELL</span></div>
         </div>
+
+
+<!-- Mobile Search Modal -->
+<div id="mobile-search-modal" class="md:hidden hidden fixed inset-0 z-[3500]">
+  <div id="mobile-search-backdrop" class="absolute inset-0 bg-black/50"></div>
+
+  <div class="absolute left-1/2 top-1/2 w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 glass-panel p-4 rounded-2xl border border-white/10">
+    <div class="flex items-center justify-between mb-3">
+      <div class="text-sm font-semibold" data-i18n="menu_search">Suche</div>
+      <button id="mobile-search-close" class="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10">✕</button>
+    </div>
+
+    <div class="flex gap-2">
+      <input id="mobile-search-input" type="text"
+        class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40"
+        placeholder="Suchen…"
+      />
+      <button id="mobile-search-go"
+        class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 font-semibold">
+        Go
+      </button>
+    </div>
+  </div>
+</div>
+
 
         <div id="layer-menu" role="menu" aria-labelledby="layer-btn-trigger"
             class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
