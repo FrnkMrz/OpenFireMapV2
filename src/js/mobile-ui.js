@@ -12,7 +12,7 @@
 (function initMobileUI() {
   const isMobile =
     window.matchMedia?.('(pointer: coarse)').matches ||
-    window.innerWidth < 768;
+    window.innerWidth < 1023;
 
   if (!isMobile) return;
 
