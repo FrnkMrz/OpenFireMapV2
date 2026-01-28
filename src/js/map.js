@@ -44,6 +44,35 @@ export function initMapLogic() {
     // Damit vermeiden wir unnötige Requests beim minimalen Verschieben oder bei Zoom-Änderungen,
     // die am Ladeumfang nichts ändern.
     let lastFetchKey = null;
+    let lastFetchStartTs = 0;
+
+    // Debug/Tracing (aktivieren mit: localStorage.setItem('OFM_DEBUG','1') + Reload)
+    const DEBUG = localStorage.getItem('OFM_DEBUG') === '1';
+    const dbg = (...args) => { if (DEBUG) console.debug('[OFM]', ...args); };
+
+    if (DEBUG) {
+        // Overlay für schnelle Sichtbarkeit
+        const el = document.createElement('div');
+        el.id = 'ofm-debug';
+        el.style.cssText = 'position:fixed;bottom:10px;left:10px;z-index:9999;background:rgba(0,0,0,0.7);color:#fff;padding:8px 10px;border-radius:8px;font:12px/1.3 monospace;max-width:40vw;pointer-events:none;';
+        el.textContent = 'OFM_DEBUG=1';
+        document.body.appendChild(el);
+
+        const set = (s) => { const e=document.getElementById('ofm-debug'); if (e) e.textContent = s; };
+        window.addEventListener('ofm:overpass', (ev) => {
+            const d = ev.detail || {};
+            const z = State.map?.getZoom?.() ?? '?';
+            const m = State.queryMeta ? ` pad=${State.queryMeta.padMeters}m snap=${State.queryMeta.snapMeters}m` : '';
+            const line = `${d.phase || 'evt'} z=${z}${m} ${d.endpoint ? ('ep=' + d.endpoint.replace('https://','')) : ''} ${d.ms ? (d.ms+'ms') : ''} ${d.status ? ('HTTP '+d.status) : ''}`;
+            set(line);
+        });
+
+        State.map?.on?.('zoomstart movestart', () => {
+            const z = State.map.getZoom();
+            set(`move/zoom… z=${z}`);
+        });
+    }
+
 
     // Ab wann wird was geladen? Muss 1:1 zur Logik in api.js passen.
     // - < 12: gar nichts
@@ -56,12 +85,75 @@ export function initMapLogic() {
     };
 
     // Hilfsfunktion: Bounding Box des aktuellen Viewports als stabiler String.
-    // Wir runden bewusst, damit winzige Bewegungen nicht sofort neue Requests auslösen.
+    // Wir runden bewusst,
+    // Liefert eine (gepufferte + gesnappte) BBox-Key-String-Repräsentation.
+    // Idee:
+    // - Wir fragen bewusst GRÖSSER ab als der sichtbare Kartenausschnitt (Padding in Metern).
+    //   So führt ein leichtes Verschieben nicht sofort zu einem neuen Overpass-Request.
+    // - Zusätzlich "snappen" wir die Abfrage-BBox auf ein grobes Grid (ebenfalls in Metern),
+    //   damit minimale Bewegungen/Pixel-Rauschen nicht ständig einen neuen Key erzeugen.
     const getRoundedBBox = () => {
-        const b = State.map.getBounds();
-        const r = (v) => Number(v).toFixed(4); // ~11 m Auflösung, reicht für Request-Gating
-        return `${r(b.getSouth())},${r(b.getWest())},${r(b.getNorth())},${r(b.getEast())}`;
+        const zoom = State.map.getZoom();
+        const viewBounds = State.map.getBounds();
+        const center = State.map.getCenter();
+
+        // Padding (in Metern): Bei Zoom 15 soll der Abfragebereich deutlich größer sein (1–2 km),
+        // damit leichtes Verschieben NICHT sofort neue Queries auslöst.
+        const padMeters =
+            (zoom <= 15) ? 2000 :
+            (zoom === 16) ? 1200 :
+            (zoom === 17) ? 700  :
+            (zoom === 18) ? 350  :
+            200;
+
+        // Snap-Grid (in Metern): Wir "snappen" die Abfrage-BBox auf ein Grid.
+        // So ändert sich der Query-Key nicht bei jeder kleinen Mausbewegung.
+        const snapMeters =
+            (zoom <= 15) ? 800 :
+            (zoom === 16) ? 400 :
+            (zoom === 17) ? 200 :
+            (zoom === 18) ? 100 :
+            60;
+
+        // Umrechnung Meter -> Grad (näherungsweise, reicht hier völlig)
+        const lat = center.lat;
+        const metersPerDegLat = 111320;
+        const metersPerDegLon = 111320 * Math.cos(lat * Math.PI / 180);
+
+        const dLatPad = padMeters / metersPerDegLat;
+        const dLonPad = padMeters / metersPerDegLon;
+
+        // Gepufferte Bounds
+        let south = viewBounds.getSouth() - dLatPad;
+        let west  = viewBounds.getWest()  - dLonPad;
+        let north = viewBounds.getNorth() + dLatPad;
+        let east  = viewBounds.getEast()  + dLonPad;
+
+        // Snap in Grad
+        const snapLat = snapMeters / metersPerDegLat;
+        const snapLon = snapMeters / metersPerDegLon;
+
+        const snap = (v, step) => Math.round(v / step) * step;
+
+        south = snap(south, snapLat);
+        north = snap(north, snapLat);
+        west  = snap(west,  snapLon);
+        east  = snap(east,  snapLon);
+
+        // Für api.js: Query-Bounds bereitstellen (damit nicht "sichtbarer Ausschnitt" abgefragt wird)
+        // Wichtig: Leaflet akzeptiert LatLngBounds direkt.
+        State.queryBounds = L.latLngBounds([[south, west], [north, east]]);
+        State.queryMeta = {
+            zoom,
+            padMeters,
+            snapMeters,
+            bbox: `${south},${west},${north},${east}`
+        };
+
+        // Stabiler Key (für Gating/Cache)
+        return `${south.toFixed(5)},${west.toFixed(5)},${north.toFixed(5)},${east.toFixed(5)}`;
     };
+
 
     State.map.on('moveend zoomend', () => {
         const zoom = State.map.getZoom();
@@ -87,6 +179,7 @@ export function initMapLogic() {
 
         // 3) Request-Gating: nur neu laden, wenn sich Mode oder Viewport sinnvoll geändert hat
         const bboxKey = getRoundedBBox();
+        dbg('gate', { zoom, mode, bboxKey, queryMeta: State.queryMeta });
         const boundaryFlag = (zoom >= 14) ? 'b1' : 'b0';
         const fetchKey = `${mode}|${boundaryFlag}|${bboxKey}`;
 
@@ -98,12 +191,35 @@ export function initMapLogic() {
         }
 
         if (debounceTimer) clearTimeout(debounceTimer);
+
+        // Debounce je nach Zoom (Hydranten-Modus braucht mehr Ruhe, sonst hagelt es 429).
+        const debounceMs =
+            (zoom <= 15) ? 1200 :
+            (zoom === 16) ? 900 :
+            (zoom === 17) ? 700 :
+            500;
+
+        // Mindestabstand zwischen gestarteten Requests (Rate-Limit/Overpass-Last).
+        // Wir zeigen bei Zoom 15 ALLES, aber wir starten nicht 10 Requests pro Sekunde.
+        const minIntervalMs =
+            (zoom <= 15) ? 2500 :
+            (zoom === 16) ? 1800 :
+            (zoom === 17) ? 1200 :
+            800;
+
         debounceTimer = setTimeout(() => {
-            // Wenn sich seit dem letzten erfolgreichen (oder gestarteten) Fetch nichts geändert hat: skip.
+            // Wenn sich seit dem letzten gestarteten Fetch nichts geändert hat: skip.
             if (fetchKey === lastFetchKey) return;
+
+            const now = Date.now();
+            if (now - lastFetchStartTs < minIntervalMs) return;
+
+            lastFetchStartTs = now;
             lastFetchKey = fetchKey;
+            dbg('fetchOSMData()', { fetchKey });
+            window.dispatchEvent(new CustomEvent('ofm:overpass', { detail: { phase: 'trigger', fetchKey } }));
             fetchOSMData();
-        }, 400);
+        }, debounceMs);
     });
 
     State.map.on('click', () => {
@@ -117,7 +233,9 @@ export function initMapLogic() {
         if(el) el.innerText = State.map.getZoom().toFixed(1);
     });
 
-    fetchOSMData();
+    // Initial load: use the same gated/debounced logic as after user interactions.
+    // This avoids undefined variables (fetchKey) and prevents immediate request storms.
+    State.map.fire('moveend');
 }
 
 export function setBaseLayer(key) {
