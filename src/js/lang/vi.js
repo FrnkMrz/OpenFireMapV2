@@ -63,5 +63,7 @@ export const strings = {
   menu_layers_label: "Lớp bản đồ",
   menu_export_open: "Mở xuất dữ liệu",
   menu_export_close: "Đóng xuất dữ liệu",
+  menu_search: "Tìm kiếm",
+
 };
 export default strings;

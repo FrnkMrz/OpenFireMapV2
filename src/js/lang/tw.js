@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "圖層",
         menu_export_open: "開啟匯出",
         menu_export_close: "關閉匯出",
+        menu_search: "搜尋",
+
     };
 export default strings;

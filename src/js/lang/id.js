@@ -63,5 +63,7 @@ export const strings = {
   menu_layers_label: "Lapisan peta",
   menu_export_open: "Buka ekspor",
   menu_export_close: "Tutup ekspor",
+  menu_search: "Cari",
+
 };
 export default strings;

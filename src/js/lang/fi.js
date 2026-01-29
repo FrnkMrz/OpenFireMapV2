@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Tasot",
         menu_export_open: "Avaa vienti",
         menu_export_close: "Sulje vienti",
+        menu_search: "Haku",
+
     };
 export default strings;

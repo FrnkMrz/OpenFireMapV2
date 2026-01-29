@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "เลเยอร์",
         menu_export_open: "เปิดการส่งออก",
         menu_export_close: "ปิดการส่งออก",
+        menu_search: "ค้นหา",
+
     };
 export default strings;

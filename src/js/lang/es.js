@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Capas",
         menu_export_open: "Abrir exportación",
         menu_export_close: "Cerrar exportación",
+        menu_search: "Buscar",
+
     };
 export default strings;

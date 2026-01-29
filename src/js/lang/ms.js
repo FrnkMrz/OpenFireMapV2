@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Lapisan",
         menu_export_open: "Buka eksport",
         menu_export_close: "Tutup eksport",
+        menu_search: "Cari",
+
     };
 export default strings;

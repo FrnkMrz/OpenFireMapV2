@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Camadas",
         menu_export_open: "Abrir exportação",
         menu_export_close: "Fechar exportação",
+        menu_search: "Pesquisar",
+
     };
 export default strings;

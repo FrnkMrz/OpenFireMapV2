@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Schichten",
         menu_export_open: "Export opmaachen",
         menu_export_close: "Export zoumaachen",
+        menu_search: "Sichen",
+
     };
 export default strings;

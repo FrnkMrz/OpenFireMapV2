@@ -63,5 +63,7 @@ export const strings = {
   menu_layers_label: "نقشے کی پرتیں",
   menu_export_open: "ایکسپورٹ کھولیں",
   menu_export_close: "ایکسپورٹ بند کریں",
+  menu_search: "تلاش",
+
 };
 export default strings;
