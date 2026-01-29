@@ -32,7 +32,7 @@ export const strings = {
         data_info: "DATEN",
         status_current: "AKTUELL",
         status_loading: "LÄDT...",
-        status_waiting: "WARTE AUF POS...",
+        status_waiting: 'WARTE AUF DATEN...',
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "FEHLER",
         err_generic: "Fehler beim Laden. Server antwortet nicht.",
