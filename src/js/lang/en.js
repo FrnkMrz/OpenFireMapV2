@@ -32,7 +32,7 @@ export const strings = {
         data_info: "DATA",
         status_current: "CURRENT",
         status_loading: "LOADING...",
-        status_waiting: "WAITING FOR POS...",
+        status_waiting: 'WAITING FOR DATA...',
         status_standby: "STANDBY (Zoom < 12)",
         status_error: "ERROR",
         // --- NEW ERROR MESSAGES ---

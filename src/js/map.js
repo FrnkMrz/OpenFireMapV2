@@ -43,6 +43,7 @@ export function initMapLogic() {
     // Merkt sich, für welchen "Daten-Modus" + Karten-Ausschnitt wir zuletzt geladen haben.
     // Damit vermeiden wir unnötige Requests beim minimalen Verschieben oder bei Zoom-Änderungen,
     // die am Ladeumfang nichts ändern.
+let lastRenderBucket = null;
     let lastFetchKey = null;
     let lastFetchStartTs = 0;
 
@@ -82,6 +83,16 @@ export function initMapLogic() {
         if (zoom < 12) return 'none';
         if (zoom < 15) return 'stations';
         return 'all';
+    };
+
+    // Zoom-Buckets: wir rendern nur neu, wenn sich der Bucket ändert.
+    // Das nimmt beim Zoomen massiv Druck von CPU/DOM.
+    const getZoomBucket = (zoom) => {
+        if (zoom < 12) return 'z<12';
+        if (zoom < 15) return 'z12-14';
+        if (zoom < 17) return 'z15-16';
+        if (zoom < 18) return 'z17';
+        return 'z18+';
     };
 
     // Hilfsfunktion: Bounding Box des aktuellen Viewports als stabiler String.
@@ -158,9 +169,11 @@ export function initMapLogic() {
     State.map.on('moveend zoomend', () => {
         const zoom = State.map.getZoom();
 
-        // 1) Sofortiges Re-Rendering aus Cache:
-        // Beim Rauszoomen sollen Marker sofort verschwinden, ohne neue Daten zu laden.
-        if (State.cachedElements) {
+        // 1) Re-Rendering aus Cache, aber nur bei Bucket-Wechsel.
+        // Beim Zoomen (vor allem raus) wollen wir sofort reagieren, aber nicht bei jedem moveend alles neu bauen.
+        const bucket = getZoomBucket(zoom);
+        if (State.cachedElements && bucket !== lastRenderBucket) {
+            lastRenderBucket = bucket;
             renderMarkers(State.cachedElements, zoom);
         }
 
@@ -174,6 +187,12 @@ export function initMapLogic() {
         const mode = getLoadMode(zoom);
         if (mode === 'none') {
             // Unter Zoom 12 laden wir gar nichts. api.js räumt zusätzlich auf.
+            // Wichtig: UI nicht im "Warten"-Status hängen lassen.
+            const statusEl = document.getElementById('data-status');
+            if (statusEl) {
+                statusEl.innerText = t('status_current');
+                statusEl.className = 'text-gray-300';
+            }
             return;
         }
 
@@ -182,13 +201,6 @@ export function initMapLogic() {
         dbg('gate', { zoom, mode, bboxKey, queryMeta: State.queryMeta });
         const boundaryFlag = (zoom >= 14) ? 'b1' : 'b0';
         const fetchKey = `${mode}|${boundaryFlag}|${bboxKey}`;
-
-        // Status "Warten" setzen (UX)
-        const statusEl = document.getElementById('data-status');
-        if (statusEl) {
-            statusEl.innerText = t('status_waiting');
-            statusEl.className = 'text-amber-400 font-bold';
-        }
 
         if (debounceTimer) clearTimeout(debounceTimer);
 
@@ -208,11 +220,32 @@ export function initMapLogic() {
             800;
 
         debounceTimer = setTimeout(() => {
+            const statusEl = document.getElementById('data-status');
+
             // Wenn sich seit dem letzten gestarteten Fetch nichts geändert hat: skip.
-            if (fetchKey === lastFetchKey) return;
+            // Wichtig: Status nicht auf "Warten" stehen lassen, sonst wirkt es wie ein Freeze.
+            if (fetchKey === lastFetchKey) {
+                if (statusEl) {
+                    statusEl.innerText = t('status_current');
+                    statusEl.className = 'text-gray-300';
+                }
+                return;
+            }
 
             const now = Date.now();
-            if (now - lastFetchStartTs < minIntervalMs) return;
+            if (now - lastFetchStartTs < minIntervalMs) {
+                if (statusEl) {
+                    statusEl.innerText = t('status_current');
+                    statusEl.className = 'text-gray-300';
+                }
+                return;
+            }
+
+            // Status "Warten" erst setzen, wenn wir wirklich gleich einen Request starten.
+            if (statusEl) {
+                statusEl.innerText = t('status_waiting');
+                statusEl.className = 'text-amber-400 font-bold';
+            }
 
             lastFetchStartTs = now;
             lastFetchKey = fetchKey;
