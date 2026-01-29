@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "レイヤー",
         menu_export_open: "エクスポートを開く",
         menu_export_close: "エクスポートを閉じる",
+        menu_search: "検索",
+
     };
 export default strings;

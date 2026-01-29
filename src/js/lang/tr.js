@@ -63,5 +63,7 @@ export const strings = {
   menu_layers_label: "Harita katmanları",
   menu_export_open: "Dışa aktarmayı aç",
   menu_export_close: "Dışa aktarmayı kapat",
+  menu_search: "Ara",
+
 };
 export default strings;

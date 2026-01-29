@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Lagen",
         menu_export_open: "Export openen",
         menu_export_close: "Export sluiten",
+        menu_search: "Zoeken",
+
     };
 export default strings;

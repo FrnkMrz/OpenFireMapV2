@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Warstwy",
         menu_export_open: "Otwórz eksport",
         menu_export_close: "Zamknij eksport",
+        menu_search: "Szukaj",
+
     };
 export default strings;

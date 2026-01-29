@@ -63,5 +63,7 @@ export const strings = {
   menu_layers_label: "طبقات الخريطة",
   menu_export_open: "فتح التصدير",
   menu_export_close: "إغلاق التصدير",
+  menu_search: "بحث",
+
 };
 export default strings;

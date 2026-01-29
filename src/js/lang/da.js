@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Lag",
         menu_export_open: "Åbn eksport",
         menu_export_close: "Luk eksport",
+        menu_search: "Søg",
+
     };
 export default strings;

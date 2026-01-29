@@ -63,5 +63,7 @@ export const strings = {
   menu_layers_label: "মানচিত্রের স্তর",
   menu_export_open: "রপ্তানি খুলুন",
   menu_export_close: "রপ্তানি বন্ধ করুন",
+  menu_search: "অনুসন্ধান",
+
 };
 export default strings;

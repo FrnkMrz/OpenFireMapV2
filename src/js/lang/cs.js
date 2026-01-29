@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Vrstvy",
         menu_export_open: "Otevřít export",
         menu_export_close: "Zavřít export",
+        menu_search: "Hledat",
+
     };
 export default strings;

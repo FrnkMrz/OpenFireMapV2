@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Couches",
         menu_export_open: "Ouvrir l’export",
         menu_export_close: "Fermer l’export",
+        menu_search: "Rechercher",
+
     };
 export default strings;

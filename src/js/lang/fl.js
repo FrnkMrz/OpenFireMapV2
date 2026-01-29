@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Mga layer",
         menu_export_open: "Buksan ang export",
         menu_export_close: "Isara ang export",
+        menu_search: "Sykje",
+
     };
 export default strings;

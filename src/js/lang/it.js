@@ -65,5 +65,7 @@ export const strings = {
         menu_layers_label: "Livelli",
         menu_export_open: "Apri esportazione",
         menu_export_close: "Chiudi esportazione",
+        menu_search: "Cerca",
+
     };
 export default strings;

@@ -63,5 +63,7 @@ export const strings = {
   menu_layers_label: "मानचित्र परतें",
   menu_export_open: "निर्यात खोलें",
   menu_export_close: "निर्यात बंद करें",
+  menu_search: "खोजें",
+
 };
 export default strings;
