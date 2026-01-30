@@ -19,39 +19,45 @@ let fallbackDict = null;
 
 /**
  * Aus einer Browser-Sprache (z.B. "de-DE") den Code ableiten.
- * - Erst exakte Treffer versuchen (de-de)
- * - Dann Short-Code (de)
- * - Dann Default
+ * - Wir arbeiten intern nur mit Sprach-Shortcodes (z.B. "de", "en").
+ * - Regionale Varianten wie "de-DE" werden auf "de" normalisiert.
  */
 function detectLangCode() {
   const urlLang = new URLSearchParams(window.location.search).get('lang');
-  if (urlLang) return urlLang.toLowerCase();
+  if (urlLang) return normalizeLang(urlLang);
 
   const stored = localStorage.getItem('ofm_lang');
-  if (stored) return stored.toLowerCase();
+  if (stored) return normalizeLang(stored);
 
   const full = (navigator.language || navigator.userLanguage || DEFAULT_LANG).toLowerCase();
-  return full;
+  return normalizeLang(full);
+}
+
+/**
+ * Normalisiert Sprachcodes.
+ * - "de-DE" -> "de" (kein "de-de" Support mehr)
+ * - "DE"    -> "de"
+ */
+function normalizeLang(code) {
+  const clean = String(code || '').trim().toLowerCase();
+  if (!clean) return DEFAULT_LANG;
+
+  // explizit: regionale Varianten von Deutsch auf "de" mappen
+  if (clean === 'de-de' || clean.startsWith('de-')) return 'de';
+
+  // grundsätzlich: nur den Shortcode verwenden
+  return clean.split('-')[0] || DEFAULT_LANG;
 }
 
 async function loadLangDict(code) {
   // unterstützt z.B. de, en, pt, pt-br
-  const clean = (code || '').toLowerCase();
+  const clean = normalizeLang(code);
 
-  // 1) exakter Import (de-de)
+  // Import (wir laden nur Shortcodes)
   try {
     const mod = await import(`./lang/${clean}.js`);
     return mod.strings || mod.default || null;
   } catch (_) {}
-
-  // 2) short-code Import (de)
-  const short = clean.split('-')[0];
-  if (short && short !== clean) {
-    try {
-      const mod = await import(`./lang/${short}.js`);
-      return mod.strings || mod.default || null;
-    } catch (_) {}
-  }
 
   return null;
 }
@@ -68,7 +74,7 @@ export async function initI18n() {
   const detectedDict = await loadLangDict(detected);
 
   if (detectedDict) {
-    currentLang = detected.includes('-') ? detected.split('-')[0] : detected;
+    currentLang = normalizeLang(detected);
     currentDict = detectedDict;
   } else {
     currentLang = DEFAULT_LANG;
@@ -92,7 +98,7 @@ export async function setLang(code) {
   const dict = await loadLangDict(code);
   if (!dict) return false;
 
-  currentLang = (code || '').toLowerCase().split('-')[0] || DEFAULT_LANG;
+  currentLang = normalizeLang(code);
   currentDict = dict;
 
   localStorage.setItem('ofm_lang', currentLang);
