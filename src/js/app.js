@@ -70,4 +70,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('[OpenFireMapV2] Fataler Fehler beim Start:', err);
     showNotification(`Startfehler: ${err?.message ?? String(err)}`, 8000);
   }
+
+  // PWA Service Worker Registration
+  if ('serviceWorker' in navigator) {
+    try {
+      await navigator.serviceWorker.register('/sw.js');
+      console.log('[SW] Service Worker registriert');
+    } catch (e) {
+      console.warn('[SW] Fehler bei Registrierung:', e);
+    }
+  }
 });
