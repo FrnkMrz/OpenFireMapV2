@@ -208,18 +208,19 @@ export function initMapLogic() {
         if (debounceTimer) clearTimeout(debounceTimer);
 
         // Debounce je nach Zoom (Hydranten-Modus braucht mehr Ruhe, sonst hagelt es 429).
+        // OPTIMIERUNG: Werte drastisch reduziert (600ms statt 1.2s), damit Initial-Load schneller wirkt.
         const debounceMs =
-            (zoom <= 15) ? 1200 :
-                (zoom === 16) ? 900 :
-                    (zoom === 17) ? 700 :
-                        500;
+            (zoom <= 15) ? 600 :
+                (zoom === 16) ? 400 :
+                    (zoom === 17) ? 300 :
+                        200;
 
         // Mindestabstand zwischen gestarteten Requests (Rate-Limit/Overpass-Last).
         // Wir zeigen bei Zoom 15 ALLES, aber wir starten nicht 10 Requests pro Sekunde.
         const minIntervalMs =
-            (zoom <= 15) ? 2500 :
-                (zoom === 16) ? 1800 :
-                    (zoom === 17) ? 1200 :
+            (zoom <= 15) ? 2000 : // war 2500
+                (zoom === 16) ? 1500 : // war 1800
+                    (zoom === 17) ? 1000 : // war 1200
                         800;
 
         debounceTimer = setTimeout(() => {
@@ -245,6 +246,7 @@ export function initMapLogic() {
             }
 
             // Status "Warten" erst setzen, wenn wir wirklich gleich einen Request starten.
+            // (Manuelles DOM-Update, da setStatus in map.js nicht verfügbar ist)
             if (statusEl) {
                 statusEl.innerText = t('status_waiting');
                 statusEl.className = 'text-amber-400 font-bold';
@@ -269,9 +271,13 @@ export function initMapLogic() {
         if (el) el.innerText = State.map.getZoom().toFixed(1);
     });
 
-    // Initial load: use the same gated/debounced logic as after user interactions.
-    // This avoids undefined variables (fetchKey) and prevents immediate request storms.
-    State.map.fire('moveend');
+    // Initial load: 
+    // Wir feuern 'moveend' mit einem minimalen Timeout.
+    // Das gibt Leaflet/Browser Zeit für den ersten Paint, bevor der Debounce (600ms) startet.
+    // Ergebnis: Karte ist sichtbar -> 600ms warten -> Daten laden. (Fühlt sich "snappy" an).
+    setTimeout(() => {
+        State.map.fire('moveend');
+    }, 150);
 }
 
 export function setBaseLayer(key) {
