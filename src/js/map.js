@@ -26,11 +26,11 @@ export function initMapLogic() {
     State.openTooltipMarker = null;
 
 
-    State.map = L.map('map', { 
-        zoomControl: false, 
+    State.map = L.map('map', {
+        zoomControl: false,
         preferCanvas: true, // <--- WICHTIG: Beschleunigt das Rendering massiv
-        center: Config.defaultCenter, 
-        zoom: Config.defaultZoom 
+        center: Config.defaultCenter,
+        zoom: Config.defaultZoom
     });
 
     State.boundaryLayer.addTo(State.map);
@@ -43,7 +43,7 @@ export function initMapLogic() {
     // Merkt sich, für welchen "Daten-Modus" + Karten-Ausschnitt wir zuletzt geladen haben.
     // Damit vermeiden wir unnötige Requests beim minimalen Verschieben oder bei Zoom-Änderungen,
     // die am Ladeumfang nichts ändern.
-let lastRenderBucket = null;
+    let lastRenderBucket = null;
     let lastFetchKey = null;
     let lastFetchStartTs = 0;
 
@@ -59,12 +59,12 @@ let lastRenderBucket = null;
         el.textContent = 'OFM_DEBUG=1';
         document.body.appendChild(el);
 
-        const set = (s) => { const e=document.getElementById('ofm-debug'); if (e) e.textContent = s; };
+        const set = (s) => { const e = document.getElementById('ofm-debug'); if (e) e.textContent = s; };
         window.addEventListener('ofm:overpass', (ev) => {
             const d = ev.detail || {};
             const z = State.map?.getZoom?.() ?? '?';
             const m = State.queryMeta ? ` pad=${State.queryMeta.padMeters}m snap=${State.queryMeta.snapMeters}m` : '';
-            const line = `${d.phase || 'evt'} z=${z}${m} ${d.endpoint ? ('ep=' + d.endpoint.replace('https://','')) : ''} ${d.ms ? (d.ms+'ms') : ''} ${d.status ? ('HTTP '+d.status) : ''}`;
+            const line = `${d.phase || 'evt'} z=${z}${m} ${d.endpoint ? ('ep=' + d.endpoint.replace('https://', '')) : ''} ${d.ms ? (d.ms + 'ms') : ''} ${d.status ? ('HTTP ' + d.status) : ''}`;
             set(line);
         });
 
@@ -110,21 +110,24 @@ let lastRenderBucket = null;
 
         // Padding (in Metern): Bei Zoom 15 soll der Abfragebereich deutlich größer sein (1–2 km),
         // damit leichtes Verschieben NICHT sofort neue Queries auslöst.
+        // Padding (in Metern):
+        // OPTIMIERUNG: Werte drastisch reduziert, um "Hang" beim Initial-Load zu vermeiden.
+        // Vorher war Z15 auf 2000m -> extrem große Datenmenge (25x Viewport).
+        // Jetzt: ca. 1 Screen-Größe Puffer.
         const padMeters =
-            (zoom <= 15) ? 2000 :
-            (zoom === 16) ? 1200 :
-            (zoom === 17) ? 700  :
-            (zoom === 18) ? 350  :
-            200;
+            (zoom <= 15) ? 600 :  // war 2000
+                (zoom === 16) ? 400 : // war 1200
+                    (zoom === 17) ? 250 : // war 700
+                        (zoom === 18) ? 150 : // war 350
+                            100;
 
-        // Snap-Grid (in Metern): Wir "snappen" die Abfrage-BBox auf ein Grid.
-        // So ändert sich der Query-Key nicht bei jeder kleinen Mausbewegung.
+        // Snap-Grid (in Metern):
         const snapMeters =
-            (zoom <= 15) ? 800 :
-            (zoom === 16) ? 400 :
-            (zoom === 17) ? 200 :
-            (zoom === 18) ? 100 :
-            60;
+            (zoom <= 15) ? 200 : // war 800
+                (zoom === 16) ? 100 : // war 400
+                    (zoom === 17) ? 50 :  // war 200
+                        (zoom === 18) ? 25 :  // war 100
+                            20;
 
         // Umrechnung Meter -> Grad (näherungsweise, reicht hier völlig)
         const lat = center.lat;
@@ -136,9 +139,9 @@ let lastRenderBucket = null;
 
         // Gepufferte Bounds
         let south = viewBounds.getSouth() - dLatPad;
-        let west  = viewBounds.getWest()  - dLonPad;
+        let west = viewBounds.getWest() - dLonPad;
         let north = viewBounds.getNorth() + dLatPad;
-        let east  = viewBounds.getEast()  + dLonPad;
+        let east = viewBounds.getEast() + dLonPad;
 
         // Snap in Grad
         const snapLat = snapMeters / metersPerDegLat;
@@ -148,8 +151,8 @@ let lastRenderBucket = null;
 
         south = snap(south, snapLat);
         north = snap(north, snapLat);
-        west  = snap(west,  snapLon);
-        east  = snap(east,  snapLon);
+        west = snap(west, snapLon);
+        east = snap(east, snapLon);
 
         // Für api.js: Query-Bounds bereitstellen (damit nicht "sichtbarer Ausschnitt" abgefragt wird)
         // Wichtig: Leaflet akzeptiert LatLngBounds direkt.
@@ -207,17 +210,17 @@ let lastRenderBucket = null;
         // Debounce je nach Zoom (Hydranten-Modus braucht mehr Ruhe, sonst hagelt es 429).
         const debounceMs =
             (zoom <= 15) ? 1200 :
-            (zoom === 16) ? 900 :
-            (zoom === 17) ? 700 :
-            500;
+                (zoom === 16) ? 900 :
+                    (zoom === 17) ? 700 :
+                        500;
 
         // Mindestabstand zwischen gestarteten Requests (Rate-Limit/Overpass-Last).
         // Wir zeigen bei Zoom 15 ALLES, aber wir starten nicht 10 Requests pro Sekunde.
         const minIntervalMs =
             (zoom <= 15) ? 2500 :
-            (zoom === 16) ? 1800 :
-            (zoom === 17) ? 1200 :
-            800;
+                (zoom === 16) ? 1800 :
+                    (zoom === 17) ? 1200 :
+                        800;
 
         debounceTimer = setTimeout(() => {
             const statusEl = document.getElementById('data-status');
@@ -260,10 +263,10 @@ let lastRenderBucket = null;
             State.rangeLayerGroup.clearLayers();
         }
     });
-    
+
     State.map.on('zoom', () => {
         const el = document.getElementById('zoom-val');
-        if(el) el.innerText = State.map.getZoom().toFixed(1);
+        if (el) el.innerText = State.map.getZoom().toFixed(1);
     });
 
     // Initial load: use the same gated/debounced logic as after user interactions.
@@ -273,15 +276,15 @@ let lastRenderBucket = null;
 
 export function setBaseLayer(key) {
     State.activeLayerKey = key;
-    State.map.eachLayer(layer => { 
-        if (layer instanceof L.TileLayer) State.map.removeLayer(layer); 
+    State.map.eachLayer(layer => {
+        if (layer instanceof L.TileLayer) State.map.removeLayer(layer);
     });
     const conf = Config.layers[key];
     L.tileLayer(conf.url, { attribution: conf.attr, maxZoom: conf.maxZoom }).addTo(State.map);
-    
+
     document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
     const btn = document.getElementById(`btn-${key}`);
-    if(btn) btn.classList.add('active');
+    if (btn) btn.classList.add('active');
 }
 
 // Hilfsfunktion für SVGs (jetzt mit Farben aus Config)
@@ -291,39 +294,39 @@ function getSVGContent(type) {
 
     // 1. Defibrillator
     if (type === 'defibrillator') {
-         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="45" fill="${c.defib}" stroke="white" stroke-width="5"/>
             <path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/>
             <path d="M55 45 L45 55 L55 55 L45 65" stroke="${c.defib}" stroke-width="3" fill="none"/>
         </svg>`;
     }
-    
+
     // Entscheidung: Blau oder Rot?
     const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
     const color = isWater ? c.water : c.hydrant;
-    
+
     // 2. Wandhydrant
     if (type === 'wall') {
-         return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
             <circle cx="42" cy="52" r="18" fill="none" stroke="white" stroke-width="6" />
             <line x1="64" y1="34" x2="64" y2="70" stroke="white" stroke-width="6" stroke-linecap="round" />
         </svg>`;
     }
-    
+
     // Buchstabe ermitteln
     let char = '';
-    switch(type) {
-        case 'underground': char = 'U'; break; 
-        case 'pillar':      char = 'O'; break; 
-        case 'pipe':        char = 'I'; break;
-        case 'dry_barrel':  char = 'Ø'; break; 
-        default:            char = '';
+    switch (type) {
+        case 'underground': char = 'U'; break;
+        case 'pillar': char = 'O'; break;
+        case 'pipe': char = 'I'; break;
+        case 'dry_barrel': char = 'Ø'; break;
+        default: char = '';
     }
-    
+
     // 3. Wache
     if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="${c.station}" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
-    
+
     // 4. Standard
     return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
 }
@@ -523,22 +526,22 @@ function generateTooltip(tags) {
 export function showRangeCircle(lat, lon) {
     State.rangeLayerGroup.clearLayers();
     const zoom = State.map.getZoom();
-    if (zoom < 16) return; 
+    if (zoom < 16) return;
 
     // Hier nutzen wir Config.colors.rangeCircle
     L.circle([lat, lon], {
-        color: Config.colors.rangeCircle, 
-        fillColor: Config.colors.rangeCircle, 
-        fillOpacity: 0.15, 
-        radius: 100, weight: 2, dashArray: '5, 8', interactive: false 
+        color: Config.colors.rangeCircle,
+        fillColor: Config.colors.rangeCircle,
+        fillOpacity: 0.15,
+        radius: 100, weight: 2, dashArray: '5, 8', interactive: false
     }).addTo(State.rangeLayerGroup);
 
     if (zoom >= 17) {
         const latRad = lat * Math.PI / 180;
         const kmPerDegLon = 111.32 * Math.cos(latRad);
-        const offsetLon = 0.05 / kmPerDegLon; 
-        
-        const labelMarker = L.marker([lat, lon + offsetLon], {opacity: 0, interactive: false}).addTo(State.rangeLayerGroup);
+        const offsetLon = 0.05 / kmPerDegLon;
+
+        const labelMarker = L.marker([lat, lon + offsetLon], { opacity: 0, interactive: false }).addTo(State.rangeLayerGroup);
         labelMarker.bindTooltip("100 m", { permanent: true, direction: 'center', className: 'range-label', offset: [0, 0] }).openTooltip();
     }
 }
@@ -572,11 +575,11 @@ export function renderMarkers(elements, zoom) {
         // --- A. Grenzen verarbeiten (wie bisher) ---
         if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
             const latlngs = el.geometry.map(p => [p.lat, p.lon]);
-            L.polyline(latlngs, { 
-                color: Config.colors.bounds, 
-                weight: 1, 
-                dashArray: '10, 10', 
-                opacity: 0.7 
+            L.polyline(latlngs, {
+                color: Config.colors.bounds,
+                weight: 1,
+                dashArray: '10, 10',
+                opacity: 0.7
             }).addTo(State.boundaryLayer);
             return;
         }
@@ -594,14 +597,14 @@ export function renderMarkers(elements, zoom) {
 
         // --- D. Zoom-Filter (Sichtbarkeit) ---
         // Stationen ab Zoom 12, Hydranten/Defis ab Zoom 15
-        if (isStation && zoom < 12) return; 
-        if (!isStation && !isDefib && zoom < 15) return; 
-        if (isDefib && zoom < 15) return; 
+        if (isStation && zoom < 12) return;
+        if (!isStation && !isDefib && zoom < 15) return;
+        if (isDefib && zoom < 15) return;
 
         // --- E. Duplikat-Check für Stationen (Räumliche Nähe) ---
         const alreadyDrawn = renderedLocations.some(loc => Math.abs(loc.lat - lat) < 0.0001 && Math.abs(loc.lon - lon) < 0.0001);
         if (isStation && alreadyDrawn) return;
-        if (isStation) renderedLocations.push({lat, lon});
+        if (isStation) renderedLocations.push({ lat, lon });
 
         // --- F. Darstellungs-Modus bestimmen ---
         // Wir müssen wissen, ob der Marker als "Punkt" oder als "SVG-Icon" dargestellt werden soll.
@@ -620,7 +623,7 @@ export function renderMarkers(elements, zoom) {
         markersToKeep.add(id);
 
         // --- G. DIFFING LOGIK (Das Herzstück) ---
-        
+
         // Prüfen, ob wir den Marker schon haben
         const cached = State.markerCache.get(id);
 
@@ -628,7 +631,7 @@ export function renderMarkers(elements, zoom) {
         if (cached && cached.mode === mode) {
             // Nichts tun! Der Marker bleibt einfach auf der Karte.
             // Das verhindert das Flackern und spart Rechenleistung.
-            return; 
+            return;
         }
 
         // Fall 2: Marker existiert, aber Modus hat sich geändert (z.B. Zoom von 16 auf 17 -> Dot zu SVG)
@@ -669,18 +672,18 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         if (isStation) {
             marker = L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10, 10] }) });
         } else if (isDefib) {
-            marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10,10] }) });
+            marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10, 10] }) });
         } else {
             // Wasser/Hydranten Unterscheidung für Dots
             const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
             className = isWater ? 'tank-dot' : 'hydrant-dot';
-            marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10,10] }) });
+            marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10, 10] }) });
         }
     } else {
         // SVG Icons für hohe Zoomstufen
         iconHtml = getSVGContent(type); // Nutzt deine existierende Funktion
         className = 'icon-container';
-        
+
         if (isStation) {
             size = [32, 32]; zIndex = 1000;
         } else if (isDefib) {
@@ -689,16 +692,16 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             zIndex = 0;
         }
 
-        marker = L.marker([lat, lon], { 
-            icon: L.divIcon({ className, html: iconHtml, iconSize: size }), 
-            zIndexOffset: zIndex 
+        marker = L.marker([lat, lon], {
+            icon: L.divIcon({ className, html: iconHtml, iconSize: size }),
+            zIndexOffset: zIndex
         });
 
         // Klick-Event für Hydranten-Radius
         if (!isStation && !isDefib) {
-            marker.on('click', (e) => { 
+            marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
-                showRangeCircle(lat, lon); 
+                showRangeCircle(lat, lon);
             });
         }
     }
@@ -774,7 +777,7 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
 
         // Mouseover auf den Marker: Tooltip sofort öffnen (ab Zoom >= 18).
         // Wichtig: Das passiert unabhängig vom Klick-Handling (Radius etc.).
-        marker.on('mouseover', function() {
+        marker.on('mouseover', function () {
             if (State.map.getZoom() < 18) return;
 
             if (closeTimer) {
@@ -789,7 +792,7 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         // Mouseout vom Marker: Tooltip nicht sofort schließen,
         // sondern nach 3 s. Der Timer wird abgebrochen, wenn der User
         // in den Tooltip fährt (mouseenter auf Tooltip-DOM).
-        marker.on('mouseout', function() {
+        marker.on('mouseout', function () {
             if (State.map.getZoom() < 18) return;
 
             closeTimer = setTimeout(() => {
@@ -803,7 +806,7 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         // - So bleibt der Tooltip offen, während man ihn liest oder anklickt.
         // - Gleichzeitig erzwingen wir die "nur ein Tooltip offen"-Regel auch dann,
         //   wenn Leaflet den Tooltip aus anderen Gründen öffnet (Touch/Keyboard).
-        marker.on('tooltipopen', function(e) {
+        marker.on('tooltipopen', function (e) {
             // Tooltips gibt es nur ab Zoom-Level 18. Falls Leaflet ihn aus anderen Gründen öffnet: sofort schließen.
             if (State.map.getZoom() < 18) {
                 try { marker.closeTooltip(); } catch (e) { /* ignore */ }
@@ -838,7 +841,7 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         // Tooltip schließt (egal wodurch): Aufräumen.
         // - globalen "openTooltipMarker" zurücksetzen, falls er auf diesen Marker zeigt
         // - laufenden closeTimer abbrechen
-        marker.on('tooltipclose', function() {
+        marker.on('tooltipclose', function () {
             if (State.openTooltipMarker === marker) {
                 State.openTooltipMarker = null;
             }
