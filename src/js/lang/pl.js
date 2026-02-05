@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "Wybierz obszar",
         area_fixed: "Obszar ustalony ✓",
         png_btn: "Mapa hydrantów (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "Eksportuj do GPX",
         exporting_title: "Tworzenie eksportu...",
         loading_tiles: "Ładowanie kafelków...",

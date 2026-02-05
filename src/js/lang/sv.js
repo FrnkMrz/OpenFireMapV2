@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "Välj område på kartan",
         area_fixed: "Område fastställt ✓",
         png_btn: "Brandpostkarta (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "Exportera brandposter (GPX)",
         exporting_title: "Skapar export...",
         loading_tiles: "Laddar kartrutor...",

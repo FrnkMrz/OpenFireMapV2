@@ -24,6 +24,7 @@ export const strings = {
   select_area_btn: "Pilih area",
   area_fixed: "Area tetap",
   png_btn: "Buat PNG",
+        pdf_btn: "Hydrant Map (PDF)",
   gpx_btn: "Buat GPX",
   exporting_title: "Mengekspor",
   loading_tiles: "Memuat tile",

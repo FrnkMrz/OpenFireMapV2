@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "地図上で範囲を選択",
         area_fixed: "範囲固定 ✓",
         png_btn: "消火栓マップ (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "消火栓エクスポート (GPX)",
         exporting_title: "エクスポート作成中...",
         loading_tiles: "タイル読み込み中...",

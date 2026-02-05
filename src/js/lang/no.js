@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "Velg område på kartet",
         area_fixed: "Område låst ✓",
         png_btn: "Brannhydrantkart (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "Eksporter hydranter (GPX)",
         exporting_title: "Oppretter eksport...",
         loading_tiles: "Laster kartfliser...",

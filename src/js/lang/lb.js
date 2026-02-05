@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "Ausschnëtt op der Kaart wielen",
         area_fixed: "Ausschnëtt fixéiert ✓",
         png_btn: "Hydrantenplang (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "Hydranten exportéieren (GPX)",
         exporting_title: "Export gëtt erstallt...",
         loading_tiles: "Lueden Kachelen...",

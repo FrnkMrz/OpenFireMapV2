@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "在地圖上選擇區域",
         area_fixed: "區域已固定 ✓",
         png_btn: "消防栓地圖 (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "匯出消防栓 (GPX)",
         exporting_title: "正在建立匯出...",
         loading_tiles: "載入圖磚中...",

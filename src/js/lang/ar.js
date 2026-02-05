@@ -24,6 +24,7 @@ export const strings = {
   select_area_btn: "حدد المنطقة",
   area_fixed: "منطقة ثابتة",
   png_btn: "إنشاء PNG",
+        pdf_btn: "Hydrant Map (PDF)",
   gpx_btn: "إنشاء GPX",
   exporting_title: "جارٍ التصدير",
   loading_tiles: "جارٍ تحميل البلاطات",

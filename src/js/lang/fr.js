@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "Sélectionner une zone",
         area_fixed: "Zone fixée ✓",
         png_btn: "Carte des poteaux (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "Exporter en GPX",
         exporting_title: "Création de l'export...",
         loading_tiles: "Chargement des tuiles...",

@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "Valitse alue kartalta",
         area_fixed: "Alue lukittu ✓",
         png_btn: "Palopostikartta (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "Vie palopostit (GPX)",
         exporting_title: "Luodaan vientiä...",
         loading_tiles: "Ladataan tiiliä...",

@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "Pilih Kawasan di Peta",
         area_fixed: "Kawasan ditetapkan ✓",
         png_btn: "Peta Pili Bomba (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "Eksport Pili Bomba (GPX)",
         exporting_title: "Mencipta Eksport...",
         loading_tiles: "Memuatkan Jubin...",

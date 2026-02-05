@@ -24,6 +24,7 @@ export const strings = {
   select_area_btn: "এলাকা নির্বাচন করুন",
   area_fixed: "স্থির এলাকা",
   png_btn: "PNG তৈরি করুন",
+        pdf_btn: "Hydrant Map (PDF)",
   gpx_btn: "GPX তৈরি করুন",
   exporting_title: "রপ্তানি হচ্ছে",
   loading_tiles: "টাইল লোড হচ্ছে",

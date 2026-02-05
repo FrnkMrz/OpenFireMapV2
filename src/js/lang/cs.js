@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "Vybrat oblast",
         area_fixed: "Oblast fixována ✓",
         png_btn: "Mapa hydrantów (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "Exportovat do GPX",
         exporting_title: "Vytváření exportu...",
         loading_tiles: "Načítání dlaždic...",

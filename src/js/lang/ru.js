@@ -24,6 +24,7 @@ export const strings = {
   select_area_btn: "Выбрать область",
   area_fixed: "Фиксированная область",
   png_btn: "Создать PNG",
+        pdf_btn: "Hydrant Map (PDF)",
   gpx_btn: "Создать GPX",
   exporting_title: "Экспортируется",
   loading_tiles: "Загрузка тайлов",

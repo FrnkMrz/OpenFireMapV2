@@ -24,6 +24,7 @@ export const strings = {
   select_area_btn: "क्षेत्र चुनें",
   area_fixed: "क्षेत्र तय",
   png_btn: "PNG बनाएं",
+        pdf_btn: "Hydrant Map (PDF)",
   gpx_btn: "GPX बनाएं",
   exporting_title: "निर्यात हो रहा है",
   loading_tiles: "टाइलें लोड हो रही हैं",

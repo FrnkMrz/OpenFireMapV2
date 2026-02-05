@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "Seleziona area",
         area_fixed: "Area fissata ✓",
         png_btn: "Mappa idranti (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "Esporta in GPX",
         exporting_title: "Creazione esportazione...",
         loading_tiles: "Caricamento riquadri...",

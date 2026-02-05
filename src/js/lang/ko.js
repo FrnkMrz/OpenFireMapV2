@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "지도에서 영역 선택",
         area_fixed: "영역 고정됨 ✓",
         png_btn: "소화전 지도 (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "소화전 내보내기 (GPX)",
         exporting_title: "내보내기 생성 중...",
         loading_tiles: "타일 로딩 중...",

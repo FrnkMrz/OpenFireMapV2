@@ -24,6 +24,7 @@ export const strings = {
   select_area_btn: "Alan seç",
   area_fixed: "Sabit alan",
   png_btn: "PNG oluştur",
+        pdf_btn: "Hydrant Map (PDF)",
   gpx_btn: "GPX oluştur",
   exporting_title: "Dışa aktarılıyor",
   loading_tiles: "Döşemeler yükleniyor",

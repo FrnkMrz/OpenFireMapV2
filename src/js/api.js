@@ -173,10 +173,12 @@ function makeOverpassCacheKey({ zoom, bboxKey, queryKind }) {
 }
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
-async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId }) {
+/** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
+async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId, skipCache = false }) {
   if (!navigator.onLine) throw new Error('err_offline');
 
-  if (cacheKey) {
+  // Cache lesen (nur wenn nicht übersprungen)
+  if (cacheKey && !skipCache) {
     const cached = getCache(cacheKey, cacheTtlMs);
     if (cached) {
       emit({ phase: 'cache_hit', reqId, cacheKey });
@@ -218,6 +220,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
 
       epMarkOk(endpoint, 200);
 
+      // Cache schreiben (immer, wenn wir Key haben)
       if (cacheKey) setCache(cacheKey, json);
 
       const ms = Math.round(performance.now() - t0);
@@ -240,25 +243,20 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
       // Circuit-Breaker & Backoff Regeln:
       if (err instanceof HttpError) {
         if (err.status === 429) {
-          // längerer Cooldown für diesen Endpoint, plus globaler Backoff
           epMarkFail(endpoint, 429, 90000); // 90s
           bumpGlobalBackoff({ minMs: 8000, maxMs: 30000 });
           emit({ phase: 'ratelimit', reqId, endpoint, backoffMs: GLOBAL_BACKOFF_MS });
-          // Bei 429 NICHT direkt den nächsten Endpoint „wegballern“, erst backoffen
           await sleep(300);
           continue;
         }
         if (err.status >= 500) {
-          // 504/5xx: Endpoint kurzfristig in Cooldown, dann nächster probieren
           epMarkFail(endpoint, err.status, 30000); // 30s
-          // kurzer globaler Backoff, damit wir nicht sofort wieder voll draufgehen
           bumpGlobalBackoff({ minMs: 1200, maxMs: 8000 });
           await sleep(400);
           continue;
         }
       }
 
-      // Netz/sonstige Fehler: kurzer Cooldown
       epMarkFail(endpoint, status, 20000);
       await sleep(300);
       continue;
@@ -288,10 +286,8 @@ export async function fetchOSMData() {
   const bbox = State.queryMeta?.bbox || `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
   const bboxKey = State.queryMeta?.bbox ? State.queryMeta.bbox : makeBBoxKey(b, 3);
 
+  // loading state...
   emit({ phase: 'load_start', reqId, zoom, bboxKey });
-
-  // UI: Loading
-  setStatus('status_loading', 'text-amber-400 font-bold');
 
   // Alte Anfrage abbrechen + neuen Controller setzen
   if (State.controllers.fetch) State.controllers.fetch.abort();
@@ -305,7 +301,7 @@ export async function fetchOSMData() {
     queryParts.push(`nwr["building"="fire_station"];`);
   }
 
-  // Hydranten/Wasser/Defi ab 15 (du willst "alles", also bleibt das so)
+  // Hydranten/Wasser/Defi ab 15
   if (zoom >= 15) {
     queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
     queryParts.push(`node["emergency"="defibrillator"];`);
@@ -329,18 +325,37 @@ export async function fetchOSMData() {
 
   // Caching:
   // User-Wunsch: "Einmal geladen, länger behalten".
-  // Da wir jetzt Persistent Storage (LocalStorage) nutzen, setzen wir die TTL hoch.
-  // 24 Stunden (86400000 ms) sollten safe sein.
+  // UND: "Trotzdem aktualisieren" (Stale-While-Revalidate).
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;
   const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
-  const cacheTtlMs = ONE_DAY_MS;
+
+  // SCHRITT 1: Cache prüfen & sofort anzeigen
+  let hasCachedData = false;
+  try {
+    const cached = getCache(cacheKey, ONE_DAY_MS);
+    if (cached) {
+      hasCachedData = true;
+      State.cachedElements = cached.elements || [];
+      renderMarkers(State.cachedElements, zoom);
+      // Status: Wir haben Daten, aber prüfen Aktualität...
+      setStatus('status_loading', 'text-blue-400'); // Oder ein neuer Status "Refreshing"?
+      emit({ phase: 'swr_hit', reqId, cacheKey });
+    } else {
+      // Kein Cache: Full Loading UI
+      setStatus('status_loading', 'text-amber-400 font-bold');
+    }
+  } catch (e) { /* ignore */ }
+
 
   const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 
   const tAll0 = performance.now();
 
   try {
-    const data = await fetchWithRetry(q, { cacheKey, cacheTtlMs, reqId });
+    // SCHRITT 2: Netzwerk-Requests (immer, auch bei Cache-Hit!)
+    // skipCache=true, da wir manuell geprüft haben und FRESH data wollen.
+    // fetchWithRetry schreibt das Ergebnis am Ende automatisch wieder in den Cache.
+    const data = await fetchWithRetry(q, { cacheKey, cacheTtlMs: ONE_DAY_MS, reqId, skipCache: true });
 
     const tR0 = performance.now();
     State.cachedElements = data.elements || [];
@@ -353,24 +368,39 @@ export async function fetchOSMData() {
     setStatus('status_current', 'text-green-400');
 
   } catch (err) {
-    // Abort ist bei uns normal (User bewegt/zoomt). Status NICHT auf "loading" stehen lassen.
     if (err?.name === 'AbortError') {
+      // Wenn wir abgebrochen wurden, aber Cache hatten -> lassen wir den Status auf Current/Cached?
+      // Nein, wir wissen nicht, ob wir "fertig" waren.
+      // Aber 'status_waiting' passt.
       setStatus('status_waiting', 'text-amber-400 font-bold');
       emit({ phase: 'aborted', reqId, zoom });
       return;
     }
 
-    const msgKey = mapErrorKey(err);
-    emit({
-      phase: 'load_fail',
-      reqId,
-      zoom,
-      code: msgKey,
-      status: (err instanceof HttpError) ? err.status : null,
-      message: String(err?.message || err)
-    });
+    // Wenn Netzwerk fehlschlägt, wir aber Cached Data haben:
+    if (hasCachedData) {
+      // Wir zeigen eine Warnung, aber behalten die Daten
+      console.warn("Background fetch failed, using stale data.", err);
+      // Optional: UI-Indikator, dass Daten "alt" sind?
+      // User wollte "cannot rely on valid data", also wichtig zu zeigen, dass es fehlschlug.
+      const msgKey = mapErrorKey(err);
+      setStatus(msgKey, 'text-amber-600 font-bold'); // Orange statt Rot
+      // Keine Notification, um nicht zu nerven? Oder doch?
+      // showNotification(t(msgKey), 3000); 
+    } else {
+      // Kein Cache UND kein Netzwerk -> Fehler
+      const msgKey = mapErrorKey(err);
+      emit({
+        phase: 'load_fail',
+        reqId,
+        zoom,
+        code: msgKey,
+        status: (err instanceof HttpError) ? err.status : null,
+        message: String(err?.message || err)
+      });
 
-    setStatus(msgKey, 'text-red-500 font-bold');
-    showNotification(t(msgKey), 5000);
+      setStatus(msgKey, 'text-red-500 font-bold');
+      showNotification(t(msgKey), 5000);
+    }
   }
 }

@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "Selecteer gebied op kaart",
         area_fixed: "Gebied vastgelegd ✓",
         png_btn: "Hydrantenkaart (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "Exporteer hydranten (GPX)",
         exporting_title: "Export aanmaken...",
         loading_tiles: "Tegels laden...",

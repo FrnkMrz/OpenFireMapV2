@@ -24,6 +24,7 @@ export const strings = {
   select_area_btn: "Chọn khu vực",
   area_fixed: "Khu vực cố định",
   png_btn: "Tạo PNG",
+        pdf_btn: "Hydrant Map (PDF)",
   gpx_btn: "Tạo GPX",
   exporting_title: "Đang xuất",
   loading_tiles: "Đang tải tile",

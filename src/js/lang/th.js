@@ -24,6 +24,7 @@ export const strings = {
         select_area_btn: "เลือกพื้นที่บนแผนที่",
         area_fixed: "พื้นที่ถูกกำหนดแล้ว ✓",
         png_btn: "แผนที่หัวดับเพลิง (PNG)",
+        pdf_btn: "Hydrant Map (PDF)",
         gpx_btn: "ส่งออกหัวดับเพลิง (GPX)",
         exporting_title: "กำลังสร้างการส่งออก...",
         loading_tiles: "กำลังโหลดกระเบื้อง...",
