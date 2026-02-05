@@ -2,7 +2,7 @@
     "name": "OpenFireMap",
     "short_name": "OpenFireMap",
     "description": "Interaktive Karte für Feuerwachen und Wasserentnahmestellen.",
-    "start_url": "/",
+    "start_url": ".",
     "display": "standalone",
     "orientation": "any",
     "background_color": "#0f172a",
