@@ -174,7 +174,7 @@ function makeOverpassCacheKey({ zoom, bboxKey, queryKind }) {
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
-async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId, skipCache = false }) {
+async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId, skipCache = false, signal = null }) {
   if (!navigator.onLine) throw new Error('err_offline');
 
   // Cache lesen (nur wenn nicht übersprungen)
@@ -213,7 +213,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
         headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
         body,
         timeoutMs: 25000,
-        signal: State.controllers.fetch.signal
+        signal: signal || State.controllers.fetch.signal
       });
 
       if (!json || typeof json !== 'object') throw new Error('err_generic');
@@ -403,4 +403,41 @@ export async function fetchOSMData() {
       showNotification(t(msgKey), 5000);
     }
   }
+}
+
+/**
+ * Holt Daten spezifisch für den Export (z.B. hohe Zoomstufe + Bounds).
+ * Gibt das JSON-Objekt zurück, ohne den globalen Status (Map/Cache) zu verändern.
+ */
+export async function fetchDataForExport(bounds, zoom, signal) {
+  const reqId = ++REQ_SEQ;
+  const s = bounds.getSouth();
+  const w = bounds.getWest();
+  const n = bounds.getNorth();
+  const e = bounds.getEast();
+  const bbox = `${s},${w},${n},${e}`;
+
+  const queryParts = [];
+  if (zoom >= 12) {
+    queryParts.push(`nwr["amenity"="fire_station"];`);
+    queryParts.push(`nwr["building"="fire_station"];`);
+  }
+  if (zoom >= 15) {
+    queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
+    queryParts.push(`node["emergency"="defibrillator"];`);
+  }
+  const boundaryQuery = (zoom >= 14)
+    ? `(way["boundary"="administrative"]["admin_level"="8"];)->.boundaries; .boundaries out geom;`
+    : '';
+
+  const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
+
+  const cacheKey = `export:${zoom}:${bbox}`;
+  return await fetchWithRetry(q, {
+    cacheKey,
+    cacheTtlMs: 1000 * 60 * 60, // 1h Cache
+    reqId,
+    skipCache: false,
+    signal
+  });
 }

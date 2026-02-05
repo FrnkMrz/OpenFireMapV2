@@ -87,6 +87,7 @@ Du kannst Kartenausschnitte als Bild oder PDF speichern (z.B. für Einsatzpläne
    - *Frei:* Der aktuell sichtbare Ausschnitt.
 3. **Download:**
    - **PNG:** Speichert ein hochauflösendes Bild.
+   - **PDF:** Erzeugt eine druckfertige PDF-Datei.
    - **GPX:** Exportiert die sichtbaren Hydranten als GPS-Datei (für Navis).
 
 ---
@@ -99,5 +100,8 @@ Die App ist als **Progressive Web App (PWA)** optimiert.
 - **Android (Chrome):** Tippe auf "Drei Punkte" -> "Zum Startbildschirm hinzufügen".
 - **iOS (Safari):** Tippe auf "Teilen" (Kästchen mit Pfeil) -> "Zum Home-Bildschirm".
 - Damit hast du ein echtes App-Icon und die Karte läuft im Vollbildmodus ohne Adressleiste.
+
+### Offline & Cache
+Einmal geladene Kartendaten (in deinem Ort) bleiben **24 Stunden gespeichert**. Beim nächsten Start ist die Karte sofort da, auch bei schlechtem Netz.
 
 **Tipp:** Auf dem Handy ist das Menü für Layer und Export einklappbar, um mehr Platz für die Karte zu haben.

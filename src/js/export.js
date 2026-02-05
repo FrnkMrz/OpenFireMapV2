@@ -12,6 +12,7 @@
 
 import { State } from "./state.js";
 import { Config } from "./config.js";
+import { fetchDataForExport } from "./api.js";
 import { t, getLang } from "./i18n.js";
 import { showNotification, toggleExportMenu } from "./ui.js";
 import { jsPDF } from "jspdf";
@@ -474,8 +475,8 @@ function getSVGContentForExport(type) {
     default:
       char = "";
   }
-  if (type === "station")
-    return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="${c.station}" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
+  if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="${c.station}" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
+
   return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ""}</svg>`;
 }
 
@@ -506,7 +507,19 @@ async function generateMapCanvas() {
   // 2. PARAMETER
   const targetZoom = State.exportZoomLevel;
   const bounds = State.selection.finalBounds || State.map.getBounds();
-  const elementsForExport = preprocessElementsForExport(State.cachedElements);
+
+  // DATEN LADEN (Explizit für diesen Ausschnitt & Zoom)
+  setStatus(t("loading_data") || "Lade Daten..."); // Fallback String falls Key fehlt
+  let elementsForExport = [];
+  try {
+    const data = await fetchDataForExport(bounds, targetZoom, signal);
+    elementsForExport = preprocessElementsForExport(data.elements || []);
+  } catch (e) {
+    console.warn("Export-Fetch fehlgeschlagen, nutze Cache als Fallback", e);
+    // Fallback: Cache nutzen (besser als nichts)
+    elementsForExport = preprocessElementsForExport(State.cachedElements);
+  }
+
   const nw = bounds.getNorthWest();
   const se = bounds.getSouthEast();
 
@@ -679,7 +692,7 @@ async function generateMapCanvas() {
       ? "station"
       : tags.emergency === "defibrillator"
         ? "defibrillator"
-        : tags["fire_hydrant:type"] || tags.emergency;
+        : tags["fire_hydrant:type"] || tags.emergency || "fire_hydrant";
 
     const tx = lon2tile(lon, targetZoom) * 256;
     const ty = lat2tile(lat, targetZoom) * 256;
