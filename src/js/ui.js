@@ -9,13 +9,22 @@
  */
 
 import { State } from './state.js';
-import { Config } from './config.js'; 
+import { Config } from './config.js';
 import { t } from './i18n.js';
 
 // Wir importieren Funktionen aus export.js, um sie auf Buttons zu legen
-import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, cancelExport } from './export.js';
+import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, exportAsPDF, cancelExport } from './export.js';
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
 import { setBaseLayer } from './map.js';
+
+// ...
+
+// 6. Export-Aktionen
+addClick('select-btn', startSelection);
+addClick('png-btn', exportAsPNG);
+addClick('pdf-btn', exportAsPDF);
+addClick('gpx-btn', exportAsGPX);
+addClick('cancel-export-btn', cancelExport);
 
 /**
  * HILFSFUNKTION: addClick
@@ -40,17 +49,17 @@ function addClick(id, fn) {
 export function showNotification(msg, duration = 3000) {
     const box = document.getElementById('notification-box');
     if (!box) return;
-    
+
     box.innerText = msg;
     box.style.display = 'block'; // Sichtbar machen
-    
+
     // Alten Timer löschen, falls gerade einer läuft
-    if(box.hideTimeout) clearTimeout(box.hideTimeout);
-    
+    if (box.hideTimeout) clearTimeout(box.hideTimeout);
+
     // Neuen Timer starten: Nach 3 Sekunden (duration) wieder ausblenden
     box.hideTimeout = setTimeout(() => {
         box.style.display = 'none';
-    }, duration); 
+    }, duration);
 }
 
 /**
@@ -66,8 +75,8 @@ export function closeAllMenus() {
 
     // 2. Info-Modal schließen (hat spezielles Display-Attribut)
     const legal = document.getElementById('legal-modal');
-    if(legal) legal.style.display = 'none';
-    
+    if (legal) legal.style.display = 'none';
+
     // 3. Barrierefreiheit: Layer-Button zurücksetzen
     const layerBtn = document.getElementById('layer-btn-trigger');
     if (layerBtn) {
@@ -92,22 +101,22 @@ export function closeAllMenus() {
 // Diese Funktion wird aufgerufen, wenn man auf den Layer-Button klickt
 function toggleLayerMenu() {
     // KORREKTUR: Die ID muss exakt so heißen wie im HTML ('layer-btn-trigger')
-    const btn = document.getElementById('layer-btn-trigger'); 
-    const menu = document.getElementById('layer-menu'); 
-    
+    const btn = document.getElementById('layer-btn-trigger');
+    const menu = document.getElementById('layer-menu');
+
     // Sicherheitscheck: Abbrechen, falls der Button nicht gefunden wird (verhindert Absturz)
     if (!btn || !menu) {
         console.warn("Fehler: Layer-Button oder Menü nicht gefunden.");
         return;
     }
-    
+
     // Aktuellen Status prüfen
     const isExpanded = btn.getAttribute('aria-expanded') === 'true';
     const newState = !isExpanded;
 
     // 1. Erst alle anderen Menüs schließen (damit sich nichts überlappt)
     if (newState) {
-        closeAllMenus(); 
+        closeAllMenus();
         menu.classList.remove('hidden');
     } else {
         menu.classList.add('hidden');
@@ -123,15 +132,15 @@ function toggleLayerMenu() {
 
 export function toggleExportMenu() {
     const menu = document.getElementById('export-menu');
-    if(!menu) return;
-    
+    if (!menu) return;
+
     const isHidden = menu.classList.contains('hidden');
     closeAllMenus();
-    
+
     if (isHidden) {
         menu.classList.remove('hidden');
         document.getElementById('export-btn-trigger')?.setAttribute('aria-expanded', 'true');
-        
+
         // UI zurücksetzen (Ladebalken weg, Setup zeigen)
         document.getElementById('export-setup')?.classList.remove('hidden');
         document.getElementById('export-progress')?.classList.add('hidden');
@@ -140,12 +149,12 @@ export function toggleExportMenu() {
 
 export function toggleLegalModal() {
     const modal = document.getElementById('legal-modal');
-    if(!modal) return;
-    
+    if (!modal) return;
+
     // Prüfen ob es schon offen ist (bei Flexbox ist 'flex' = offen)
     const isVisible = modal.style.display === 'flex';
     closeAllMenus();
-    
+
     if (!isVisible) {
         modal.style.display = 'flex';
     }
@@ -162,16 +171,16 @@ export function toggleLegalModal() {
 export function searchLocation() {
     const input = document.getElementById('search-input');
     if (!input || !input.value) return;
-    
+
     const query = input.value;
-    
+
     fetch(`${Config.nominatimUrl}/search?format=json&q=${encodeURIComponent(query)}`)
         .then(r => r.json())
         .then(data => {
-            if(data.length > 0 && State.map) {
+            if (data.length > 0 && State.map) {
                 // Wir nutzen den zentral konfigurierten Zoom-Wert
                 State.map.flyTo([data[0].lat, data[0].lon], Config.searchZoom);
-                
+
                 input.blur(); // Tastatur am Handy einklappen
             } else {
                 showNotification(t('no_results'));
@@ -186,14 +195,14 @@ export function searchLocation() {
  * Bestimmt den Standort des Nutzers via Browser-GPS.
  */
 export function locateUser() {
-    if (!navigator.geolocation) { 
-        showNotification("GPS nicht unterstützt"); 
-        return; 
+    if (!navigator.geolocation) {
+        showNotification("GPS nicht unterstützt");
+        return;
     }
-    
+
     const btn = document.getElementById('locate-btn');
     const icon = btn ? btn.querySelector('svg') : null;
-    if(icon) icon.classList.add('animate-spin'); 
+    if (icon) icon.classList.add('animate-spin');
 
     navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -204,11 +213,11 @@ export function locateUser() {
             if (State.map) {
                 const currentZoom = State.map.getZoom();
                 const defaultZoom = Config.locateZoom || 17;
-                
+
                 // LOGIK: Wenn wir schon tief drin sind (z.B. 18), nicht rauszoomen!
                 // Sonst den Standard-Wert (17) nehmen.
                 const targetZoom = currentZoom >= 18 ? currentZoom : defaultZoom;
-                
+
                 State.map.flyTo([lat, lng], targetZoom);
             }
 
@@ -219,9 +228,9 @@ export function locateUser() {
 
             // 3. NEUER MARKER (Die Lösung für das "Wandern")
             const dotIcon = L.divIcon({
-                className: 'user-location-wrapper', 
-                html: '<div class="user-location-inner"></div>', 
-                iconSize: [20, 20],   
+                className: 'user-location-wrapper',
+                html: '<div class="user-location-inner"></div>',
+                iconSize: [20, 20],
                 iconAnchor: [10, 10]
             });
 
@@ -229,7 +238,7 @@ export function locateUser() {
 
             // 4. Timer (25 Sekunden)
             if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
-            
+
             State.userLocationTimer = setTimeout(() => {
                 if (State.userMarker) {
                     State.map.removeLayer(State.userMarker);
@@ -237,11 +246,11 @@ export function locateUser() {
                 }
             }, 25000);
 
-            if(icon) icon.classList.remove('animate-spin');
+            if (icon) icon.classList.remove('animate-spin');
             showNotification(t('geo_found') || "Standort gefunden!");
         },
         (err) => {
-            if(icon) icon.classList.remove('animate-spin');
+            if (icon) icon.classList.remove('animate-spin');
             console.error(err);
             showNotification("Standort konnte nicht ermittelt werden.");
         },
@@ -258,14 +267,14 @@ export function setupUI() {
     // 1. Haupt-Buttons verbinden
     addClick('layer-btn-trigger', toggleLayerMenu);
     addClick('export-btn-trigger', toggleExportMenu);
-    
+
     // Info & Recht Button (öffnet das Modal)
     addClick('btn-legal-trigger', toggleLegalModal);
-    
+
     // Schließen-Buttons (das X oben rechts in den Fenstern)
     addClick('legal-close-btn', toggleLegalModal);
     addClick('export-close-btn', toggleExportMenu);
-    
+
     // 2. Suche (Enter-Taste Unterstützung)
     const searchInp = document.getElementById('search-input');
     if (searchInp) {
@@ -285,7 +294,7 @@ export function setupUI() {
     ['free', 'a4l', 'a4p'].forEach(fmt => {
         addClick(`fmt-${fmt}`, () => setExportFormat(fmt));
     });
-    
+
     // 5. Export-Zoom (15-18)
     [15, 16, 17, 18].forEach(z => {
         addClick(`zoom-${z}`, () => setExportZoom(z));
@@ -310,28 +319,28 @@ function setupMenuAutoClose() {
     ['layer-menu', 'export-menu', 'legal-modal'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        
+
         // Wir speichern den Timer direkt am Element, um Konflikte zu vermeiden
         el._closeTimer = null;
-        
+
         // MAUS RAUS -> Timer starten
         el.addEventListener('mouseleave', () => {
             // Nur schließen, wenn das Menü auch wirklich sichtbar ist
             const isHidden = id === 'legal-modal' ? (el.style.display === 'none' || el.style.display === '') : el.classList.contains('hidden');
             if (isHidden) return;
-            
+
             // Timer starten (10 Sekunden = 10000 ms)
             el._closeTimer = setTimeout(() => {
                 if (id === 'legal-modal') el.style.display = 'none';
                 else el.classList.add('hidden');
-                
+
                 // Den zugehörigen Button auch zurücksetzen (für Barrierefreiheit)
                 const btnId = id === 'layer-menu' ? 'layer-btn-trigger' : (id === 'export-menu' ? 'export-btn-trigger' : 'btn-legal-trigger');
                 document.getElementById(btnId)?.setAttribute('aria-expanded', 'false');
-                
-            }, 10000); 
+
+            }, 10000);
         });
-        
+
         // MAUS REIN -> Timer abbrechen (Nutzer liest noch)
         el.addEventListener('mouseenter', () => {
             if (el._closeTimer) {

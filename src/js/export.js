@@ -14,6 +14,7 @@ import { State } from "./state.js";
 import { Config } from "./config.js";
 import { t, getLang } from "./i18n.js";
 import { showNotification, toggleExportMenu } from "./ui.js";
+import { jsPDF } from "jspdf";
 
 /* =============================================================================
    HILFSFUNKTIONEN: PRE-PROCESSING FÜR EXPORT (Clustering nur für Feuerwachen)
@@ -435,7 +436,7 @@ const lat2tile = (lat, z) =>
     Math.log(
       Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180),
     ) /
-      Math.PI) /
+    Math.PI) /
     2) *
   worldSize(z);
 const lon2tile = (lon, z) => ((lon + 180) / 360) * worldSize(z);
@@ -478,388 +479,345 @@ function getSVGContentForExport(type) {
   return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ""}</svg>`;
 }
 
-// HAUPTFUNKTION: EXPORT ALS PNG
 /**
- * Rendert den gewählten Kartenausschnitt in ein PNG:
- * 1) Tiles laden (asynchron, ggf. viele Requests)
- * 2) in Canvas zeichnen
- * 3) Overlays/POIs zeichnen (Hydranten, AED, Wachen, Linien)
- * 4) Titel/Legende hinzufügen
- *
- * Performance: Canvas zeichnet schnell, aber Tile-Downloads und viele Overlays können kosten.
- * Darum gibt es Fortschrittsanzeige und AbortController.
+ * HILFSFUNKTION: KERN-RENDER-LOGIK
+ * Erzeugt ein Canvas mit der Karte, Overlays, Titel etc.
+ * Gibt { canvas, filename, targetZoom } zurück.
  */
-export async function exportAsPNG() {
-  console.log("=== EXPORT START ===");
+async function generateMapCanvas() {
+  console.log("=== EXPORT RENDER START ===");
 
+  State.controllers.export = new AbortController();
+  const signal = State.controllers.export.signal;
+
+  // 1. UI UPDATE
+  document.getElementById("export-setup").classList.add("hidden");
+  document.getElementById("export-progress").classList.remove("hidden");
+  const progressBar = document.getElementById("progress-bar");
+
+  function setStatus(msg) {
+    console.log("Status:", msg);
+    const titleEl = document.querySelector(".exporting-active");
+    if (titleEl) titleEl.innerText = msg;
+  }
+
+  setStatus(t("locating"));
+
+  // 2. PARAMETER
+  const targetZoom = State.exportZoomLevel;
+  const bounds = State.selection.finalBounds || State.map.getBounds();
+  const elementsForExport = preprocessElementsForExport(State.cachedElements);
+  const nw = bounds.getNorthWest();
+  const se = bounds.getSouthEast();
+
+  // 3. ORTSBESTIMMUNG
+  let displayTitle = "";
   try {
-    State.controllers.export = new AbortController();
-    const signal = State.controllers.export.signal;
+    const center = bounds.getCenter();
+    const res = await fetch(
+      `${Config.nominatimUrl}/reverse?format=json&lat=${center.lat}&lon=${center.lng}&zoom=18`,
+    );
+    const d = await res.json();
+    const addr = d.address || {};
+    const city = addr.city || addr.town || addr.village || addr.municipality || "";
+    const suburb = addr.suburb || addr.neighbourhood || addr.hamlet || "";
+    displayTitle = city ? (suburb ? `${city} - ${suburb}` : city) : "";
+  } catch (e) { /* ignore */ }
 
-    // 1. UI UPDATE
-    document.getElementById("export-setup").classList.add("hidden");
-    document.getElementById("export-progress").classList.remove("hidden");
-    const progressBar = document.getElementById("progress-bar");
+  // 4. GRÖSSE BERECHNEN
+  const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
+  const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
+  const x2 = Math.floor(lon2tile(se.lng, targetZoom));
+  const y2 = Math.floor(lat2tile(se.lat, targetZoom));
 
-    function setStatus(msg) {
-      console.log("Status:", msg);
-      const titleEl = document.querySelector(".exporting-active");
-      if (titleEl) titleEl.innerText = msg;
+  const margin = 40;
+  const footerH = 60;
+  const mapWidth = (x2 - x1 + 1) * 256;
+  const mapHeight = (y2 - y1 + 1) * 256;
+  const totalWidth = mapWidth + margin * 2;
+  const totalHeight = mapHeight + margin + footerH + margin;
+
+  const mPerPx =
+    (Math.cos((bounds.getCenter().lat * Math.PI) / 180) *
+      2 *
+      Math.PI *
+      6378137) /
+    (256 * Math.pow(2, targetZoom));
+
+  if (totalWidth > 14000 || totalHeight > 14000)
+    throw new Error(t("too_large") + " (>14000px)");
+
+  // 5. CANVAS
+  const canvas = document.createElement("canvas");
+  canvas.width = totalWidth;
+  canvas.height = totalHeight;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 6. KACHELN LADEN
+  setStatus(`${t("loading_tiles")} (Z${targetZoom})...`);
+  const tileQueue = [];
+  for (let x = x1; x <= x2; x++)
+    for (let y = y1; y <= y2; y++) tileQueue.push({ x, y });
+
+  const totalTiles = tileQueue.length;
+  let loaded = 0;
+  const baseUrlTpl = Config.layers[State.activeLayerKey].url
+    .replace("{s}", "a")
+    .replace("{r}", "");
+
+  const processQueue = async () => {
+    while (tileQueue.length > 0 && !signal.aborted) {
+      const { x, y } = tileQueue.shift();
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = baseUrlTpl
+          .replace("{z}", targetZoom)
+          .replace("{x}", x)
+          .replace("{y}", y);
+
+        img.onload = () => {
+          ctx.drawImage(
+            img,
+            (x - x1) * 256 + margin,
+            (y - y1) * 256 + margin,
+          );
+          loaded++;
+          updateProgress();
+          resolve();
+        };
+        img.onerror = () => {
+          loaded++;
+          resolve();
+        };
+      });
     }
+  };
 
-    setStatus(t("locating"));
+  const workers = [];
+  for (let i = 0; i < 8; i++) workers.push(processQueue());
+  await Promise.all(workers);
 
-    // 2. PARAMETER
-    const targetZoom = State.exportZoomLevel;
-    const bounds = State.selection.finalBounds || State.map.getBounds();
-    // Export soll identisch zur Kartenlogik sein: Feuerwachen vorher clustern (150 m).
-    const elementsForExport = preprocessElementsForExport(State.cachedElements);
-    const nw = bounds.getNorthWest();
-    const se = bounds.getSouthEast();
+  function updateProgress() {
+    const p = Math.round((loaded / totalTiles) * 80);
+    if (progressBar) progressBar.style.width = p + "%";
+  }
 
-    // 3. ORTSBESTIMMUNG (Vereinfachte Logik)
-    // Wir nehmen jetzt NUR den Mittelpunkt. Keine Ecken-Prüfung mehr.
-    let displayTitle = "";
-    try {
-      const center = bounds.getCenter();
+  if (signal.aborted) throw new Error("Abbruch");
 
-      // Anfrage an Nominatim (OpenStreetMap) für den Mittelpunkt
-      const res = await fetch(
-        `${Config.nominatimUrl}/reverse?format=json&lat=${center.lat}&lon=${center.lng}&zoom=18`,
-      );
-      const d = await res.json();
-      const addr = d.address || {};
+  // 7. GRENZEN MALEN
+  setStatus(t("render_bounds"));
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(margin, margin, mapWidth, mapHeight);
+  ctx.clip();
+  ctx.translate(-x1 * 256 + margin, -y1 * 256 + margin);
+  ctx.strokeStyle = Config.colors.bounds;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([20, 20]);
+  ctx.lineCap = "round";
 
-      // Hauptort (Stadt/Gemeinde)
-      const city =
-        addr.city || addr.town || addr.village || addr.municipality || "";
-      // Ortsteil (Stadtteil/Weiler)
-      const suburb = addr.suburb || addr.neighbourhood || addr.hamlet || "";
-
-      // Titel zusammenbauen: "Schnaittach - Rollhofen" oder nur "Schnaittach"
-      displayTitle = city ? (suburb ? `${city} - ${suburb}` : city) : "";
-
-      console.log("Mittelpunkt-Ort:", displayTitle);
-    } catch (e) {
-      console.warn("Titel Fehler:", e);
-    }
-
-    // 4. GRÖSSE BERECHNEN
-    const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
-    const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
-    const x2 = Math.floor(lon2tile(se.lng, targetZoom));
-    const y2 = Math.floor(lat2tile(se.lat, targetZoom));
-
-    const margin = 40;
-    const footerH = 60;
-    const mapWidth = (x2 - x1 + 1) * 256;
-    const mapHeight = (y2 - y1 + 1) * 256;
-    const totalWidth = mapWidth + margin * 2;
-    const totalHeight = mapHeight + margin + footerH + margin;
-
-    const mPerPx =
-      (Math.cos((bounds.getCenter().lat * Math.PI) / 180) *
-        2 *
-        Math.PI *
-        6378137) /
-      (256 * Math.pow(2, targetZoom));
-
-    if (totalWidth > 14000 || totalHeight > 14000)
-      throw new Error(t("too_large") + " (>14000px)");
-
-    // 5. CANVAS
-    const canvas = document.createElement("canvas");
-    canvas.width = totalWidth;
-    canvas.height = totalHeight;
-    const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 6. KACHELN LADEN
-    setStatus(`${t("loading_tiles")} (Z${targetZoom})...`);
-    const tileQueue = [];
-    for (let x = x1; x <= x2; x++)
-      for (let y = y1; y <= y2; y++) tileQueue.push({ x, y });
-
-    const totalTiles = tileQueue.length;
-    let loaded = 0;
-    const baseUrlTpl = Config.layers[State.activeLayerKey].url
-      .replace("{s}", "a")
-      .replace("{r}", "");
-
-    const processQueue = async () => {
-      while (tileQueue.length > 0 && !signal.aborted) {
-        const { x, y } = tileQueue.shift();
-        await new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.src = baseUrlTpl
-            .replace("{z}", targetZoom)
-            .replace("{x}", x)
-            .replace("{y}", y);
-
-          img.onload = () => {
-            ctx.drawImage(
-              img,
-              (x - x1) * 256 + margin,
-              (y - y1) * 256 + margin,
-            );
-            loaded++;
-            updateProgress();
-            resolve();
-          };
-          img.onerror = () => {
-            loaded++;
-            resolve();
-          };
-        });
-      }
-    };
-
-    const workers = [];
-    for (let i = 0; i < 8; i++) workers.push(processQueue());
-    await Promise.all(workers);
-
-    function updateProgress() {
-      const p = Math.round((loaded / totalTiles) * 80);
-      progressBar.style.width = p + "%";
-    }
-
-    if (signal.aborted) throw new Error("Abbruch");
-
-    // 7. GRENZEN MALEN (MIT CLIPPING!)
-    // LERN-INFO: 'clip()' ist wie eine Schablone. Man darf nur innerhalb malen.
-    // Das verhindert, dass Grenzen über den weißen Rand hinausgehen.
-    setStatus(t("render_bounds"));
-    ctx.save(); // Zustand speichern
-
-    // A) Clipping-Region definieren (Der Bereich der Karte inkl. Rand)
-    ctx.beginPath();
-    ctx.rect(margin, margin, mapWidth, mapHeight);
-    ctx.clip(); // Ab jetzt wird alles außerhalb abgeschnitten!
-
-    // B) Koordinaten-System verschieben
-    ctx.translate(-x1 * 256 + margin, -y1 * 256 + margin);
-    ctx.strokeStyle = Config.colors.bounds;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([20, 20]);
-    ctx.lineCap = "round";
-
-    // C) Linien malen
-    elementsForExport.forEach((el) => {
-      if (
-        el.tags &&
-        el.tags.boundary === "administrative" &&
-        el.geometry &&
-        targetZoom >= 14
-      ) {
-        ctx.beginPath();
-        let first = true;
-        for (let p of el.geometry) {
-          const px = lon2tile(p.lon, targetZoom) * 256;
-          const py = lat2tile(p.lat, targetZoom) * 256;
-          if (first) {
-            ctx.moveTo(px, py);
-            first = false;
-          } else {
-            ctx.lineTo(px, py);
-          }
-        }
-        ctx.stroke();
-      }
-    });
-
-    ctx.restore(); // Clipping aufheben für den Rest (Header/Footer)
-
-    // 8. INFRASTRUKTUR MALEN (Icons)
-    // Auch hier nutzen wir Clipping, damit halbe Icons am Rand sauber aussehen.
-    setStatus(t("render_infra"));
-    ctx.save();
-
-    // Clipping erneut setzen
-    ctx.beginPath();
-    ctx.rect(margin, margin, mapWidth, mapHeight);
-    ctx.clip();
-
-    ctx.translate(-x1 * 256 + margin, -y1 * 256 + margin);
-
-    const iconCache = {};
-    const loadSVG = async (type) => {
-      if (iconCache[type]) return iconCache[type];
-      const svgStr = getSVGContentForExport(type);
-      const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-      img.src = url;
-      await new Promise((r) => (img.onload = r));
-      iconCache[type] = img;
-      URL.revokeObjectURL(url);
-      return img;
-    };
-
-    for (let el of elementsForExport) {
-      const tags = el.tags || {};
-      if (tags.boundary === "administrative") continue;
-
-      const lat = el.lat || el.center?.lat;
-      const lon = el.lon || el.center?.lon;
-      const isStation =
-        tags.amenity === "fire_station" || tags.building === "fire_station";
-      const type = isStation
-        ? "station"
-        : tags.emergency === "defibrillator"
-          ? "defibrillator"
-          : tags["fire_hydrant:type"] || tags.emergency;
-
-      const tx = lon2tile(lon, targetZoom) * 256;
-      const ty = lat2tile(lat, targetZoom) * 256;
-
-      // Grober Check: Ist es überhaupt im Bild?
-      if (
-        tx < x1 * 256 ||
-        tx > (x2 + 1) * 256 ||
-        ty < y1 * 256 ||
-        ty > (y2 + 1) * 256
-      )
-        continue;
-
-      if (isStation && targetZoom < 12) continue;
-      if (!isStation && targetZoom < 15) continue;
-
-      if (targetZoom < 17 && !isStation) {
-        ctx.beginPath();
-        ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
-        const isWater = [
-          "water_tank",
-          "cistern",
-          "fire_water_pond",
-          "suction_point",
-        ].includes(type);
-        ctx.fillStyle =
-          type === "defibrillator"
-            ? Config.colors.defib
-            : isWater
-              ? Config.colors.water
-              : Config.colors.hydrant;
-        ctx.fill();
-        ctx.stroke();
-      } else {
-        try {
-          const img = await loadSVG(type);
-          const size = 32;
-          ctx.drawImage(img, tx - size / 2, ty - size / 2, size, size);
-        } catch (err) {
-          console.warn("Icon Fehler", err);
+  elementsForExport.forEach((el) => {
+    if (
+      el.tags &&
+      el.tags.boundary === "administrative" &&
+      el.geometry &&
+      targetZoom >= 14
+    ) {
+      ctx.beginPath();
+      let first = true;
+      for (let p of el.geometry) {
+        const px = lon2tile(p.lon, targetZoom) * 256;
+        const py = lat2tile(p.lat, targetZoom) * 256;
+        if (first) {
+          ctx.moveTo(px, py);
+          first = false;
+        } else {
+          ctx.lineTo(px, py);
         }
       }
+      ctx.stroke();
     }
-    ctx.restore(); // Clipping Ende
+  });
 
-    // 9. HEADER & FOOTER
-    setStatus(t("layout_final"));
+  ctx.restore();
 
-    const bannerH = 170;
-    ctx.fillStyle = Config.colors.bgHeader;
-    ctx.fillRect(margin, margin, mapWidth, bannerH);
+  // 8. INFRASTRUKTUR MALEN
+  setStatus(t("render_infra"));
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(margin, margin, mapWidth, mapHeight);
+  ctx.clip();
+  ctx.translate(-x1 * 256 + margin, -y1 * 256 + margin);
 
-    ctx.strokeStyle = "rgba(15, 23, 42, 0.2)";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(margin, margin, mapWidth, bannerH);
-    ctx.strokeRect(margin, margin + bannerH, mapWidth, mapHeight - bannerH);
+  const iconCache = {};
+  const loadSVG = async (type) => {
+    if (iconCache[type]) return iconCache[type];
+    const svgStr = getSVGContentForExport(type);
+    const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.src = url;
+    await new Promise((r) => (img.onload = r));
+    iconCache[type] = img;
+    URL.revokeObjectURL(url);
+    return img;
+  };
 
-    const centerX = margin + mapWidth / 2;
+  for (let el of elementsForExport) {
+    const tags = el.tags || {};
+    if (tags.boundary === "administrative") continue;
 
-    // TITEL LOGIK: "Ort- und Hydrantenplan" + Ortsname (immer vom Mittelpunkt)
-    ctx.fillStyle = Config.colors.textMain;
-    ctx.textAlign = "center";
-    ctx.font = "bold 44px Arial, sans-serif";
+    const lat = el.lat || el.center?.lat;
+    const lon = el.lon || el.center?.lon;
+    const isStation =
+      tags.amenity === "fire_station" || tags.building === "fire_station";
+    const type = isStation
+      ? "station"
+      : tags.emergency === "defibrillator"
+        ? "defibrillator"
+        : tags["fire_hydrant:type"] || tags.emergency;
 
-    const titleText = displayTitle
-      ? `Ort- und Hydrantenplan ${displayTitle}`
-      : "Ort- und Hydrantenplan";
-    ctx.fillText(titleText, centerX, margin + 55);
+    const tx = lon2tile(lon, targetZoom) * 256;
+    const ty = lat2tile(lat, targetZoom) * 256;
 
-    // Datum
-    const now = new Date();
-    ctx.font = "22px Arial, sans-serif";
-    ctx.fillStyle = Config.colors.textSub;
-    const localeMap = { de: "de-DE", en: "en-US" };
-    const dateLocale = localeMap[getLang()] || "en-US";
-    const dateStr = now.toLocaleDateString(dateLocale, {
-      year: "numeric",
-      month: "long",
-    });
+    if (
+      tx < x1 * 256 ||
+      tx > (x2 + 1) * 256 ||
+      ty < y1 * 256 ||
+      ty > (y2 + 1) * 256
+    )
+      continue;
 
-    ctx.fillText(
-      `${t("legend_date")}: ${dateStr} | ${t("legend_res")}: Zoom ${targetZoom} (~${mPerPx.toFixed(2)} m/px)`,
-      centerX,
-      margin + 95,
-    );
+    if (isStation && targetZoom < 12) continue;
+    if (!isStation && targetZoom < 15) continue;
 
-    ctx.font = "italic 16px Arial, sans-serif";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText(
-      Config.layers[State.activeLayerKey].textAttr || "© OpenStreetMap",
-      centerX,
-      margin + 125,
-    );
-
-    // Maßstabsbalken
-    const prettyD = [1000, 500, 250, 100, 50];
-    let distM = 100,
-      scaleW = 100 / mPerPx;
-    for (let d of prettyD) {
-      let w = d / mPerPx;
-      if (w <= mapWidth * 0.3) {
-        distM = d;
-        scaleW = w;
-        break;
-      }
+    if (targetZoom < 17 && !isStation) {
+      ctx.beginPath();
+      ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
+      const isWater = [
+        "water_tank",
+        "cistern",
+        "fire_water_pond",
+        "suction_point",
+      ].includes(type);
+      ctx.fillStyle =
+        type === "defibrillator"
+          ? Config.colors.defib
+          : isWater
+            ? Config.colors.water
+            : Config.colors.hydrant;
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      try {
+        const img = await loadSVG(type);
+        const size = 32;
+        ctx.drawImage(img, tx - size / 2, ty - size / 2, size, size);
+      } catch (err) { /* ignore */ }
     }
+  }
+  ctx.restore();
 
-    const sX = margin + mapWidth - scaleW - 40;
-    const sY = margin + mapHeight - 40;
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.fillRect(sX - 10, sY - 50, scaleW + 20, 60);
-    ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(sX, sY - 10);
-    ctx.lineTo(sX, sY);
-    ctx.lineTo(sX + scaleW, sY);
-    ctx.lineTo(sX + scaleW, sY - 10);
-    ctx.stroke();
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 18px Arial";
-    ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
+  // 9. HEADER & FOOTER
+  setStatus(t("layout_final"));
 
-    // Footer
-    const footerY = margin + mapHeight + footerH / 2 + 10;
-    ctx.fillStyle = Config.colors.textSub;
-    ctx.textAlign = "left";
-    ctx.font = "16px Arial, sans-serif";
-    ctx.fillText("OpenFireMap.org", margin, footerY);
+  const bannerH = 170;
+  ctx.fillStyle = Config.colors.bgHeader;
+  ctx.fillRect(margin, margin, mapWidth, bannerH);
+  ctx.strokeStyle = "rgba(15, 23, 42, 0.2)";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(margin, margin, mapWidth, bannerH);
+  ctx.strokeRect(margin, margin + bannerH, mapWidth, mapHeight - bannerH);
 
-    ctx.textAlign = "right";
-    ctx.font = "16px Arial, sans-serif";
-    const timeStr = now.toLocaleString(dateLocale, {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    ctx.fillText(timeStr, margin + mapWidth, footerY);
+  const centerX = margin + mapWidth / 2;
+  ctx.fillStyle = Config.colors.textMain;
+  ctx.textAlign = "center";
+  ctx.font = "bold 44px Arial, sans-serif";
+  const titleText = displayTitle
+    ? `Ort- und Hydrantenplan ${displayTitle}`
+    : "Ort- und Hydrantenplan";
+  ctx.fillText(titleText, centerX, margin + 55);
 
-    // 10. DOWNLOAD
-    setStatus("Speichere Datei...");
+  const now = new Date();
+  ctx.font = "22px Arial, sans-serif";
+  ctx.fillStyle = Config.colors.textSub;
+  const localeMap = { de: "de-DE", en: "en-US" };
+  const dateLocale = localeMap[getLang()] || "en-US";
+  const dateStr = now.toLocaleDateString(dateLocale, { year: "numeric", month: "long" });
+  ctx.fillText(
+    `${t("legend_date")}: ${dateStr} | ${t("legend_res")}: Zoom ${targetZoom} (~${mPerPx.toFixed(2)} m/px)`,
+    centerX,
+    margin + 95,
+  );
+
+  ctx.font = "italic 16px Arial, sans-serif";
+  ctx.fillStyle = "#64748b";
+  ctx.fillText(
+    Config.layers[State.activeLayerKey].textAttr || "© OpenStreetMap",
+    centerX,
+    margin + 125,
+  );
+
+  // Scale Bar
+  const prettyD = [1000, 500, 250, 100, 50];
+  let distM = 100, scaleW = 100 / mPerPx;
+  for (let d of prettyD) {
+    let w = d / mPerPx;
+    if (w <= mapWidth * 0.3) {
+      distM = d;
+      scaleW = w;
+      break;
+    }
+  }
+  const sX = margin + mapWidth - scaleW - 40;
+  const sY = margin + mapHeight - 40;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+  ctx.fillRect(sX - 10, sY - 50, scaleW + 20, 60);
+  ctx.strokeStyle = "#0f172a";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(sX, sY - 10);
+  ctx.lineTo(sX, sY);
+  ctx.lineTo(sX + scaleW, sY);
+  ctx.lineTo(sX + scaleW, sY - 10);
+  ctx.stroke();
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "bold 18px Arial";
+  ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
+
+  // Footer
+  const footerY = margin + mapHeight + footerH / 2 + 10;
+  ctx.fillStyle = Config.colors.textSub;
+  ctx.textAlign = "left";
+  ctx.font = "16px Arial, sans-serif";
+  ctx.fillText("OpenFireMap.org", margin, footerY);
+  ctx.textAlign = "right";
+  const timeStr = now.toLocaleString(dateLocale, {
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  });
+  ctx.fillText(timeStr, margin + mapWidth, footerY);
+
+  const safeTitle = titleText.replace(/[\s\.:]/g, "_");
+  return { canvas, filename: `${safeTitle}_Z${targetZoom}` };
+}
+
+// -----------------------------------------------------------
+// EXPORT IMPL: PNG
+// -----------------------------------------------------------
+export async function exportAsPNG() {
+  try {
+    const { canvas, filename } = await generateMapCanvas();
+    const statusEl = document.querySelector(".exporting-active");
+    if (statusEl) statusEl.innerText = "Speichere PNG...";
 
     canvas.toBlob((blob) => {
       if (!blob) throw new Error("Blob Fehler");
       const link = document.createElement("a");
-      const safeTitle = titleText.replace(/[\s\.:]/g, "_");
-      link.download = `${safeTitle}_Z${targetZoom}.png`;
+      link.download = `${filename}.png`;
       link.href = URL.createObjectURL(blob);
       document.body.appendChild(link);
       link.click();
@@ -868,17 +826,81 @@ export async function exportAsPNG() {
       setTimeout(() => {
         URL.revokeObjectURL(link.href);
         toggleExportMenu();
-        showNotification("Download gestartet!", 3000);
+        showNotification("Download gestartet (PNG)!", 3000);
       }, 1000);
     }, "image/png");
+
   } catch (e) {
-    console.error("EXPORT FEHLER:", e);
-    showNotification("FEHLER: " + e.message, 10000);
-    setTimeout(() => {
-      document.getElementById("export-progress").classList.add("hidden");
-      document.getElementById("export-setup").classList.remove("hidden");
-    }, 5000);
+    handleExportError(e);
   }
+}
+
+// -----------------------------------------------------------
+// EXPORT IMPL: PDF
+// -----------------------------------------------------------
+export async function exportAsPDF() {
+  try {
+    const { canvas, filename } = await generateMapCanvas();
+    const statusEl = document.querySelector(".exporting-active");
+    if (statusEl) statusEl.innerText = "Erstelle PDF...";
+
+    // 1. PDF initialisieren
+    // Wir nehmen A4 als Voreinstellung, aber passen die Orientierung dem Canvas an.
+    const orient = canvas.width > canvas.height ? "l" : "p";
+    const pdf = new jsPDF({
+      orientation: orient,
+      unit: "mm",
+      format: "a4",
+      compress: true
+    });
+
+    // 2. Maße berechnen (Einpassen auf A4)
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Ratio
+    const ratioCanvas = canvas.width / canvas.height;
+    const ratioPage = pageWidth / pageHeight;
+
+    let renderW, renderH;
+
+    if (ratioCanvas > ratioPage) {
+      // Breiter als Seite -> Breite füllen
+      renderW = pageWidth;
+      renderH = pageWidth / ratioCanvas;
+    } else {
+      // Höher als Seite -> Höhe füllen
+      renderH = pageHeight;
+      renderW = pageHeight * ratioCanvas;
+    }
+
+    // Zentrieren
+    const x = (pageWidth - renderW) / 2;
+    const y = (pageHeight - renderH) / 2;
+
+    // 3. Canvas als Bild hinzufügen
+    // toDataURL ist synchron und kann bei riesigen Canvas blocken, aber jsPDF braucht es.
+    const imgData = canvas.toDataURL("image/jpeg", 0.85); // JPEG für kleinere PDF-Größe
+    pdf.addImage(imgData, "JPEG", x, y, renderW, renderH);
+
+    // 4. Speichern
+    pdf.save(`${filename}.pdf`);
+
+    toggleExportMenu();
+    showNotification("Download gestartet (PDF)!", 3000);
+
+  } catch (e) {
+    handleExportError(e);
+  }
+}
+
+function handleExportError(e) {
+  console.error("EXPORT FEHLER:", e);
+  showNotification("FEHLER: " + e.message, 10000);
+  setTimeout(() => {
+    document.getElementById("export-progress").classList.add("hidden");
+    document.getElementById("export-setup").classList.remove("hidden");
+  }, 5000);
 }
 
 // ... (Code davor bleibt unverändert)
