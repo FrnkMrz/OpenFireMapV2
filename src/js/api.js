@@ -82,10 +82,10 @@ function epHealthyOrder(endpoints) {
     if (s.failUntil > now) cool.push(ep);
     else ok.push(ep);
   }
-  ok.sort((a,b) => epGet(b).lastOkTs - epGet(a).lastOkTs);
+  ok.sort((a, b) => epGet(b).lastOkTs - epGet(a).lastOkTs);
 
   // 2) Cooldown-Endpunkte hinten dran (damit du notfalls trotzdem noch Fallback hast)
-  cool.sort((a,b) => epGet(a).failUntil - epGet(b).failUntil);
+  cool.sort((a, b) => epGet(a).failUntil - epGet(b).failUntil);
 
   return [...ok, ...cool];
 }
@@ -324,11 +324,16 @@ export async function fetchOSMData() {
 
   const queryKind =
     (zoom >= 15 && zoom >= 14) ? 'pois+boundary' :
-    (zoom >= 14) ? 'stations+boundary' :
-    'stations';
+      (zoom >= 14) ? 'stations+boundary' :
+        'stations';
 
+  // Caching:
+  // User-Wunsch: "Einmal geladen, länger behalten".
+  // Da wir jetzt Persistent Storage (LocalStorage) nutzen, setzen wir die TTL hoch.
+  // 24 Stunden (86400000 ms) sollten safe sein.
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
   const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
-  const cacheTtlMs = zoom >= 15 ? 30000 : 60000;
+  const cacheTtlMs = ONE_DAY_MS;
 
   const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 
