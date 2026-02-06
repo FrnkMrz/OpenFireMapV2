@@ -264,8 +264,14 @@ export function initMapLogic() {
                     statusEl.className = 'text-blue-400';
                 }
 
-                const data = await fetchOSMData();
+                // SWR: Wir geben renderMarkers als Callback mit, 
+                // damit Cache-Daten sofort gezeichnet werden.
+                const data = await fetchOSMData((cachedData) => {
+                    renderMarkers(cachedData, zoom);
+                });
+
                 if (data) {
+                    // Finale Daten vom Netzwerk rendern
                     renderMarkers(data, zoom);
                     if (statusEl) {
                         statusEl.innerText = t('status_current');

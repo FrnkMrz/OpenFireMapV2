@@ -258,9 +258,14 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
   throw lastErr || new Error('err_generic');
 }
 
-/** ---- Hauptfunktion: Laden + Render, inkl. sauberer Abort-UX -------------- */
-export async function fetchOSMData() {
-  const reqId = ++REQ_SEQ;
+/**
+ * SCHRITT 1: Daten laden (Wrapper um fetchWithRetry)
+ * SWR-Pattern (Stale-While-Revalidate):
+ * Wenn onProgressData übergeben wird, rufen wir es SOFORT mit Cache-Daten auf,
+ * während wir im Hintergrund die neuen Daten laden.
+ */
+export async function fetchOSMData(onProgressData = null) {
+  const reqId = Math.random().toString(36).substring(2, 7);
   const zoom = State.map.getZoom();
 
   // Unter Zoom 12: komplett aus
@@ -325,6 +330,11 @@ export async function fetchOSMData() {
       hasCachedData = true;
       State.cachedElements = cached.elements || [];
       emit({ phase: 'swr_hit', reqId, cacheKey });
+
+      // SWR: Sofort rendern, falls Callback vorhanden
+      if (typeof onProgressData === 'function') {
+        onProgressData(State.cachedElements);
+      }
     }
   } catch (e) { /* ignore */ }
 
