@@ -51,13 +51,20 @@
 
   function fixIPadVisibility() {
     // Diese Elemente haben md:hidden im HTML, was sie auf dem iPad (Breite > 768px/1024px) unsichtbar macht.
-    // Wir erzwingen die Sichtbarkeit, wenn isMobile aktiv ist.
-    const targets = ['mobile-controls', 'mobile-menu', 'mobile-search-modal'];
-    targets.forEach(id => {
+    // Wir erzwingen die Sichtbarkeit für das Container-Element.
+    const container = $('mobile-controls');
+    if (container) {
+      container.classList.remove('md:hidden');
+      container.classList.remove('hidden');
+    }
+
+    // Für Modals: Nur md:hidden entfernen, NICHT hidden (sonst sind sie beim Reload offen)
+    const modals = ['mobile-menu', 'mobile-search-modal'];
+    modals.forEach(id => {
       const el = $(id);
       if (el) {
         el.classList.remove('md:hidden');
-        el.classList.remove('hidden');
+        // hidden NICHT entfernen - Modal soll geschlossen starten
       }
     });
   }

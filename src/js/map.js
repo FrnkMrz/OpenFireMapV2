@@ -210,11 +210,11 @@ export function initMapLogic() {
         if (debounceTimer) clearTimeout(debounceTimer);
 
         // Debounce je nach Zoom (Hydranten-Modus braucht mehr Ruhe, sonst hagelt es 429).
-        // OPTIMIERUNG: Werte drastisch reduziert (600ms statt 1.2s), damit Initial-Load schneller wirkt.
+        // OPTIMIERUNG: Niedrige Werte für schnelleren Initial-Load.
         const debounceMs =
-            (zoom <= 15) ? 600 :
-                (zoom === 16) ? 400 :
-                    (zoom === 17) ? 300 :
+            (zoom <= 15) ? 200 :  // Schneller Start für Stations/Low-Zoom
+                (zoom === 16) ? 300 :
+                    (zoom === 17) ? 250 :
                         200;
 
         // Mindestabstand zwischen gestarteten Requests (Rate-Limit/Overpass-Last).

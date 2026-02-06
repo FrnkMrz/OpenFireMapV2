@@ -331,8 +331,8 @@ export async function fetchOSMData(onProgressData = null) {
       State.cachedElements = cached.elements || [];
       emit({ phase: 'swr_hit', reqId, cacheKey });
 
-      // SWR: Sofort rendern, falls Callback vorhanden
-      if (typeof onProgressData === 'function') {
+      // SWR: Nur rendern, wenn tatsächlich Daten vorhanden
+      if (typeof onProgressData === 'function' && State.cachedElements.length > 0) {
         onProgressData(State.cachedElements);
       }
     }
