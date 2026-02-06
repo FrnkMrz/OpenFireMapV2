@@ -111,52 +111,53 @@
   if (!mobileControls || !mobileBurger || !mobileLocate || !mobileMenu) return;
 
   function moveLocateToBottomCenter() {
-  const btn = mobileLocate;
-  if (!btn) return;
+    const btn = mobileLocate;
+    if (!btn) return;
 
-  // Container unten mittig
-  let dock = document.getElementById('mobile-locate-dock');
-  if (!dock) {
-    dock = document.createElement('div');
-    dock.id = 'mobile-locate-dock';
-    dock.style.position = 'fixed';
-    dock.style.left = '50%';
-    dock.style.bottom = '32px';
-    dock.style.transform = 'translateX(-50%)';
-    dock.style.zIndex = '2500';
-    dock.style.pointerEvents = 'auto';
-    document.body.appendChild(dock);
+    // Container unten mittig
+    let dock = document.getElementById('mobile-locate-dock');
+    if (!dock) {
+      dock = document.createElement('div');
+      dock.id = 'mobile-locate-dock';
+      dock.style.position = 'fixed';
+      dock.style.left = '50%';
+      dock.style.bottom = '32px';
+      dock.style.transform = 'translateX(-50%)';
+      dock.style.zIndex = '2500';
+      dock.style.pointerEvents = 'auto';
+      document.body.appendChild(dock);
+    }
+
+    dock.appendChild(btn);
   }
 
-  dock.appendChild(btn);
-}
+  function alignBurgerAndStatusTop() {
+    const burger = document.getElementById('mobile-burger-btn');
 
-function alignBurgerAndStatusTop() {
-  const burger = document.getElementById('mobile-burger-btn');
+    // Status-Box: versuche die üblichen Kandidaten
+    const status =
+      document.getElementById('status-box') ||
+      document.getElementById('status-panel') ||
+      document.getElementById('status') ||
+      document.querySelector('[data-ofm-status]');
 
-  // Status-Box: versuche die üblichen Kandidaten
-  const status =
-    document.getElementById('status-box') ||
-    document.getElementById('status-panel') ||
-    document.getElementById('status') ||
-    document.querySelector('[data-ofm-status]');
+    if (!burger || !status) return;
 
-  if (!burger || !status) return;
+    // Einheitliche Position für beide
+    const TOP = '18px';
+    const SIDE = '18px';
 
-  // Einheitliche Position für beide
-  const TOP = '18px';
-  const SIDE = '18px';
+    burger.style.position = 'fixed';
+    burger.style.top = TOP;
+    burger.style.left = SIDE;
+    burger.style.marginTop = '0';
 
-  burger.style.position = 'fixed';
-  burger.style.top = TOP;
-  burger.style.left = SIDE;
-  burger.style.marginTop = '0';
-
-  status.style.position = 'fixed';
-  status.style.top = TOP;
-  status.style.right = SIDE;
-  status.style.marginTop = '0';
-}
+    status.style.position = 'fixed';
+    status.style.top = TOP;
+    status.style.bottom = 'auto'; // Fix: Streckung auf iPad verhindern
+    status.style.right = SIDE;
+    status.style.marginTop = '0';
+  }
 
 
   // ---------------------------
@@ -169,7 +170,7 @@ function alignBurgerAndStatusTop() {
 
   moveLocateToBottomCenter();
 
-alignBurgerAndStatusTop();
+  alignBurgerAndStatusTop();
 
   if (mobileClose) hide(mobileClose);
 
@@ -245,70 +246,70 @@ alignBurgerAndStatusTop();
   }
 
 
-const mobileSearchModal = document.getElementById('mobile-search-modal');
-const mobileSearchBackdrop = document.getElementById('mobile-search-backdrop');
-const mobileSearchClose = document.getElementById('mobile-search-close');
-const mobileSearchInput = document.getElementById('mobile-search-input');
-const mobileSearchGo = document.getElementById('mobile-search-go');
+  const mobileSearchModal = document.getElementById('mobile-search-modal');
+  const mobileSearchBackdrop = document.getElementById('mobile-search-backdrop');
+  const mobileSearchClose = document.getElementById('mobile-search-close');
+  const mobileSearchInput = document.getElementById('mobile-search-input');
+  const mobileSearchGo = document.getElementById('mobile-search-go');
 
-function openMobileSearch() {
-  if (!mobileSearchModal) return;
-  mobileSearchModal.classList.remove('hidden');
-  setTimeout(() => mobileSearchInput?.focus(), 0);
-}
-
-function closeMobileSearch() {
-  if (!mobileSearchModal) return;
-  mobileSearchModal.classList.add('hidden');
-}
-
-if (mobileOpenSearch && !mobileOpenSearch.__bound) {
-  mobileOpenSearch.__bound = true;
-
-  mobileOpenSearch.addEventListener('click', (e) => {
-    e.preventDefault();
-
-    // Burger-Menü schließen (dein vorhandener Close-Call)
-    if (typeof closeMobileMenu === 'function') closeMobileMenu();
-    if (typeof closeMenu === 'function') closeMenu();
-
-    openMobileSearch();
-  });
-}
-
-// Close-Events
-mobileSearchClose?.addEventListener('click', closeMobileSearch);
-mobileSearchBackdrop?.addEventListener('click', closeMobileSearch);
-
-// Suche ausführen:
-// Wir benutzen die bestehende Desktop-Suche intern, aber ohne Desktop-Layout einzublenden.
-function runSearchFromMobile() {
-  const q = (mobileSearchInput?.value || '').trim();
-  if (!q) return;
-
-  const desktopInput = document.getElementById('search-input');
-  const desktopBtn = document.getElementById('search-btn'); // falls vorhanden
-
-  if (desktopInput) {
-    desktopInput.value = q;
-
-    // Versuch 1: Button klicken, wenn du einen hast
-    if (desktopBtn) desktopBtn.click();
-    else {
-      // Versuch 2: Enter-Event auf dem Desktop-Input auslösen
-      desktopInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-      desktopInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
-    }
+  function openMobileSearch() {
+    if (!mobileSearchModal) return;
+    mobileSearchModal.classList.remove('hidden');
+    setTimeout(() => mobileSearchInput?.focus(), 0);
   }
 
-  // Modal schließen (auch wenn Suche async ist)
-  closeMobileSearch();
-}
+  function closeMobileSearch() {
+    if (!mobileSearchModal) return;
+    mobileSearchModal.classList.add('hidden');
+  }
 
-mobileSearchGo?.addEventListener('click', runSearchFromMobile);
-mobileSearchInput?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') runSearchFromMobile();
-});
+  if (mobileOpenSearch && !mobileOpenSearch.__bound) {
+    mobileOpenSearch.__bound = true;
+
+    mobileOpenSearch.addEventListener('click', (e) => {
+      e.preventDefault();
+
+      // Burger-Menü schließen (dein vorhandener Close-Call)
+      if (typeof closeMobileMenu === 'function') closeMobileMenu();
+      if (typeof closeMenu === 'function') closeMenu();
+
+      openMobileSearch();
+    });
+  }
+
+  // Close-Events
+  mobileSearchClose?.addEventListener('click', closeMobileSearch);
+  mobileSearchBackdrop?.addEventListener('click', closeMobileSearch);
+
+  // Suche ausführen:
+  // Wir benutzen die bestehende Desktop-Suche intern, aber ohne Desktop-Layout einzublenden.
+  function runSearchFromMobile() {
+    const q = (mobileSearchInput?.value || '').trim();
+    if (!q) return;
+
+    const desktopInput = document.getElementById('search-input');
+    const desktopBtn = document.getElementById('search-btn'); // falls vorhanden
+
+    if (desktopInput) {
+      desktopInput.value = q;
+
+      // Versuch 1: Button klicken, wenn du einen hast
+      if (desktopBtn) desktopBtn.click();
+      else {
+        // Versuch 2: Enter-Event auf dem Desktop-Input auslösen
+        desktopInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        desktopInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
+      }
+    }
+
+    // Modal schließen (auch wenn Suche async ist)
+    closeMobileSearch();
+  }
+
+  mobileSearchGo?.addEventListener('click', runSearchFromMobile);
+  mobileSearchInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') runSearchFromMobile();
+  });
 
   // ---------------------------
   // Info & Recht (Mobile -> Desktop Legal Trigger)
@@ -338,6 +339,16 @@ mobileSearchInput?.addEventListener('keydown', (e) => {
       hide(mobileControls);
       closeMobileMenu();
       closeDesktopPopupMenus();
+
+      // Reset mobile-specific styles for status box
+      const status = document.getElementById('status-box');
+      if (status) {
+        status.style.top = '';
+        status.style.bottom = '';
+        status.style.right = '';
+        status.style.position = '';
+        status.style.marginTop = '';
+      }
     }
   });
 })();
