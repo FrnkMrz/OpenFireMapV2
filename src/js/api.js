@@ -14,7 +14,6 @@
 import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
-import { renderMarkers } from './map.js';
 import { showNotification } from './ui.js';
 
 import { fetchJson, HttpError } from './net.js';
@@ -105,13 +104,6 @@ function epMarkFail(endpoint, status, cooldownMs) {
 }
 
 /** ---- UI Helper ---------------------------------------------------------- */
-function setStatus(textKey, className) {
-  const el = document.getElementById('data-status');
-  if (!el) return;
-  el.innerText = t(textKey);
-  el.className = className;
-}
-
 function mapErrorKey(err) {
   if (err?.name === 'AbortError') return 'status_waiting'; // kein Fehler, nur abgebrochen
   if (err instanceof HttpError && err.status === 429) return 'err_ratelimit';
@@ -273,12 +265,9 @@ export async function fetchOSMData() {
 
   // Unter Zoom 12: komplett aus
   if (zoom < 12) {
-    setStatus('status_standby', 'text-green-400');
-    State.markerLayer.clearLayers();
-    State.boundaryLayer.clearLayers();
     State.cachedElements = [];
     emit({ phase: 'skip', reqId, reason: 'zoom<12', zoom });
-    return;
+    return [];
   }
 
   // map.js kann gepaddete/snappted Query-Bounds setzen
@@ -314,8 +303,7 @@ export async function fetchOSMData() {
 
   if (queryParts.length === 0 && boundaryQuery === '') {
     emit({ phase: 'skip', reqId, reason: 'no_query_parts', zoom });
-    setStatus('status_waiting', 'text-amber-400 font-bold');
-    return;
+    return null;
   }
 
   const queryKind =
@@ -336,13 +324,7 @@ export async function fetchOSMData() {
     if (cached) {
       hasCachedData = true;
       State.cachedElements = cached.elements || [];
-      renderMarkers(State.cachedElements, zoom);
-      // Status: Wir haben Daten, aber prüfen Aktualität...
-      setStatus('status_loading', 'text-blue-400'); // Oder ein neuer Status "Refreshing"?
       emit({ phase: 'swr_hit', reqId, cacheKey });
-    } else {
-      // Kein Cache: Full Loading UI
-      setStatus('status_loading', 'text-amber-400 font-bold');
     }
   } catch (e) { /* ignore */ }
 
@@ -352,41 +334,24 @@ export async function fetchOSMData() {
   const tAll0 = performance.now();
 
   try {
-    // SCHRITT 2: Netzwerk-Requests (immer, auch bei Cache-Hit!)
-    // skipCache=true, da wir manuell geprüft haben und FRESH data wollen.
-    // fetchWithRetry schreibt das Ergebnis am Ende automatisch wieder in den Cache.
     const data = await fetchWithRetry(q, { cacheKey, cacheTtlMs: ONE_DAY_MS, reqId, skipCache: true });
 
-    const tR0 = performance.now();
     State.cachedElements = data.elements || [];
-    renderMarkers(State.cachedElements, zoom);
-    const renderMs = Math.round(performance.now() - tR0);
-
     const totalMs = Math.round(performance.now() - tAll0);
-    emit({ phase: 'load_ok', reqId, zoom, totalMs, renderMs, elements: State.cachedElements.length });
+    emit({ phase: 'load_ok', reqId, zoom, totalMs, elements: State.cachedElements.length });
 
-    setStatus('status_current', 'text-green-400');
+    return State.cachedElements;
 
   } catch (err) {
     if (err?.name === 'AbortError') {
-      // Wenn wir abgebrochen wurden, aber Cache hatten -> lassen wir den Status auf Current/Cached?
-      // Nein, wir wissen nicht, ob wir "fertig" waren.
-      // Aber 'status_waiting' passt.
-      setStatus('status_waiting', 'text-amber-400 font-bold');
       emit({ phase: 'aborted', reqId, zoom });
-      return;
+      throw err;
     }
 
     // Wenn Netzwerk fehlschlägt, wir aber Cached Data haben:
     if (hasCachedData) {
-      // Wir zeigen eine Warnung, aber behalten die Daten
       console.warn("Background fetch failed, using stale data.", err);
-      // Optional: UI-Indikator, dass Daten "alt" sind?
-      // User wollte "cannot rely on valid data", also wichtig zu zeigen, dass es fehlschlug.
-      const msgKey = mapErrorKey(err);
-      setStatus(msgKey, 'text-amber-600 font-bold'); // Orange statt Rot
-      // Keine Notification, um nicht zu nerven? Oder doch?
-      // showNotification(t(msgKey), 3000); 
+      throw err;
     } else {
       // Kein Cache UND kein Netzwerk -> Fehler
       const msgKey = mapErrorKey(err);
@@ -399,8 +364,8 @@ export async function fetchOSMData() {
         message: String(err?.message || err)
       });
 
-      setStatus(msgKey, 'text-red-500 font-bold');
       showNotification(t(msgKey), 5000);
+      throw err;
     }
   }
 }

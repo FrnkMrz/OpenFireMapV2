@@ -193,9 +193,11 @@ export function initMapLogic() {
             // Wichtig: UI nicht im "Warten"-Status hängen lassen.
             const statusEl = document.getElementById('data-status');
             if (statusEl) {
-                statusEl.innerText = t('status_current');
-                statusEl.className = 'text-gray-300';
+                statusEl.innerText = t('status_standby');
+                statusEl.className = 'text-green-400';
             }
+            State.markerLayer.clearLayers();
+            State.boundaryLayer.clearLayers();
             return;
         }
 
@@ -223,15 +225,14 @@ export function initMapLogic() {
                     (zoom === 17) ? 1000 : // war 1200
                         800;
 
-        debounceTimer = setTimeout(() => {
+        debounceTimer = setTimeout(async () => {
             const statusEl = document.getElementById('data-status');
 
             // Wenn sich seit dem letzten gestarteten Fetch nichts geändert hat: skip.
-            // Wichtig: Status nicht auf "Warten" stehen lassen, sonst wirkt es wie ein Freeze.
             if (fetchKey === lastFetchKey) {
                 if (statusEl) {
                     statusEl.innerText = t('status_current');
-                    statusEl.className = 'text-gray-300';
+                    statusEl.className = 'text-green-400';
                 }
                 return;
             }
@@ -240,13 +241,12 @@ export function initMapLogic() {
             if (now - lastFetchStartTs < minIntervalMs) {
                 if (statusEl) {
                     statusEl.innerText = t('status_current');
-                    statusEl.className = 'text-gray-300';
+                    statusEl.className = 'text-green-400';
                 }
                 return;
             }
 
-            // Status "Warten" erst setzen, wenn wir wirklich gleich einen Request starten.
-            // (Manuelles DOM-Update, da setStatus in map.js nicht verfügbar ist)
+            // Status "Warten" setzen
             if (statusEl) {
                 statusEl.innerText = t('status_waiting');
                 statusEl.className = 'text-amber-400 font-bold';
@@ -256,7 +256,42 @@ export function initMapLogic() {
             lastFetchKey = fetchKey;
             dbg('fetchOSMData()', { fetchKey });
             window.dispatchEvent(new CustomEvent('ofm:overpass', { detail: { phase: 'trigger', fetchKey } }));
-            fetchOSMData();
+
+            try {
+                // Status auf "Lädt" setzen (SWR Pattern: wir zeigen Cache, laden aber neu)
+                if (statusEl) {
+                    statusEl.innerText = t('status_loading');
+                    statusEl.className = 'text-blue-400';
+                }
+
+                const data = await fetchOSMData();
+                if (data) {
+                    renderMarkers(data, zoom);
+                    if (statusEl) {
+                        statusEl.innerText = t('status_current');
+                        statusEl.className = 'text-green-400';
+                    }
+                } else if (data === null) {
+                    // Kein Fehler, aber leere Query (z.B. Zoom zu klein)
+                    if (statusEl) {
+                        statusEl.innerText = t('status_waiting');
+                        statusEl.className = 'text-amber-400 font-bold';
+                    }
+                }
+            } catch (err) {
+                if (err?.name === 'AbortError') {
+                    // Nichts tun, neue Anfrage läuft schon
+                    return;
+                }
+
+                // Fehlerbehandlung
+                if (statusEl) {
+                    const msgKey = (err?.status === 429) ? 'err_ratelimit' :
+                        (err?.status >= 500) ? 'err_server' : 'status_error';
+                    statusEl.innerText = t(msgKey);
+                    statusEl.className = 'text-red-500 font-bold';
+                }
+            }
         }, debounceMs);
     });
 
