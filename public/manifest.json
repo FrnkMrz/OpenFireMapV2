@@ -39,6 +39,11 @@
             "type": "image/png"
         },
         {
+            "src": "/favicons/android-icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
             "src": "/favicons/apple-icon-180x180.png",
             "sizes": "180x180",
             "type": "image/png"
