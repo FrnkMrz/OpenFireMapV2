@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "Abrir exportación",
         menu_export_close: "Cerrar exportación",
         menu_search: "Buscar",
-
-    };
+    menu_close: "Cerrar",
+    no_results: "No se encontraron resultados",
+    loading_data: "Cargando datos..."
+};
 export default strings;

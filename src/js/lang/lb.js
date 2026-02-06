@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "Export opmaachen",
         menu_export_close: "Export zoumaachen",
         menu_search: "Sichen",
-
-    };
+    menu_close: "Schléissen",
+    no_results: "Keng Resultater fonnt",
+    loading_data: "Date gi gelueden..."
+};
 export default strings;

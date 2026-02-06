@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "เปิดการส่งออก",
         menu_export_close: "ปิดการส่งออก",
         menu_search: "ค้นหา",
-
-    };
+    menu_close: "ปิด",
+    no_results: "ไม่พบผลลัพธ์",
+    loading_data: "กำลังโหลดข้อมูล..."
+};
 export default strings;

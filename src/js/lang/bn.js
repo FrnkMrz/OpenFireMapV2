@@ -65,6 +65,8 @@ export const strings = {
   menu_export_open: "রপ্তানি খুলুন",
   menu_export_close: "রপ্তানি বন্ধ করুন",
   menu_search: "অনুসন্ধান",
-
+    menu_close: "বন্ধ করুন",
+    no_results: "কোন ফলাফল পাওয়া যায়নি",
+    loading_data: "ডেটা লোড হচ্ছে..."
 };
 export default strings;

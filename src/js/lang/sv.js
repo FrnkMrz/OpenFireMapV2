@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "Öppna export",
         menu_export_close: "Stäng export",
         menu_search: "Sök",
-
-    };
+    menu_close: "Stäng",
+    no_results: "Inga resultat hittades",
+    loading_data: "Laddar data..."
+};
 export default strings;

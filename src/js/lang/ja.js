@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "エクスポートを開く",
         menu_export_close: "エクスポートを閉じる",
         menu_search: "検索",
-
-    };
+    menu_close: "閉じる",
+    no_results: "結果が見つかりませんでした",
+    loading_data: "データを読み込んでいます..."
+};
 export default strings;

@@ -65,6 +65,8 @@ export const strings = {
   menu_export_open: "Buka ekspor",
   menu_export_close: "Tutup ekspor",
   menu_search: "Cari",
-
+    menu_close: "Tutup",
+    no_results: "Hasil tidak ditemukan",
+    loading_data: "Memuat data..."
 };
 export default strings;

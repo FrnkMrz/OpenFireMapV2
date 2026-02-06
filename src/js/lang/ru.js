@@ -65,6 +65,8 @@ export const strings = {
   menu_export_open: "Открыть экспорт",
   menu_export_close: "Закрыть экспорт",
   menu_search: "Поиск",
-
+    menu_close: "Закрыть",
+    no_results: "Результатов не найдено",
+    loading_data: "Загрузка данных..."
 };
 export default strings;

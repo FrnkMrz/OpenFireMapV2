@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "Otevřít export",
         menu_export_close: "Zavřít export",
         menu_search: "Hledat",
-
-    };
+    menu_close: "Zavřít",
+    no_results: "Nenalezeny žádné výsledky",
+    loading_data: "Načítání dat..."
+};
 export default strings;

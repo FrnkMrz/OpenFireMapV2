@@ -65,6 +65,8 @@ export const strings = {
   menu_export_open: "Dışa aktarmayı aç",
   menu_export_close: "Dışa aktarmayı kapat",
   menu_search: "Ara",
-
+    menu_close: "Kapat",
+    no_results: "Sonuç bulunamadı",
+    loading_data: "Veriler yükleniyor..."
 };
 export default strings;

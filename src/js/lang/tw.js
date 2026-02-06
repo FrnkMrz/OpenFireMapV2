@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "開啟匯出",
         menu_export_close: "關閉匯出",
         menu_search: "搜尋",
-
-    };
+    menu_close: "關閉",
+    no_results: "找不到結果",
+    loading_data: "正在加載數據..."
+};
 export default strings;

@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "Avaa vienti",
         menu_export_close: "Sulje vienti",
         menu_search: "Haku",
-
-    };
+    menu_close: "Sulje",
+    no_results: "Ei tuloksia",
+    loading_data: "Ladataan tietoja..."
+};
 export default strings;

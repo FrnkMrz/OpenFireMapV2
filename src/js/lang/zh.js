@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "打开导出",
         menu_export_close: "关闭导出",
         menu_search: "搜索",
-
-    };
+    menu_close: "关闭",
+    no_results: "找不到结果",
+    loading_data: "正在加载数据..."
+};
 export default strings;

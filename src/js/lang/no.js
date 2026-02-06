@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "Åpne eksport",
         menu_export_close: "Lukk eksport",
         menu_search: "Søk",
-
-    };
+    menu_close: "Lukk",
+    no_results: "Ingen resultater funnet",
+    loading_data: "Laster data..."
+};
 export default strings;

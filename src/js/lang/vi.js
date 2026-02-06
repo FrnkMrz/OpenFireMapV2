@@ -65,6 +65,8 @@ export const strings = {
   menu_export_open: "Mở xuất dữ liệu",
   menu_export_close: "Đóng xuất dữ liệu",
   menu_search: "Tìm kiếm",
-
+    menu_close: "Đóng",
+    no_results: "Không tìm thấy kết quả",
+    loading_data: "Đang tải dữ liệu..."
 };
 export default strings;

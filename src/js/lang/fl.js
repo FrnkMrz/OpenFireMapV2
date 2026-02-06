@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "Buksan ang export",
         menu_export_close: "Isara ang export",
         menu_search: "Sykje",
-
-    };
+    menu_close: "Sluiten",
+    no_results: "Geen resultaten gevonden",
+    loading_data: "Gegevens laden..."
+};
 export default strings;

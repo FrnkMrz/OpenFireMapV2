@@ -65,6 +65,8 @@ export const strings = {
   menu_export_open: "निर्यात खोलें",
   menu_export_close: "निर्यात बंद करें",
   menu_search: "खोजें",
-
+    menu_close: "बंद करें",
+    no_results: "कोई परिणाम नहीं मिला",
+    loading_data: "डेटा लोड हो रहा है..."
 };
 export default strings;

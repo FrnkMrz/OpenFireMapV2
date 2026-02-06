@@ -64,6 +64,9 @@ export const strings = {
     "menu_layers_label": "Kartenebenen",
     "menu_export_open": "Export-Menü öffnen",
     "menu_export_close": "Export-Menü schließen",
-    menu_search: "Suche"
+    menu_search: "Suche",
+    menu_close: "Schließen",
+    no_results: "Keine Ergebnisse gefunden",
+    loading_data: "Daten werden geladen..."
 };
 export default strings;

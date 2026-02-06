@@ -65,6 +65,8 @@ export const strings = {
   menu_export_open: "فتح التصدير",
   menu_export_close: "إغلاق التصدير",
   menu_search: "بحث",
-
+    menu_close: "إغلاق",
+    no_results: "لم يتم العثور على نتائج",
+    loading_data: "جاري تحميل البيانات..."
 };
 export default strings;

@@ -67,6 +67,8 @@ export const strings = {
         menu_export_open: "내보내기 열기",
         menu_export_close: "내보내기 닫기",
         menu_search: "검색",
-
-    };
+    menu_close: "닫기",
+    no_results: "결과를 찾을 수 없습니다",
+    loading_data: "데이터를 불러오는 중..."
+};
 export default strings;
