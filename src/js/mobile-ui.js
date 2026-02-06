@@ -12,7 +12,7 @@
 (function initMobileUI() {
   const isMobile =
     window.matchMedia?.('(pointer: coarse)').matches ||
-    window.innerWidth < 1023;
+    window.innerWidth < 1024;
 
   if (!isMobile) return;
 
@@ -166,6 +166,8 @@
   hide(desktopControls);
   if (desktopLegalBtn) hide(desktopLegalBtn.parentElement || desktopLegalBtn);
 
+  // Burger Button für iPad sichtbar machen (Klasse md:hidden stört dort)
+  mobileControls.classList.remove('md:hidden');
   show(mobileControls);
 
   moveLocateToBottomCenter();
@@ -330,13 +332,14 @@
   window.addEventListener('resize', () => {
     const nowMobile =
       window.matchMedia?.('(pointer: coarse)').matches ||
-      window.innerWidth < 768;
+      window.innerWidth < 1024;
 
     if (!nowMobile) {
       // Desktop wieder herstellen
       show(desktopControls);
       if (desktopLegalBtn) show(desktopLegalBtn.parentElement || desktopLegalBtn);
       hide(mobileControls);
+      mobileControls.classList.add('md:hidden'); // md:hidden wiederherstellen für Desktop
       closeMobileMenu();
       closeDesktopPopupMenus();
 
