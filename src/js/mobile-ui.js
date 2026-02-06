@@ -49,6 +49,19 @@
     $('btn-legal-trigger')?.setAttribute('aria-expanded', 'false');
   }
 
+  function fixIPadVisibility() {
+    // Diese Elemente haben md:hidden im HTML, was sie auf dem iPad (Breite > 768px/1024px) unsichtbar macht.
+    // Wir erzwingen die Sichtbarkeit, wenn isMobile aktiv ist.
+    const targets = ['mobile-controls', 'mobile-menu', 'mobile-search-modal'];
+    targets.forEach(id => {
+      const el = $(id);
+      if (el) {
+        el.classList.remove('md:hidden');
+        el.classList.remove('hidden');
+      }
+    });
+  }
+
   function wireLayerMenuAutoClose() {
     const layerMenu = $('layer-menu');
     if (!layerMenu) return;
@@ -152,12 +165,14 @@
     burger.style.top = TOP;
     burger.style.left = SIDE;
     burger.style.marginTop = '0';
+    burger.style.zIndex = '3500'; // Sicherstellen, dass es über allem liegt
 
     status.style.position = 'fixed';
     status.style.top = TOP;
     status.style.bottom = 'auto'; // Fix: Streckung auf iPad verhindern
     status.style.right = SIDE;
     status.style.marginTop = '0';
+    status.style.zIndex = '3500';
   }
 
 
@@ -167,9 +182,7 @@
   hide(desktopControls);
   if (desktopLegalBtn) hide(desktopLegalBtn.parentElement || desktopLegalBtn);
 
-  // Burger Button für iPad sicher sichtbar machen (md:hidden und hidden entfernen)
-  mobileControls.classList.remove('md:hidden');
-  mobileControls.classList.remove('hidden');
+  fixIPadVisibility();
   show(mobileControls);
 
   moveLocateToBottomCenter();
@@ -342,7 +355,11 @@
       show(desktopControls);
       if (desktopLegalBtn) show(desktopLegalBtn.parentElement || desktopLegalBtn);
       hide(mobileControls);
-      mobileControls.classList.add('md:hidden'); // md:hidden wiederherstellen für Desktop
+
+      // md:hidden wiederherstellen für Desktop
+      const targets = ['mobile-controls', 'mobile-menu', 'mobile-search-modal'];
+      targets.forEach(id => $(id)?.classList.add('md:hidden'));
+
       closeMobileMenu();
       closeDesktopPopupMenus();
 
