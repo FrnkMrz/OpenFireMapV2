@@ -264,15 +264,23 @@ export function initMapLogic() {
                     statusEl.className = 'text-blue-400';
                 }
 
+                // Track if we rendered cached data
+                let cachedCount = 0;
+
                 // SWR: Wir geben renderMarkers als Callback mit, 
                 // damit Cache-Daten sofort gezeichnet werden.
                 const data = await fetchOSMData((cachedData) => {
+                    cachedCount = cachedData?.length || 0;
                     renderMarkers(cachedData, zoom);
                 });
 
                 if (data) {
-                    // Finale Daten vom Netzwerk rendern
-                    renderMarkers(data, zoom);
+                    // Nur erneut rendern, wenn sich die Datenmenge geändert hat
+                    const networkCount = data.length || 0;
+                    if (networkCount !== cachedCount) {
+                        renderMarkers(data, zoom);
+                    }
+
                     if (statusEl) {
                         statusEl.innerText = t('status_current');
                         statusEl.className = 'text-green-400';
