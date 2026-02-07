@@ -338,25 +338,23 @@ export function initMapLogic() {
                     statusEl.className = 'text-red-500 font-bold';
                 }
             }
-        }
-    }
         } // end doFetch
     });
 
-State.map.on('click', () => {
-    if (!State.selection.active) {
-        State.rangeLayerGroup.clearLayers();
-    }
-});
+    State.map.on('click', () => {
+        if (!State.selection.active) {
+            State.rangeLayerGroup.clearLayers();
+        }
+    });
 
-State.map.on('zoom', () => {
-    const el = document.getElementById('zoom-val');
-    if (el) el.innerText = State.map.getZoom().toFixed(1);
-});
+    State.map.on('zoom', () => {
+        const el = document.getElementById('zoom-val');
+        if (el) el.innerText = State.map.getZoom().toFixed(1);
+    });
 
-// Initial load: 
-// Wir feuern 'moveend' SOFORT, damit Daten ohne Verzögerung geladen werden.
-State.map.fire('moveend');
+    // Initial load: 
+    // Wir feuern 'moveend' SOFORT, damit Daten ohne Verzögerung geladen werden.
+    State.map.fire('moveend');
 }
 
 export function setBaseLayer(key) {
