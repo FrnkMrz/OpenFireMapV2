@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ofm-v1-static';
+const CACHE_NAME = 'ofm-v2-static';
 const ASSETS = [
     '/',
     '/index.html',
