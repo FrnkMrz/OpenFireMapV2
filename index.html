@@ -15,6 +15,16 @@
     <meta property="og:url" content="https://openfiremap.org/">
     <meta property="og:image" content="https://openfiremap.org/favicons/android-icon-512x512.png">
     <meta name="theme-color" content="#0f172a">
+    
+    <!-- SECURITY: Content Security Policy (CSP) -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://*.tile.opentopomap.org https://*.tile.openstreetmap.org https://tile.openstreetmap.de;
+        connect-src 'self' https://overpass-api.de https://overpass.kumi.systems https://maps.mail.ru https://nominatim.openstreetmap.org;
+    ">
+
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-icon-180x180.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png">
