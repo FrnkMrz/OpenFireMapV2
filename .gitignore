@@ -21,3 +21,13 @@ __MACOSX/
 
 # Build output (GitHub Pages)
 docs/
+
+# Tooling / Logs
+*.log
+npm-debug.log*
+eslint-report.*
+semgrep.*
+osv-scanner.*
+
+
+
