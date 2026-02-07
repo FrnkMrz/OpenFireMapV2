@@ -26,11 +26,28 @@ export function initMapLogic() {
     State.openTooltipMarker = null;
 
 
+    // 1) Versuchen, letzte Position aus localStorage zu laden
+    let startCenter = Config.defaultCenter;
+    let startZoom = Config.defaultZoom;
+    try {
+        const savedView = localStorage.getItem('ofm_last_view');
+        if (savedView) {
+            const parsed = JSON.parse(savedView);
+            // Validierung: Lat/Lon/Zoom müssen sinnvoll sein
+            if (Array.isArray(parsed.center) && parsed.center.length === 2 && typeof parsed.zoom === 'number') {
+                startCenter = parsed.center;
+                startZoom = parsed.zoom;
+            }
+        }
+    } catch (e) {
+        console.warn('Fehler beim Laden der letzten Position:', e);
+    }
+
     State.map = L.map('map', {
         zoomControl: false,
         preferCanvas: true, // <--- WICHTIG: Beschleunigt das Rendering massiv
-        center: Config.defaultCenter,
-        zoom: Config.defaultZoom
+        center: startCenter,
+        zoom: startZoom
     });
 
     State.boundaryLayer.addTo(State.map);
@@ -40,6 +57,7 @@ export function initMapLogic() {
     setBaseLayer('voyager');
 
     let debounceTimer;
+    let isFirstLoad = true; // NEU: Flag für Sofort-Start
     // Merkt sich, für welchen "Daten-Modus" + Karten-Ausschnitt wir zuletzt geladen haben.
     // Damit vermeiden wir unnötige Requests beim minimalen Verschieben oder bei Zoom-Änderungen,
     // die am Ladeumfang nichts ändern.
@@ -225,7 +243,21 @@ export function initMapLogic() {
                     (zoom === 17) ? 1000 : // war 1200
                         800;
 
-        debounceTimer = setTimeout(async () => {
+        800;
+
+        // 4) Sofort-Start beim ersten Mal (KEIN Debounce)
+        if (isFirstLoad) {
+            isFirstLoad = false;
+            if (debounceTimer) clearTimeout(debounceTimer);
+
+            // Sofort ausführen
+            doFetch();
+            return;
+        }
+
+        debounceTimer = setTimeout(doFetch, debounceMs);
+
+        async function doFetch() {
             const statusEl = document.getElementById('data-status');
 
             // Wenn sich seit dem letzten gestarteten Fetch nichts geändert hat: skip.
@@ -306,27 +338,25 @@ export function initMapLogic() {
                     statusEl.className = 'text-red-500 font-bold';
                 }
             }
-        }, debounceMs);
-    });
-
-    State.map.on('click', () => {
-        if (!State.selection.active) {
-            State.rangeLayerGroup.clearLayers();
         }
+    }
+        } // end doFetch
     });
 
-    State.map.on('zoom', () => {
-        const el = document.getElementById('zoom-val');
-        if (el) el.innerText = State.map.getZoom().toFixed(1);
-    });
+State.map.on('click', () => {
+    if (!State.selection.active) {
+        State.rangeLayerGroup.clearLayers();
+    }
+});
 
-    // Initial load: 
-    // Wir feuern 'moveend' mit einem minimalen Timeout.
-    // Das gibt Leaflet/Browser Zeit für den ersten Paint, bevor der Debounce (600ms) startet.
-    // Ergebnis: Karte ist sichtbar -> 600ms warten -> Daten laden. (Fühlt sich "snappy" an).
-    setTimeout(() => {
-        State.map.fire('moveend');
-    }, 150);
+State.map.on('zoom', () => {
+    const el = document.getElementById('zoom-val');
+    if (el) el.innerText = State.map.getZoom().toFixed(1);
+});
+
+// Initial load: 
+// Wir feuern 'moveend' SOFORT, damit Daten ohne Verzögerung geladen werden.
+State.map.fire('moveend');
 }
 
 export function setBaseLayer(key) {

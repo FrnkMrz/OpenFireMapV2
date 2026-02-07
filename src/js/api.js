@@ -319,7 +319,7 @@ export async function fetchOSMData(onProgressData = null) {
   // Caching:
   // User-Wunsch: "Einmal geladen, länger behalten".
   // UND: "Trotzdem aktualisieren" (Stale-While-Revalidate).
-  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const ONE_DAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 Tage Cache
   const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
 
   // SCHRITT 1: Cache prüfen & sofort anzeigen
