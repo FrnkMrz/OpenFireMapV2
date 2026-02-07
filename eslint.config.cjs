@@ -34,6 +34,8 @@ module.exports = [
         DOMException: "readonly",
         CustomEvent: "readonly",
         AbortController: "readonly",
+        localStorage: "readonly",
+        fetch: "readonly",
 
         // Leaflet
         L: "readonly",

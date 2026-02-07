@@ -295,7 +295,7 @@
 
       // Burger-Menü schließen (dein vorhandener Close-Call)
       if (typeof closeMobileMenu === 'function') closeMobileMenu();
-      if (typeof closeMenu === 'function') closeMenu();
+      if (typeof closeMobileMenu === 'function') closeMobileMenu();
 
       openMobileSearch();
     });
