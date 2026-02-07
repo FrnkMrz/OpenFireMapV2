@@ -827,21 +827,19 @@ export async function exportAsPNG() {
     const statusEl = document.querySelector(".exporting-active");
     if (statusEl) statusEl.innerText = "Speichere PNG...";
 
-    canvas.toBlob((blob) => {
-      if (!blob) throw new Error("Blob Fehler");
-      const link = document.createElement("a");
-      link.download = `${filename}.png`;
-      link.href = URL.createObjectURL(blob);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    // FIX: toBlob macht in Chrome Probleme mit dem Dateinamen (wird zu UUID).
+    // toDataURL ist synchron und blockiert kurz, aber der Dateiname bleibt erhalten.
+    const dataUrl = canvas.toDataURL("image/png");
 
-      setTimeout(() => {
-        URL.revokeObjectURL(link.href);
-        toggleExportMenu();
-        showNotification("Download gestartet (PNG)!", 3000);
-      }, 1000);
-    }, "image/png");
+    const link = document.createElement("a");
+    link.download = `${filename}.png`;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toggleExportMenu();
+    showNotification("Download gestartet (PNG)!", 3000);
 
   } catch (e) {
     handleExportError(e);
