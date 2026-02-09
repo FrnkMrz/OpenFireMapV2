@@ -324,8 +324,17 @@ export function initMapLogic() {
                         statusEl.className = 'text-green-400';
                     }
 
-                    // Erfolgs-Nachricht für 2 Sekunden, dann Box schließen
-                    showNotification(`✅ ${t('data_complete')} (${networkCount} ${t('objects')})`, 2000);
+                    // Erfolgs-Nachricht: Cache-Info erhalten, wenn Cache aktuell war
+                    if (cachedCount > 0 && networkCount === cachedCount) {
+                        // Cache war aktuell - zeige das deutlich
+                        showNotification(`📦 ${t('from_cache')} ✅ (${cachedCount} ${t('objects')})`, 3000);
+                    } else if (cachedCount > 0) {
+                        // Cache + Aktualisierung
+                        showNotification(`✅ ${t('data_updated')} (${cachedCount} → ${networkCount})`, 2500);
+                    } else {
+                        // Frische Daten
+                        showNotification(`✅ ${t('data_complete')} (${networkCount} ${t('objects')})`, 2000);
+                    }
                 } else if (data === null) {
                     // Kein Fehler, aber leere Query (z.B. Zoom zu klein)
                     if (statusEl) {

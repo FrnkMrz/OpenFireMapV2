@@ -72,6 +72,8 @@ export const strings = {
     loading_data: "Lade Daten...",
     cached_objects: "Objekte aus Cache",
     data_complete: "Daten vollständig geladen",
+    from_cache: "Aus Cache",
+    data_updated: "Aktualisiert",
     objects: "Objekte",
     server_overloaded_wait: "Alle Server überlastet, warte",
     trying_server: "Versuche",
