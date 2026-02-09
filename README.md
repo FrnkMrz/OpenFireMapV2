@@ -38,6 +38,16 @@ OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik (Vite, ES Module
 
 ---
 
+### Features
+
+- 🗺️ **Interaktive Karte** mit Feuerwachen, Hydranten, Wasserstellen und Defibrillatoren
+- 📦 **Intelligentes Caching** (IndexedDB) – einmal geladen, offline verfügbar
+- 🔄 **Stale-While-Revalidate** – sofortige Anzeige, Aktualisierung im Hintergrund
+- 🌍 **28 Sprachen** unterstützt
+- 📤 **Export** als PNG, PDF oder GPX
+- 🛰️ **Satellitenansicht** mit optimierten Grenzen
+- 📱 **Responsive Design** – funktioniert auf Desktop und Mobil
+
 ### Projektstruktur
 
 ```
