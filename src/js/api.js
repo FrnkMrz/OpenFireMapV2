@@ -402,7 +402,9 @@ export async function fetchOSMData(onProgressData = null) {
         (err instanceof HttpError && err.status >= 500) ? 'Server-Fehler' : 'Verbindungsproblem';
       showNotification(`ℹ️ ${errType} - zeige gespeicherte Daten`, 4000);
 
-      throw err;
+      // WICHTIG: NICHT werfen! Wir haben ja erfolgreiche Daten (aus Cache).
+      // Der User sieht Marker, also ist das KEIN Fehler-Zustand.
+      return State.cachedElements;
     } else {
       // Kein Cache UND kein Netzwerk -> Fehler
       const msgKey = mapErrorKey(err);
