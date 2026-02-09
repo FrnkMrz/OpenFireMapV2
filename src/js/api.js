@@ -76,23 +76,7 @@ function epGet(ep) {
   return EP.get(ep);
 }
 
-function epHealthyOrder(endpoints) {
-  const now = Date.now();
-  // 1) Endpoints ohne Cooldown zuerst, sortiert nach "zuletzt OK"
-  const ok = [];
-  const cool = [];
-  for (const ep of endpoints) {
-    const s = epGet(ep);
-    if (s.failUntil > now) cool.push(ep);
-    else ok.push(ep);
-  }
-  ok.sort((a, b) => epGet(b).lastOkTs - epGet(a).lastOkTs);
 
-  // 2) Cooldown-Endpunkte hinten dran (damit du notfalls trotzdem noch Fallback hast)
-  cool.sort((a, b) => epGet(a).failUntil - epGet(b).failUntil);
-
-  return [...ok, ...cool];
-}
 
 function epMarkOk(endpoint, status = 200) {
   const s = epGet(endpoint);
@@ -154,19 +138,67 @@ export async function geocodeNominatim(query, { signal } = {}) {
 }
 
 /** ---- Cache Keys --------------------------------------------------------- */
-function roundCoord(x, decimals = 3) {
+/** ---- Grid Snapping & Round Robin ---------------------------------------- */
+function snapToGrid(coord, gridSize = 0.005) { // ~500m
+  return Math.floor(Number(coord) / gridSize) * gridSize;
+}
+
+function roundCoord(x, decimals = 4) {
   const m = 10 ** decimals;
   return Math.round(Number(x) * m) / m;
 }
-function makeBBoxKey(bounds, decimals = 3) {
-  const s = roundCoord(bounds.getSouth(), decimals);
-  const w = roundCoord(bounds.getWest(), decimals);
-  const n = roundCoord(bounds.getNorth(), decimals);
-  const e = roundCoord(bounds.getEast(), decimals);
+
+function makeBBoxKey(bounds) {
+  // Grid Snapping: Wir runden auf ein festes Raster (z.B. 0.005 Grad).
+  // Wenn man sich innerhalb des Rasters bewegt, bleibt der Key IDENTISCH -> Cache Hit!
+  // Wir laden immer die "umschließende Grid-Zelle" + etwas Puffer.
+
+  const GRID = 0.005;
+
+  const s = roundCoord(snapToGrid(bounds.getSouth(), GRID));
+  const w = roundCoord(snapToGrid(bounds.getWest(), GRID));
+  // North/East müssen "aufgerundet" werden, damit wir das ganze Fenster abdecken
+  // Einfachste Logik: Wir definieren die Zelle über South-West und die Größe
+
+  // Besser: Wir snappen alle Kanten auf das Grid.
+  // Achtung: Wenn wir nur floor() machen, könnte der Viewport über den Rand ragen.
+  // Aber da 'getBounds' vom aktuellen Viewport kommt, ist das OK. 
+  // Wir wollen ja einen Key, der "repräsentativ" für die Region ist.
+
+  // Um Flackern am Rand zu vermeiden, nehmen wir immer die Grid-Linien.
+  const n = roundCoord(snapToGrid(bounds.getNorth(), GRID) + GRID); // immer nächste Linie
+  const e = roundCoord(snapToGrid(bounds.getEast(), GRID) + GRID);
+
   return `${s},${w},${n},${e}`;
 }
+
 function makeOverpassCacheKey({ zoom, bboxKey, queryKind }) {
-  return `overpass:v1:${queryKind}:z${zoom}:bbox:${bboxKey}`;
+  return `overpass:v2:${queryKind}:z${zoom}:bbox:${bboxKey}`; // v2 für neuen Cache
+}
+
+function epHealthyOrder(endpoints) {
+  const now = Date.now();
+  // 1) Endpoints ohne Cooldown zuerst
+  const ok = [];
+  const cool = [];
+  for (const ep of endpoints) {
+    const s = epGet(ep);
+    if (s.failUntil > now) cool.push(ep);
+    else ok.push(ep);
+  }
+
+  // ROUND ROBIN / SHUFFLE:
+  // Wir sortieren NICHT nach Last-OK, sondern mischen zufällig.
+  // Das verteilt die Last besser auf alle verfügbaren Server.
+  for (let i = ok.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ok[i], ok[j]] = [ok[j], ok[i]];
+  }
+
+  // 2) Cooldown-Endpunkte hinten dran
+  cool.sort((a, b) => epGet(a).failUntil - epGet(b).failUntil);
+
+  return [...ok, ...cool];
 }
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */

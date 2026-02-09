@@ -20,7 +20,8 @@ __MACOSX/
 *.map
 
 # Build output (GitHub Pages)
-docs/
+# Build output (GitHub Pages)
+# docs/
 
 # Tooling / Logs
 *.log
