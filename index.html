@@ -332,6 +332,29 @@
             </div>
         </div>
 
+        <!-- NEU: Bestätigungs-Dialog für Titel -->
+        <div id="export-title-modal" role="dialog" aria-modal="true"
+            class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1002] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
+            <h3 class="font-bold text-lg mb-2" data-i18n="export_confirm_header">Titel bestätigen</h3>
+            <p class="text-sm text-slate-400 mb-4" data-i18n="export_confirm_text">Bitte passe den Titel für den Plan
+                an:</p>
+
+            <input type="text" id="export-confirm-title"
+                class="w-full bg-slate-800/50 text-white rounded-xl px-3 py-2 border border-white/10 text-lg font-semibold focus:outline-none focus:border-blue-500 transition-colors mb-6"
+                placeholder="Lade..." autocomplete="off">
+
+            <div class="grid grid-cols-2 gap-3">
+                <button id="export-confirm-cancel"
+                    class="py-2 rounded-xl text-sm font-bold border border-white/10 hover:bg-white/10 text-slate-300">
+                    Abbrechen
+                </button>
+                <button id="export-confirm-ok"
+                    class="py-2 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20">
+                    Erstellen
+                </button>
+            </div>
+        </div>
+
         <div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title"
             class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
             <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
