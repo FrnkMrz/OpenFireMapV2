@@ -11,7 +11,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "echo \"no tests\"",
-    "i8n:check": "node ./scripts/i8n-check.mjs"
+    "i18n:check": "node ./scripts/i18n-check.mjs"
   },
   "repository": {
     "type": "git",
