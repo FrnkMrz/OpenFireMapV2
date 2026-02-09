@@ -547,10 +547,16 @@ async function generateMapCanvas() {
     const data = await fetchDataForExport(bounds, targetZoom, signal);
     elementsForExport = preprocessElementsForExport(data.elements || []);
 
-    // DEBUG: Alert user with count
-    // window.alert(`DEBUG: Export gefunden: ${elementsForExport.length} Hydranten/Objekte.`);
-    console.log("Fetched elements count:", elementsForExport.length);
-    showNotification(`Export: ${elementsForExport.length} Objekte gefunden.`, 3000);
+    // FALLBACK: Wenn Online-Suche leer, aber im Cache Daten sind -> Cache nutzen!
+    if (elementsForExport.length === 0 && State.cachedElements && State.cachedElements.length > 0) {
+      console.warn("Export: Online-Daten leer, nutze Cache.");
+      elementsForExport = preprocessElementsForExport(State.cachedElements); // Cache nehmen
+      showNotification(`Export: Online-Daten leer, nutze Cache (${elementsForExport.length} Objekte).`, 4000);
+    } else {
+      showNotification(`Export: ${elementsForExport.length} Objekte gefunden.`, 3000);
+    }
+    console.log("Final export elements count:", elementsForExport.length);
+
   } catch (e) {
     console.warn("Export-Fetch fehlgeschlagen, nutze Cache als Fallback", e);
     // Fallback: Cache nutzen (besser als nichts)
