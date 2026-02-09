@@ -124,57 +124,49 @@ export function initMapLogic() {
     //   damit minimale Bewegungen/Pixel-Rauschen nicht ständig einen neuen Key erzeugen.
     const getRoundedBBox = () => {
         const rawZoom = State.map.getZoom();
-
-        // CACHE-FIX: Normalisierung der Zoom-Stufe für BBox-Berechnung.
-        // Damit der Cache-Key (bbox) stabil bleibt, nutzen wir für alle 
-        // hohen Zoomstufen (15-18) die Parameter von Zoom 15.
-        // Für 12-13 nutzen wir Zoom 12.
-        let zoom = rawZoom;
-        if (zoom >= 15) zoom = 15;
-        else if (zoom >= 12 && zoom < 14) zoom = 12;
-
-        const viewBounds = State.map.getBounds();
         const center = State.map.getCenter();
 
-        // Padding (in Metern): Bei Zoom 15 soll der Abfragebereich deutlich größer sein (1–2 km),
-        // damit leichtes Verschieben NICHT sofort neue Queries auslöst.
-        // Padding (in Metern):
-        // OPTIMIERUNG: Werte drastisch reduziert, um "Hang" beim Initial-Load zu vermeiden.
-        // Vorher war Z15 auf 2000m -> extrem große Datenmenge (25x Viewport).
-        // Jetzt: ca. 1 Screen-Größe Puffer.
-        const padMeters =
-            (zoom <= 15) ? 600 :  // war 2000
-                (zoom === 16) ? 400 : // war 1200
-                    (zoom === 17) ? 250 : // war 700
-                        (zoom === 18) ? 150 : // war 350
-                            100;
+        // CACHE-FIX 2.0:
+        // Damit Cache-Keys über Zoom-Stufen hinweg (15 <-> 18) identisch bleiben,
+        // dürfen wir NICHT die ViewBox nehmen (die wird beim Zoomen kleiner).
+        // Wir nehmen den Center und einen fixen Radius, der dem "Reference Zoom" entspricht.
 
-        // Snap-Grid (in Metern):
-        const snapMeters =
-            (zoom <= 15) ? 200 : // war 800
-                (zoom === 16) ? 100 : // war 400
-                    (zoom === 17) ? 50 :  // war 200
-                        (zoom === 18) ? 25 :  // war 100
-                            20;
+        let radiusMeters = 0;
+        let snapMeters = 0;
 
-        // Umrechnung Meter -> Grad (näherungsweise, reicht hier völlig)
+        // Bucket: High Zoom (Hydranten) -> Wir simulieren immer ein Z15-Fenster
+        if (rawZoom >= 15) {
+            radiusMeters = 2200; // ca. 4.4km Box (reicht locker für Z15 Viewport)
+            snapMeters = 200;    // Grobes Raster
+        }
+        // Bucket: Mid Zoom (Feuerwachen) -> Wir simulieren ein Z12-Fenster
+        else if (rawZoom >= 12) {
+            radiusMeters = 15000; // Riesige Box
+            snapMeters = 1000;
+        }
+        // Fallback (eigentlich 'none')
+        else {
+            radiusMeters = 50000;
+            snapMeters = 5000;
+        }
+
+        // Umrechnung Meter -> Grad
         const lat = center.lat;
         const metersPerDegLat = 111320;
         const metersPerDegLon = 111320 * Math.cos(lat * Math.PI / 180);
 
-        const dLatPad = padMeters / metersPerDegLat;
-        const dLonPad = padMeters / metersPerDegLon;
+        const dLat = radiusMeters / metersPerDegLat;
+        const dLon = radiusMeters / metersPerDegLon;
 
-        // Gepufferte Bounds
-        let south = viewBounds.getSouth() - dLatPad;
-        let west = viewBounds.getWest() - dLonPad;
-        let north = viewBounds.getNorth() + dLatPad;
-        let east = viewBounds.getEast() + dLonPad;
+        // BBox um den Center
+        let south = center.lat - dLat;
+        let north = center.lat + dLat;
+        let west = center.lng - dLon;
+        let east = center.lng + dLon;
 
-        // Snap in Grad
+        // Snap to Grid
         const snapLat = snapMeters / metersPerDegLat;
         const snapLon = snapMeters / metersPerDegLon;
-
         const snap = (v, step) => Math.round(v / step) * step;
 
         south = snap(south, snapLat);
@@ -182,17 +174,15 @@ export function initMapLogic() {
         west = snap(west, snapLon);
         east = snap(east, snapLon);
 
-        // Für api.js: Query-Bounds bereitstellen (damit nicht "sichtbarer Ausschnitt" abgefragt wird)
-        // Wichtig: Leaflet akzeptiert LatLngBounds direkt.
+        // Für api.js
         State.queryBounds = L.latLngBounds([[south, west], [north, east]]);
         State.queryMeta = {
-            zoom,
-            padMeters,
-            snapMeters,
-            bbox: `${south},${west},${north},${east}`
+            zoom: rawZoom,
+            bbox: `${south},${west},${north},${east}`,
+            snapMeters // Info
         };
 
-        // Stabiler Key (für Gating/Cache)
+        // Cache Key
         return `${south.toFixed(5)},${west.toFixed(5)},${north.toFixed(5)},${east.toFixed(5)}`;
     };
 
