@@ -744,8 +744,8 @@ async function generateMapCanvas() {
     const lat = el.lat || el.center?.lat;
     const lon = el.lon || el.center?.lon;
 
-    const tx = lon2tile(lon, targetZoom) * 256;
-    const ty = lat2tile(lat, targetZoom) * 256;
+    const tx = (lon2tile(lon, targetZoom) * 256) - originX + margin;
+    const ty = (lat2tile(lat, targetZoom) * 256) - originY + margin;
 
     const tags = el.tags || {};
     const isStation = tags.amenity === "fire_station" || tags.building === "fire_station";
