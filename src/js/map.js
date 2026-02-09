@@ -296,8 +296,8 @@ export function initMapLogic() {
                     statusEl.className = 'text-blue-400';
                 }
 
-                // Detaillierte Lade-Info anzeigen
-                showNotification(`🔄 ${t('loading_data')}`, 30000); // Lange duration, wird bei Erfolg überschrieben
+                // Detaillierte Lade-Info anzeigen (wird bei Cache-Hit überschrieben)
+                showNotification(`🔄 ${t('loading_data')}`, 30000);
 
                 // Track if we rendered cached data
                 let cachedCount = 0;
@@ -307,7 +307,8 @@ export function initMapLogic() {
                 const data = await fetchOSMData((cachedData) => {
                     cachedCount = cachedData?.length || 0;
                     if (cachedCount > 0) {
-                        showNotification(`📦 ${cachedCount} ${t('cached_objects')}`, 3000);
+                        // Cache-Hit: Zeige Daten + Hinweis auf Aktualisierung
+                        showNotification(`📦 ${cachedCount} ${t('cached_objects')} – ${t('refreshing')}`, 30000);
                     }
                     renderMarkers(cachedData, zoom);
                 });
