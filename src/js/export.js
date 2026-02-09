@@ -704,9 +704,11 @@ async function generateMapCanvas() {
   console.log("Export: Rendering markers...", elementsForExport.length);
 
   // Versatz berechnen (für exakte Positionierung der Marker)
-  // nw.lng/lat -> Pixel
-  const originX = lon2tile(nw.lng, targetZoom) * 256;
-  const originY = lat2tile(nw.lat, targetZoom) * 256;
+  // Versatz berechnen (für exakte Positionierung der Marker)
+  // Wir müssen uns am Kachel-Gitter (x1, y1) orientieren, da die Kacheln dort bei (0,0) + margin beginnen.
+  // Sonst sind Marker um den Offset innerhalb der ersten Kachel verschoben.
+  const originX = x1 * 256;
+  const originY = y1 * 256;
 
   // Boundaries zeichnen (z.B. Gemeindegrenzen)
   // Annahme: sind in cachedElements enthalten (wenn Zoom passt)
