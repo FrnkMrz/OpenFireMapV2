@@ -218,7 +218,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
 
   // Cache lesen (nur wenn nicht übersprungen)
   if (cacheKey && !skipCache) {
-    const cached = getCache(cacheKey, cacheTtlMs);
+    const cached = await getCache(cacheKey, cacheTtlMs);
     if (cached) {
       emit({ phase: 'cache_hit', reqId, cacheKey });
       return cached;
@@ -276,7 +276,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
       epMarkOk(endpoint, 200);
 
       // Cache schreiben (immer, wenn wir Key haben)
-      if (cacheKey) setCache(cacheKey, json);
+      if (cacheKey) await setCache(cacheKey, json);
 
       const ms = Math.round(performance.now() - t0);
       const elements = Array.isArray(json?.elements) ? json.elements.length : null;
@@ -430,7 +430,7 @@ export async function fetchOSMData(onProgressData = null) {
   // SCHRITT 1: Cache prüfen & sofort anzeigen
   let hasCachedData = false;
   try {
-    const cached = getCache(cacheKey, ONE_DAY_MS);
+    const cached = await getCache(cacheKey, ONE_DAY_MS);
     if (cached) {
       hasCachedData = true;
       State.cachedElements = cached.elements || [];

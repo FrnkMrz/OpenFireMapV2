@@ -1,136 +1,121 @@
 // src/js/cache.js
-// Persistenter Cache mit LocalStorage + LRU-Strategy (bei vollem Speicher).
+// Persistenter Cache mit IndexedDB (viel mehr Platz als LocalStorage).
 // Speichert OSM-Daten über Page-Reloads hinweg.
 
-const PREFIX = 'OFM_CACHE_v1_';
+const DB_NAME = 'OFM_DB';
+const STORE_NAME = 'keyval';
+const DB_VERSION = 1;
 
-function getStorageKey(key) {
-  return PREFIX + key;
+/**
+ * Minimaler IndexedDB Wrapper (Promise-basiert).
+ * @returns {Promise<IDBDatabase>}
+ */
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onerror = () => reject(req.error);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+  });
 }
 
 /**
  * Liest Daten aus dem Cache.
  * @param {string} key 
  * @param {number} maxAgeMs 
- * @returns {object|null}
+ * @returns {Promise<object|null>}
  */
-export function getCache(key, maxAgeMs) {
+export async function getCache(key, maxAgeMs) {
   try {
-    const storageKey = getStorageKey(key);
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return null;
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(key);
 
-    const entry = JSON.parse(raw);
-    if (!entry || !entry.ts || !entry.data) return null;
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const entry = req.result;
+        if (!entry || !entry.ts || !entry.data) {
+          resolve(null);
+          return;
+        }
 
-    const age = Date.now() - entry.ts;
-    if (age > maxAgeMs) {
-      // Abgelaufen -> weg damit
-      localStorage.removeItem(storageKey);
-      return null;
-    }
+        const age = Date.now() - entry.ts;
+        if (age > maxAgeMs) {
+          // Abgelaufen -> (Lazy Delete beim nächsten Write oder explizit hier fire-and-forget delete)
+          // Wir löschen es hier direkt asynchron, warten aber nicht drauf.
+          deleteCacheEntry(key).catch(console.warn);
+          resolve(null);
+          return;
+        }
 
-    return entry.data;
+        resolve(entry.data);
+      };
+    });
   } catch (e) {
     console.warn('[Cache] Read error', e);
     return null;
   }
 }
 
+async function deleteCacheEntry(key) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(key);
+  } catch (e) { /* ignore */ }
+}
+
 /**
  * Schreibt Daten in den Cache.
- * Handhabt QuotaExceededError durch Löschen alter Einträge.
  * @param {string} key 
  * @param {object} data 
  */
-export function setCache(key, data) {
-  const storageKey = getStorageKey(key);
-  const entry = {
-    ts: Date.now(),
-    data: data
-  };
-  const json = JSON.stringify(entry);
-
+export async function setCache(key, data) {
   try {
-    localStorage.setItem(storageKey, json);
+    const entry = {
+      ts: Date.now(),
+      data: data
+    };
+
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.put(entry, key);
+
+      req.onerror = () => {
+        console.warn('[Cache] Write error', req.error);
+        resolve(); // Nichts tun, ist nur Cache
+      };
+      req.onsuccess = () => resolve();
+    });
   } catch (e) {
-    if (isQuotaError(e)) {
-      console.log('[Cache] Quota exceeded. Cleaning up...');
-      pruneCache();
-      // Zweiter Versuch
-      try {
-        localStorage.setItem(storageKey, json);
-      } catch (e2) {
-        console.error('[Cache] Write failed after cleanup', e2);
-      }
-    } else {
-      console.warn('[Cache] Write error', e);
-    }
+    console.warn('[Cache] Write error', e);
   }
 }
 
 /**
- * Löscht alle Cache-Einträge dieser Version
+ * Löscht alle Cache-Einträge (z.B. bei Versionswechsel)
  */
-export function clearCache() {
-  Object.keys(localStorage).forEach(k => {
-    if (k.startsWith(PREFIX)) localStorage.removeItem(k);
-  });
-}
+export async function clearCache() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).clear();
 
-/**
- * Hilfsfunktion: Erkennt "Storage Full" Errors browserübergreifend
- */
-function isQuotaError(e) {
-  return e instanceof DOMException && (
-    e.code === 22 ||
-    e.code === 1014 ||
-    e.name === 'QuotaExceededError' ||
-    e.name === 'NS_ERROR_DOM_QUOTA_REACHED'
-  );
-}
-
-/**
- * Entfernt die älteste Hälfte der Cache-Einträge, um Platz zu schaffen.
- */
-function pruneCache() {
-  const items = [];
-  // 1. Alle eigenen Cache-Items sammeln
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith(PREFIX)) {
-      try {
-        // Wir parsen nur den TS, um Performance zu sparen? 
-        // Leider ist alles in einem JSON-String. 
-        // Wir lesen erstmal nur den Key.
-        items.push(k);
-      } catch (e) { /* ignore */ }
-    }
-  }
-
-  // 2. Metadaten lesen (Timestamp)
-  const entries = items.map(k => {
-    try {
-      const raw = localStorage.getItem(k);
-      // Kleiner Hack: Wir suchen nach "ts":12345 im String, um nicht alles parsen zu müssen?
-      // Safer: Kurz parsen.
-      const obj = JSON.parse(raw);
-      return { key: k, ts: obj.ts || 0, size: raw.length };
-    } catch (e) {
-      return { key: k, ts: 0, size: 0 };
-    }
-  });
-
-  // 3. Nach Alter sortieren (älteste zuerst -> kleinster TS)
-  entries.sort((a, b) => a.ts - b.ts);
-
-  // 4. Löschen bis wir z.B. 30% Platz freigemacht haben oder 50% der Items weg sind.
-  // Einfache Strategie: Die ältesten 50% löschen.
-  const toDelete = Math.ceil(entries.length / 2);
-
-  console.log(`[Cache] Pruning ${toDelete} old entries...`);
-
-  for (let i = 0; i < toDelete; i++) {
-    localStorage.removeItem(entries[i].key);
+    // Auch alten LocalStorage aufräumen, falls vorhanden
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('OFM_CACHE')) localStorage.removeItem(k);
+    });
+  } catch (e) {
+    console.error('[Cache] Clear error', e);
   }
 }
+
