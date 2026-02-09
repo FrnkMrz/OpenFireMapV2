@@ -20,11 +20,60 @@ import { setBaseLayer } from './map.js';
 // ...
 
 // 6. Export-Aktionen
+// 6. Export-Aktionen (Jetzt mit Bestätigungs-Dialog)
 addClick('select-btn', startSelection);
-addClick('png-btn', exportAsPNG);
-addClick('pdf-btn', exportAsPDF);
-addClick('gpx-btn', exportAsGPX);
+
+// Hilfsfunktion: Button -> Dialog -> Export
+const withTitleConfirm = (fn) => () => openTitleConfirmation(fn);
+
+addClick('png-btn', withTitleConfirm(exportAsPNG));
+addClick('pdf-btn', withTitleConfirm(exportAsPDF));
+addClick('gpx-btn', withTitleConfirm(exportAsGPX));
 addClick('cancel-export-btn', cancelExport);
+
+// Bestätigungs-Dialog Events
+let pendingExportAction = null;
+
+addClick('export-confirm-cancel', () => {
+    document.getElementById('export-title-modal').classList.add('hidden');
+    // Zurück zum Export-Menü? Oder ganz zu? Wir machen ganz zu für Clean State.
+    // toggleExportMenu(); // Optional: Wieder öffnen
+});
+
+addClick('export-confirm-ok', () => {
+    const modal = document.getElementById('export-title-modal');
+    if (modal) modal.classList.add('hidden');
+    if (pendingExportAction) pendingExportAction();
+});
+
+function openTitleConfirmation(actionCallback) {
+    pendingExportAction = actionCallback;
+
+    // 1. Export-Menü schließen
+    const exportMenu = document.getElementById('export-menu');
+    if (exportMenu) exportMenu.classList.add('hidden');
+
+    // 2. Dialog öffnen
+    const modal = document.getElementById('export-title-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+
+        // 3. Titel vorladen (Logik hierhin verschoben)
+        const input = document.getElementById('export-confirm-title');
+        if (input) {
+            if (!input.value) {
+                input.placeholder = "Lade Ortsnamen...";
+                const center = State.map.getCenter();
+                fetchLocationTitle(center.lat, center.lng).then(title => {
+                    // Nur setzen, wenn User nicht schon was getippt hat (Race Condition)
+                    if (!input.value && title) input.value = title;
+                    input.placeholder = "Titel eingeben";
+                });
+            }
+            input.focus();
+        }
+    }
+}
 
 /**
  * HILFSFUNKTION: addClick
@@ -145,16 +194,6 @@ export function toggleExportMenu() {
         document.getElementById('export-setup')?.classList.remove('hidden');
         document.getElementById('export-progress')?.classList.add('hidden');
 
-        // Titel vorladen (wenn leer)
-        const titleInput = document.getElementById('export-title-input');
-        if (titleInput && !titleInput.value) {
-            titleInput.placeholder = "Lade...";
-            const center = State.map.getCenter();
-            fetchLocationTitle(center.lat, center.lng).then(title => {
-                if (title) titleInput.value = title;
-                titleInput.placeholder = t("title_label"); // oder leer
-            });
-        }
     }
 }
 

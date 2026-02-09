@@ -352,7 +352,7 @@ export async function exportAsGPX() {
     }
 
     // TITEL HOLEN (Benutzer-Input)
-    let displayTitle = document.getElementById("export-title-input")?.value?.trim() || "";
+    let displayTitle = document.getElementById("export-confirm-title")?.value?.trim() || "";
     if (!displayTitle) {
       try {
         const center = bounds.getCenter();
