@@ -173,7 +173,17 @@ function makeBBoxKey(bounds) {
 }
 
 function makeOverpassCacheKey({ zoom, bboxKey, queryKind }) {
-  return `overpass:v2:${queryKind}:z${zoom}:bbox:${bboxKey}`; // v2 für neuen Cache
+  // Zoom-Level Normalisierung:
+  // Wir laden ab Zoom 15 immer dieselben Daten (Hydranten, etc.).
+  // Damit beim Reinzoomen (z.B. 15 -> 16) die Daten aus dem Cache kommen,
+  // nutzen wir einen gemeinsamen Key für alle hohen Zoom-Stufen.
+
+  let zKey = zoom;
+  if (zoom >= 15) zKey = '15+';
+  else if (zoom >= 12 && zoom < 14) zKey = '12-13';
+  // z14 bleibt separat (Stations + Boundaries)
+
+  return `overpass:v2:${queryKind}:z${zKey}:bbox:${bboxKey}`;
 }
 
 function epHealthyOrder(endpoints) {
