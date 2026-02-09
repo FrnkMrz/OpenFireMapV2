@@ -41,6 +41,11 @@ async function maybeGlobalBackoff(reqId) {
   if (GLOBAL_BACKOFF_UNTIL > now) {
     const waitMs = GLOBAL_BACKOFF_UNTIL - now;
     emit({ phase: 'backoff_wait', reqId, ms: waitMs });
+
+    // Visuelles Feedback: Zeige dem User, dass wir aufgrund Überlastung warten
+    const waitSec = Math.ceil(waitMs / 1000);
+    showNotification(`⏳ ${t('status_waiting')} (${waitSec}s)...`, Math.min(waitMs, 5000));
+
     await sleep(waitMs);
   }
 }
@@ -186,16 +191,32 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
 
   let lastErr = null;
 
-  for (const endpoint of endpoints) {
+  for (let attemptNum = 0; attemptNum < endpoints.length; attemptNum++) {
+    const endpoint = endpoints[attemptNum];
     const s = epGet(endpoint);
     const now = Date.now();
+
     if (s.failUntil > now) {
+      const waitSec = Math.ceil((s.failUntil - now) / 1000);
       emit({ phase: 'skip_endpoint', reqId, endpoint, untilMs: s.failUntil - now, lastStatus: s.lastStatus });
+
+      // Zeige nur wenn es der letzte Endpoint ist (sonst zu viele Notifications)
+      if (attemptNum === endpoints.length - 1) {
+        showNotification(`⚠️ Alle Server überlastet, warte ${waitSec}s...`, 3000);
+      }
       continue;
     }
 
     try {
-      emit({ phase: 'try', reqId, endpoint });
+      // Zeige bei Retry (nicht beim ersten Versuch) welcher Server probiert wird
+      if (attemptNum > 0) {
+        const serverName = endpoint.includes('overpass-api.de') ? 'Server 1' :
+          endpoint.includes('z.overpass-api.de') ? 'Server 2' :
+            endpoint.includes('lz4.overpass-api.de') ? 'Server 3' : 'Alternativ-Server';
+        showNotification(`🔄 Versuche ${serverName}...`, 2000);
+      }
+
+      emit({ phase: 'try', reqId, endpoint, attemptNum });
 
       const t0 = performance.now();
       const body = new URLSearchParams({ data: overpassQueryString }).toString();
@@ -238,12 +259,26 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
           epMarkFail(endpoint, 429, 90000); // 90s
           bumpGlobalBackoff({ minMs: 8000, maxMs: 30000 });
           emit({ phase: 'ratelimit', reqId, endpoint, backoffMs: GLOBAL_BACKOFF_MS });
+
+          // Visuelles Feedback: Rate Limit
+          if (attemptNum < endpoints.length - 1) {
+            showNotification(`⚠️ Server überlastet (429), versuche nächsten Server...`, 3000);
+          } else {
+            showNotification(`⚠️ Alle Server überlastet, bitte später erneut versuchen`, 5000);
+          }
+
           await sleep(300);
           continue;
         }
         if (err.status >= 500) {
           epMarkFail(endpoint, err.status, 30000); // 30s
           bumpGlobalBackoff({ minMs: 1200, maxMs: 8000 });
+
+          // Visuelles Feedback: Server Error
+          if (attemptNum < endpoints.length - 1) {
+            showNotification(`⚠️ Server-Fehler (${err.status}), versuche Alternativ-Server...`, 3000);
+          }
+
           await sleep(400);
           continue;
         }
@@ -361,6 +396,12 @@ export async function fetchOSMData(onProgressData = null) {
     // Wenn Netzwerk fehlschlägt, wir aber Cached Data haben:
     if (hasCachedData) {
       console.warn("Background fetch failed, using stale data.", err);
+
+      // Visuelles Feedback: Nutzer weiß, dass alte Daten angezeigt werden
+      const errType = (err instanceof HttpError && err.status === 429) ? 'Überlastung' :
+        (err instanceof HttpError && err.status >= 500) ? 'Server-Fehler' : 'Verbindungsproblem';
+      showNotification(`ℹ️ ${errType} - zeige gespeicherte Daten`, 4000);
+
       throw err;
     } else {
       // Kein Cache UND kein Netzwerk -> Fehler
