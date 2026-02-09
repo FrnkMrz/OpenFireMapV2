@@ -58,6 +58,8 @@ export const strings = {
     station: "Feuerwache",
     hydrant: "Hydrant",
     defib: "Defibrillator (AED)",
+    export_confirm_header: "Titel bestätigen",
+    export_confirm_text: "Bitte passe den Titel für den Plan an:",
     legal_btn: "Info & Recht",
     "menu_layers_open": "Kartenebenen-Menü öffnen",
     "menu_layers_close": "Kartenebenen-Menü schließen",

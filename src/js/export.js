@@ -17,6 +17,22 @@ import { t, getLang } from "./i18n.js";
 import { showNotification, toggleExportMenu } from "./ui.js";
 import { jsPDF } from "jspdf";
 
+/**
+ * Generiert den Dateinamen nach dem Muster:
+ * YYYY-MM-DD_HH-mm_Z{Zoom}_{Titel}
+ */
+function getExportFilename(title, zoom) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+
+  const safeTitle = (title || "OpenFireMap_Export").replace(/[\s\.:\/]/g, "_");
+  return `${year}-${month}-${day}_${hour}-${minute}_Z${zoom}_${safeTitle}`;
+}
+
 /* =============================================================================
    HILFSFUNKTIONEN: PRE-PROCESSING FÜR EXPORT (Clustering nur für Feuerwachen)
    -----------------------------------------------------------------------------
@@ -359,67 +375,69 @@ export async function exportAsGPX() {
         displayTitle = await fetchLocationTitle(center.lat, center.lng);
       } catch (e) { console.warn(e); }
     }
-    const safeTitle = displayTitle.replace(/[\s\.:]/g, "_") || "OpenFireMap_Export";
-    const filename = `${safeTitle}_Z${State.exportZoomLevel}`;
-
-    let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    gpx +=
-      '<gpx version="1.1" creator="OpenFireMap V2" xmlns="http://www.topografix.com/GPX/1/1">\n';
-    gpx += `  <metadata><name>${displayTitle || "Hydranten Export"}</name><time>${new Date().toISOString()}</time></metadata>\n`;
-
-    pointsToExport.forEach((el) => {
-      const tags = el.tags || {};
-      const isStation =
-        tags.amenity === "fire_station" || tags.building === "fire_station";
-      const isHydrant =
-        tags.emergency &&
-        [
-          "fire_hydrant",
-          "water_tank",
-          "suction_point",
-          "fire_water_pond",
-          "cistern",
-        ].some((t) => tags.emergency.includes(t));
-      const isDefib = tags.emergency === "defibrillator";
-
-      if (!isStation && !isHydrant && !isDefib) return;
-
-      let name =
-        tags.name ||
-        (isStation ? t("station") : isDefib ? t("defib") : t("hydrant"));
-      if (!tags.name && tags["fire_hydrant:type"])
-        name = `H ${tags["fire_hydrant:type"]}`;
-      if (!tags.name && tags["ref"])
-        name = `${isStation ? "Wache" : "H"} ${tags["ref"]}`;
-
-      let desc = [];
-      for (const [k, v] of Object.entries(tags)) {
-        desc.push(`${k}: ${v}`);
-      }
-
-      gpx += `  <wpt lat="${el.lat || el.center.lat}" lon="${el.lon || el.center.lon}">\n`;
-      gpx += `    <name>${escapeXML(name)}</name>\n`;
-      gpx += `    <desc>${escapeXML(desc.join("\n"))}</desc>\n`;
-      gpx += `    <sym>${isStation ? "Fire Station" : "Hydrant"}</sym>\n`;
-      gpx += `  </wpt>\n`;
-    });
-
-    gpx += "</gpx>";
-
-    const blob = new Blob([gpx], { type: "application/gpx+xml" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.download = `${filename}.gpx`;
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    showNotification(`${pointsToExport.length} ${t("gpx_success")}`);
-    toggleExportMenu();
-  } catch (e) {
-    console.error("GPX Fehler:", e);
-    showNotification("GPX Fehler: " + e.message, 5000);
   }
+
+// Neuer Dateiname-Generator
+const filename = getExportFilename(displayTitle, State.exportZoomLevel);
+
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  gpx +=
+    '<gpx version="1.1" creator="OpenFireMap V2" xmlns="http://www.topografix.com/GPX/1/1">\n';
+  gpx += `  <metadata><name>${displayTitle || "Hydranten Export"}</name><time>${new Date().toISOString()}</time></metadata>\n`;
+
+  pointsToExport.forEach((el) => {
+    const tags = el.tags || {};
+    const isStation =
+      tags.amenity === "fire_station" || tags.building === "fire_station";
+    const isHydrant =
+      tags.emergency &&
+      [
+        "fire_hydrant",
+        "water_tank",
+        "suction_point",
+        "fire_water_pond",
+        "cistern",
+      ].some((t) => tags.emergency.includes(t));
+    const isDefib = tags.emergency === "defibrillator";
+
+    if (!isStation && !isHydrant && !isDefib) return;
+
+    let name =
+      tags.name ||
+      (isStation ? t("station") : isDefib ? t("defib") : t("hydrant"));
+    if (!tags.name && tags["fire_hydrant:type"])
+      name = `H ${tags["fire_hydrant:type"]}`;
+    if (!tags.name && tags["ref"])
+      name = `${isStation ? "Wache" : "H"} ${tags["ref"]}`;
+
+    let desc = [];
+    for (const [k, v] of Object.entries(tags)) {
+      desc.push(`${k}: ${v}`);
+    }
+
+    gpx += `  <wpt lat="${el.lat || el.center.lat}" lon="${el.lon || el.center.lon}">\n`;
+    gpx += `    <name>${escapeXML(name)}</name>\n`;
+    gpx += `    <desc>${escapeXML(desc.join("\n"))}</desc>\n`;
+    gpx += `    <sym>${isStation ? "Fire Station" : "Hydrant"}</sym>\n`;
+    gpx += `  </wpt>\n`;
+  });
+
+  gpx += "</gpx>";
+
+  const blob = new Blob([gpx], { type: "application/gpx+xml" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.download = `${filename}.gpx`;
+  link.href = url;
+  link.click();
+  URL.revokeObjectURL(url);
+
+  showNotification(`${pointsToExport.length} ${t("gpx_success")}`);
+  toggleExportMenu();
+} catch (e) {
+  console.error("GPX Fehler:", e);
+  showNotification("GPX Fehler: " + e.message, 5000);
+}
 }
 
 /* =============================================================================
@@ -535,7 +553,7 @@ async function generateMapCanvas() {
   const se = bounds.getSouthEast();
 
   // 3. ORTSBESTIMMUNG
-  let displayTitle = document.getElementById("export-title-input")?.value?.trim() || "";
+  let displayTitle = document.getElementById("export-confirm-title")?.value?.trim() || "";
 
   if (!displayTitle) {
     try {
@@ -579,127 +597,125 @@ async function generateMapCanvas() {
   // 6. KACHELN LADEN
   setStatus(`${t("loading_tiles")} (Z${targetZoom})...`);
   const tileQueue = [];
-  for (let x = x1; x <= x2; x++)
-    for (let y = y1; y <= y2; y++) tileQueue.push({ x, y });
-
-  const totalTiles = tileQueue.length;
-  let loaded = 0;
-  const baseUrlTpl = Config.layers[State.activeLayerKey].url
-    .replace("{s}", "a")
-    .replace("{r}", "");
-
-  const processQueue = async () => {
-    while (tileQueue.length > 0 && !signal.aborted) {
-      const { x, y } = tileQueue.shift();
-      await new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = baseUrlTpl
-          .replace("{z}", targetZoom)
-          .replace("{x}", x)
-          .replace("{y}", y);
-
-        img.onload = () => {
-          ctx.drawImage(
-            img,
-            (x - x1) * 256 + margin,
-            (y - y1) * 256 + margin,
-          );
-          loaded++;
-          updateProgress();
-          resolve();
-        };
-        img.onerror = () => {
-          loaded++;
-          resolve();
-        };
-      });
+  for (let x = x1; x <= x2; x++) {
+    for (let y = y1; y <= y2; y++) {
+      tileQueue.push({ x, y, z: targetZoom });
     }
-  };
-
-  const workers = [];
-  for (let i = 0; i < 8; i++) workers.push(processQueue());
-  await Promise.all(workers);
-
-  function updateProgress() {
-    const p = Math.round((loaded / totalTiles) * 80);
-    if (progressBar) progressBar.style.width = p + "%";
   }
 
-  if (signal.aborted) throw new Error("Abbruch");
+  // Parallel laden (Limit concurrency)
+  const CONCURRENCY = 6;
+  let active = 0;
+  let finished = 0;
+  const totalTiles = tileQueue.length;
 
-  // 7. GRENZEN MALEN
-  setStatus(t("render_bounds"));
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(margin, margin, mapWidth, mapHeight);
-  ctx.clip();
-  ctx.translate(-x1 * 256 + margin, -y1 * 256 + margin);
-  ctx.strokeStyle = Config.colors.bounds;
-  ctx.lineWidth = 2;
-  ctx.setLineDash([20, 20]);
-  ctx.lineCap = "round";
+  const results = []; // {x, y, img}
 
-  elementsForExport.forEach((el) => {
-    if (
-      el.tags &&
-      el.tags.boundary === "administrative" &&
-      el.geometry &&
-      targetZoom >= 14
-    ) {
-      ctx.beginPath();
-      let first = true;
-      for (let p of el.geometry) {
-        const px = lon2tile(p.lon, targetZoom) * 256;
-        const py = lat2tile(p.lat, targetZoom) * 256;
-        if (first) {
-          ctx.moveTo(px, py);
-          first = false;
-        } else {
-          ctx.lineTo(px, py);
-        }
+  await new Promise((resolve, reject) => {
+    const next = () => {
+      if (signal.aborted) {
+        reject(new Error("Aborted"));
+        return;
       }
-      ctx.stroke();
-    }
+      if (tileQueue.length === 0 && active === 0) {
+        resolve();
+        return;
+      }
+      while (active < CONCURRENCY && tileQueue.length > 0) {
+        const item = tileQueue.shift();
+        active++;
+        const sSub = ["a", "b", "c"][Math.abs(item.x + item.y) % 3];
+        let url;
+        if (State.activeLayerKey === 'maptiler') {
+          // Satellite (ArcGIS) hat kein Subdomain-Replacement {s}
+          url = Config.layers[State.activeLayerKey].url
+            .replace("{z}", item.z)
+            .replace("{x}", item.x)
+            .replace("{y}", item.y);
+        } else {
+          url = Config.layers[State.activeLayerKey].url
+            .replace("{s}", sSub)
+            .replace("{z}", item.z)
+            .replace("{x}", item.x)
+            .replace("{y}", item.y);
+        }
+
+        // Caching für Tiles nicht nötig für Export
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          results.push({ ...item, img });
+          active--;
+          finished++;
+          // setStatus(`${t("loading_tiles")} ${Math.round((finished / totalTiles) * 100)}%`);
+          next();
+        };
+        img.onerror = () => {
+          console.warn("Tile error", url);
+          active--;
+          finished++;
+          next();
+        };
+        img.src = url;
+      }
+    };
+    next();
   });
 
-  ctx.restore();
+  if (signal.aborted) throw new Error("Export abgebrochen");
 
-  // 8. INFRASTRUKTUR MALEN
+  // 7. ZEICHNEN (Tiles)
+  results.forEach((r) => {
+    const px = (r.x - x1) * 256 + margin;
+    const py = (r.y - y1) * 256 + margin;
+    ctx.drawImage(r.img, px, py);
+  });
+
+  // 8. OVERLAYS ZEICHNEN
   setStatus(t("render_infra"));
   ctx.save();
   ctx.beginPath();
   ctx.rect(margin, margin, mapWidth, mapHeight);
-  ctx.clip();
-  ctx.translate(-x1 * 256 + margin, -y1 * 256 + margin);
+  ctx.clip(); // Nur innerhalb der Karte zeichnen
 
-  const iconCache = {};
-  const loadSVG = async (type) => {
-    if (iconCache[type]) return iconCache[type];
-    const svgStr = getSVGContentForExport(type);
-    const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.src = url;
-    await new Promise((r) => (img.onload = r));
-    iconCache[type] = img;
-    URL.revokeObjectURL(url);
-    return img;
-  };
+  // Versatz berechnen (für exakte Positionierung der Marker)
+  // nw.lng/lat -> Pixel
+  const originX = lon2tile(nw.lng, targetZoom) * 256;
+  const originY = lat2tile(nw.lat, targetZoom) * 256;
 
-  for (let el of elementsForExport) {
-    const tags = el.tags || {};
-    if (tags.boundary === "administrative") continue;
+  // Boundaries zeichnen (z.B. Gemeindegrenzen)
+  // Annahme: sind in cachedElements enthalten (wenn Zoom passt)
+  // TODO: Boundaries rendern hier noch manuell, da sie Linien sind
+  // (Vereinfachung: Wir iterieren über State.boundaryLayer.getLayers() ist nicht thread-safe für Export ohne Map-Kontext)
+  // Besser: Wir nutzen die Daten aus elementsForExport.
+
+  for (const el of elementsForExport) {
+    if (el.tags && el.tags.boundary === 'administrative' && el.geometry) {
+      // Linie zeichnen
+      const coords = el.geometry.map(p => {
+        const px = (lon2tile(p.lon, targetZoom) * 256) - originX + margin;
+        const py = (lat2tile(p.lat, targetZoom) * 256) - originY + margin;
+        return [px, py];
+      });
+
+      ctx.beginPath();
+      ctx.strokeStyle = (State.activeLayerKey === 'satellite') ? Config.colors.boundsSatellite : Config.colors.bounds;
+      ctx.lineWidth = (State.activeLayerKey === 'satellite') ? 3 : 1;
+      ctx.setLineDash([10, 10]);
+      ctx.moveTo(coords[0][0], coords[0][1]);
+      for (let i = 1; i < coords.length; i++) ctx.lineTo(coords[i][0], coords[i][1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // Marker zeichnen
+  // ... (Code bleibt gleich, nur Kontext ist ctx)
+  for (const el of elementsForExport) {
+    if (el.tags?.boundary === 'administrative') continue; // Schon gemalt
 
     const lat = el.lat || el.center?.lat;
     const lon = el.lon || el.center?.lon;
-    const isStation =
-      tags.amenity === "fire_station" || tags.building === "fire_station";
-    const type = isStation
-      ? "station"
-      : tags.emergency === "defibrillator"
-        ? "defibrillator"
-        : tags["fire_hydrant:type"] || tags.emergency || "fire_hydrant";
 
     const tx = lon2tile(lon, targetZoom) * 256;
     const ty = lat2tile(lat, targetZoom) * 256;
