@@ -371,10 +371,13 @@ export function setBaseLayer(key) {
 
     // Boundaries aktualisieren (Farbe je nach Hintergrund)
     // Gelb für Satellit, Dunkelgrau für alles andere
-    const boundsColor = (key === 'satellite') ? Config.colors.boundsSatellite : Config.colors.bounds;
+    const isSat = (key === 'satellite');
+    const boundsColor = isSat ? Config.colors.boundsSatellite : Config.colors.bounds;
+    const boundsWeight = isSat ? 3 : 1;
+
     State.boundaryLayer.eachLayer(layer => {
         if (layer instanceof L.Polyline) {
-            layer.setStyle({ color: boundsColor });
+            layer.setStyle({ color: boundsColor, weight: boundsWeight });
         }
     });
 }
@@ -667,14 +670,14 @@ export function renderMarkers(elements, zoom) {
         // --- A. Grenzen verarbeiten (wie bisher) ---
         if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
             const latlngs = el.geometry.map(p => [p.lat, p.lon]);
-            // Farbe wählen: Wenn Satellit, dann Gelb, sonst Grau
-            const bColor = (State.activeLayerKey === 'satellite')
-                ? Config.colors.boundsSatellite
-                : Config.colors.bounds;
+            // Farbe & Dicke wählen: Wenn Satellit, dann Gelb und dicker
+            const isSat = (State.activeLayerKey === 'satellite');
+            const bColor = isSat ? Config.colors.boundsSatellite : Config.colors.bounds;
+            const bWeight = isSat ? 3 : 1;
 
             L.polyline(latlngs, {
                 color: bColor,
-                weight: 1,
+                weight: bWeight,
                 dashArray: '10, 10',
                 opacity: 0.7
             }).addTo(State.boundaryLayer);
