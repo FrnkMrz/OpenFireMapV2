@@ -759,9 +759,7 @@ async function generateMapCanvas() {
   ctx.fillStyle = Config.colors.textMain;
   ctx.textAlign = "center";
   ctx.font = "bold 44px Arial, sans-serif";
-  const titleText = displayTitle
-    ? `Ort- und Hydrantenplan ${displayTitle}`
-    : "Ort- und Hydrantenplan";
+  const titleText = displayTitle || "Ort- und Hydrantenplan";
   ctx.fillText(titleText, centerX, margin + 55);
 
   const now = new Date();

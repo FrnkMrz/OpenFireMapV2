@@ -64,9 +64,11 @@ function openTitleConfirmation(actionCallback) {
             if (!input.value) {
                 input.placeholder = "Lade Ortsnamen...";
                 const center = State.map.getCenter();
-                fetchLocationTitle(center.lat, center.lng).then(title => {
+                fetchLocationTitle(center.lat, center.lng).then(city => {
                     // Nur setzen, wenn User nicht schon was getippt hat (Race Condition)
-                    if (!input.value && title) input.value = title;
+                    if (!input.value && city) {
+                        input.value = `Ort- und Hydrantenplan ${city}`;
+                    }
                     input.placeholder = "Titel eingeben";
                 });
             }
