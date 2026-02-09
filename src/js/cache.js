@@ -31,6 +31,7 @@ function openDB() {
  * @returns {Promise<object|null>}
  */
 export async function getCache(key, maxAgeMs) {
+  console.log('[Cache] getCache', key);
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -78,6 +79,7 @@ async function deleteCacheEntry(key) {
  * @param {object} data 
  */
 export async function setCache(key, data) {
+  console.log('[Cache] setCache', key, data?.elements?.length);
   try {
     const entry = {
       ts: Date.now(),

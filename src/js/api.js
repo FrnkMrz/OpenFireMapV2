@@ -255,7 +255,9 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
         const serverName = endpoint.includes('overpass-api.de') ? 'Server 1' :
           endpoint.includes('z.overpass-api.de') ? 'Server 2' :
             endpoint.includes('lz4.overpass-api.de') ? 'Server 3' : 'Alternativ-Server';
-        showNotification(`🔄 ${t('trying_server')} ${serverName}...`, 2000);
+
+        // FIX: Dauer auf 60 Sekunden erhöht, damit der User sieht, dass noch was passiert.
+        showNotification(`🔄 ${t('trying_server')} ${serverName}...`, 60000);
       }
 
       emit({ phase: 'try', reqId, endpoint, attemptNum });
@@ -304,9 +306,9 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
 
           // Visuelles Feedback: Rate Limit
           if (attemptNum < endpoints.length - 1) {
-            showNotification(`⚠️ ${t('server_ratelimit_retry')}`, 3000);
+            showNotification(`⚠️ ${t('server_ratelimit_retry')}`, 4000);
           } else {
-            showNotification(`⚠️ ${t('all_servers_busy')}`, 5000);
+            showNotification(`⚠️ ${t('all_servers_busy')}`, 6000);
           }
 
           await sleep(300);
@@ -318,8 +320,9 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
 
           // Visuelles Feedback: Server Error
           if (attemptNum < endpoints.length - 1) {
-            showNotification(`⚠️ ${t('server_error_retry')} (${err.status}), ${t('trying_server')} ${t('alt_server')}...`, 3000);
+            showNotification(`⚠️ ${t('server_error_retry')}`, 4000);
           }
+
 
           await sleep(400);
           continue;
@@ -428,6 +431,7 @@ export async function fetchOSMData(onProgressData = null) {
   const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
 
   // SCHRITT 1: Cache prüfen & sofort anzeigen
+  console.log('[API] Checking cache for:', cacheKey);
   let hasCachedData = false;
   try {
     const cached = await getCache(cacheKey, ONE_DAY_MS);
