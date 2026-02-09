@@ -136,8 +136,8 @@ export function initMapLogic() {
 
         // Bucket: High Zoom (Hydranten) -> Wir simulieren immer ein Z15-Fenster
         if (rawZoom >= 15) {
-            radiusMeters = 2200; // ca. 4.4km Box (reicht locker für Z15 Viewport)
-            snapMeters = 200;    // Grobes Raster
+            radiusMeters = 2500; // ca. 5km Box (etwas größer für mehr Overlap)
+            snapMeters = 400;    // Größeres Raster für stabilere Keys bei Zoom-Wechsel
         }
         // Bucket: Mid Zoom (Feuerwachen) -> Wir simulieren ein Z12-Fenster
         else if (rawZoom >= 12) {
