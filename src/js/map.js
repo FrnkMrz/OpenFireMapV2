@@ -296,6 +296,9 @@ export function initMapLogic() {
                     statusEl.className = 'text-blue-400';
                 }
 
+                // Detaillierte Lade-Info anzeigen
+                showNotification('🔄 Lade Daten...', 30000); // Lange duration, wird bei Erfolg überschrieben
+
                 // Track if we rendered cached data
                 let cachedCount = 0;
 
@@ -303,6 +306,9 @@ export function initMapLogic() {
                 // damit Cache-Daten sofort gezeichnet werden.
                 const data = await fetchOSMData((cachedData) => {
                     cachedCount = cachedData?.length || 0;
+                    if (cachedCount > 0) {
+                        showNotification(`📦 ${cachedCount} Objekte aus Cache`, 3000);
+                    }
                     renderMarkers(cachedData, zoom);
                 });
 
@@ -317,6 +323,9 @@ export function initMapLogic() {
                         statusEl.innerText = t('status_current');
                         statusEl.className = 'text-green-400';
                     }
+
+                    // Erfolgs-Nachricht für 2 Sekunden, dann Box schließen
+                    showNotification(`✅ Daten vollständig geladen (${networkCount} Objekte)`, 2000);
                 } else if (data === null) {
                     // Kein Fehler, aber leere Query (z.B. Zoom zu klein)
                     if (statusEl) {
