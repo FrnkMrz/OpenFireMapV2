@@ -540,12 +540,17 @@ async function generateMapCanvas() {
   setStatus(t("loading_data") || "Lade Daten..."); // Fallback String falls Key fehlt
   let elementsForExport = [];
   try {
+    console.log("Fetching export data for bounds:", bounds, "Zoom:", targetZoom);
     const data = await fetchDataForExport(bounds, targetZoom, signal);
     elementsForExport = preprocessElementsForExport(data.elements || []);
+    console.log("Fetched elements count:", elementsForExport.length);
+    showNotification(`Export: ${elementsForExport.length} Objekte gefunden.`, 3000);
   } catch (e) {
     console.warn("Export-Fetch fehlgeschlagen, nutze Cache als Fallback", e);
     // Fallback: Cache nutzen (besser als nichts)
     elementsForExport = preprocessElementsForExport(State.cachedElements);
+    console.log("Fallback cache elements count:", elementsForExport.length);
+    showNotification(`Export Warnung: Ladefehler, nutze Cache (${elementsForExport.length} Objekte).`, 5000);
   }
 
   const nw = bounds.getNorthWest();
