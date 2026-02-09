@@ -684,12 +684,24 @@ async function generateMapCanvas() {
     const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const img = new Image();
-    img.src = url;
-    await new Promise((r) => (img.onload = r));
+    img.width = 100; // Explicit dimensions to help browser layout
+    img.height = 100;
+
+    await new Promise((resolve, reject) => {
+      img.onload = () => resolve(img);
+      img.onerror = (e) => {
+        console.error("Icon load error:", type);
+        reject(e);
+      };
+      img.src = url;
+    });
+
     iconCache[type] = img;
     URL.revokeObjectURL(url);
     return img;
   };
+
+  console.log("Export: Rendering markers...", elementsForExport.length);
 
   // Versatz berechnen (für exakte Positionierung der Marker)
   // nw.lng/lat -> Pixel
