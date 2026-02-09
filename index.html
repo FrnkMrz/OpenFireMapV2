@@ -262,16 +262,7 @@
                         aria-label="Schließen">&times;</button>
                 </div>
 
-                <!-- 1. Ausschnitt wählen -->
-                <button id="select-btn"
-                    class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10">
-                    <span data-i18n="select_area_btn">Ausschnitt wählen</span>
-                </button>
-                <div id="selection-info"
-                    class="hidden text-[11px] text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20"
-                    data-i18n="area_fixed">Fixiert ✓</div>
-
-                <!-- 2. Format-Vorlage -->
+                <!-- 1. Format-Vorlage (jetzt ganz oben) -->
                 <div class="space-y-2">
                     <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider"
                         data-i18n="format_label">Format</label>
@@ -287,6 +278,15 @@
                             data-i18n="fmt_a4p">DIN HOCH</button>
                     </div>
                 </div>
+
+                <!-- 2. Ausschnitt wählen -->
+                <button id="select-btn"
+                    class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10">
+                    <span data-i18n="select_area_btn">Ausschnitt wählen</span>
+                </button>
+                <div id="selection-info"
+                    class="hidden text-[11px] text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20"
+                    data-i18n="area_fixed">Fixiert ✓</div>
 
                 <!-- 3. Detail-Grad -->
                 <div class="space-y-2">
