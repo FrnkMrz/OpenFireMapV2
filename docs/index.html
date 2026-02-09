@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>OpenFireMap.org</title>
+
+    <meta property="og:title" content="OpenFireMap.org">
+    <meta property="og:description"
+        content="Interaktive Karte für Feuerwachen, Hydranten und Defibrillatoren basierend auf OpenStreetMap.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://openfiremap.org/">
+    <meta property="og:image" content="https://openfiremap.org/favicons/android-icon-512x512.png">
+
+    <!-- SECURITY: Content Security Policy (CSP) -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://*.tile.opentopomap.org https://*.tile.openstreetmap.org https://tile.openstreetmap.de;
+        connect-src 'self' https://overpass-api.de https://overpass.kumi.systems https://maps.mail.ru https://nominatim.openstreetmap.org;
+    ">
+
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="./favicons/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicons/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="./favicons/favicon-96x96.png">
+
+    <link rel="stylesheet" href="./assets/vendor/leaflet/leaflet.css">
+
+    <!--
+      WICHTIG:
+      Scripts werden am Ende des <body> geladen.
+      So bleibt die Reihenfolge stabil (Leaflet -> config -> app),
+      ohne Timing-Probleme mit defer/module.
+    -->
+  <script type="module" crossorigin src="./assets/index-i_tIkRV-.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DslTlYkE.css">
+</head>
+
+<body>
+    <h1 class="sr-only">OpenFireMap.org</h1>
+
+    <main>
+        <div id="map" aria-label="Karte" role="application"></div>
+
+        <div id="notification-box" role="alert" aria-live="polite"></div>
+
+        <div id="desktop-controls" class="absolute top-5 left-5 z-[1000] flex gap-3">
+
+            <div
+                class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5 focus-within:ring-2 focus-within:ring-blue-500">
+                <label for="search-input" class="sr-only" data-i18n="search_placeholder">Ort suchen</label>
+
+                <input type="text" id="search-input" data-i18n-placeholder="search_placeholder"
+                    class="bg-transparent px-4 py-2 text-sm text-white outline-none focus:ring-0 w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-400">
+
+                <button id="search-btn" aria-label="Suchen"
+                    class="p-2 text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-xl">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </button>
+            </div>
+
+            <button id="locate-btn" data-i18n-title="locate_title" aria-label="Meinen Standort bestimmen"
+                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+
+            <button id="layer-btn-trigger" data-i18n-title="layers_title" aria-haspopup="true" aria-expanded="false"
+                aria-controls="layer-menu" aria-label="Kartenebenen-Menü öffnen"
+                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+            </button>
+
+            <button id="export-btn-trigger" data-i18n-title="export_title" aria-haspopup="true" aria-expanded="false"
+                aria-controls="export-menu" aria-label="Export-Menü öffnen"
+                class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- =========================================================
+             MOBILE UI (additiv): nur aktiv auf Smartphones (JS blendet Desktop-Controls aus)
+             - Kein Search, kein Export
+             - Locate + Burger-Menü
+             ========================================================= -->
+        <div id="mobile-controls" class="hidden md:hidden absolute top-5 left-5 z-[1200] flex gap-3">
+            <button id="mobile-locate-btn" aria-label="Locate me (Mobile)"
+                class="glass-panel p-3 rounded-2xl text-slate-200 hover:text-emerald-300 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+
+            <button id="mobile-burger-btn" aria-haspopup="true" aria-expanded="false" aria-controls="mobile-menu"
+                aria-label="Menü öffnen (Mobile)"
+                class="glass-panel p-3 rounded-2xl text-slate-200 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+
+        <div id="mobile-menu"
+            class="hidden md:hidden absolute top-[74px] left-5 z-[2500] w-[260px] glass-panel rounded-2xl p-3 shadow-2xl text-white border border-white/10"
+            role="menu" aria-labelledby="mobile-burger-btn">
+            <div class="flex flex-col gap-2">
+                <button id="mobile-open-layers" type="button"
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10">
+                    <span data-i18n="menu_layers_label">Layer</span>
+                </button>
+
+                <button id="mobile-open-search"
+                    class="w-full bg-white/5 hover:bg-white/10 pyz py-3 rounded-xl text-sm font-semibold border border-white/10">
+                    <span data-i18n="menu_search">Suche</span>
+                </button>
+
+
+
+                <button id="mobile-open-legal" type="button"
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10">
+                    <span data-i18n="legal_btn">Info & Recht</span>
+                </button>
+
+                <button id="mobile-close-menu" type="button"
+                    class="w-full bg-slate-900/40 hover:bg-slate-900/60 py-2.5 rounded-xl text-xs font-semibold border border-white/10">
+                    <span data-i18n="menu_close">Schließen</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="absolute bottom-8 left-5 z-[1000]">
+            <button id="btn-legal-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="legal-modal"
+                class="glass-panel p-1.5 rounded-xl text-slate-400 hover:text-white shadow-xl transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-[10px] font-bold hidden md:inline" data-i18n="legal_btn">Info & Recht</span>
+            </button>
+        </div>
+
+        <div id="status-box"
+            class="absolute bottom-10 right-10 z-[1000] glass-panel p-4 rounded-2xl text-[10px] text-slate-400 font-mono border border-white/5">
+            <div class="flex justify-between gap-4"><span data-i18n="zoom_info">ZOOM</span><span id="zoom-val"
+                    class="text-white font-bold">14.0</span></div>
+            <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status"
+                    class="text-green-400">AKTUELL</span></div>
+        </div>
+
+
+        <!-- Mobile Search Modal -->
+        <div id="mobile-search-modal" class="md:hidden hidden fixed inset-0 z-[3500]">
+            <div id="mobile-search-backdrop" class="absolute inset-0 bg-black/50"></div>
+
+            <div
+                class="absolute left-1/2 top-1/2 w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 glass-panel p-4 rounded-2xl border border-white/10">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="text-sm font-semibold" data-i18n="menu_search">Suche</div>
+                    <button id="mobile-search-close"
+                        class="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10">✕</button>
+                </div>
+
+                <div class="flex gap-2">
+                    <input id="mobile-search-input" type="text"
+                        class="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40"
+                        placeholder="Suchen…" />
+                    <button id="mobile-search-go"
+                        class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 font-semibold">
+                        Go
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="layer-menu" role="menu" aria-labelledby="layer-btn-trigger"
+            class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center"
+                data-i18n="bg_header">Hintergrund</h3>
+            <div class="grid grid-cols-1 gap-1">
+
+                <button id="btn-voyager" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-blue-500" aria-hidden="true"></div>
+                    <span data-i18n="layer_std">Standard</span>
+                </button>
+
+                <button id="btn-positron" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-slate-300" aria-hidden="true"></div>
+                    <span data-i18n="layer_print">Druck</span>
+                </button>
+
+                <button id="btn-dark" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-slate-800" aria-hidden="true"></div>
+                    <span data-i18n="layer_night">Nacht</span>
+                </button>
+
+                <button id="btn-satellite" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-green-600" aria-hidden="true"></div>
+                    <span data-i18n="layer_sat">Satellit</span>
+                </button>
+
+                <button id="btn-topo" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-amber-600" aria-hidden="true"></div>
+                    <span data-i18n="layer_topo">Topographisch</span>
+                </button>
+
+                <button id="btn-osm" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 border-t border-white/5 mt-1 pt-2">
+                    <div class="w-3 h-3 rounded-full bg-emerald-500" aria-hidden="true"></div>
+                    <span data-i18n="layer_osm">OSM</span>
+                </button>
+
+                <button id="btn-osmde" role="menuitem"
+                    class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-emerald-700" aria-hidden="true"></div>
+                    <span data-i18n="layer_osmde">OSM DE</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="export-menu" role="dialog" aria-labelledby="export-title" aria-modal="true"
+            class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
+
+            <div id="export-setup" class="space-y-5">
+                <div class="flex justify-between items-center">
+                    <h3 id="export-title" class="font-bold text-lg" data-i18n="export_header">Export</h3>
+                    <button id="export-close-btn" class="text-slate-400 hover:text-white text-2xl leading-none"
+                        aria-label="Schließen">&times;</button>
+                </div>
+
+                <!-- 1. Ausschnitt wählen -->
+                <button id="select-btn"
+                    class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 border border-white/10">
+                    <span data-i18n="select_area_btn">Ausschnitt wählen</span>
+                </button>
+                <div id="selection-info"
+                    class="hidden text-[11px] text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20"
+                    data-i18n="area_fixed">Fixiert ✓</div>
+
+                <!-- 2. Format-Vorlage -->
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider"
+                        data-i18n="format_label">Format</label>
+                    <div class="grid grid-cols-3 gap-2" role="group" aria-label="Format Auswahl">
+                        <button id="fmt-free" aria-pressed="true"
+                            class="fmt-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active"
+                            data-i18n="fmt_free">FREI</button>
+                        <button id="fmt-a4l" aria-pressed="false"
+                            class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10"
+                            data-i18n="fmt_a4l">DIN QUER</button>
+                        <button id="fmt-a4p" aria-pressed="false"
+                            class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10"
+                            data-i18n="fmt_a4p">DIN HOCH</button>
+                    </div>
+                </div>
+
+                <!-- 3. Detail-Grad -->
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider"
+                        data-i18n="zoom_label">Zoom</label>
+                    <div class="grid grid-cols-4 gap-2" role="group" aria-label="Zoom Stufe Auswahl">
+                        <button id="zoom-15" aria-pressed="false"
+                            class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">15</button>
+                        <button id="zoom-16" aria-pressed="false"
+                            class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">16</button>
+                        <button id="zoom-17" aria-pressed="false"
+                            class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">17</button>
+                        <button id="zoom-18" aria-pressed="true"
+                            class="zoom-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active">18</button>
+                    </div>
+                </div>
+
+                <!-- 4. Hydrantenplan PNG -->
+                <button id="png-btn"
+                    class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
+                    <span data-i18n="png_btn">PNG Speichern</span>
+                </button>
+
+                <!-- 5. Hydrantenplan PDF -->
+                <button id="pdf-btn"
+                    class="w-full bg-red-600 hover:bg-red-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg border border-red-400/30">
+                    <span data-i18n="pdf_btn">PDF Speichern</span>
+                </button>
+
+                <!-- 6. Daten Export GPX -->
+                <button id="gpx-btn"
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg border border-emerald-400/30">
+                    <span data-i18n="gpx_btn">GPX Speichern</span>
+                </button>
+            </div>
+
+            <div id="export-progress" class="hidden" role="status" aria-live="polite">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-blue-400 exporting-active" data-i18n="exporting_title">Export
+                        läuft...</h3>
+                </div>
+                <div class="space-y-4">
+                    <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-blue-500 w-0 transition-all duration-300"></div>
+                    </div>
+                    <button id="cancel-export-btn"
+                        class="w-full bg-red-500/10 text-red-400 py-2 rounded-xl text-sm font-semibold border border-red-500/20"
+                        data-i18n="cancel_btn">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEU: Bestätigungs-Dialog für Titel -->
+        <div id="export-title-modal" role="dialog" aria-modal="true"
+            class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1002] w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
+            <h3 class="font-bold text-lg mb-2" data-i18n="export_confirm_header">Titel bestätigen</h3>
+            <p class="text-sm text-slate-400 mb-4" data-i18n="export_confirm_text">Bitte passe den Titel für den Plan
+                an:</p>
+
+            <input type="text" id="export-confirm-title"
+                class="w-full bg-slate-800/50 text-white rounded-xl px-3 py-2 border border-white/10 text-lg font-semibold focus:outline-none focus:border-blue-500 transition-colors mb-6"
+                placeholder="Lade..." autocomplete="off">
+
+            <div class="grid grid-cols-2 gap-3">
+                <button id="export-confirm-cancel"
+                    class="py-2 rounded-xl text-sm font-bold border border-white/10 hover:bg-white/10 text-slate-300">
+                    Abbrechen
+                </button>
+                <button id="export-confirm-ok"
+                    class="py-2 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20">
+                    Erstellen
+                </button>
+            </div>
+        </div>
+
+        <div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title"
+            class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
+                <h2 id="legal-title" class="text-lg font-bold text-white flex items-center gap-2">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Rechtliches
+                </h2>
+                <button id="legal-close-btn" aria-label="Schließen"
+                    class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-lg p-1">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="overflow-y-auto custom-scroll pr-2 text-xs space-y-6">
+
+                <section>
+                    <h3 class="text-sm font-bold text-white mb-1">Impressum</h3>
+                    <p class="leading-relaxed text-slate-400">
+                        Angaben gemäß § 5 TMG:<br><br>
+                        <strong>Frank März</strong><br>
+                        Kersbacher Weg 3<br>
+                        91220 Schnaittach<br>
+                        Deutschland<br><br>
+                        Kontakt:<br>
+                        Telefon: +499153/9229501<br>
+                        E-Mail: info@openfiremap.org
+                    </p>
+                </section>
+
+                <section>
+                    <h3 class="text-sm font-bold text-white mb-1">Datenschutzerklärung (Kurzfassung)</h3>
+                    <p class="leading-relaxed text-slate-400 mb-2">
+                        Diese Anwendung läuft als "Client-Side Application" direkt in Ihrem Browser. Wir speichern keine
+                        personenbezogenen Daten auf eigenen Servern.
+                    </p>
+                    <p class="leading-relaxed text-slate-400">
+                        Um die Karten anzuzeigen und Daten abzurufen, verbindet sich Ihr Browser jedoch direkt mit
+                        folgenden externen Diensten, wobei technisch bedingt Ihre IP-Adresse übertragen wird:
+                    </p>
+                    <ul class="list-disc list-inside mt-2 space-y-1 text-slate-500">
+                        <li><strong>Karten-Server (OSM, CartoDB, Esri/ArcGIS, OpenTopoMap):</strong> Zum Laden der
+                            Kartenbilder (Kacheln).</li>
+                        <li><strong>Overpass API:</strong> Zum Abruf der Hydranten-, Wachen- und Defibrillatordaten.
+                        </li>
+                        <li><strong>Nominatim (OSM):</strong> Für die Ortssuche und Adressbestimmung.</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-sm font-bold text-white mb-1">Quellen & Lizenzen</h3>
+                    <ul class="list-disc list-inside space-y-1 text-slate-400">
+                        <li>
+                            <strong>Kartendaten:</strong> &copy; <a href="https://www.openstreetmap.org/copyright"
+                                target="_blank" rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">OpenStreetMap</a>-Mitwirkende
+                            (ODbL).
+                        </li>
+                        <li>
+                            <strong>Kartenstil (Standard/Dark/Hell):</strong> &copy; <a
+                                href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">CARTO</a>.
+                        </li>
+                        <li>
+                            <strong>Satellitenbilder:</strong> Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA,
+                            USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community.
+                        </li>
+                        <li>
+                            <strong>Topographische Karte:</strong> Daten &copy; OpenStreetMap-Mitwirkende, SRTM |
+                            Darstellung &copy; <a href="http://opentopomap.org" target="_blank"
+                                rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">OpenTopoMap</a>
+                            (CC-BY-SA).
+                        </li>
+                        <li>
+                            <strong>Software-Bibliotheken:</strong> <a href="https://leafletjs.com/" target="_blank"
+                                rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Leaflet</a>, <a
+                                href="https://tailwindcss.com/" target="_blank" rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Tailwind CSS</a>.
+                        </li>
+                    </ul>
+                </section>
+
+                <section class="border-t border-white/5 pt-2">
+                    <h3 class="text-sm font-bold text-white mb-1">Quellcode</h3>
+                    <p class="leading-relaxed text-slate-400">
+                        Projekt auf GitHub: <a href="https://github.com/FrnkMrz/OpenFireMapV2" target="_blank"
+                            rel="noopener noreferrer"
+                            class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">https://github.com/FrnkMrz/OpenFireMapV2</a>
+                    </p>
+                </section>
+
+                <section class="border-t border-white/5 pt-2">
+                    <h3 class="text-sm font-bold text-white mb-1">Rechtlicher Hinweis & Kontakt</h3>
+                    <p class="leading-relaxed text-slate-400 mb-2">
+                        Dies ist ein rein privates, nicht-kommerzielles Projekt ohne Gewinnerzielungsabsicht.
+                    </p>
+                    <p class="leading-relaxed text-amber-500/80 italic mb-2 font-semibold">
+                        "Keine Abmahnung ohne vorherigen Kontakt"
+                    </p>
+                    <p class="leading-relaxed text-slate-500">
+                        Sollte der Inhalt oder die Aufmachung dieser Seiten fremde Rechte Dritter oder gesetzliche
+                        Bestimmungen verletzen, so bitte ich um eine entsprechende Nachricht ohne Kostennote. Ich
+                        garantiere, dass die zu Recht beanstandeten Passagen unverzüglich entfernt werden, ohne dass von
+                        Ihrer Seite die Einschaltung eines Rechtsbeistandes erforderlich ist.
+                    </p>
+                </section>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- =====================================================================
+         Script-Reihenfolge (Fix, ohne Layout-Änderung):
+         1) Leaflet (globales L)
+         2) app.js (ES-Module)
+         ===================================================================== -->
+    <script src="./assets/vendor/leaflet/leaflet.js"></script>
+
+</body>
+
+</html>
