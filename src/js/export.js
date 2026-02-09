@@ -784,13 +784,7 @@ async function generateMapCanvas() {
       ctx.fill();
       ctx.stroke();
     } else {
-      try {
-        const img = await loadSVG(type);
-        const size = 32;
-        ctx.drawImage(img, tx - size / 2, ty - size / 2, size, size);
-      } catch (err) {
-        console.error("Fehler beim Zeichnen von Icon:", type, err);
-      }
+      drawCanvasIcon(ctx, tx, ty, type, isStation, type === 'defibrillator');
     }
   }
   ctx.restore();
