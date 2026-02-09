@@ -67,17 +67,18 @@ function openTitleConfirmation(actionCallback) {
         // 3. Titel vorladen (Logik hierhin verschoben)
         const input = document.getElementById('export-confirm-title');
         if (input) {
-            if (!input.value) {
-                input.placeholder = "Lade Ortsnamen...";
-                const center = State.map.getCenter();
-                fetchLocationTitle(center.lat, center.lng).then(city => {
-                    // Nur setzen, wenn User nicht schon was getippt hat (Race Condition)
-                    if (!input.value && city) {
-                        input.value = `Ort- und Hydrantenplan ${city}`;
-                    }
+            // IMMER neu laden, damit es zum aktuellen Ausschnitt passt (User-Feedback)
+            input.value = "";
+            input.placeholder = "Lade Ortsnamen...";
+
+            const center = State.map.getCenter();
+            fetchLocationTitle(center.lat, center.lng).then(city => {
+                if (city) {
+                    input.value = `Ort- und Hydrantenplan ${city}`;
+                } else {
                     input.placeholder = "Titel eingeben";
-                });
-            }
+                }
+            });
             input.focus();
         }
     }

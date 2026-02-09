@@ -542,349 +542,373 @@ async function generateMapCanvas() {
   // DATEN LADEN (Explizit für diesen Ausschnitt & Zoom)
   setStatus(t("loading_data") || "Lade Daten..."); // Fallback String falls Key fehlt
   let elementsForExport = [];
-  try {
-    console.log("Fetching export data for bounds:", bounds, "Zoom:", targetZoom);
-    const data = await fetchDataForExport(bounds, targetZoom, signal);
-    elementsForExport = preprocessElementsForExport(data.elements || []);
 
-    // FALLBACK: Wenn Online-Suche leer, aber im Cache Daten sind -> Cache nutzen!
-    if (elementsForExport.length === 0 && State.cachedElements && State.cachedElements.length > 0) {
-      console.warn("Export: Online-Daten leer, nutze Cache.");
-      elementsForExport = preprocessElementsForExport(State.cachedElements); // Cache nehmen
-      showNotification(`Export: Online-Daten leer, nutze Cache (${elementsForExport.length} Objekte).`, 4000);
-    } else {
-      showNotification(`Export: ${elementsForExport.length} Objekte gefunden.`, 3000);
-    }
-    console.log("Final export elements count:", elementsForExport.length);
-
-  } catch (e) {
-    console.warn("Export-Fetch fehlgeschlagen, nutze Cache als Fallback", e);
-    // Fallback: Cache nutzen (besser als nichts)
-    elementsForExport = preprocessElementsForExport(State.cachedElements);
-    console.log("Fallback cache elements count:", elementsForExport.length);
-    showNotification(`Export Warnung: Ladefehler, nutze Cache (${elementsForExport.length} Objekte).`, 5000);
-  }
-
-  const nw = bounds.getNorthWest();
-  const se = bounds.getSouthEast();
-
-  // 3. ORTSBESTIMMUNG
-  let displayTitle = document.getElementById("export-confirm-title")?.value?.trim() || "";
-
-  if (!displayTitle) {
-    try {
-      const center = bounds.getCenter();
-      displayTitle = await fetchLocationTitle(center.lat, center.lng);
-    } catch (e) { /* ignore */ }
-  }
-
-  // 4. GRÖSSE BERECHNEN
-  const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
-  const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
-  const x2 = Math.floor(lon2tile(se.lng, targetZoom));
-  const y2 = Math.floor(lat2tile(se.lat, targetZoom));
-
-  const margin = 40;
-  const footerH = 60;
-  const mapWidth = (x2 - x1 + 1) * 256;
-  const mapHeight = (y2 - y1 + 1) * 256;
-  const totalWidth = mapWidth + margin * 2;
-  const totalHeight = mapHeight + margin + footerH + margin;
-
-  const mPerPx =
-    (Math.cos((bounds.getCenter().lat * Math.PI) / 180) *
-      2 *
-      Math.PI *
-      6378137) /
-    (256 * Math.pow(2, targetZoom));
-
-  if (totalWidth > 14000 || totalHeight > 14000)
-    throw new Error(t("too_large") + " (>14000px)");
-
-  // 5. CANVAS
-  const canvas = document.createElement("canvas");
-  canvas.width = totalWidth;
-  canvas.height = totalHeight;
-  const ctx = canvas.getContext("2d");
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // 6. KACHELN LADEN
-  setStatus(`${t("loading_tiles")} (Z${targetZoom})...`);
-  const tileQueue = [];
-  for (let x = x1; x <= x2; x++) {
-    for (let y = y1; y <= y2; y++) {
-      tileQueue.push({ x, y, z: targetZoom });
-    }
-  }
-
-  // Parallel laden (Limit concurrency)
-  const CONCURRENCY = 6;
-  let active = 0;
-  let finished = 0;
-  const totalTiles = tileQueue.length;
-
-  const results = []; // {x, y, img}
-
-  await new Promise((resolve, reject) => {
-    const next = () => {
-      if (signal.aborted) {
-        reject(new Error("Aborted"));
-        return;
-      }
-      if (tileQueue.length === 0 && active === 0) {
-        resolve();
-        return;
-      }
-      while (active < CONCURRENCY && tileQueue.length > 0) {
-        const item = tileQueue.shift();
-        active++;
-        const sSub = ["a", "b", "c"][Math.abs(item.x + item.y) % 3];
-        let url;
-        if (State.activeLayerKey === 'maptiler') {
-          // Satellite (ArcGIS) hat kein Subdomain-Replacement {s}
-          url = Config.layers[State.activeLayerKey].url
-            .replace("{z}", item.z)
-            .replace("{x}", item.x)
-            .replace("{y}", item.y);
-        } else {
-          url = Config.layers[State.activeLayerKey].url
-            .replace("{s}", sSub)
-            .replace("{z}", item.z)
-            .replace("{x}", item.x)
-            .replace("{y}", item.y);
-        }
-
-        // Caching für Tiles nicht nötig für Export
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          results.push({ ...item, img });
-          active--;
-          finished++;
-          // setStatus(`${t("loading_tiles")} ${Math.round((finished / totalTiles) * 100)}%`);
-          next();
-        };
-        img.onerror = () => {
-          console.warn("Tile error", url);
-          active--;
-          finished++;
-          next();
-        };
-        img.src = url;
-      }
-    };
-    next();
-  });
-
-  if (signal.aborted) throw new Error("Export abgebrochen");
-
-  // 7. ZEICHNEN (Tiles)
-  results.forEach((r) => {
-    const px = (r.x - x1) * 256 + margin;
-    const py = (r.y - y1) * 256 + margin;
-    ctx.drawImage(r.img, px, py);
-  });
-
-  // 8. OVERLAYS ZEICHNEN
-  setStatus(t("render_infra"));
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(margin, margin, mapWidth, mapHeight);
-  ctx.clip(); // Nur innerhalb der Karte zeichnen
-
-  const iconCache = {};
-  const loadSVG = async (type) => {
-    if (iconCache[type]) return iconCache[type];
-    const svgStr = getSVGContentForExport(type);
-    const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.width = 100; // Explicit dimensions to help browser layout
-    img.height = 100;
-
-    await new Promise((resolve, reject) => {
-      img.onload = () => resolve(img);
-      img.onerror = (e) => {
-        console.error("Icon load error:", type);
-        reject(e);
-      };
-      img.src = url;
+  // NEU: Zuerst Cache prüfen! Wenn da was drin ist (für diesen Bereich), nicht neu laden.
+  if (State.cachedElements && State.cachedElements.length > 0) {
+    const cachedProcessed = preprocessElementsForExport(State.cachedElements);
+    // Kurzer Check: Haben wir relevante Daten im Cache?
+    const roughlyInBounds = cachedProcessed.some(el => {
+      const lat = el.lat || el.center?.lat;
+      const lon = el.lon || el.center?.lon;
+      return bounds.contains([lat, lon]);
     });
 
-    iconCache[type] = img;
-    URL.revokeObjectURL(url);
-    return img;
+    if (roughlyInBounds) {
+      console.log("Export: Cache enthält Daten für diesen Bereich -> Nutze Cache.");
+      elementsForExport = cachedProcessed;
+    }
+  }
+
+  // Wenn Cache leer war oder keine passenden Daten enthielt -> Online-Abfrage
+  if (elementsForExport.length === 0) {
+    try {
+      console.log("Fetching export data for bounds:", bounds, "Zoom:", targetZoom);
+      const data = await fetchDataForExport(bounds, targetZoom, signal);
+      elementsForExport = preprocessElementsForExport(data.elements || []);
+
+      // Fallback: Wenn Online leer, aber Cache existiert (vielleicht knapp daneben?), war vorher schon Handled.
+      // Aber hier nochmal zur Sicherheit.
+      if (elementsForExport.length === 0 && State.cachedElements && State.cachedElements.length > 0) {
+        console.warn("Export: Online-Daten leer (obwohl Cache leer schien?), nutze Cache.");
+        elementsForExport = preprocessElementsForExport(State.cachedElements);
+      }
+
+      showNotification(`Export: ${elementsForExport.length} Objekte (Online geladen).`, 3000);
+    } catch (e) {
+      console.warn("Export-Fetch fehlgeschlagen, nutze Cache als Fallback", e);
+      elementsForExport = preprocessElementsForExport(State.cachedElements);
+      showNotification(`Export Warnung: Ladefehler, nutze Cache (${elementsForExport.length} Objekte).`, 5000);
+    }
+  } else {
+    showNotification(`Export: ${elementsForExport.length} Objekte (aus Cache).`, 2000);
+  }
+  console.log("Final export elements count:", elementsForExport.length);
+
+  elementsForExport = preprocessElementsForExport(State.cachedElements);
+  console.log("Fallback cache elements count:", elementsForExport.length);
+  showNotification(`Export Warnung: Ladefehler, nutze Cache (${elementsForExport.length} Objekte).`, 5000);
+}
+
+const nw = bounds.getNorthWest();
+const se = bounds.getSouthEast();
+
+// 3. ORTSBESTIMMUNG
+let displayTitle = document.getElementById("export-confirm-title")?.value?.trim() || "";
+
+if (!displayTitle) {
+  try {
+    const center = bounds.getCenter();
+    displayTitle = await fetchLocationTitle(center.lat, center.lng);
+  } catch (e) { /* ignore */ }
+}
+
+// 4. GRÖSSE BERECHNEN
+const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
+const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
+const x2 = Math.floor(lon2tile(se.lng, targetZoom));
+const y2 = Math.floor(lat2tile(se.lat, targetZoom));
+
+const margin = 40;
+const footerH = 60;
+const mapWidth = (x2 - x1 + 1) * 256;
+const mapHeight = (y2 - y1 + 1) * 256;
+const totalWidth = mapWidth + margin * 2;
+const totalHeight = mapHeight + margin + footerH + margin;
+
+const mPerPx =
+  (Math.cos((bounds.getCenter().lat * Math.PI) / 180) *
+    2 *
+    Math.PI *
+    6378137) /
+  (256 * Math.pow(2, targetZoom));
+
+if (totalWidth > 14000 || totalHeight > 14000)
+  throw new Error(t("too_large") + " (>14000px)");
+
+// 5. CANVAS
+const canvas = document.createElement("canvas");
+canvas.width = totalWidth;
+canvas.height = totalHeight;
+const ctx = canvas.getContext("2d");
+
+ctx.fillStyle = "#ffffff";
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+// 6. KACHELN LADEN
+setStatus(`${t("loading_tiles")} (Z${targetZoom})...`);
+const tileQueue = [];
+for (let x = x1; x <= x2; x++) {
+  for (let y = y1; y <= y2; y++) {
+    tileQueue.push({ x, y, z: targetZoom });
+  }
+}
+
+// Parallel laden (Limit concurrency)
+const CONCURRENCY = 6;
+let active = 0;
+let finished = 0;
+const totalTiles = tileQueue.length;
+
+const results = []; // {x, y, img}
+
+await new Promise((resolve, reject) => {
+  const next = () => {
+    if (signal.aborted) {
+      reject(new Error("Aborted"));
+      return;
+    }
+    if (tileQueue.length === 0 && active === 0) {
+      resolve();
+      return;
+    }
+    while (active < CONCURRENCY && tileQueue.length > 0) {
+      const item = tileQueue.shift();
+      active++;
+      const sSub = ["a", "b", "c"][Math.abs(item.x + item.y) % 3];
+      let url;
+      if (State.activeLayerKey === 'maptiler') {
+        // Satellite (ArcGIS) hat kein Subdomain-Replacement {s}
+        url = Config.layers[State.activeLayerKey].url
+          .replace("{z}", item.z)
+          .replace("{x}", item.x)
+          .replace("{y}", item.y);
+      } else {
+        url = Config.layers[State.activeLayerKey].url
+          .replace("{s}", sSub)
+          .replace("{z}", item.z)
+          .replace("{x}", item.x)
+          .replace("{y}", item.y);
+      }
+
+      // Caching für Tiles nicht nötig für Export
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        results.push({ ...item, img });
+        active--;
+        finished++;
+        // setStatus(`${t("loading_tiles")} ${Math.round((finished / totalTiles) * 100)}%`);
+        next();
+      };
+      img.onerror = () => {
+        console.warn("Tile error", url);
+        active--;
+        finished++;
+        next();
+      };
+      img.src = url;
+    }
   };
+  next();
+});
 
-  console.log("Export: Rendering markers...", elementsForExport.length);
+if (signal.aborted) throw new Error("Export abgebrochen");
 
-  // Versatz berechnen (für exakte Positionierung der Marker)
-  // Versatz berechnen (für exakte Positionierung der Marker)
-  // Wir müssen uns am Kachel-Gitter (x1, y1) orientieren, da die Kacheln dort bei (0,0) + margin beginnen.
-  // Sonst sind Marker um den Offset innerhalb der ersten Kachel verschoben.
-  const originX = x1 * 256;
-  const originY = y1 * 256;
+// 7. ZEICHNEN (Tiles)
+results.forEach((r) => {
+  const px = (r.x - x1) * 256 + margin;
+  const py = (r.y - y1) * 256 + margin;
+  ctx.drawImage(r.img, px, py);
+});
 
-  // Boundaries zeichnen (z.B. Gemeindegrenzen)
-  // Annahme: sind in cachedElements enthalten (wenn Zoom passt)
-  // TODO: Boundaries rendern hier noch manuell, da sie Linien sind
-  // (Vereinfachung: Wir iterieren über State.boundaryLayer.getLayers() ist nicht thread-safe für Export ohne Map-Kontext)
-  // Besser: Wir nutzen die Daten aus elementsForExport.
+// 8. OVERLAYS ZEICHNEN
+setStatus(t("render_infra"));
+ctx.save();
+ctx.beginPath();
+ctx.rect(margin, margin, mapWidth, mapHeight);
+ctx.clip(); // Nur innerhalb der Karte zeichnen
 
-  for (const el of elementsForExport) {
-    if (el.tags && el.tags.boundary === 'administrative' && el.geometry) {
-      // Linie zeichnen
-      const coords = el.geometry.map(p => {
-        const px = (lon2tile(p.lon, targetZoom) * 256) - originX + margin;
-        const py = (lat2tile(p.lat, targetZoom) * 256) - originY + margin;
-        return [px, py];
-      });
+const iconCache = {};
+const loadSVG = async (type) => {
+  if (iconCache[type]) return iconCache[type];
+  const svgStr = getSVGContentForExport(type);
+  const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.width = 100; // Explicit dimensions to help browser layout
+  img.height = 100;
 
-      ctx.beginPath();
-      ctx.strokeStyle = (State.activeLayerKey === 'satellite') ? Config.colors.boundsSatellite : Config.colors.bounds;
-      ctx.lineWidth = (State.activeLayerKey === 'satellite') ? 3 : 1;
-      ctx.setLineDash([10, 10]);
-      ctx.moveTo(coords[0][0], coords[0][1]);
-      for (let i = 1; i < coords.length; i++) ctx.lineTo(coords[i][0], coords[i][1]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }
-
-  // Marker zeichnen
-  // ... (Code bleibt gleich, nur Kontext ist ctx)
-  for (const el of elementsForExport) {
-    if (el.tags?.boundary === 'administrative') continue; // Schon gemalt
-
-    const lat = el.lat || el.center?.lat;
-    const lon = el.lon || el.center?.lon;
-
-    const tx = (lon2tile(lon, targetZoom) * 256) - originX + margin;
-    const ty = (lat2tile(lat, targetZoom) * 256) - originY + margin;
-
-    const tags = el.tags || {};
-    const isStation = tags.amenity === "fire_station" || tags.building === "fire_station";
-    const type = isStation
-      ? "station"
-      : tags.emergency === "defibrillator"
-        ? "defibrillator"
-        : tags["fire_hydrant:type"] || tags.emergency || "fire_hydrant";
-
-    if (
-      tx < margin ||
-      tx > mapWidth + margin ||
-      ty < margin ||
-      ty > mapHeight + margin
-    )
-      continue;
-
-    if (isStation && targetZoom < 12) continue;
-    if (!isStation && targetZoom < 15) continue;
-
-    if (targetZoom < 17 && !isStation) {
-      ctx.beginPath();
-      ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
-      const isWater = [
-        "water_tank",
-        "cistern",
-        "fire_water_pond",
-        "suction_point",
-      ].includes(type);
-      ctx.fillStyle =
-        type === "defibrillator"
-          ? Config.colors.defib
-          : isWater
-            ? Config.colors.water
-            : Config.colors.hydrant;
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      drawCanvasIcon(ctx, tx, ty, type, isStation, type === 'defibrillator');
-    }
-  }
-  ctx.restore();
-
-  // 9. HEADER & FOOTER
-  setStatus(t("layout_final"));
-
-  const bannerH = 170;
-  ctx.fillStyle = Config.colors.bgHeader;
-  ctx.fillRect(margin, margin, mapWidth, bannerH);
-  ctx.strokeStyle = "rgba(15, 23, 42, 0.2)";
-  ctx.lineWidth = 3;
-  ctx.strokeRect(margin, margin, mapWidth, bannerH);
-  ctx.strokeRect(margin, margin + bannerH, mapWidth, mapHeight - bannerH);
-
-  const centerX = margin + mapWidth / 2;
-  ctx.fillStyle = Config.colors.textMain;
-  ctx.textAlign = "center";
-  ctx.font = "bold 44px Arial, sans-serif";
-  const titleText = displayTitle || "Ort- und Hydrantenplan";
-  ctx.fillText(titleText, centerX, margin + 55);
-
-  const now = new Date();
-  ctx.font = "22px Arial, sans-serif";
-  ctx.fillStyle = Config.colors.textSub;
-  const localeMap = { de: "de-DE", en: "en-US" };
-  const dateLocale = localeMap[getLang()] || "en-US";
-  const dateStr = now.toLocaleDateString(dateLocale, { year: "numeric", month: "long" });
-  ctx.fillText(
-    `${t("legend_date")}: ${dateStr} | ${t("legend_res")}: Zoom ${targetZoom} (~${mPerPx.toFixed(2)} m/px)`,
-    centerX,
-    margin + 95,
-  );
-
-  ctx.font = "italic 16px Arial, sans-serif";
-  ctx.fillStyle = "#64748b";
-  ctx.fillText(
-    Config.layers[State.activeLayerKey].textAttr || "© OpenStreetMap",
-    centerX,
-    margin + 125,
-  );
-
-  // Scale Bar
-  const prettyD = [1000, 500, 250, 100, 50];
-  let distM = 100, scaleW = 100 / mPerPx;
-  for (let d of prettyD) {
-    let w = d / mPerPx;
-    if (w <= mapWidth * 0.3) {
-      distM = d;
-      scaleW = w;
-      break;
-    }
-  }
-  const sX = margin + mapWidth - scaleW - 40;
-  const sY = margin + mapHeight - 40;
-  ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-  ctx.fillRect(sX - 10, sY - 50, scaleW + 20, 60);
-  ctx.strokeStyle = "#0f172a";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(sX, sY - 10);
-  ctx.lineTo(sX, sY);
-  ctx.lineTo(sX + scaleW, sY);
-  ctx.lineTo(sX + scaleW, sY - 10);
-  ctx.stroke();
-  ctx.fillStyle = "#0f172a";
-  ctx.font = "bold 18px Arial";
-  ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
-
-  // Footer
-  const footerY = margin + mapHeight + footerH / 2 + 10;
-  ctx.fillStyle = Config.colors.textSub;
-  ctx.textAlign = "left";
-  ctx.font = "16px Arial, sans-serif";
-  ctx.fillText("OpenFireMap.org", margin, footerY);
-  ctx.textAlign = "right";
-  const timeStr = now.toLocaleString(dateLocale, {
-    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  await new Promise((resolve, reject) => {
+    img.onload = () => resolve(img);
+    img.onerror = (e) => {
+      console.error("Icon load error:", type);
+      reject(e);
+    };
+    img.src = url;
   });
-  ctx.fillText(timeStr, margin + mapWidth, footerY);
 
-  const safeTitle = titleText.replace(/[\s\.:]/g, "_");
-  return { canvas, filename: `${safeTitle}_Z${targetZoom}` };
+  iconCache[type] = img;
+  URL.revokeObjectURL(url);
+  return img;
+};
+
+console.log("Export: Rendering markers...", elementsForExport.length);
+
+// Versatz berechnen (für exakte Positionierung der Marker)
+// Versatz berechnen (für exakte Positionierung der Marker)
+// Wir müssen uns am Kachel-Gitter (x1, y1) orientieren, da die Kacheln dort bei (0,0) + margin beginnen.
+// Sonst sind Marker um den Offset innerhalb der ersten Kachel verschoben.
+const originX = x1 * 256;
+const originY = y1 * 256;
+
+// Boundaries zeichnen (z.B. Gemeindegrenzen)
+// Annahme: sind in cachedElements enthalten (wenn Zoom passt)
+// TODO: Boundaries rendern hier noch manuell, da sie Linien sind
+// (Vereinfachung: Wir iterieren über State.boundaryLayer.getLayers() ist nicht thread-safe für Export ohne Map-Kontext)
+// Besser: Wir nutzen die Daten aus elementsForExport.
+
+for (const el of elementsForExport) {
+  if (el.tags && el.tags.boundary === 'administrative' && el.geometry) {
+    // Linie zeichnen
+    const coords = el.geometry.map(p => {
+      const px = (lon2tile(p.lon, targetZoom) * 256) - originX + margin;
+      const py = (lat2tile(p.lat, targetZoom) * 256) - originY + margin;
+      return [px, py];
+    });
+
+    ctx.beginPath();
+    ctx.strokeStyle = (State.activeLayerKey === 'satellite') ? Config.colors.boundsSatellite : Config.colors.bounds;
+    ctx.lineWidth = (State.activeLayerKey === 'satellite') ? 3 : 1;
+    ctx.setLineDash([10, 10]);
+    ctx.moveTo(coords[0][0], coords[0][1]);
+    for (let i = 1; i < coords.length; i++) ctx.lineTo(coords[i][0], coords[i][1]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+// Marker zeichnen
+// ... (Code bleibt gleich, nur Kontext ist ctx)
+for (const el of elementsForExport) {
+  if (el.tags?.boundary === 'administrative') continue; // Schon gemalt
+
+  const lat = el.lat || el.center?.lat;
+  const lon = el.lon || el.center?.lon;
+
+  const tx = (lon2tile(lon, targetZoom) * 256) - originX + margin;
+  const ty = (lat2tile(lat, targetZoom) * 256) - originY + margin;
+
+  const tags = el.tags || {};
+  const isStation = tags.amenity === "fire_station" || tags.building === "fire_station";
+  const type = isStation
+    ? "station"
+    : tags.emergency === "defibrillator"
+      ? "defibrillator"
+      : tags["fire_hydrant:type"] || tags.emergency || "fire_hydrant";
+
+  if (
+    tx < margin ||
+    tx > mapWidth + margin ||
+    ty < margin ||
+    ty > mapHeight + margin
+  )
+    continue;
+
+  if (isStation && targetZoom < 12) continue;
+  if (!isStation && targetZoom < 15) continue;
+
+  if (targetZoom < 17 && !isStation) {
+    ctx.beginPath();
+    ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
+    const isWater = [
+      "water_tank",
+      "cistern",
+      "fire_water_pond",
+      "suction_point",
+    ].includes(type);
+    ctx.fillStyle =
+      type === "defibrillator"
+        ? Config.colors.defib
+        : isWater
+          ? Config.colors.water
+          : Config.colors.hydrant;
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    drawCanvasIcon(ctx, tx, ty, type, isStation, type === 'defibrillator');
+  }
+}
+ctx.restore();
+
+// 9. HEADER & FOOTER
+setStatus(t("layout_final"));
+
+const bannerH = 170;
+ctx.fillStyle = Config.colors.bgHeader;
+ctx.fillRect(margin, margin, mapWidth, bannerH);
+ctx.strokeStyle = "rgba(15, 23, 42, 0.2)";
+ctx.lineWidth = 3;
+ctx.strokeRect(margin, margin, mapWidth, bannerH);
+ctx.strokeRect(margin, margin + bannerH, mapWidth, mapHeight - bannerH);
+
+const centerX = margin + mapWidth / 2;
+ctx.fillStyle = Config.colors.textMain;
+ctx.textAlign = "center";
+ctx.font = "bold 44px Arial, sans-serif";
+const titleText = displayTitle || "Ort- und Hydrantenplan";
+ctx.fillText(titleText, centerX, margin + 55);
+
+const now = new Date();
+ctx.font = "22px Arial, sans-serif";
+ctx.fillStyle = Config.colors.textSub;
+const localeMap = { de: "de-DE", en: "en-US" };
+const dateLocale = localeMap[getLang()] || "en-US";
+const dateStr = now.toLocaleDateString(dateLocale, { year: "numeric", month: "long" });
+ctx.fillText(
+  `${t("legend_date")}: ${dateStr} | ${t("legend_res")}: Zoom ${targetZoom} (~${mPerPx.toFixed(2)} m/px)`,
+  centerX,
+  margin + 95,
+);
+
+ctx.font = "italic 16px Arial, sans-serif";
+ctx.fillStyle = "#64748b";
+ctx.fillText(
+  Config.layers[State.activeLayerKey].textAttr || "© OpenStreetMap",
+  centerX,
+  margin + 125,
+);
+
+// Scale Bar
+const prettyD = [1000, 500, 250, 100, 50];
+let distM = 100, scaleW = 100 / mPerPx;
+for (let d of prettyD) {
+  let w = d / mPerPx;
+  if (w <= mapWidth * 0.3) {
+    distM = d;
+    scaleW = w;
+    break;
+  }
+}
+const sX = margin + mapWidth - scaleW - 40;
+const sY = margin + mapHeight - 40;
+ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+ctx.fillRect(sX - 10, sY - 50, scaleW + 20, 60);
+ctx.strokeStyle = "#0f172a";
+ctx.lineWidth = 3;
+ctx.beginPath();
+ctx.moveTo(sX, sY - 10);
+ctx.lineTo(sX, sY);
+ctx.lineTo(sX + scaleW, sY);
+ctx.lineTo(sX + scaleW, sY - 10);
+ctx.stroke();
+ctx.fillStyle = "#0f172a";
+ctx.font = "bold 18px Arial";
+ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
+
+// Footer
+const footerY = margin + mapHeight + footerH / 2 + 10;
+ctx.fillStyle = Config.colors.textSub;
+ctx.textAlign = "left";
+ctx.font = "16px Arial, sans-serif";
+ctx.fillText("OpenFireMap.org", margin, footerY);
+ctx.textAlign = "right";
+const timeStr = now.toLocaleString(dateLocale, {
+  year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+});
+ctx.fillText(timeStr, margin + mapWidth, footerY);
+
+const safeTitle = titleText.replace(/[\s\.:]/g, "_");
+return { canvas, filename: `${safeTitle}_Z${targetZoom}` };
 }
 
 // -----------------------------------------------------------
