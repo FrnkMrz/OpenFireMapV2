@@ -352,10 +352,10 @@ export function setupUI() {
         addClick(`zoom-${z}`, () => setExportZoom(z));
     });
 
-    // 6. Export-Aktionen
+    // 6. Export-Aktionen (wurden oben bereits mit withTitleConfirm initialisiert)
     addClick('select-btn', startSelection);
-    addClick('png-btn', exportAsPNG);
-    addClick('gpx-btn', exportAsGPX);
+    // addClick('png-btn', exportAsPNG); <-- FEHLER: Das umgeht den Dialog!
+    // addClick('gpx-btn', exportAsGPX);
     addClick('cancel-export-btn', cancelExport);
 
     // Automatische Schließ-Logik aktivieren
