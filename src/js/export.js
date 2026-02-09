@@ -335,7 +335,7 @@ function escapeXML(str) {
  * WICHTIG: Für Konsistenz mit der Karte werden Feuerwachen vorab geclustert (150 m),
  * Hydranten/AED/Wasserstellen bleiben 1:1.
  */
-export function exportAsGPX() {
+export async function exportAsGPX() {
   try {
     const bounds = State.selection.finalBounds || State.map.getBounds();
     const elementsForExport = preprocessElementsForExport(State.cachedElements);
@@ -351,10 +351,21 @@ export function exportAsGPX() {
       return;
     }
 
+    // TITEL HOLEN (Benutzer-Input)
+    let displayTitle = document.getElementById("export-title-input")?.value?.trim() || "";
+    if (!displayTitle) {
+      try {
+        const center = bounds.getCenter();
+        displayTitle = await fetchLocationTitle(center.lat, center.lng);
+      } catch (e) { console.warn(e); }
+    }
+    const safeTitle = displayTitle.replace(/[\s\.:]/g, "_") || "OpenFireMap_Export";
+    const filename = `${safeTitle}_Z${State.exportZoomLevel}`;
+
     let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
     gpx +=
       '<gpx version="1.1" creator="OpenFireMap V2" xmlns="http://www.topografix.com/GPX/1/1">\n';
-    gpx += `  <metadata><name>Hydranten Export</name><time>${new Date().toISOString()}</time></metadata>\n`;
+    gpx += `  <metadata><name>${displayTitle || "Hydranten Export"}</name><time>${new Date().toISOString()}</time></metadata>\n`;
 
     pointsToExport.forEach((el) => {
       const tags = el.tags || {};
@@ -398,7 +409,7 @@ export function exportAsGPX() {
     const blob = new Blob([gpx], { type: "application/gpx+xml" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.download = `OpenFireMap_Export_${new Date().toISOString().slice(0, 10)}.gpx`;
+    link.download = `${filename}.gpx`;
     link.href = url;
     link.click();
     URL.revokeObjectURL(url);
@@ -524,18 +535,14 @@ async function generateMapCanvas() {
   const se = bounds.getSouthEast();
 
   // 3. ORTSBESTIMMUNG
-  let displayTitle = "";
-  try {
-    const center = bounds.getCenter();
-    const res = await fetch(
-      `${Config.nominatimUrl}/reverse?format=json&lat=${center.lat}&lon=${center.lng}&zoom=18`,
-    );
-    const d = await res.json();
-    const addr = d.address || {};
-    const city = addr.city || addr.town || addr.village || addr.municipality || "";
-    const suburb = addr.suburb || addr.neighbourhood || addr.hamlet || "";
-    displayTitle = city ? (suburb ? `${city} - ${suburb}` : city) : "";
-  } catch (e) { /* ignore */ }
+  let displayTitle = document.getElementById("export-title-input")?.value?.trim() || "";
+
+  if (!displayTitle) {
+    try {
+      const center = bounds.getCenter();
+      displayTitle = await fetchLocationTitle(center.lat, center.lng);
+    } catch (e) { /* ignore */ }
+  }
 
   // 4. GRÖSSE BERECHNEN
   const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
@@ -730,7 +737,9 @@ async function generateMapCanvas() {
         const img = await loadSVG(type);
         const size = 32;
         ctx.drawImage(img, tx - size / 2, ty - size / 2, size, size);
-      } catch (err) { /* ignore */ }
+      } catch (err) {
+        console.error("Fehler beim Zeichnen von Icon:", type, err);
+      }
     }
   }
   ctx.restore();
@@ -936,4 +945,23 @@ export function initSelectionLogic() {
   State.map.on("mouseup", (e) => handleSelectionEvents(e, "up"));
 
   console.log("Auswahl-Werkzeug wurde initialisiert.");
+}
+
+/**
+ * Holt den Ortsnamen für eine Koordinate (z.B. für den Export-Titel).
+ */
+export async function fetchLocationTitle(lat, lon) {
+  try {
+    const res = await fetch(
+      `${Config.nominatimUrl}/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`
+    );
+    const d = await res.json();
+    const addr = d.address || {};
+    const city = addr.city || addr.town || addr.village || addr.municipality || t("export_unknown_city");
+    const suburb = addr.suburb || addr.neighbourhood || addr.hamlet || "";
+    return city ? (suburb ? `${city} - ${suburb}` : city) : "";
+  } catch (e) {
+    console.warn("Reverse Geocoding failed", e);
+    return "";
+  }
 }

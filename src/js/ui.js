@@ -13,7 +13,7 @@ import { Config } from './config.js';
 import { t } from './i18n.js';
 
 // Wir importieren Funktionen aus export.js, um sie auf Buttons zu legen
-import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, exportAsPDF, cancelExport } from './export.js';
+import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, exportAsPDF, cancelExport, fetchLocationTitle } from './export.js';
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
 import { setBaseLayer } from './map.js';
 
@@ -144,6 +144,17 @@ export function toggleExportMenu() {
         // UI zurücksetzen (Ladebalken weg, Setup zeigen)
         document.getElementById('export-setup')?.classList.remove('hidden');
         document.getElementById('export-progress')?.classList.add('hidden');
+
+        // Titel vorladen (wenn leer)
+        const titleInput = document.getElementById('export-title-input');
+        if (titleInput && !titleInput.value) {
+            titleInput.placeholder = "Lade...";
+            const center = State.map.getCenter();
+            fetchLocationTitle(center.lat, center.lng).then(title => {
+                if (title) titleInput.value = title;
+                titleInput.placeholder = t("title_label"); // oder leer
+            });
+        }
     }
 }
 
