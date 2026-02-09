@@ -123,7 +123,16 @@ export function initMapLogic() {
     // - Zusätzlich "snappen" wir die Abfrage-BBox auf ein grobes Grid (ebenfalls in Metern),
     //   damit minimale Bewegungen/Pixel-Rauschen nicht ständig einen neuen Key erzeugen.
     const getRoundedBBox = () => {
-        const zoom = State.map.getZoom();
+        const rawZoom = State.map.getZoom();
+
+        // CACHE-FIX: Normalisierung der Zoom-Stufe für BBox-Berechnung.
+        // Damit der Cache-Key (bbox) stabil bleibt, nutzen wir für alle 
+        // hohen Zoomstufen (15-18) die Parameter von Zoom 15.
+        // Für 12-13 nutzen wir Zoom 12.
+        let zoom = rawZoom;
+        if (zoom >= 15) zoom = 15;
+        else if (zoom >= 12 && zoom < 14) zoom = 12;
+
         const viewBounds = State.map.getBounds();
         const center = State.map.getCenter();
 
