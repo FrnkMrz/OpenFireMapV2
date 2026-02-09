@@ -520,6 +520,9 @@ async function generateMapCanvas() {
   const signal = State.controllers.export.signal;
 
   // 1. UI UPDATE
+  const exportMenu = document.getElementById("export-menu");
+  if (exportMenu) exportMenu.classList.remove("hidden"); // Ensure parent is visible!
+
   document.getElementById("export-setup").classList.add("hidden");
   document.getElementById("export-progress").classList.remove("hidden");
   const progressBar = document.getElementById("progress-bar");
@@ -543,6 +546,9 @@ async function generateMapCanvas() {
     console.log("Fetching export data for bounds:", bounds, "Zoom:", targetZoom);
     const data = await fetchDataForExport(bounds, targetZoom, signal);
     elementsForExport = preprocessElementsForExport(data.elements || []);
+
+    // DEBUG: Alert user with count
+    // window.alert(`DEBUG: Export gefunden: ${elementsForExport.length} Hydranten/Objekte.`);
     console.log("Fetched elements count:", elementsForExport.length);
     showNotification(`Export: ${elementsForExport.length} Objekte gefunden.`, 3000);
   } catch (e) {
