@@ -1025,3 +1025,81 @@ export async function fetchLocationTitle(lat, lon) {
     return "";
   }
 }
+
+/**
+ * Hilfsfunktion zum Zeichnen der Icons auf Canvas (statt SVG-String parsing).
+ * Verhindert Probleme mit "Tainted Canvas" oder ungeladenen Bildern.
+ */
+function drawCanvasIcon(ctx, x, y, type, isStation, isDefib) {
+  const c = Config.colors;
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Skalierung: SVG ist 100x100, wir wollen ca 32x32
+  // Stationen etwas größer
+  const scale = isStation ? 0.4 : 0.35;
+  ctx.scale(scale, scale);
+  ctx.translate(-50, -50); // Center at 0,0
+
+  if (isStation) {
+    // Wache: Haus-Symbol
+    ctx.fillStyle = c.station;
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(10, 40); ctx.lineTo(50, 5); ctx.lineTo(90, 40); ctx.lineTo(90, 90); ctx.lineTo(10, 90); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // Tor
+    ctx.fillStyle = "white";
+    ctx.globalAlpha = 0.9;
+    ctx.fillRect(30, 55, 40, 35);
+    ctx.globalAlpha = 1;
+  } else if (isDefib) {
+    // Defi: Herz + Blitz
+    ctx.fillStyle = c.defib;
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(50, 50, 45, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Herz
+    ctx.fillStyle = "white";
+    ctx.beginPath(); ctx.moveTo(50, 80); ctx.quadraticCurveTo(10, 40, 50, 35); ctx.quadraticCurveTo(90, 40, 50, 80); ctx.fill();
+    // Blitz (vereinfacht)
+    ctx.strokeStyle = c.defib; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(55, 45); ctx.lineTo(45, 55); ctx.lineTo(55, 55); ctx.lineTo(45, 65); ctx.stroke();
+  } else {
+    // Hydrant / Wasser
+    const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
+    const color = isWater ? c.water : c.hydrant;
+
+    // Kreis
+    ctx.fillStyle = color;
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(50, 50, 45, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+    if (type === 'wall') {
+      // Wandhydrant Symbol
+      ctx.fillStyle = "none";
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.arc(42, 52, 18, 0, 2 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(64, 34); ctx.lineTo(64, 70); ctx.stroke();
+    } else {
+      // Buchstabe
+      let char = '';
+      if (type === 'underground') char = 'U';
+      if (type === 'pillar') char = 'O';
+      if (type === 'pipe') char = 'I';
+      if (type === 'dry_barrel') char = 'Ø';
+
+      if (char) {
+        ctx.fillStyle = "white";
+        ctx.font = "bold 50px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(char, 50, 55);
+      }
+    }
+  }
+  ctx.restore();
+}
