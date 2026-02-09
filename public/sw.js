@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ofm-v3-static';
+const CACHE_NAME = 'ofm-v4-static';
 // Nur wirklich statische Assets precachen (keine gehashten Bundles!)
 const ASSETS = [
     '/',
@@ -9,15 +9,17 @@ const ASSETS = [
 self.addEventListener('install', (e) => {
     e.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            // Fehlertolerantes Caching: Wenn ein Asset fehlt, trotzdem weitermachen
-            return Promise.allSettled(
+            // Safari-kompatibel: Promise.all statt allSettled
+            return Promise.all(
                 ASSETS.map(url =>
                     cache.add(url).catch(err => {
                         console.warn(`[SW] Failed to cache ${url}:`, err);
                         return null;
                     })
                 )
-            );
+            ).catch(err => {
+                console.warn('[SW] Install failed:', err);
+            });
         })
     );
     self.skipWaiting();
