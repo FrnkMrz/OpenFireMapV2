@@ -368,6 +368,15 @@ export function setBaseLayer(key) {
     document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
     const btn = document.getElementById(`btn-${key}`);
     if (btn) btn.classList.add('active');
+
+    // Boundaries aktualisieren (Farbe je nach Hintergrund)
+    // Gelb für Satellit, Dunkelgrau für alles andere
+    const boundsColor = (key === 'satellite') ? Config.colors.boundsSatellite : Config.colors.bounds;
+    State.boundaryLayer.eachLayer(layer => {
+        if (layer instanceof L.Polyline) {
+            layer.setStyle({ color: boundsColor });
+        }
+    });
 }
 
 // Hilfsfunktion für SVGs (jetzt mit Farben aus Config)
@@ -658,8 +667,13 @@ export function renderMarkers(elements, zoom) {
         // --- A. Grenzen verarbeiten (wie bisher) ---
         if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
             const latlngs = el.geometry.map(p => [p.lat, p.lon]);
+            // Farbe wählen: Wenn Satellit, dann Gelb, sonst Grau
+            const bColor = (State.activeLayerKey === 'satellite')
+                ? Config.colors.boundsSatellite
+                : Config.colors.bounds;
+
             L.polyline(latlngs, {
-                color: Config.colors.bounds,
+                color: bColor,
                 weight: 1,
                 dashArray: '10, 10',
                 opacity: 0.7

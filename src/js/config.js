@@ -157,7 +157,8 @@ export const Config = {
 
     rangeCircle: "#f97316", // Orange (100 m Radius-Kreis)
     selection: "#3b82f6", // Blau (Auswahl-Rechteck Export)
-    bounds: "#333333", // Dunkelgrau (Gemeindegrenzen)
+    bounds: "#333333", // Dunkelgrau (Standard)
+    boundsSatellite: "#ffff00", // Gelb (für Satellit)
 
     textMain: "#0f172a", // Dunkelblau (Titel im Export)
     textSub: "#334155", // Grau-Blau (Datum/Footer im Export)
