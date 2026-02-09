@@ -71,6 +71,21 @@ export const strings = {
     menu_search: "Search",
     menu_close: "Close",
     no_results: "No results found",
-    loading_data: "Loading data..."
+    loading_data: "Loading data...",
+    cached_objects: "Objects from cache",
+    data_complete: "Data fully loaded",
+    objects: "objects",
+    server_overloaded_wait: "All servers busy, waiting",
+    trying_server: "Trying",
+    server_ratelimit_retry: "Server busy (429), trying next server...",
+    all_servers_busy: "All servers busy, please try again later",
+    server_error_retry: "Server error",
+    showing_cached: "showing cached data",
+    server_error_type_overload: "Overload",
+    server_error_type_server: "Server error",
+    server_error_type_connection: "Connection problem",
+    alt_server: "alternative server",
+    next_server: "next server",
+    seconds_short: "s"
 };
 export default strings;

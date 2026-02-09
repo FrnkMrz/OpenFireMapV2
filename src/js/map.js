@@ -298,7 +298,7 @@ export function initMapLogic() {
                 }
 
                 // Detaillierte Lade-Info anzeigen
-                showNotification('🔄 Lade Daten...', 30000); // Lange duration, wird bei Erfolg überschrieben
+                showNotification(`🔄 ${t('loading_data')}`, 30000); // Lange duration, wird bei Erfolg überschrieben
 
                 // Track if we rendered cached data
                 let cachedCount = 0;
@@ -308,7 +308,7 @@ export function initMapLogic() {
                 const data = await fetchOSMData((cachedData) => {
                     cachedCount = cachedData?.length || 0;
                     if (cachedCount > 0) {
-                        showNotification(`📦 ${cachedCount} Objekte aus Cache`, 3000);
+                        showNotification(`📦 ${cachedCount} ${t('cached_objects')}`, 3000);
                     }
                     renderMarkers(cachedData, zoom);
                 });
@@ -326,7 +326,7 @@ export function initMapLogic() {
                     }
 
                     // Erfolgs-Nachricht für 2 Sekunden, dann Box schließen
-                    showNotification(`✅ Daten vollständig geladen (${networkCount} Objekte)`, 2000);
+                    showNotification(`✅ ${t('data_complete')} (${networkCount} ${t('objects')})`, 2000);
                 } else if (data === null) {
                     // Kein Fehler, aber leere Query (z.B. Zoom zu klein)
                     if (statusEl) {

@@ -69,6 +69,21 @@ export const strings = {
     menu_search: "Suche",
     menu_close: "Schließen",
     no_results: "Keine Ergebnisse gefunden",
-    loading_data: "Daten werden geladen..."
+    loading_data: "Lade Daten...",
+    cached_objects: "Objekte aus Cache",
+    data_complete: "Daten vollständig geladen",
+    objects: "Objekte",
+    server_overloaded_wait: "Alle Server überlastet, warte",
+    trying_server: "Versuche",
+    server_ratelimit_retry: "Server überlastet (429), versuche nächsten Server...",
+    all_servers_busy: "Alle Server überlastet, bitte später erneut versuchen",
+    server_error_retry: "Server-Fehler",
+    showing_cached: "zeige gespeicherte Daten",
+    server_error_type_overload: "Überlastung",
+    server_error_type_server: "Server-Fehler",
+    server_error_type_connection: "Verbindungsproblem",
+    alt_server: "Alternativ-Server",
+    next_server: "nächsten Server",
+    seconds_short: "s"
 };
 export default strings;
