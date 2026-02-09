@@ -9,6 +9,7 @@ import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
 import { fetchOSMData } from './api.js';
+import { showNotification } from './ui.js';
 
 export function initMapLogic() {
     State.markerLayer = L.layerGroup();
