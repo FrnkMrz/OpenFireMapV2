@@ -375,69 +375,68 @@ export async function exportAsGPX() {
         displayTitle = await fetchLocationTitle(center.lat, center.lng);
       } catch (e) { console.warn(e); }
     }
+
+    // Neuer Dateiname-Generator
+    const filename = getExportFilename(displayTitle, State.exportZoomLevel);
+
+    let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    gpx +=
+      '<gpx version="1.1" creator="OpenFireMap V2" xmlns="http://www.topografix.com/GPX/1/1">\n';
+    gpx += `  <metadata><name>${displayTitle || "Hydranten Export"}</name><time>${new Date().toISOString()}</time></metadata>\n`;
+
+    pointsToExport.forEach((el) => {
+      const tags = el.tags || {};
+      const isStation =
+        tags.amenity === "fire_station" || tags.building === "fire_station";
+      const isHydrant =
+        tags.emergency &&
+        [
+          "fire_hydrant",
+          "water_tank",
+          "suction_point",
+          "fire_water_pond",
+          "cistern",
+        ].some((t) => tags.emergency.includes(t));
+      const isDefib = tags.emergency === "defibrillator";
+
+      if (!isStation && !isHydrant && !isDefib) return;
+
+      let name =
+        tags.name ||
+        (isStation ? t("station") : isDefib ? t("defib") : t("hydrant"));
+      if (!tags.name && tags["fire_hydrant:type"])
+        name = `H ${tags["fire_hydrant:type"]}`;
+      if (!tags.name && tags["ref"])
+        name = `${isStation ? "Wache" : "H"} ${tags["ref"]}`;
+
+      let desc = [];
+      for (const [k, v] of Object.entries(tags)) {
+        desc.push(`${k}: ${v}`);
+      }
+
+      gpx += `  <wpt lat="${el.lat || el.center.lat}" lon="${el.lon || el.center.lon}">\n`;
+      gpx += `    <name>${escapeXML(name)}</name>\n`;
+      gpx += `    <desc>${escapeXML(desc.join("\n"))}</desc>\n`;
+      gpx += `    <sym>${isStation ? "Fire Station" : "Hydrant"}</sym>\n`;
+      gpx += `  </wpt>\n`;
+    });
+
+    gpx += "</gpx>";
+
+    const blob = new Blob([gpx], { type: "application/gpx+xml" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = `${filename}.gpx`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    showNotification(`${pointsToExport.length} ${t("gpx_success")}`);
+    toggleExportMenu();
+  } catch (e) {
+    console.error("GPX Fehler:", e);
+    showNotification("GPX Fehler: " + e.message, 5000);
   }
-
-// Neuer Dateiname-Generator
-const filename = getExportFilename(displayTitle, State.exportZoomLevel);
-
-  let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
-  gpx +=
-    '<gpx version="1.1" creator="OpenFireMap V2" xmlns="http://www.topografix.com/GPX/1/1">\n';
-  gpx += `  <metadata><name>${displayTitle || "Hydranten Export"}</name><time>${new Date().toISOString()}</time></metadata>\n`;
-
-  pointsToExport.forEach((el) => {
-    const tags = el.tags || {};
-    const isStation =
-      tags.amenity === "fire_station" || tags.building === "fire_station";
-    const isHydrant =
-      tags.emergency &&
-      [
-        "fire_hydrant",
-        "water_tank",
-        "suction_point",
-        "fire_water_pond",
-        "cistern",
-      ].some((t) => tags.emergency.includes(t));
-    const isDefib = tags.emergency === "defibrillator";
-
-    if (!isStation && !isHydrant && !isDefib) return;
-
-    let name =
-      tags.name ||
-      (isStation ? t("station") : isDefib ? t("defib") : t("hydrant"));
-    if (!tags.name && tags["fire_hydrant:type"])
-      name = `H ${tags["fire_hydrant:type"]}`;
-    if (!tags.name && tags["ref"])
-      name = `${isStation ? "Wache" : "H"} ${tags["ref"]}`;
-
-    let desc = [];
-    for (const [k, v] of Object.entries(tags)) {
-      desc.push(`${k}: ${v}`);
-    }
-
-    gpx += `  <wpt lat="${el.lat || el.center.lat}" lon="${el.lon || el.center.lon}">\n`;
-    gpx += `    <name>${escapeXML(name)}</name>\n`;
-    gpx += `    <desc>${escapeXML(desc.join("\n"))}</desc>\n`;
-    gpx += `    <sym>${isStation ? "Fire Station" : "Hydrant"}</sym>\n`;
-    gpx += `  </wpt>\n`;
-  });
-
-  gpx += "</gpx>";
-
-  const blob = new Blob([gpx], { type: "application/gpx+xml" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.download = `${filename}.gpx`;
-  link.href = url;
-  link.click();
-  URL.revokeObjectURL(url);
-
-  showNotification(`${pointsToExport.length} ${t("gpx_success")}`);
-  toggleExportMenu();
-} catch (e) {
-  console.error("GPX Fehler:", e);
-  showNotification("GPX Fehler: " + e.message, 5000);
-}
 }
 
 /* =============================================================================
