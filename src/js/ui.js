@@ -47,6 +47,12 @@ addClick('export-confirm-ok', () => {
 });
 
 function openTitleConfirmation(actionCallback) {
+    // 0. Daten-Check: Haben wir überhaupt Hydranten?
+    if (!State.cachedElements || State.cachedElements.length === 0) {
+        showNotification(t('no_objects'), 3000);
+        return;
+    }
+
     pendingExportAction = actionCallback;
 
     // 1. Export-Menü schließen
