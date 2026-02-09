@@ -677,6 +677,20 @@ async function generateMapCanvas() {
   ctx.rect(margin, margin, mapWidth, mapHeight);
   ctx.clip(); // Nur innerhalb der Karte zeichnen
 
+  const iconCache = {};
+  const loadSVG = async (type) => {
+    if (iconCache[type]) return iconCache[type];
+    const svgStr = getSVGContentForExport(type);
+    const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.src = url;
+    await new Promise((r) => (img.onload = r));
+    iconCache[type] = img;
+    URL.revokeObjectURL(url);
+    return img;
+  };
+
   // Versatz berechnen (für exakte Positionierung der Marker)
   // nw.lng/lat -> Pixel
   const originX = lon2tile(nw.lng, targetZoom) * 256;
