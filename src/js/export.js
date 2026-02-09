@@ -773,10 +773,10 @@ async function generateMapCanvas() {
         : tags["fire_hydrant:type"] || tags.emergency || "fire_hydrant";
 
     if (
-      tx < x1 * 256 ||
-      tx > (x2 + 1) * 256 ||
-      ty < y1 * 256 ||
-      ty > (y2 + 1) * 256
+      tx < margin ||
+      tx > mapWidth + margin ||
+      ty < margin ||
+      ty > mapHeight + margin
     )
       continue;
 
