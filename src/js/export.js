@@ -584,7 +584,6 @@ async function generateMapCanvas() {
   }
   console.log("Final export elements count:", elementsForExport.length);
 
-
   const nw = bounds.getNorthWest();
   const se = bounds.getSouthEast();
 
