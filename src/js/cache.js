@@ -48,14 +48,17 @@ export async function getCache(key, maxAgeMs) {
         }
 
         const age = Date.now() - entry.ts;
+        console.log('[Cache] Found entry, age:', Math.round(age / 1000), 'sec, maxAge:', Math.round(maxAgeMs / 1000), 'sec');
         if (age > maxAgeMs) {
           // Abgelaufen -> (Lazy Delete beim nächsten Write oder explizit hier fire-and-forget delete)
           // Wir löschen es hier direkt asynchron, warten aber nicht drauf.
+          console.log('[Cache] Entry EXPIRED, deleting');
           deleteCacheEntry(key).catch(console.warn);
           resolve(null);
           return;
         }
 
+        console.log('[Cache] Returning cached data');
         resolve(entry.data);
       };
     });

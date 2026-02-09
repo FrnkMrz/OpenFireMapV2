@@ -431,13 +431,15 @@ export async function fetchOSMData(onProgressData = null) {
   const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
 
   // SCHRITT 1: Cache prüfen & sofort anzeigen
-  console.log('[API] Checking cache for:', cacheKey);
+  console.log('[API] Cache Key:', cacheKey);
+  console.log('[API] queryKind:', queryKind, '| zoom:', zoom, '| bboxKey:', bboxKey);
   let hasCachedData = false;
   try {
     const cached = await getCache(cacheKey, ONE_DAY_MS);
     if (cached) {
       hasCachedData = true;
       State.cachedElements = cached.elements || [];
+      console.log('[API] CACHE HIT!', State.cachedElements.length, 'elements');
       emit({ phase: 'swr_hit', reqId, cacheKey });
 
       // SWR: Nur rendern, wenn tatsächlich Daten vorhanden
@@ -445,7 +447,9 @@ export async function fetchOSMData(onProgressData = null) {
         onProgressData(State.cachedElements);
       }
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    console.log('[API] CACHE MISS or error:', e?.message || 'no data');
+  }
 
 
   const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
