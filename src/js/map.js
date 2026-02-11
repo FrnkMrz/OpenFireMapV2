@@ -297,7 +297,7 @@ export function initMapLogic() {
                 }
 
                 // Detaillierte Lade-Info anzeigen (wird bei Cache-Hit überschrieben)
-                showNotification(`🔄 ${t('loading_data')}`, 30000);
+                showNotification(t('loading_data'), 30000);
 
                 // Track if we rendered cached data
                 let cachedCount = 0;
@@ -308,7 +308,7 @@ export function initMapLogic() {
                     cachedCount = cachedData?.length || 0;
                     if (cachedCount > 0) {
                         // Cache-Hit: Zeige Daten + Hinweis auf Aktualisierung
-                        showNotification(`📦 ${cachedCount} ${t('cached_objects')} – ${t('refreshing')}`, 30000);
+                        showNotification(`${cachedCount} ${t('cached_objects')} – ${t('refreshing')}`, 30000);
                     }
                     renderMarkers(cachedData, zoom);
                 });
@@ -328,13 +328,13 @@ export function initMapLogic() {
                     // Erfolgs-Nachricht: Cache-Info erhalten, wenn Cache aktuell war
                     if (cachedCount > 0 && networkCount === cachedCount) {
                         // Cache war aktuell - zeige das deutlich
-                        showNotification(`📦 ${t('from_cache')} ✅ (${cachedCount} ${t('objects')})`, 3000);
+                        showNotification(`${t('from_cache')} (${cachedCount} ${t('objects')})`, 3000);
                     } else if (cachedCount > 0) {
                         // Cache + Aktualisierung
-                        showNotification(`✅ ${t('data_updated')} (${cachedCount} → ${networkCount})`, 2500);
+                        showNotification(`${t('data_updated')} (${cachedCount} → ${networkCount})`, 2500);
                     } else {
                         // Frische Daten
-                        showNotification(`✅ ${t('data_complete')} (${networkCount} ${t('objects')})`, 2000);
+                        showNotification(`${t('data_complete')} (${networkCount} ${t('objects')})`, 2000);
                     }
                 } else if (data === null) {
                     // Kein Fehler, aber leere Query (z.B. Zoom zu klein)

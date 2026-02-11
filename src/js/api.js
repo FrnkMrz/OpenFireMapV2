@@ -44,7 +44,7 @@ async function maybeGlobalBackoff(reqId) {
 
     // Visuelles Feedback: Zeige dem User, dass wir aufgrund Überlastung warten
     const waitSec = Math.ceil(waitMs / 1000);
-    showNotification(`⏳ ${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000));
+    showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000));
 
     await sleep(waitMs);
   }
@@ -244,7 +244,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
 
       // Zeige nur wenn es der letzte Endpoint ist (sonst zu viele Notifications)
       if (attemptNum === endpoints.length - 1) {
-        showNotification(`⚠️ ${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, 3000);
+        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, 3000);
       }
       continue;
     }
@@ -257,7 +257,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
             endpoint.includes('lz4.overpass-api.de') ? 'Server 3' : 'Alternativ-Server';
 
         // FIX: Dauer auf 60 Sekunden erhöht, damit der User sieht, dass noch was passiert.
-        showNotification(`🔄 ${t('trying_server')} ${serverName}...`, 60000);
+        showNotification(`${t('trying_server')} ${serverName}...`, 60000);
       }
 
       emit({ phase: 'try', reqId, endpoint, attemptNum });
@@ -306,9 +306,9 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
 
           // Visuelles Feedback: Rate Limit
           if (attemptNum < endpoints.length - 1) {
-            showNotification(`⚠️ ${t('server_ratelimit_retry')}`, 4000);
+            showNotification(t('server_ratelimit_retry'), 4000);
           } else {
-            showNotification(`⚠️ ${t('all_servers_busy')}`, 6000);
+            showNotification(t('all_servers_busy'), 6000);
           }
 
           await sleep(300);
@@ -320,7 +320,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
 
           // Visuelles Feedback: Server Error
           if (attemptNum < endpoints.length - 1) {
-            showNotification(`⚠️ ${t('server_error_retry')}`, 4000);
+            showNotification(t('server_error_retry'), 4000);
           }
 
 
@@ -353,7 +353,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
       // Lohnt sich zu warten!
       const waitSec = Math.ceil(minCooldown / 1000);
       emit({ phase: 'wait_for_cooldown', reqId, waitMs: minCooldown });
-      showNotification(`⏳ ${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown);
+      showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown);
 
       await sleep(minCooldown + 500); // +500ms Puffer
 
@@ -478,7 +478,7 @@ export async function fetchOSMData(onProgressData = null) {
       // Visuelles Feedback: Nutzer weiß, dass alte Daten angezeigt werden
       const errType = (err instanceof HttpError && err.status === 429) ? t('server_error_type_overload') :
         (err instanceof HttpError && err.status >= 500) ? t('server_error_type_server') : t('server_error_type_connection');
-      showNotification(`ℹ️ ${errType} - ${t('showing_cached')}`, 4000);
+      showNotification(`${errType} - ${t('showing_cached')}`, 4000);
 
       // WICHTIG: NICHT werfen! Wir haben ja erfolgreiche Daten (aus Cache).
       // Der User sieht Marker, also ist das KEIN Fehler-Zustand.
