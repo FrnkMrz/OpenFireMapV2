@@ -206,24 +206,11 @@ export function initMapLogic() {
             State.openTooltipMarker = null;
         }
 
-        // Distance Line visibility logic
-        if (State.userLine) {
-            if (zoom >= 17) {
-                if (!State.map.hasLayer(State.userLine)) {
-                    State.userLine.addTo(State.map);
-                }
-                if (State.userLineLabel && !State.map.hasLayer(State.userLineLabel)) {
-                    State.userLineLabel.addTo(State.map);
-                }
-            } else {
-                if (State.map.hasLayer(State.userLine)) {
-                    State.map.removeLayer(State.userLine);
-                }
-                if (State.userLineLabel && State.map.hasLayer(State.userLineLabel)) {
-                    State.map.removeLayer(State.userLineLabel);
-                }
-            }
-        }
+        // Distance Line: Keine Zoom-basierte Sichtbarkeitslogik mehr!
+        // Die Linie bleibt für ihre volle Lebensdauer (25s) sichtbar,
+        // egal auf welchem Zoom-Level. Der Timer in ui.js räumt auf.
+        // (Die alte Logik hat die Linie während flyTo-Animationen gelöscht,
+        //  weil Leaflet Zwischen-Zooms < 17 feuerte.)
 
         // 2) Daten-Loading nur, wenn es auch Sinn ergibt
         const mode = getLoadMode(zoom);

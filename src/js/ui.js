@@ -266,12 +266,18 @@ export function locateUser() {
     if (State.isLocating) return;
     State.isLocating = true;
 
+    // SAFETY NET: Falls durch eine unerwartete Exception oder Safari-Eigenheit
+    // finishLocating() nie aufgerufen wird, setzen wir den Lock nach 20s automatisch zurück.
+    // So ist der Button NIEMALS dauerhaft tot.
+    const safetyTimer = setTimeout(() => { State.isLocating = false; }, 20000);
+
     const btn = document.getElementById('locate-btn');
     const icon = btn ? btn.querySelector('svg') : null;
     if (icon) icon.classList.add('animate-spin');
 
     const finishLocating = () => {
         State.isLocating = false;
+        clearTimeout(safetyTimer);
         if (icon) icon.classList.remove('animate-spin');
     };
 
