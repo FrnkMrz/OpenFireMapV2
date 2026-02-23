@@ -15,7 +15,7 @@ import { t } from './i18n.js';
 // Wir importieren Funktionen aus export.js, um sie auf Buttons zu legen
 import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, exportAsPDF, cancelExport, fetchLocationTitle } from './export.js';
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
-import { setBaseLayer, drawNearestHydrantLine } from './map.js';
+import { setBaseLayer } from './map.js';
 
 // ...
 
@@ -92,10 +92,7 @@ function openTitleConfirmation(actionCallback) {
 function addClick(id, fn) {
     const el = document.getElementById(id);
     if (el) {
-        el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            fn(e);
-        });
+        el.onclick = fn;
     } else {
         // Nur Warnung für Entwickler, kein Absturz für den User
         console.warn(`Warnung: Button mit ID '${id}' fehlt im HTML.`);
@@ -258,7 +255,7 @@ export function searchLocation() {
  */
 export function locateUser() {
     if (!navigator.geolocation) {
-        showNotification(t('geo_not_supported') || "GPS nicht unterstützt");
+        showNotification("GPS nicht unterstützt");
         return;
     }
 
@@ -268,15 +265,18 @@ export function locateUser() {
 
     navigator.geolocation.getCurrentPosition(
         (pos) => {
-            if (icon) icon.classList.remove('animate-spin');
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
 
-            // 1. ZUR POSITION SPRINGEN
-            let targetZoom = Config.locateZoom || 17;
+            // 1. ZUR POSITION SPRINGEN (Mit Zoom-Check)
             if (State.map) {
                 const currentZoom = State.map.getZoom();
-                targetZoom = currentZoom >= 18 ? currentZoom : targetZoom;
+                const defaultZoom = Config.locateZoom || 17;
+
+                // LOGIK: Wenn wir schon tief drin sind (z.B. 18), nicht rauszoomen!
+                // Sonst den Standard-Wert (17) nehmen.
+                const targetZoom = currentZoom >= 18 ? currentZoom : defaultZoom;
+
                 State.map.flyTo([lat, lng], targetZoom);
             }
 
@@ -285,42 +285,33 @@ export function locateUser() {
                 State.map.removeLayer(State.userMarker);
             }
 
-            // 3. Neuer Marker
+            // 3. NEUER MARKER (Die Lösung für das "Wandern")
             const dotIcon = L.divIcon({
                 className: 'user-location-wrapper',
                 html: '<div class="user-location-inner"></div>',
                 iconSize: [20, 20],
                 iconAnchor: [10, 10]
             });
+
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
 
-            // 4. Linie zum nächsten Hydranten
-            drawNearestHydrantLine(lat, lng);
-
-            // 5. Timer (25 Sekunden) – Marker und Linie aufräumen
+            // 4. Timer (25 Sekunden)
             if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
+
             State.userLocationTimer = setTimeout(() => {
                 if (State.userMarker) {
                     State.map.removeLayer(State.userMarker);
                     State.userMarker = null;
                 }
-                if (State.userLine) {
-                    State.map.removeLayer(State.userLine);
-                    State.userLine = null;
-                }
-                if (State.userLineLabel) {
-                    State.map.removeLayer(State.userLineLabel);
-                    State.userLineLabel = null;
-                }
-                State.lineAnchor = null;
             }, 25000);
 
+            if (icon) icon.classList.remove('animate-spin');
             showNotification(t('geo_found') || "Standort gefunden!");
         },
         (err) => {
             if (icon) icon.classList.remove('animate-spin');
-            console.warn("GPS error:", err.code, err.message);
-            showNotification(t('geo_error') || "Standort konnte nicht ermittelt werden.");
+            console.error(err);
+            showNotification("Standort konnte nicht ermittelt werden.");
         },
         { enableHighAccuracy: true, timeout: 5000 }
     );

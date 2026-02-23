@@ -206,12 +206,6 @@ export function initMapLogic() {
             State.openTooltipMarker = null;
         }
 
-        // Distance Line: Keine Zoom-basierte Sichtbarkeitslogik mehr!
-        // Die Linie bleibt für ihre volle Lebensdauer (25s) sichtbar,
-        // egal auf welchem Zoom-Level. Der Timer in ui.js räumt auf.
-        // (Die alte Logik hat die Linie während flyTo-Animationen gelöscht,
-        //  weil Leaflet Zwischen-Zooms < 17 feuerte.)
-
         // 2) Daten-Loading nur, wenn es auch Sinn ergibt
         const mode = getLoadMode(zoom);
         if (mode === 'none') {
@@ -371,20 +365,6 @@ export function initMapLogic() {
     State.map.on('click', () => {
         if (!State.selection.active) {
             State.rangeLayerGroup.clearLayers();
-            // User-Linie NUR entfernen, wenn KEIN aktiver Locate-Marker vorhanden ist.
-            // Sonst wird die Linie gelöscht, sobald man irgendwo auf die Karte klickt,
-            // z.B. während einer flyTo-Animation oder durch Event-Bubbling.
-            if (!State.userMarker) {
-                if (State.userLine) {
-                    State.map.removeLayer(State.userLine);
-                    State.userLine = null;
-                }
-                if (State.userLineLabel) {
-                    State.map.removeLayer(State.userLineLabel);
-                    State.userLineLabel = null;
-                }
-                State.lineAnchor = null;
-            }
         }
     });
 
@@ -681,136 +661,6 @@ export function showRangeCircle(lat, lon) {
         labelMarker.bindTooltip("100 m", { permanent: true, direction: 'center', className: 'range-label', offset: [0, 0] }).openTooltip();
     }
 }
-
-/**
- * Zieht eine Linie vom Nutzer (oder Ankerpunkt) zum nächsten Hydranten
- * und zeigt die Distanz an.
- */
-export function drawNearestHydrantLine(sourceLat, sourceLon) {
-    if (!State.map) return;
-
-    // Anchor speichern, falls sich die Hydranten-Daten durch einen neuen Fetch ändern
-    State.lineAnchor = { lat: sourceLat, lon: sourceLon };
-
-    // 1. Alten Status aufräumen
-    if (State.userLine) {
-        State.map.removeLayer(State.userLine);
-        State.userLine = null;
-    }
-    if (State.userLineLabel) {
-        State.map.removeLayer(State.userLineLabel);
-        State.userLineLabel = null;
-    }
-
-    // 2. Hydranten suchen (wir ignorieren Fire Stations und Defis)
-    let nearest = null;
-    let minDistance = Infinity;
-
-    const sourcePoint = { lat: sourceLat, lon: sourceLon };
-
-    for (const [, entry] of State.markerCache) {
-        if (entry.isStation || entry.isDefib) continue;
-
-        const hydrantPoint = { lat: entry.lat, lon: entry.lon };
-        const dist = distanceMeters(sourcePoint, hydrantPoint);
-
-        // Nimm den nächsten, aber ignoriere "0", wenn man exakt auf den Hydranten klickt
-        if (dist > 0 && dist < minDistance) {
-            minDistance = dist;
-            nearest = entry;
-        }
-    }
-
-    if (!nearest) return;
-
-    // 3. Linie IMMER zeichnen (frühere Zoom-Prüfung entfernt!).
-    // Die alte Logik verhinderte das Zeichnen bei Zoom < 17, aber da der
-    // Nutzer per flyTo erst auf Zoom 17 fliegt, war die Linie immer weg.
-    console.log('[LINE] Drawing line to nearest hydrant, dist =', Math.round(minDistance), 'm, markerCache size =', State.markerCache.size);
-
-    // Gestrichelte, dünne Linie zum nächsten Hydranten
-    State.userLine = L.polyline([
-        [sourceLat, sourceLon],
-        [nearest.lat, nearest.lon]
-    ], {
-        color: Config.colors.water || '#3b82f6',
-        weight: 3,
-        dashArray: '5, 8',
-        opacity: 0.9,
-        interactive: false,
-        className: 'nearest-hydrant-line' // Hilft beim Debuggen im DOM
-    });
-
-    // IMMER zur Karte hinzufügen – keine Zoom-Prüfung mehr!
-    State.userLine.addTo(State.map);
-
-    // 4. Distanz-Label in der Mitte platzieren
-    const midLat = (sourceLat + nearest.lat) / 2;
-    const midLon = (sourceLon + nearest.lon) / 2;
-    const distanceStr = Math.round(minDistance) + " m";
-
-    // Ein unsichtbarer Marker, der nur das Tooltip trägt
-    State.userLineLabel = L.marker([midLat, midLon], { opacity: 0, interactive: false });
-
-    // Style-Klasse für feinen Text
-    State.userLineLabel.bindTooltip(distanceStr, {
-        permanent: true,
-        direction: 'center',
-        className: 'distance-label font-bold text-xs bg-white/80 px-1 rounded text-blue-600 border border-blue-200 shadow-sm',
-        offset: [0, 0]
-    });
-
-    // IMMER zur Karte hinzufügen – keine Zoom-Prüfung mehr!
-    State.userLineLabel.addTo(State.map);
-}
-
-/**
- * Zeichnet eine direkte Linie vom Quellpunkt zum angegebenen Zielpunkt.
- * Wird verwendet, wenn der User auf einen bestimmten Hydranten klickt.
- */
-function drawDirectLine(fromLat, fromLon, toLat, toLon) {
-    if (!State.map) return;
-
-    // Alten Status aufräumen
-    if (State.userLine) {
-        State.map.removeLayer(State.userLine);
-        State.userLine = null;
-    }
-    if (State.userLineLabel) {
-        State.map.removeLayer(State.userLineLabel);
-        State.userLineLabel = null;
-    }
-
-    const dist = distanceMeters({ lat: fromLat, lon: fromLon }, { lat: toLat, lon: toLon });
-    console.log('[LINE] Direct line to clicked hydrant, dist =', Math.round(dist), 'm');
-
-    State.userLine = L.polyline([
-        [fromLat, fromLon],
-        [toLat, toLon]
-    ], {
-        color: Config.colors.water || '#3b82f6',
-        weight: 3,
-        dashArray: '5, 8',
-        opacity: 0.9,
-        interactive: false,
-        className: 'nearest-hydrant-line'
-    });
-    State.userLine.addTo(State.map);
-
-    const midLat = (fromLat + toLat) / 2;
-    const midLon = (fromLon + toLon) / 2;
-    const distanceStr = Math.round(dist) + " m";
-
-    State.userLineLabel = L.marker([midLat, midLon], { opacity: 0, interactive: false });
-    State.userLineLabel.bindTooltip(distanceStr, {
-        permanent: true,
-        direction: 'center',
-        className: 'distance-label font-bold text-xs bg-white/80 px-1 rounded text-blue-600 border border-blue-200 shadow-sm',
-        offset: [0, 0]
-    });
-    State.userLineLabel.addTo(State.map);
-}
-
 /**
  * Rendert die Marker basierend auf den übergebenen Daten (elements).
  * OPTIMIERUNG: Nutzt "Diffing", um Flackern zu verhindern.
@@ -918,18 +768,11 @@ export function renderMarkers(elements, zoom) {
 
     // --- H. AUFRÄUMEN (Garbage Collection) ---
     // Wir entfernen alle Marker von der Karte, die im aktuellen Datensatz NICHT mehr vorkommen.
-    for (const [cacheId, entry] of State.markerCache) {
-        if (!markersToKeep.has(cacheId)) {
+    for (const [id, entry] of State.markerCache) {
+        if (!markersToKeep.has(id)) {
             State.markerLayer.removeLayer(entry.marker);
-            State.markerCache.delete(cacheId);
+            State.markerCache.delete(id);
         }
-    }
-
-    // --- I. DISTANZ-LINIE AKTUALISIEREN ---
-    // Wenn ein Anker gesetzt ist (z.B. User Marker oder gecklickter Hydrant),
-    // zeichnen wir die Linie zu den JETZT AKTUELLEN Hydranten neu.
-    if (State.lineAnchor) {
-        drawNearestHydrantLine(State.lineAnchor.lat, State.lineAnchor.lon);
     }
 }
 
@@ -975,18 +818,11 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             zIndexOffset: zIndex
         });
 
-        // Klick-Event für Hydranten-Radius und Distanz-Linie
+        // Klick-Event für Hydranten-Radius
         if (!isStation && !isDefib) {
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 showRangeCircle(lat, lon);
-
-                // Distanz-Linie NUR wenn User einen aktiven Standort hat.
-                // Zeigt Entfernung von USER -> geklickter Hydrant.
-                if (State.userMarker) {
-                    const userLatLng = State.userMarker.getLatLng();
-                    drawDirectLine(userLatLng.lat, userLatLng.lng, lat, lon);
-                }
             });
         }
     }
@@ -1050,19 +886,12 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         // Daher: alle Click-Listener entfernen und unseren Radius-Click danach gezielt wieder anbinden.
         marker.off('click');
 
-        // Klick bleibt ausschließlich für den 100 m Radius UND die Distanz-Linie,
+        // Klick bleibt ausschließlich für den 100 m Radius (Hydranten/Wasser etc.),
         // NICHT für Tooltips.
         if (!isStation && !isDefib) {
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 showRangeCircle(lat, lon);
-
-                // Distanz-Linie NUR wenn User einen aktiven Standort hat.
-                // Zeigt Entfernung von USER -> geklickter Hydrant.
-                if (State.userMarker) {
-                    const userLatLng = State.userMarker.getLatLng();
-                    drawDirectLine(userLatLng.lat, userLatLng.lng, lat, lon);
-                }
             });
         }
 
