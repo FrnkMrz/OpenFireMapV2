@@ -36,8 +36,8 @@ let pendingExportAction = null;
 
 addClick('export-confirm-cancel', () => {
     document.getElementById('export-title-modal').classList.add('hidden');
-    // Zurück zum Export-Menü? Oder ganz zu? Wir machen ganz zu für Clean State.
-    // toggleExportMenu(); // Optional: Wieder öffnen
+    // Zurück zum Trigger-Button fokussieren (Barrierefreiheit)
+    document.getElementById('export-btn-trigger')?.focus();
 });
 
 addClick('export-confirm-ok', () => {
@@ -367,6 +367,43 @@ export function setupUI() {
 
     // Automatische Schließ-Logik aktivieren
     setupMenuAutoClose();
+
+    // Globaler Escape-Key Listener für Barrierefreiheit (Keyboard Navigation)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            // 1. Export Title Modal
+            const titleModal = document.getElementById('export-title-modal');
+            if (titleModal && !titleModal.classList.contains('hidden')) {
+                titleModal.classList.add('hidden');
+                document.getElementById('export-btn-trigger')?.focus();
+                return;
+            }
+
+            // 2. Layer Menu
+            const layerMenu = document.getElementById('layer-menu');
+            if (layerMenu && !layerMenu.classList.contains('hidden')) {
+                closeAllMenus();
+                document.getElementById('layer-btn-trigger')?.focus();
+                return;
+            }
+
+            // 3. Export Menu
+            const exportMenu = document.getElementById('export-menu');
+            if (exportMenu && !exportMenu.classList.contains('hidden')) {
+                closeAllMenus();
+                document.getElementById('export-btn-trigger')?.focus();
+                return;
+            }
+
+            // 4. Legal Modal
+            const legalModal = document.getElementById('legal-modal');
+            if (legalModal && legalModal.style.display !== 'none' && legalModal.style.display !== '') {
+                closeAllMenus();
+                document.getElementById('btn-legal-trigger')?.focus();
+                return;
+            }
+        }
+    });
 }
 
 /**

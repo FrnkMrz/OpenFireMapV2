@@ -25,7 +25,8 @@
     ">
 
     <!-- SECURITY: Permissions-Policy -->
-    <meta http-equiv="Permissions-Policy" content="accelerometer=(), camera=(), geolocation=(self), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()">
+    <meta http-equiv="Permissions-Policy"
+        content="accelerometer=(), camera=(), geolocation=(self), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()">
 
 
     <link rel="manifest" href="./manifest.json">
@@ -42,8 +43,8 @@
       So bleibt die Reihenfolge stabil (Leaflet -> config -> app),
       ohne Timing-Probleme mit defer/module.
     -->
-  <script type="module" crossorigin src="./assets/index-CRiyICUu.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DslTlYkE.css">
+  <script type="module" crossorigin src="./assets/index-CJRQyNxs.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-u-2yFNLW.css">
 </head>
 
 <body>
@@ -138,24 +139,24 @@
             role="menu" aria-labelledby="mobile-burger-btn">
             <div class="flex flex-col gap-2">
                 <button id="mobile-open-layers" type="button"
-                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10">
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="menu_layers_label">Layer</span>
                 </button>
 
                 <button id="mobile-open-search"
-                    class="w-full bg-white/5 hover:bg-white/10 pyz py-3 rounded-xl text-sm font-semibold border border-white/10">
+                    class="w-full bg-white/5 hover:bg-white/10 pyz py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="menu_search">Suche</span>
                 </button>
 
 
 
                 <button id="mobile-open-legal" type="button"
-                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10">
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="legal_btn">Info & Recht</span>
                 </button>
 
                 <button id="mobile-close-menu" type="button"
-                    class="w-full bg-slate-900/40 hover:bg-slate-900/60 py-2.5 rounded-xl text-xs font-semibold border border-white/10">
+                    class="w-full bg-slate-900/40 hover:bg-slate-900/60 py-2.5 rounded-xl text-xs font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="menu_close">Schließen</span>
                 </button>
             </div>
@@ -190,8 +191,8 @@
                 class="absolute left-1/2 top-1/2 w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 glass-panel p-4 rounded-2xl border border-white/10">
                 <div class="flex items-center justify-between mb-3">
                     <div class="text-sm font-semibold" data-i18n="menu_search">Suche</div>
-                    <button id="mobile-search-close"
-                        class="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10">✕</button>
+                    <button id="mobile-search-close" aria-label="Suche schließen"
+                        class="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">✕</button>
                 </div>
 
                 <div class="flex gap-2">
@@ -263,7 +264,8 @@
             <div id="export-setup" class="space-y-5">
                 <div class="flex justify-between items-center">
                     <h3 id="export-title" class="font-bold text-lg" data-i18n="export_header">Export</h3>
-                    <button id="export-close-btn" class="text-slate-400 hover:text-white text-2xl leading-none"
+                    <button id="export-close-btn"
+                        class="text-slate-400 hover:text-white text-2xl leading-none rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         aria-label="Schließen">&times;</button>
                 </div>
 
@@ -357,11 +359,11 @@
 
             <div class="grid grid-cols-2 gap-3">
                 <button id="export-confirm-cancel"
-                    class="py-2 rounded-xl text-sm font-bold border border-white/10 hover:bg-white/10 text-slate-300">
+                    class="py-2 rounded-xl text-sm font-bold border border-white/10 hover:bg-white/10 text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     Abbrechen
                 </button>
                 <button id="export-confirm-ok"
-                    class="py-2 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20">
+                    class="py-2 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     Erstellen
                 </button>
             </div>
@@ -379,7 +381,7 @@
                     Rechtliches
                 </h2>
                 <button id="legal-close-btn" aria-label="Schließen"
-                    class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-lg p-1">
+                    class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:text-white rounded-lg p-1">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                         viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
