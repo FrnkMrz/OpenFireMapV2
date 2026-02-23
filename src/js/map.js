@@ -1053,12 +1053,20 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         // Daher: alle Click-Listener entfernen und unseren Radius-Click danach gezielt wieder anbinden.
         marker.off('click');
 
-        // Klick bleibt ausschließlich für den 100 m Radius (Hydranten/Wasser etc.),
+        // Klick bleibt ausschließlich für den 100 m Radius UND die Distanz-Linie,
         // NICHT für Tooltips.
         if (!isStation && !isDefib) {
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 showRangeCircle(lat, lon);
+
+                // Distanz-Linie: von User-Position zum Hydranten (oder nächster Hydrant)
+                if (State.userMarker) {
+                    const userLatLng = State.userMarker.getLatLng();
+                    drawDirectLine(userLatLng.lat, userLatLng.lng, lat, lon);
+                } else {
+                    drawNearestHydrantLine(lat, lon);
+                }
             });
         }
 
