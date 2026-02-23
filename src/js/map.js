@@ -981,14 +981,11 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
                 L.DomEvent.stopPropagation(e);
                 showRangeCircle(lat, lon);
 
-                // Wenn der User einen aktiven Standort-Marker hat -> 
-                // Linie von USER zu DIESEM Hydranten zeichnen.
-                // Sonst: nächsten Hydranten relativ zum geklickten finden.
+                // Distanz-Linie NUR wenn User einen aktiven Standort hat.
+                // Zeigt Entfernung von USER -> geklickter Hydrant.
                 if (State.userMarker) {
                     const userLatLng = State.userMarker.getLatLng();
                     drawDirectLine(userLatLng.lat, userLatLng.lng, lat, lon);
-                } else {
-                    drawNearestHydrantLine(lat, lon);
                 }
             });
         }
@@ -1060,12 +1057,11 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
                 L.DomEvent.stopPropagation(e);
                 showRangeCircle(lat, lon);
 
-                // Distanz-Linie: von User-Position zum Hydranten (oder nächster Hydrant)
+                // Distanz-Linie NUR wenn User einen aktiven Standort hat.
+                // Zeigt Entfernung von USER -> geklickter Hydrant.
                 if (State.userMarker) {
                     const userLatLng = State.userMarker.getLatLng();
                     drawDirectLine(userLatLng.lat, userLatLng.lng, lat, lon);
-                } else {
-                    drawNearestHydrantLine(lat, lon);
                 }
             });
         }
