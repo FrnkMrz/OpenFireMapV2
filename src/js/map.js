@@ -686,7 +686,7 @@ export function showRangeCircle(lat, lon) {
  * Zieht eine Linie vom Nutzer (oder Ankerpunkt) zum nächsten Hydranten
  * und zeigt die Distanz an.
  */
-export function drawNearestHydrantLine(sourceLat, sourceLon, targetZoom = null) {
+export function drawNearestHydrantLine(sourceLat, sourceLon) {
     if (!State.map) return;
 
     // Anchor speichern, falls sich die Hydranten-Daten durch einen neuen Fetch ändern

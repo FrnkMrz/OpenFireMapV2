@@ -314,7 +314,7 @@ export function locateUser() {
         State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
 
         // 3b. Nächsten Hydranten suchen und Linie ziehen (mit Ziel-Zoom!)
-        drawNearestHydrantLine(lat, lng, targetZoom);
+        drawNearestHydrantLine(lat, lng);
 
         // 4. Timer (25 Sekunden)
         if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
