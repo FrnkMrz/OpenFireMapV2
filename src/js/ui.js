@@ -263,67 +263,83 @@ export function locateUser() {
     const icon = btn ? btn.querySelector('svg') : null;
     if (icon) icon.classList.add('animate-spin');
 
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
+    const handleSuccess = (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
 
-            // 1. ZUR POSITION SPRINGEN (Mit Zoom-Check)
-            if (State.map) {
-                const currentZoom = State.map.getZoom();
-                const defaultZoom = Config.locateZoom || 17;
+        // 1. ZUR POSITION SPRINGEN (Mit Zoom-Check)
+        if (State.map) {
+            const currentZoom = State.map.getZoom();
+            const defaultZoom = Config.locateZoom || 17;
 
-                // LOGIK: Wenn wir schon tief drin sind (z.B. 18), nicht rauszoomen!
-                // Sonst den Standard-Wert (17) nehmen.
-                const targetZoom = currentZoom >= 18 ? currentZoom : defaultZoom;
+            // LOGIK: Wenn wir schon tief drin sind (z.B. 18), nicht rauszoomen!
+            // Sonst den Standard-Wert (17) nehmen.
+            const targetZoom = currentZoom >= 18 ? currentZoom : defaultZoom;
 
-                State.map.flyTo([lat, lng], targetZoom);
-            }
+            State.map.flyTo([lat, lng], targetZoom);
+        }
 
-            // 2. Alten Marker entfernen
+        // 2. Alten Marker entfernen
+        if (State.userMarker) {
+            State.map.removeLayer(State.userMarker);
+        }
+
+        // 3. NEUER MARKER (Die Lösung für das "Wandern")
+        const dotIcon = L.divIcon({
+            className: 'user-location-wrapper',
+            html: '<div class="user-location-inner"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+
+        State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
+
+        // 3b. Nächsten Hydranten suchen und Linie ziehen
+        drawNearestHydrantLine(lat, lng);
+
+        // 4. Timer (25 Sekunden)
+        if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
+
+        State.userLocationTimer = setTimeout(() => {
             if (State.userMarker) {
                 State.map.removeLayer(State.userMarker);
+                State.userMarker = null;
             }
+            // Linie und Label aufräumen
+            if (State.userLine) {
+                State.map.removeLayer(State.userLine);
+                State.userLine = null;
+            }
+            if (State.userLineLabel) {
+                State.map.removeLayer(State.userLineLabel);
+                State.userLineLabel = null;
+            }
+            // Anchor ebenfalls leeren, sonst erscheint Linie beim Zoomen wieder!
+            State.lineAnchor = null;
+        }, 25000);
 
-            // 3. NEUER MARKER (Die Lösung für das "Wandern")
-            const dotIcon = L.divIcon({
-                className: 'user-location-wrapper',
-                html: '<div class="user-location-inner"></div>',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-            });
+        if (icon) icon.classList.remove('animate-spin');
+        showNotification(t('geo_found') || "Standort gefunden!");
+    };
 
-            State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
-
-            // 3b. Nächsten Hydranten suchen und Linie ziehen
-            drawNearestHydrantLine(lat, lng);
-
-            // 4. Timer (25 Sekunden)
-            if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
-
-            State.userLocationTimer = setTimeout(() => {
-                if (State.userMarker) {
-                    State.map.removeLayer(State.userMarker);
-                    State.userMarker = null;
-                }
-                // Linie und Label aufräumen
-                if (State.userLine) {
-                    State.map.removeLayer(State.userLine);
-                    State.userLine = null;
-                }
-                if (State.userLineLabel) {
-                    State.map.removeLayer(State.userLineLabel);
-                    State.userLineLabel = null;
-                }
-            }, 25000);
-
-            if (icon) icon.classList.remove('animate-spin');
-            showNotification(t('geo_found') || "Standort gefunden!");
-        },
+    // Erster Versuch: Hohe Genauigkeit (GPS)
+    navigator.geolocation.getCurrentPosition(
+        handleSuccess,
         (err) => {
-            if (icon) icon.classList.remove('animate-spin');
-            console.error(err);
-            showNotification("Standort konnte nicht ermittelt werden.");
+            // MacOS/iOS Safari schlägt im Gebäude oft nach X Sekunden mit Code 2 / 3 fehl.
+            // In dem Fall probieren wir das Ganze nochmal "ohne" GPS (nimmt WLAN/IP).
+            console.warn("High accuracy GPS failed, retrying with low accuracy...", err);
+
+            navigator.geolocation.getCurrentPosition(
+                handleSuccess,
+                (fallbackErr) => {
+                    // Wenn selbst das fehlschlägt, ist wirklich Ende.
+                    if (icon) icon.classList.remove('animate-spin');
+                    console.error("Fallback GPS also failed:", fallbackErr);
+                    showNotification("Standort konnte nicht ermittelt werden (Timeout).");
+                },
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+            );
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
