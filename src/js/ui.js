@@ -92,7 +92,10 @@ function openTitleConfirmation(actionCallback) {
 function addClick(id, fn) {
     const el = document.getElementById(id);
     if (el) {
-        el.onclick = fn;
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fn(e);
+        });
     } else {
         // Nur Warnung für Entwickler, kein Absturz für den User
         console.warn(`Warnung: Button mit ID '${id}' fehlt im HTML.`);

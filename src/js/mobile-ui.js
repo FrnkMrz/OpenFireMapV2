@@ -245,6 +245,7 @@
   // ---------------------------
   mobileLocate.addEventListener('click', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     closeMobileMenu();
     closeDesktopPopupMenus();
     safeClick('locate-btn');

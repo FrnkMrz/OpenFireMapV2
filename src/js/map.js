@@ -744,10 +744,11 @@ export function drawNearestHydrantLine(sourceLat, sourceLon, targetZoom = null) 
         [nearest.lat, nearest.lon]
     ], {
         color: Config.colors.water || '#3b82f6',
-        weight: 2,
-        dashArray: '4, 6',
-        opacity: 0.8,
-        interactive: false
+        weight: 3,
+        dashArray: '5, 8',
+        opacity: 0.9,
+        interactive: false,
+        className: 'nearest-hydrant-line' // Hilft beim Debuggen im DOM
     });
 
     if (isVisibleProps) {
