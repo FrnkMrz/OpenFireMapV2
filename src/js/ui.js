@@ -340,29 +340,38 @@ export function locateUser() {
         showNotification(t('geo_found') || "Standort gefunden!");
     };
 
-    // Erster Versuch: Hohe Genauigkeit (GPS)
-    navigator.geolocation.getCurrentPosition(
-        handleSuccess,
-        (err) => {
-            // MacOS/iOS Safari schlägt im Gebäude oft nach X Sekunden mit Code 2 / 3 fehl.
-            // In dem Fall probieren wir das Ganze nochmal "ohne" GPS (nimmt WLAN/IP).
-            console.warn("High accuracy GPS failed, retrying with low accuracy...", err);
+    // STRATEGIE: watchPosition statt getCurrentPosition!
+    // macOS Safari (CoreLocation) verweigert getCurrentPosition oft komplett
+    // mit kCLErrorLocationUnknown (Code 2). watchPosition hingegen abonniert
+    // einen kontinuierlichen Stream und liefert meistens erfolgreich,
+    // da Safari es als "laufende Überwachung" behandelt, nicht als Einmal-Abfrage.
+    let resolved = false;
 
-            navigator.geolocation.getCurrentPosition(
-                handleSuccess,
-                (fallbackErr) => {
-                    // Wenn selbst das fehlschlägt, ist wirklich Ende.
-                    finishLocating();
-                    console.error("Fallback GPS also failed:", fallbackErr);
-                    showNotification("Standort konnte nicht ermittelt werden (Timeout).");
-                },
-                // Kein maximumAge, damit uns ein alter fehlgeschlagener Cache nicht blockiert!
-                { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }
-            );
+    const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+            if (resolved) return; // Nur den ERSTEN Treffer verwenden
+            resolved = true;
+            navigator.geolocation.clearWatch(watchId);
+            clearTimeout(watchTimeout);
+            handleSuccess(pos);
         },
-        // Kein maximumAge, damit der User bei jedem Klick wirklich den AKTUELLEN Standort bekommt
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        (err) => {
+            // watchPosition kann auch Fehler feuern – wir ignorieren sie,
+            // solange der Timeout noch nicht abgelaufen ist.
+            // CoreLocation sendet oft erst einen Fehler, dann kurz darauf den echten Standort.
+            console.warn("watchPosition error (waiting for fix):", err.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 0 }
     );
+
+    // Timeout: Wenn nach 15 Sekunden kein Standort kam, aufgeben.
+    const watchTimeout = setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        navigator.geolocation.clearWatch(watchId);
+        finishLocating();
+        showNotification(t('geo_error') || "Standort konnte nicht ermittelt werden.");
+    }, 15000);
 }
 
 /* =============================================================================
