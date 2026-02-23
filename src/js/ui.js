@@ -322,7 +322,7 @@ export function locateUser() {
             console.warn("GPS error:", err.code, err.message);
             showNotification(t('geo_error') || "Standort konnte nicht ermittelt werden.");
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 5000 }
     );
 }
 
