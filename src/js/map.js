@@ -695,7 +695,7 @@ export function showRangeCircle(lat, lon) {
  * Zieht eine Linie vom Nutzer (oder Ankerpunkt) zum nächsten Hydranten
  * und zeigt die Distanz an.
  */
-export function drawNearestHydrantLine(sourceLat, sourceLon) {
+export function drawNearestHydrantLine(sourceLat, sourceLon, targetZoom = null) {
     if (!State.map) return;
 
     // Anchor speichern, falls sich die Hydranten-Daten durch einen neuen Fetch ändern
@@ -733,8 +733,10 @@ export function drawNearestHydrantLine(sourceLat, sourceLon) {
     if (!nearest) return;
 
     // 3. Linie zeichnen (wenn Zoom passt)
-    const zoom = State.map.getZoom();
-    const isVisibleProps = (zoom >= 17);
+    // Wenn wir gerade in einem flyTo sind, ist getZoom() noch der alte Wert.
+    // Daher optional den erwarteten Ziel-Zoom mitgeben.
+    const currentZoom = targetZoom !== null ? targetZoom : State.map.getZoom();
+    const isVisibleProps = (currentZoom >= 17);
 
     // Gestrichelte, dünne Linie zum nächsten Hydranten
     State.userLine = L.polyline([

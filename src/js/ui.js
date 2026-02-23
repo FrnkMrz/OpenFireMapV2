@@ -268,13 +268,13 @@ export function locateUser() {
         const lng = pos.coords.longitude;
 
         // 1. ZUR POSITION SPRINGEN (Mit Zoom-Check)
+        let targetZoom = Config.locateZoom || 17;
         if (State.map) {
             const currentZoom = State.map.getZoom();
-            const defaultZoom = Config.locateZoom || 17;
 
             // LOGIK: Wenn wir schon tief drin sind (z.B. 18), nicht rauszoomen!
             // Sonst den Standard-Wert (17) nehmen.
-            const targetZoom = currentZoom >= 18 ? currentZoom : defaultZoom;
+            targetZoom = currentZoom >= 18 ? currentZoom : targetZoom;
 
             State.map.flyTo([lat, lng], targetZoom);
         }
@@ -294,8 +294,8 @@ export function locateUser() {
 
         State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
 
-        // 3b. Nächsten Hydranten suchen und Linie ziehen
-        drawNearestHydrantLine(lat, lng);
+        // 3b. Nächsten Hydranten suchen und Linie ziehen (mit Ziel-Zoom!)
+        drawNearestHydrantLine(lat, lng, targetZoom);
 
         // 4. Timer (25 Sekunden)
         if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
