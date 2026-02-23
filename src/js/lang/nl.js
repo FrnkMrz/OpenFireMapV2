@@ -72,6 +72,23 @@ export const strings = {
         menu_search: "Zoeken",
     menu_close: "Sluiten",
     no_results: "Geen resultaten gevonden",
-    loading_data: "Gegevens laden..."
+    loading_data: "Gegevens laden...",
+    "export_confirm_header": "Please adjust the title for the map",
+    "export_confirm_text": "",
+    "cached_objects": "Objects from cache",
+    "data_complete": "Data fully loaded",
+    "server_overloaded_wait": "All servers busy, waiting",
+    "trying_server": "Trying",
+    "server_ratelimit_retry": "Server busy (429), trying next server...",
+    "all_servers_busy": "All servers busy, please try again later",
+    "server_error_retry": "Server error",
+    "showing_cached": "showing cached data",
+    "server_error_type_overload": "Overload",
+    "server_error_type_server": "Server error",
+    "server_error_type_connection": "Connection problem",
+    "alt_server": "alternative server",
+    "next_server": "next server",
+    "seconds_short": "s",
+    "objects": "objects"
 };
 export default strings;
