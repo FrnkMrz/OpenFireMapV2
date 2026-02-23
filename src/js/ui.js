@@ -258,15 +258,25 @@ export function searchLocation() {
  */
 export function locateUser() {
     if (!navigator.geolocation) {
-        showNotification("GPS nicht unterstützt");
+        showNotification(t('geo_not_supported') || "GPS nicht unterstützt");
         return;
     }
+
+    // Verhindere überlappende Clicks ("Ging nur ein mal" Bug)
+    if (State.isLocating) return;
+    State.isLocating = true;
 
     const btn = document.getElementById('locate-btn');
     const icon = btn ? btn.querySelector('svg') : null;
     if (icon) icon.classList.add('animate-spin');
 
+    const finishLocating = () => {
+        State.isLocating = false;
+        if (icon) icon.classList.remove('animate-spin');
+    };
+
     const handleSuccess = (pos) => {
+        finishLocating();
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
@@ -321,7 +331,6 @@ export function locateUser() {
             State.lineAnchor = null;
         }, 25000);
 
-        if (icon) icon.classList.remove('animate-spin');
         showNotification(t('geo_found') || "Standort gefunden!");
     };
 
@@ -337,14 +346,16 @@ export function locateUser() {
                 handleSuccess,
                 (fallbackErr) => {
                     // Wenn selbst das fehlschlägt, ist wirklich Ende.
-                    if (icon) icon.classList.remove('animate-spin');
+                    finishLocating();
                     console.error("Fallback GPS also failed:", fallbackErr);
                     showNotification("Standort konnte nicht ermittelt werden (Timeout).");
                 },
-                { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+                // Kein maximumAge, damit uns ein alter fehlgeschlagener Cache nicht blockiert!
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }
             );
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        // Kein maximumAge, damit der User bei jedem Klick wirklich den AKTUELLEN Standort bekommt
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
 }
 
