@@ -371,16 +371,20 @@ export function initMapLogic() {
     State.map.on('click', () => {
         if (!State.selection.active) {
             State.rangeLayerGroup.clearLayers();
-            // User-Linie entfernen, da auf einen leeren Bereich geklickt wurde
-            if (State.userLine) {
-                State.map.removeLayer(State.userLine);
-                State.userLine = null;
+            // User-Linie NUR entfernen, wenn KEIN aktiver Locate-Marker vorhanden ist.
+            // Sonst wird die Linie gelöscht, sobald man irgendwo auf die Karte klickt,
+            // z.B. während einer flyTo-Animation oder durch Event-Bubbling.
+            if (!State.userMarker) {
+                if (State.userLine) {
+                    State.map.removeLayer(State.userLine);
+                    State.userLine = null;
+                }
+                if (State.userLineLabel) {
+                    State.map.removeLayer(State.userLineLabel);
+                    State.userLineLabel = null;
+                }
+                State.lineAnchor = null;
             }
-            if (State.userLineLabel) {
-                State.map.removeLayer(State.userLineLabel);
-                State.userLineLabel = null;
-            }
-            State.lineAnchor = null;
         }
     });
 
@@ -719,11 +723,10 @@ export function drawNearestHydrantLine(sourceLat, sourceLon, targetZoom = null) 
 
     if (!nearest) return;
 
-    // 3. Linie zeichnen (wenn Zoom passt)
-    // Wenn wir gerade in einem flyTo sind, ist getZoom() noch der alte Wert.
-    // Daher optional den erwarteten Ziel-Zoom mitgeben.
-    const currentZoom = targetZoom !== null ? targetZoom : State.map.getZoom();
-    const isVisibleProps = (currentZoom >= 17);
+    // 3. Linie IMMER zeichnen (frühere Zoom-Prüfung entfernt!).
+    // Die alte Logik verhinderte das Zeichnen bei Zoom < 17, aber da der
+    // Nutzer per flyTo erst auf Zoom 17 fliegt, war die Linie immer weg.
+    console.log('[LINE] Drawing line to nearest hydrant, dist =', Math.round(minDistance), 'm, markerCache size =', State.markerCache.size);
 
     // Gestrichelte, dünne Linie zum nächsten Hydranten
     State.userLine = L.polyline([
@@ -738,9 +741,8 @@ export function drawNearestHydrantLine(sourceLat, sourceLon, targetZoom = null) 
         className: 'nearest-hydrant-line' // Hilft beim Debuggen im DOM
     });
 
-    if (isVisibleProps) {
-        State.userLine.addTo(State.map);
-    }
+    // IMMER zur Karte hinzufügen – keine Zoom-Prüfung mehr!
+    State.userLine.addTo(State.map);
 
     // 4. Distanz-Label in der Mitte platzieren
     const midLat = (sourceLat + nearest.lat) / 2;
@@ -758,9 +760,8 @@ export function drawNearestHydrantLine(sourceLat, sourceLon, targetZoom = null) 
         offset: [0, 0]
     });
 
-    if (isVisibleProps) {
-        State.userLineLabel.addTo(State.map);
-    }
+    // IMMER zur Karte hinzufügen – keine Zoom-Prüfung mehr!
+    State.userLineLabel.addTo(State.map);
 }
 
 /**
