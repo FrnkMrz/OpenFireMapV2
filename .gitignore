@@ -32,3 +32,8 @@ osv-scanner.*
 
 
 
+
+test-results/
+playwright-report/
+playwright/.cache/
+
