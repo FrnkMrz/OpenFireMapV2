@@ -382,7 +382,7 @@ export async function exportAsGPX() {
     let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
     gpx +=
       '<gpx version="1.1" creator="OpenFireMap V2" xmlns="http://www.topografix.com/GPX/1/1">\n';
-    gpx += `  <metadata><name>${displayTitle || "Hydranten Export"}</name><time>${new Date().toISOString()}</time></metadata>\n`;
+    gpx += `  <metadata><name>${escapeXML(displayTitle || "Hydranten Export")}</name><time>${new Date().toISOString()}</time></metadata>\n`;
 
     pointsToExport.forEach((el) => {
       const tags = el.tags || {};

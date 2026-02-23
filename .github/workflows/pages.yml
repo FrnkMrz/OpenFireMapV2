@@ -34,10 +34,9 @@ on:
 # ------------------------------------------------------------------------------------------
 # Benötigte Berechtigungen für GitHub Pages Deploy
 # ------------------------------------------------------------------------------------------
-permissions:
-  contents: read        # Quellcode lesen
-  pages: write          # Pages deployen
-  id-token: write       # OIDC Token für Pages Deployment
+# ------------------------------------------------------------------------------------------
+# (Permissions are now scoped per job)
+# ------------------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------------------
 # Verhindert parallele Deploys (z.B. bei schnellem Push hintereinander)
@@ -56,6 +55,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       # --------------------------------------------------------------------
@@ -118,6 +119,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
 
     # --------------------------------------------------------------------
     # GitHub Pages Environment
