@@ -384,6 +384,16 @@ export function initMapLogic() {
     State.map.on('click', () => {
         if (!State.selection.active) {
             State.rangeLayerGroup.clearLayers();
+            // User-Linie entfernen, da auf einen leeren Bereich geklickt wurde
+            if (State.userLine) {
+                State.map.removeLayer(State.userLine);
+                State.userLine = null;
+            }
+            if (State.userLineLabel) {
+                State.map.removeLayer(State.userLineLabel);
+                State.userLineLabel = null;
+            }
+            State.lineAnchor = null;
         }
     });
 
@@ -688,6 +698,9 @@ export function showRangeCircle(lat, lon) {
 export function drawNearestHydrantLine(sourceLat, sourceLon) {
     if (!State.map) return;
 
+    // Anchor speichern, falls sich die Hydranten-Daten durch einen neuen Fetch ändern
+    State.lineAnchor = { lat: sourceLat, lon: sourceLon };
+
     // 1. Alten Status aufräumen
     if (State.userLine) {
         State.map.removeLayer(State.userLine);
@@ -704,7 +717,7 @@ export function drawNearestHydrantLine(sourceLat, sourceLon) {
 
     const sourcePoint = { lat: sourceLat, lon: sourceLon };
 
-    for (const [id, entry] of State.markerCache) {
+    for (const [, entry] of State.markerCache) {
         if (entry.isStation || entry.isDefib) continue;
 
         const hydrantPoint = { lat: entry.lat, lon: entry.lon };
@@ -872,6 +885,13 @@ export function renderMarkers(elements, zoom) {
             State.markerLayer.removeLayer(entry.marker);
             State.markerCache.delete(cacheId);
         }
+    }
+
+    // --- I. DISTANZ-LINIE AKTUALISIEREN ---
+    // Wenn ein Anker gesetzt ist (z.B. User Marker oder gecklickter Hydrant),
+    // zeichnen wir die Linie zu den JETZT AKTUELLEN Hydranten neu.
+    if (State.lineAnchor) {
+        drawNearestHydrantLine(State.lineAnchor.lat, State.lineAnchor.lon);
     }
 }
 

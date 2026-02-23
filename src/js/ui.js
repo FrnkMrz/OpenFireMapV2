@@ -325,7 +325,7 @@ export function locateUser() {
             console.error(err);
             showNotification("Standort konnte nicht ermittelt werden.");
         },
-        { enableHighAccuracy: true, timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
 }
 
