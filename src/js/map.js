@@ -133,8 +133,8 @@ export function initMapLogic() {
         // dürfen wir NICHT die ViewBox nehmen (die wird beim Zoomen kleiner).
         // Wir nehmen den Center und einen fixen Radius, der dem "Reference Zoom" entspricht.
 
-        let radiusMeters = 0;
-        let snapMeters = 0;
+        let radiusMeters;
+        let snapMeters;
 
         // Bucket: High Zoom (Hydranten) -> Wir simulieren immer ein Z15-Fenster
         if (rawZoom >= 15) {
@@ -202,7 +202,7 @@ export function initMapLogic() {
 
         // Tooltips gibt es nur ab Zoom 18. Bei Zoom-Out: offenen Tooltip sofort schließen.
         if (zoom < 18 && State.openTooltipMarker) {
-            try { State.openTooltipMarker.closeTooltip(); } catch (e) { /* ignore */ }
+            try { State.openTooltipMarker.closeTooltip(); } catch { /* ignore */ }
             State.openTooltipMarker = null;
         }
 
@@ -431,7 +431,7 @@ function getSVGContent(type) {
     }
 
     // Buchstabe ermitteln
-    let char = '';
+    let char;
     switch (type) {
         case 'underground': char = 'U'; break;
         case 'pillar': char = 'O'; break;
@@ -730,7 +730,7 @@ export function renderMarkers(elements, zoom) {
         // --- F. Darstellungs-Modus bestimmen ---
         // Wir müssen wissen, ob der Marker als "Punkt" oder als "SVG-Icon" dargestellt werden soll.
         // Das ändert sich je nach Zoomstufe.
-        let mode = 'standard';
+        let mode;
         if (isStation) {
             mode = (zoom < 14) ? 'dot' : 'svg';
         } else if (isDefib) {
@@ -785,7 +785,7 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
     let iconHtml;
     let className = '';
     let size = [28, 28];
-    let zIndex = 0;
+    let zIndex;
 
     // 1. Icon Konfiguration basierend auf Modus
     if (mode === 'dot') {
@@ -872,7 +872,7 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             const openMarker = State.openTooltipMarker;
             if (!openMarker) return;
             if (openMarker === currentMarker) return;
-            try { openMarker.closeTooltip(); } catch (e) { /* ignore */ }
+            try { openMarker.closeTooltip(); } catch { /* ignore */ }
             State.openTooltipMarker = null;
         };
 
@@ -930,7 +930,7 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         marker.on('tooltipopen', function (e) {
             // Tooltips gibt es nur ab Zoom-Level 18. Falls Leaflet ihn aus anderen Gründen öffnet: sofort schließen.
             if (State.map.getZoom() < 18) {
-                try { marker.closeTooltip(); } catch (e) { /* ignore */ }
+                try { marker.closeTooltip(); } catch { /* ignore */ }
                 return;
             }
             // Tooltip kann auch über Touch / Keyboard öffnen: Regel trotzdem durchziehen.

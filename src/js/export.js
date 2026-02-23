@@ -29,7 +29,7 @@ function getExportFilename(title, zoom) {
   const hour = String(now.getHours()).padStart(2, '0');
   const minute = String(now.getMinutes()).padStart(2, '0');
 
-  const safeTitle = (title || "OpenFireMap_Export").replace(/[\s\.:\/]/g, "_");
+  const safeTitle = (title || "OpenFireMap_Export").replace(/[\s.:/]/g, "_");
   return `${year}-${month}-${day}_${hour}-${minute}_Z${zoom}_${safeTitle}`;
 }
 
@@ -470,43 +470,7 @@ const lat2tile = (lat, z) =>
   worldSize(z);
 const lon2tile = (lon, z) => ((lon + 180) / 360) * worldSize(z);
 
-function getSVGContentForExport(type) {
-  const c = Config.colors;
-  if (type === "defibrillator") {
-    return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${c.defib}" stroke="white" stroke-width="5"/><path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/><path d="M55 45 L45 55 L55 55 L45 65" stroke="${c.defib}" stroke-width="3" fill="none"/></svg>`;
-  }
-  const isWater = [
-    "water_tank",
-    "cistern",
-    "fire_water_pond",
-    "suction_point",
-  ].includes(type);
-  const color = isWater ? c.water : c.hydrant;
 
-  if (type === "wall") {
-    return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/><circle cx="42" cy="52" r="18" fill="none" stroke="white" stroke-width="6" /><line x1="64" y1="34" x2="64" y2="70" stroke="white" stroke-width="6" stroke-linecap="round" /></svg>`;
-  }
-  let char = "";
-  switch (type) {
-    case "underground":
-      char = "U";
-      break;
-    case "pillar":
-      char = "O";
-      break;
-    case "pipe":
-      char = "I";
-      break;
-    case "dry_barrel":
-      char = "Ø";
-      break;
-    default:
-      char = "";
-  }
-  if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="${c.station}" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
-
-  return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ""}</svg>`;
-}
 
 /**
  * HILFSFUNKTION: KERN-RENDER-LOGIK
@@ -525,7 +489,7 @@ async function generateMapCanvas() {
 
   document.getElementById("export-setup").classList.add("hidden");
   document.getElementById("export-progress").classList.remove("hidden");
-  const progressBar = document.getElementById("progress-bar");
+
 
   function setStatus(msg) {
     console.log("Status:", msg);
@@ -594,7 +558,7 @@ async function generateMapCanvas() {
     try {
       const center = bounds.getCenter();
       displayTitle = await fetchLocationTitle(center.lat, center.lng);
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   }
 
   // 4. GRÖSSE BERECHNEN
@@ -641,8 +605,6 @@ async function generateMapCanvas() {
   // Parallel laden (Limit concurrency)
   const CONCURRENCY = 6;
   let active = 0;
-  let finished = 0;
-  const totalTiles = tileQueue.length;
 
   const results = []; // {x, y, img}
 
@@ -681,14 +643,11 @@ async function generateMapCanvas() {
         img.onload = () => {
           results.push({ ...item, img });
           active--;
-          finished++;
-          // setStatus(`${t("loading_tiles")} ${Math.round((finished / totalTiles) * 100)}%`);
           next();
         };
         img.onerror = () => {
           console.warn("Tile error", url);
           active--;
-          finished++;
           next();
         };
         img.src = url;
@@ -713,29 +672,7 @@ async function generateMapCanvas() {
   ctx.rect(margin, margin, mapWidth, mapHeight);
   ctx.clip(); // Nur innerhalb der Karte zeichnen
 
-  const iconCache = {};
-  const loadSVG = async (type) => {
-    if (iconCache[type]) return iconCache[type];
-    const svgStr = getSVGContentForExport(type);
-    const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.width = 100; // Explicit dimensions to help browser layout
-    img.height = 100;
 
-    await new Promise((resolve, reject) => {
-      img.onload = () => resolve(img);
-      img.onerror = (e) => {
-        console.error("Icon load error:", type);
-        reject(e);
-      };
-      img.src = url;
-    });
-
-    iconCache[type] = img;
-    URL.revokeObjectURL(url);
-    return img;
-  };
 
   console.log("Export: Rendering markers...", elementsForExport.length);
 
@@ -902,7 +839,7 @@ async function generateMapCanvas() {
   });
   ctx.fillText(timeStr, margin + mapWidth, footerY);
 
-  const safeTitle = titleText.replace(/[\s\.:]/g, "_");
+  const safeTitle = titleText.replace(/[\s.:]/g, "_");
   return { canvas, filename: `${safeTitle}_Z${targetZoom}` };
 }
 

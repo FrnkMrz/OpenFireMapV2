@@ -62,7 +62,7 @@ async function loadLangDict(code) {
   try {
     const mod = await import(`./lang/${clean}.js`);
     return mod.strings || mod.default || null;
-  } catch (_) { }
+  } catch { /* Modul konnte nicht geladen werden */ }
 
   return null;
 }

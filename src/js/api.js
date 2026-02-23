@@ -24,7 +24,7 @@ const DEBUG = () => (localStorage.getItem('OFM_DEBUG') === '1');
 
 const emit = (detail) => {
   // map.js (Trace/Overlay) kann darauf hören
-  try { window.dispatchEvent(new CustomEvent('ofm:overpass', { detail })); } catch (_) { /* ignore */ }
+  try { window.dispatchEvent(new CustomEvent('ofm:overpass', { detail })); } catch { /* ignore */ }
   if (DEBUG()) console.log('[OFM]', detail);
 };
 

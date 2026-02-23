@@ -73,7 +73,7 @@ async function deleteCacheEntry(key) {
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');
     tx.objectStore(STORE_NAME).delete(key);
-  } catch (e) { /* ignore */ }
+  } catch { /* ignore */ }
 }
 
 /**
@@ -90,7 +90,7 @@ export async function setCache(key, data) {
     };
 
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       const req = store.put(entry, key);
