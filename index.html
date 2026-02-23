@@ -24,6 +24,10 @@
         connect-src 'self' https://overpass-api.de https://overpass.kumi.systems https://maps.mail.ru https://nominatim.openstreetmap.org;
     ">
 
+    <!-- SECURITY: Permissions-Policy -->
+    <meta http-equiv="Permissions-Policy" content="accelerometer=(), camera=(), geolocation=(self), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()">
+
+
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-icon-180x180.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png">

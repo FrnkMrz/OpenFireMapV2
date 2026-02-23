@@ -35,7 +35,9 @@ export function initMapLogic() {
         if (savedView) {
             const parsed = JSON.parse(savedView);
             // Validierung: Lat/Lon/Zoom müssen sinnvoll sein
-            if (Array.isArray(parsed.center) && parsed.center.length === 2 && typeof parsed.zoom === 'number') {
+            if (Array.isArray(parsed.center) && parsed.center.length === 2 &&
+                typeof parsed.center[0] === 'number' && typeof parsed.center[1] === 'number' &&
+                typeof parsed.zoom === 'number') {
                 startCenter = parsed.center;
                 startZoom = parsed.zoom;
             }

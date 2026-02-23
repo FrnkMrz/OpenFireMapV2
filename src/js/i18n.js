@@ -46,7 +46,12 @@ function normalizeLang(code) {
   if (clean === 'de-de' || clean.startsWith('de-')) return 'de';
 
   // grundsätzlich: nur den Shortcode verwenden
-  return clean.split('-')[0] || DEFAULT_LANG;
+  const shortCode = clean.split('-')[0] || DEFAULT_LANG;
+
+  // Security: Nur a-z erlauben (Verhindert Path Traversal wie ../foo)
+  if (!/^[a-z]+$/.test(shortCode)) return DEFAULT_LANG;
+
+  return shortCode;
 }
 
 async function loadLangDict(code) {
@@ -57,7 +62,7 @@ async function loadLangDict(code) {
   try {
     const mod = await import(`./lang/${clean}.js`);
     return mod.strings || mod.default || null;
-  } catch (_) {}
+  } catch (_) { }
 
   return null;
 }
