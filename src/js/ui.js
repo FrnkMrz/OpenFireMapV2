@@ -15,7 +15,7 @@ import { t } from './i18n.js';
 // Wir importieren Funktionen aus export.js, um sie auf Buttons zu legen
 import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, exportAsPDF, cancelExport, fetchLocationTitle } from './export.js';
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
-import { setBaseLayer } from './map.js';
+import { setBaseLayer, drawNearestHydrantLine } from './map.js';
 
 // ...
 
@@ -295,6 +295,9 @@ export function locateUser() {
 
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
 
+            // 3b. Nächsten Hydranten suchen und Linie ziehen
+            drawNearestHydrantLine(lat, lng);
+
             // 4. Timer (25 Sekunden)
             if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
 
@@ -302,6 +305,15 @@ export function locateUser() {
                 if (State.userMarker) {
                     State.map.removeLayer(State.userMarker);
                     State.userMarker = null;
+                }
+                // Linie und Label aufräumen
+                if (State.userLine) {
+                    State.map.removeLayer(State.userLine);
+                    State.userLine = null;
+                }
+                if (State.userLineLabel) {
+                    State.map.removeLayer(State.userLineLabel);
+                    State.userLineLabel = null;
                 }
             }, 25000);
 

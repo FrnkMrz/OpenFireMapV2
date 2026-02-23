@@ -206,6 +206,25 @@ export function initMapLogic() {
             State.openTooltipMarker = null;
         }
 
+        // Distance Line visibility logic
+        if (State.userLine) {
+            if (zoom >= 17) {
+                if (!State.map.hasLayer(State.userLine)) {
+                    State.userLine.addTo(State.map);
+                }
+                if (State.userLineLabel && !State.map.hasLayer(State.userLineLabel)) {
+                    State.userLineLabel.addTo(State.map);
+                }
+            } else {
+                if (State.map.hasLayer(State.userLine)) {
+                    State.map.removeLayer(State.userLine);
+                }
+                if (State.userLineLabel && State.map.hasLayer(State.userLineLabel)) {
+                    State.map.removeLayer(State.userLineLabel);
+                }
+            }
+        }
+
         // 2) Daten-Loading nur, wenn es auch Sinn ergibt
         const mode = getLoadMode(zoom);
         if (mode === 'none') {
@@ -661,6 +680,86 @@ export function showRangeCircle(lat, lon) {
         labelMarker.bindTooltip("100 m", { permanent: true, direction: 'center', className: 'range-label', offset: [0, 0] }).openTooltip();
     }
 }
+
+/**
+ * Zieht eine Linie vom Nutzer (oder Ankerpunkt) zum nächsten Hydranten
+ * und zeigt die Distanz an.
+ */
+export function drawNearestHydrantLine(sourceLat, sourceLon) {
+    if (!State.map) return;
+
+    // 1. Alten Status aufräumen
+    if (State.userLine) {
+        State.map.removeLayer(State.userLine);
+        State.userLine = null;
+    }
+    if (State.userLineLabel) {
+        State.map.removeLayer(State.userLineLabel);
+        State.userLineLabel = null;
+    }
+
+    // 2. Hydranten suchen (wir ignorieren Fire Stations und Defis)
+    let nearest = null;
+    let minDistance = Infinity;
+
+    const sourcePoint = { lat: sourceLat, lon: sourceLon };
+
+    for (const [id, entry] of State.markerCache) {
+        if (entry.isStation || entry.isDefib) continue;
+
+        const hydrantPoint = { lat: entry.lat, lon: entry.lon };
+        const dist = distanceMeters(sourcePoint, hydrantPoint);
+
+        // Nimm den nächsten, aber ignoriere "0", wenn man exakt auf den Hydranten klickt
+        if (dist > 0 && dist < minDistance) {
+            minDistance = dist;
+            nearest = entry;
+        }
+    }
+
+    if (!nearest) return;
+
+    // 3. Linie zeichnen (wenn Zoom passt)
+    const zoom = State.map.getZoom();
+    const isVisibleProps = (zoom >= 17);
+
+    // Gestrichelte, dünne Linie zum nächsten Hydranten
+    State.userLine = L.polyline([
+        [sourceLat, sourceLon],
+        [nearest.lat, nearest.lon]
+    ], {
+        color: Config.colors.water || '#3b82f6',
+        weight: 2,
+        dashArray: '4, 6',
+        opacity: 0.8,
+        interactive: false
+    });
+
+    if (isVisibleProps) {
+        State.userLine.addTo(State.map);
+    }
+
+    // 4. Distanz-Label in der Mitte platzieren
+    const midLat = (sourceLat + nearest.lat) / 2;
+    const midLon = (sourceLon + nearest.lon) / 2;
+    const distanceStr = Math.round(minDistance) + " m";
+
+    // Ein unsichtbarer Marker, der nur das Tooltip trägt
+    State.userLineLabel = L.marker([midLat, midLon], { opacity: 0, interactive: false });
+
+    // Style-Klasse für feinen Text
+    State.userLineLabel.bindTooltip(distanceStr, {
+        permanent: true,
+        direction: 'center',
+        className: 'distance-label font-bold text-xs bg-white/80 px-1 rounded text-blue-600 border border-blue-200 shadow-sm',
+        offset: [0, 0]
+    });
+
+    if (isVisibleProps) {
+        State.userLineLabel.addTo(State.map);
+    }
+}
+
 /**
  * Rendert die Marker basierend auf den übergebenen Daten (elements).
  * OPTIMIERUNG: Nutzt "Diffing", um Flackern zu verhindern.
@@ -768,10 +867,10 @@ export function renderMarkers(elements, zoom) {
 
     // --- H. AUFRÄUMEN (Garbage Collection) ---
     // Wir entfernen alle Marker von der Karte, die im aktuellen Datensatz NICHT mehr vorkommen.
-    for (const [id, entry] of State.markerCache) {
-        if (!markersToKeep.has(id)) {
+    for (const [cacheId, entry] of State.markerCache) {
+        if (!markersToKeep.has(cacheId)) {
             State.markerLayer.removeLayer(entry.marker);
-            State.markerCache.delete(id);
+            State.markerCache.delete(cacheId);
         }
     }
 }
@@ -818,11 +917,12 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             zIndexOffset: zIndex
         });
 
-        // Klick-Event für Hydranten-Radius
+        // Klick-Event für Hydranten-Radius und neue Locate-Linie
         if (!isStation && !isDefib) {
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 showRangeCircle(lat, lon);
+                drawNearestHydrantLine(lat, lon);
             });
         }
     }
