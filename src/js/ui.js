@@ -262,116 +262,68 @@ export function locateUser() {
         return;
     }
 
-    // Verhindere überlappende Clicks ("Ging nur ein mal" Bug)
-    if (State.isLocating) return;
-    State.isLocating = true;
-
-    // SAFETY NET: Falls durch eine unerwartete Exception oder Safari-Eigenheit
-    // finishLocating() nie aufgerufen wird, setzen wir den Lock nach 20s automatisch zurück.
-    // So ist der Button NIEMALS dauerhaft tot.
-    const safetyTimer = setTimeout(() => { State.isLocating = false; }, 20000);
-
     const btn = document.getElementById('locate-btn');
     const icon = btn ? btn.querySelector('svg') : null;
     if (icon) icon.classList.add('animate-spin');
 
-    const finishLocating = () => {
-        State.isLocating = false;
-        clearTimeout(safetyTimer);
-        if (icon) icon.classList.remove('animate-spin');
-    };
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            if (icon) icon.classList.remove('animate-spin');
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
 
-    const handleSuccess = (pos) => {
-        finishLocating();
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
+            // 1. ZUR POSITION SPRINGEN
+            let targetZoom = Config.locateZoom || 17;
+            if (State.map) {
+                const currentZoom = State.map.getZoom();
+                targetZoom = currentZoom >= 18 ? currentZoom : targetZoom;
+                State.map.flyTo([lat, lng], targetZoom);
+            }
 
-        // 1. ZUR POSITION SPRINGEN (Mit Zoom-Check)
-        let targetZoom = Config.locateZoom || 17;
-        if (State.map) {
-            const currentZoom = State.map.getZoom();
-
-            // LOGIK: Wenn wir schon tief drin sind (z.B. 18), nicht rauszoomen!
-            // Sonst den Standard-Wert (17) nehmen.
-            targetZoom = currentZoom >= 18 ? currentZoom : targetZoom;
-
-            State.map.flyTo([lat, lng], targetZoom);
-        }
-
-        // 2. Alten Marker entfernen
-        if (State.userMarker) {
-            State.map.removeLayer(State.userMarker);
-        }
-
-        // 3. NEUER MARKER (Die Lösung für das "Wandern")
-        const dotIcon = L.divIcon({
-            className: 'user-location-wrapper',
-            html: '<div class="user-location-inner"></div>',
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-        });
-
-        State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
-
-        // 3b. Nächsten Hydranten suchen und Linie ziehen (mit Ziel-Zoom!)
-        drawNearestHydrantLine(lat, lng);
-
-        // 4. Timer (25 Sekunden)
-        if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
-
-        State.userLocationTimer = setTimeout(() => {
+            // 2. Alten Marker entfernen
             if (State.userMarker) {
                 State.map.removeLayer(State.userMarker);
-                State.userMarker = null;
             }
-            // Linie und Label aufräumen
-            if (State.userLine) {
-                State.map.removeLayer(State.userLine);
-                State.userLine = null;
-            }
-            if (State.userLineLabel) {
-                State.map.removeLayer(State.userLineLabel);
-                State.userLineLabel = null;
-            }
-            // Anchor ebenfalls leeren, sonst erscheint Linie beim Zoomen wieder!
-            State.lineAnchor = null;
-        }, 25000);
 
-        showNotification(t('geo_found') || "Standort gefunden!");
-    };
+            // 3. Neuer Marker
+            const dotIcon = L.divIcon({
+                className: 'user-location-wrapper',
+                html: '<div class="user-location-inner"></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+            State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
 
-    // STRATEGIE: watchPosition statt getCurrentPosition!
-    // macOS Safari (CoreLocation) verweigert getCurrentPosition oft komplett
-    // mit kCLErrorLocationUnknown (Code 2). watchPosition hingegen abonniert
-    // einen kontinuierlichen Stream und liefert meistens erfolgreich,
-    // da Safari es als "laufende Überwachung" behandelt, nicht als Einmal-Abfrage.
-    let resolved = false;
+            // 4. Linie zum nächsten Hydranten
+            drawNearestHydrantLine(lat, lng);
 
-    const watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-            if (resolved) return; // Nur den ERSTEN Treffer verwenden
-            resolved = true;
-            navigator.geolocation.clearWatch(watchId);
-            clearTimeout(watchTimeout);
-            handleSuccess(pos);
+            // 5. Timer (25 Sekunden) – Marker und Linie aufräumen
+            if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
+            State.userLocationTimer = setTimeout(() => {
+                if (State.userMarker) {
+                    State.map.removeLayer(State.userMarker);
+                    State.userMarker = null;
+                }
+                if (State.userLine) {
+                    State.map.removeLayer(State.userLine);
+                    State.userLine = null;
+                }
+                if (State.userLineLabel) {
+                    State.map.removeLayer(State.userLineLabel);
+                    State.userLineLabel = null;
+                }
+                State.lineAnchor = null;
+            }, 25000);
+
+            showNotification(t('geo_found') || "Standort gefunden!");
         },
         (err) => {
-            // watchPosition kann auch Fehler feuern – wir ignorieren sie,
-            // solange der Timeout noch nicht abgelaufen ist.
-            // CoreLocation sendet oft erst einen Fehler, dann kurz darauf den echten Standort.
-            console.warn("watchPosition error (waiting for fix):", err.message);
+            if (icon) icon.classList.remove('animate-spin');
+            console.warn("GPS error:", err.code, err.message);
+            showNotification(t('geo_error') || "Standort konnte nicht ermittelt werden.");
         },
-        { enableHighAccuracy: true, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000 }
     );
-
-    // Timeout: Wenn nach 15 Sekunden kein Standort kam, aufgeben.
-    const watchTimeout = setTimeout(() => {
-        if (resolved) return;
-        resolved = true;
-        navigator.geolocation.clearWatch(watchId);
-        finishLocating();
-        showNotification(t('geo_error') || "Standort konnte nicht ermittelt werden.");
-    }, 15000);
 }
 
 /* =============================================================================
