@@ -765,6 +765,53 @@ export function drawNearestHydrantLine(sourceLat, sourceLon) {
 }
 
 /**
+ * Zeichnet eine direkte Linie vom Quellpunkt zum angegebenen Zielpunkt.
+ * Wird verwendet, wenn der User auf einen bestimmten Hydranten klickt.
+ */
+function drawDirectLine(fromLat, fromLon, toLat, toLon) {
+    if (!State.map) return;
+
+    // Alten Status aufräumen
+    if (State.userLine) {
+        State.map.removeLayer(State.userLine);
+        State.userLine = null;
+    }
+    if (State.userLineLabel) {
+        State.map.removeLayer(State.userLineLabel);
+        State.userLineLabel = null;
+    }
+
+    const dist = distanceMeters({ lat: fromLat, lon: fromLon }, { lat: toLat, lon: toLon });
+    console.log('[LINE] Direct line to clicked hydrant, dist =', Math.round(dist), 'm');
+
+    State.userLine = L.polyline([
+        [fromLat, fromLon],
+        [toLat, toLon]
+    ], {
+        color: Config.colors.water || '#3b82f6',
+        weight: 3,
+        dashArray: '5, 8',
+        opacity: 0.9,
+        interactive: false,
+        className: 'nearest-hydrant-line'
+    });
+    State.userLine.addTo(State.map);
+
+    const midLat = (fromLat + toLat) / 2;
+    const midLon = (fromLon + toLon) / 2;
+    const distanceStr = Math.round(dist) + " m";
+
+    State.userLineLabel = L.marker([midLat, midLon], { opacity: 0, interactive: false });
+    State.userLineLabel.bindTooltip(distanceStr, {
+        permanent: true,
+        direction: 'center',
+        className: 'distance-label font-bold text-xs bg-white/80 px-1 rounded text-blue-600 border border-blue-200 shadow-sm',
+        offset: [0, 0]
+    });
+    State.userLineLabel.addTo(State.map);
+}
+
+/**
  * Rendert die Marker basierend auf den übergebenen Daten (elements).
  * OPTIMIERUNG: Nutzt "Diffing", um Flackern zu verhindern.
  * Es werden nur Marker entfernt/hinzugefügt, die sich tatsächlich geändert haben.
@@ -928,12 +975,21 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             zIndexOffset: zIndex
         });
 
-        // Klick-Event für Hydranten-Radius und neue Locate-Linie
+        // Klick-Event für Hydranten-Radius und Distanz-Linie
         if (!isStation && !isDefib) {
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 showRangeCircle(lat, lon);
-                drawNearestHydrantLine(lat, lon);
+
+                // Wenn der User einen aktiven Standort-Marker hat -> 
+                // Linie von USER zu DIESEM Hydranten zeichnen.
+                // Sonst: nächsten Hydranten relativ zum geklickten finden.
+                if (State.userMarker) {
+                    const userLatLng = State.userMarker.getLatLng();
+                    drawDirectLine(userLatLng.lat, userLatLng.lng, lat, lon);
+                } else {
+                    drawNearestHydrantLine(lat, lon);
+                }
             });
         }
     }
