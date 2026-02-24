@@ -11,6 +11,7 @@
 import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
+import { APP_VERSION } from './version.js';
 
 // Lazy-Loader: export.js (inkl. jspdf + html2canvas) wird erst bei Bedarf geladen.
 // Das spart ~70 KB gzipped bei jedem App-Start.
@@ -383,6 +384,12 @@ export function locateUser(highAccuracy = true) {
    ============================================================================= */
 
 export function setupUI() {
+    // 0. Version in Legal Modal eintragen (falls DOM existiert)
+    const versionEl = document.getElementById('app-version');
+    if (versionEl) {
+        versionEl.textContent = `v${APP_VERSION}`;
+    }
+
     // 1. Haupt-Buttons verbinden
     addClick('layer-btn-trigger', toggleLayerMenu);
     addClick('export-btn-trigger', toggleExportMenu);
