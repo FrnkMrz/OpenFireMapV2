@@ -29,10 +29,12 @@ OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik (Vite, ES Module
 ### Technische Eigenschaften
 
 - **Frontend only** (kein Backend)
+- **Online-Only by Design** (setzt eine aktive Internetverbindung für Live-Kartendaten voraus, keine Offline-App)
 - **Vite** als Build-Tool und Dev-Server
 - **Leaflet** für Kartenlogik (lokal eingebunden)
 - **OpenStreetMap** Daten (via Overpass API & Nominatim)
 - **Tailwind CSS** für das Styling
+- **PWA Ready** (Installierbar via Browser)
 - Mehrsprachigkeit mit Fallback (Deutsch / Englisch)
 - Keine externen CDN-Abhängigkeiten zur Laufzeit
 
@@ -41,11 +43,11 @@ OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik (Vite, ES Module
 ### Features
 
 - 🗺️ **Interaktive Karte** mit Feuerwachen, Hydranten, Wasserstellen und Defibrillatoren
-- 📦 **Intelligentes Caching** (IndexedDB) – einmal geladen, offline verfügbar
-- 🔄 **Stale-While-Revalidate** – sofortige Anzeige, Aktualisierung im Hintergrund
+- 📦 **Intelligentes Caching** (IndexedDB) für schnelles Neuladen bekannter Bereiche
+- 🔄 **Stale-While-Revalidate** – sofortige Anzeige veralteter Daten, Live-Aktualisierung im Hintergrund
 - 🌍 **28 Sprachen** unterstützt
 - 📤 **Export** als PNG, PDF oder GPX
-- 🛰️ **Satellitenansicht** mit optimierten Grenzen
+- 🛰️ **Satellitenansicht** (Bing Maps, benötigt Online-Verbindung)
 - 📱 **Responsive Design** – funktioniert auf Desktop und Mobil
 
 ### Projektstruktur
@@ -108,6 +110,7 @@ Nominatim Search API (nutzt OSM Daten).
 fire stations, water supply points, hydrants and defibrillators based on **OpenStreetMap (OSM)**.
 
 This is a **non-commercial learning project** focused on clean JavaScript, maintainable structure and GitHub workflows.
+Please note: This is an **online-only application** by design and requires an active internet connection to stream live map data and search results. It is not intended for offline use in emergency situations.
 
 ---
 
