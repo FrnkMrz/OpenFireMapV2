@@ -268,21 +268,23 @@ let isLocating = false;
 /**
  * Bestimmt den Standort des Nutzers via Browser-GPS.
  */
-export function locateUser() {
+export function locateUser(highAccuracy = true) {
     if (!navigator.geolocation) {
         showNotification("GPS nicht unterstützt");
         return;
     }
 
-    // Spam-Schutz: Wenn bereits eine Ortung läuft, ignorieren wir weitere Klicks.
+    // Spam-Schutz: Wenn bereits eine Ortung läuft (und es kein automatischer Fallback ist), ignorieren wir weitere Klicks.
     // Das verhindert OS-seitige Timeouts (Safari/MacOS locken das GPS sonst temporär).
-    if (isLocating) return;
+    if (isLocating && highAccuracy) return;
 
     isLocating = true;
 
     const btn = document.getElementById('locate-btn');
     const icon = btn ? btn.querySelector('svg') : null;
-    if (icon) icon.classList.add('animate-spin');
+
+    // Icon nur beim ersten Aufruf drehen lassen
+    if (icon && highAccuracy) icon.classList.add('animate-spin');
 
     // Safety-Net: Manche Browser (Safari) verschlucken manchmal den Error-Callback bei Timeouts.
     // Damit der Button nicht für immer gelockt bleibt, entsperren wir ihn nach 12 Sekunden hart.
@@ -348,15 +350,28 @@ export function locateUser() {
         },
         (err) => {
             clearTimeout(safetyTimer);
+
+            // FALLBACK FÜR SAFARI/MACOS:
+            // Fehler 2 (Position unavailable) oder 3 (Timeout) treten oft bei "highAccuracy: true" 
+            // an Desktop-Geräten (macOS) auf. Wir versuchen es dann transparent ohne High-Accuracy noch einmal.
+            if (highAccuracy && (err.code === 2 || err.code === 3 || err.code === 1)) {
+                console.warn(`[GPS Fallback] HighAccuracy failed (Code ${err.code}). Retrying with low accuracy...`);
+                locateUser(false); // Rekursiver Aufruf mit low-accuracy
+                return;
+            }
+
             if (icon) icon.classList.remove('animate-spin');
             console.error('[GPS Error]', err);
             const errMsg = t('gps_error') || "Standort konnte nicht ermittelt werden.";
-            showNotification(`${errMsg} (${err.code}: ${err.message})`, 5000);
+            // Safari liefert bei Code 2 oft eine leere (tote) message mit.
+            const desc = err.message ? `: ${err.message}` : '';
+            showNotification(`${errMsg} (${err.code}${desc})`, 5000);
+
             isLocating = false;
         },
         {
-            enableHighAccuracy: true,
-            timeout: 10000,
+            enableHighAccuracy: highAccuracy,
+            timeout: highAccuracy ? 6000 : 10000,
             maximumAge: 10000 // Erlaubt dem Browser, eine bis zu 10sek alte Position zu verwenden (schont Systemressourcen stark)
         }
     );
