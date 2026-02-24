@@ -895,30 +895,30 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
     let marker;
     let iconHtml;
     let className = '';
-    let size = [38, 38];
+    let size = [28, 28];
     let zIndex;
 
     // 1. Icon Konfiguration basierend auf Modus
     if (mode === 'dot') {
         // Kleine Punkte für niedrige Zoomstufen
         if (isStation) {
-            marker = L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [14, 14] }) });
+            marker = L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10, 10] }) });
         } else if (isDefib) {
-            marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [14, 14] }) });
+            marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10, 10] }) });
         } else {
             // Wasser/Hydranten Unterscheidung für Dots
             const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
             className = isWater ? 'tank-dot' : 'hydrant-dot';
-            marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [14, 14] }) });
+            marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10, 10] }) });
         }
     } else {
         if (isStation) {
-            size = [44, 44]; zIndex = 1000;
+            size = [32, 32]; zIndex = 1000;
         } else if (isDefib) {
-            size = [38, 38]; zIndex = 2000;
+            size = [28, 28]; zIndex = 2000;
         } else {
             zIndex = 0;
-            // Falls keines davon, bleibt size auf [38, 38] vom Standard oben
+            // Falls keines davon, bleibt size auf [28, 28] vom Standard oben
         }
 
         iconHtml = getSVGContent(type, size[0]); // Explicit Pixel Size übergeben
