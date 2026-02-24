@@ -714,11 +714,17 @@ export function drawBlueLine(targetLat, targetLon, isRedraw = false) {
         return;
     }
 
+    const { lat: startLat, lng: startLon } = State.userMarker.getLatLng();
+
+    // Wenn der Nutzer-Marker nicht im sichtbaren Bereich der Karte liegt (z.B. weit weg gescrollt), Linie nicht zeichnen
+    if (!State.map.getBounds().contains([startLat, startLon])) {
+        if (State.distanceLayerGroup) State.distanceLayerGroup.clearLayers();
+        return;
+    }
+
     if (State.distanceLayerGroup) {
         State.distanceLayerGroup.clearLayers();
     }
-
-    const { lat: startLat, lng: startLon } = State.userMarker.getLatLng();
 
     const dist = Math.round(distanceMeters({ lat: startLat, lon: startLon }, { lat: targetLat, lon: targetLon }));
 
