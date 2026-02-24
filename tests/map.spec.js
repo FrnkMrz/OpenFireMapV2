@@ -17,7 +17,7 @@ test('has title and map container', async ({ page }) => {
 
 test('Layer-Menü öffnet und schließt', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const layerMenu = page.locator('#layer-menu');
     await expect(layerMenu).toHaveClass(/hidden/);
@@ -33,7 +33,7 @@ test('Layer-Menü öffnet und schließt', async ({ page }) => {
 
 test('Export-Menü öffnet und schließt', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const exportMenu = page.locator('#export-menu');
     await expect(exportMenu).toHaveClass(/hidden/);
@@ -48,7 +48,7 @@ test('Export-Menü öffnet und schließt', async ({ page }) => {
 
 test('Info & Recht Modal öffnet und schließt', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const legalModal = page.locator('#legal-modal');
 
@@ -61,7 +61,7 @@ test('Info & Recht Modal öffnet und schließt', async ({ page }) => {
 
 test('Suchfeld akzeptiert Eingabe', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const searchInput = page.locator('#search-input');
     await expect(searchInput).toBeAttached();
@@ -76,7 +76,7 @@ test('Suchfeld akzeptiert Eingabe', async ({ page }) => {
 
 test('Leaflet-Karte ist initialisiert', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Leaflet-Container existiert
     const leafletContainer = page.locator('.leaflet-container');
@@ -93,7 +93,7 @@ test('Leaflet-Karte ist initialisiert', async ({ page }) => {
 
 test('Escape schließt offene Menüs', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const layerMenu = page.locator('#layer-menu');
 
