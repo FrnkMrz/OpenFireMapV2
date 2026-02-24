@@ -537,3 +537,15 @@ export async function fetchDataForExport(bounds, zoom, signal) {
     signal
   });
 }
+
+// ---- Test-Exports (nur für Unit-Tests, nicht für die App) ----
+export const _testing = {
+  snapToGrid,
+  roundCoord,
+  makeBBoxKey,
+  epHealthyOrder,
+  epGet,
+  epMarkOk,
+  epMarkFail,
+  EP
+};

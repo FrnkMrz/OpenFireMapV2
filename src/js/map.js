@@ -1006,3 +1006,12 @@ function escapeHtml(text) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
+// ---- Test-Exports (nur für Unit-Tests, nicht für die App) ----
+export const _testing = {
+    isFireStation,
+    getElementLatLon,
+    distanceMeters,
+    countTags,
+    clusterFireStations
+};
