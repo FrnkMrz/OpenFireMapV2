@@ -1,3 +1,17 @@
+/**
+ * Service Worker für OpenFireMapV2
+ * 
+ * HINWEIS ZUR ARCHITEKTUR (ONLINE-ONLY):
+ * Diese PWA ist konzeptionell eine ONLINE-Anwendung. 
+ * Der Service Worker speichert lediglich die "App-Hülle" (HTML, CSS, JS, UI-Icons) im Cache, 
+ * damit die App sofort (ohne Ladebildschirm) startet und installierbar ist.
+ * 
+ * Echtzeit-Daten (Overpass-API, Nominatim) und Kartenkacheln (Tiles) werden 
+ * BEWUSST NICHT vom Service Worker gecached, da ein Offline-Betrieb 
+ * (z.B. im Waldbrandeinsatz ohne Netz) nicht vorgesehen ist und gefährlich 
+ * veraltete Wasserentnahmestellen suggerieren könnte.
+ */
+
 const CACHE_NAME = 'ofm-v4-static';
 // Nur wirklich statische Assets precachen (keine gehashten Bundles!)
 const ASSETS = [

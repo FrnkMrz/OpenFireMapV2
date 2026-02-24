@@ -15,6 +15,7 @@ export function initMapLogic() {
     State.markerLayer = L.layerGroup();
     State.boundaryLayer = L.layerGroup();
     State.rangeLayerGroup = L.layerGroup();
+    State.distanceLayerGroup = L.layerGroup(); // blaue Linie + Label
 
     // NEU: Wir initialisieren einen Cache für die Marker-Verwaltung.
     // Speichert: ID -> { marker: LeafletMarker, type: String, mode: String }
@@ -55,6 +56,7 @@ export function initMapLogic() {
 
     State.boundaryLayer.addTo(State.map);
     State.rangeLayerGroup.addTo(State.map);
+    State.distanceLayerGroup.addTo(State.map);
     State.markerLayer.addTo(State.map);
 
     setBaseLayer('voyager');
@@ -191,6 +193,13 @@ export function initMapLogic() {
 
     State.map.on('moveend zoomend', () => {
         const zoom = State.map.getZoom();
+
+        // 0) Blaue Linie auf Zoom < 17 verbergen, sonst neu rendern falls Ziel aktiv
+        if (zoom < 17) {
+            if (State.distanceLayerGroup) State.distanceLayerGroup.clearLayers();
+        } else if (State.distanceTarget && State.userMarker) {
+            drawBlueLine(State.distanceTarget.lat, State.distanceTarget.lon, true);
+        }
 
         // 1) Re-Rendering aus Cache, aber nur bei Bucket-Wechsel.
         // Beim Zoomen (vor allem raus) wollen wir sofort reagieren, aber nicht bei jedem moveend alles neu bauen.
@@ -365,6 +374,7 @@ export function initMapLogic() {
     State.map.on('click', () => {
         if (!State.selection.active) {
             State.rangeLayerGroup.clearLayers();
+            clearDistanceLine();
         }
     });
 
@@ -641,24 +651,119 @@ function generateTooltip(tags) {
 // Kreis-Funktion (jetzt mit Config-Farbe)
 export function showRangeCircle(lat, lon) {
     State.rangeLayerGroup.clearLayers();
-    const zoom = State.map.getZoom();
-    if (zoom < 16) return;
+    const currentZoom = State.map.getZoom();
 
-    // Hier nutzen wir Config.colors.rangeCircle
+    if (currentZoom < 16) return;
+
     L.circle([lat, lon], {
         color: Config.colors.rangeCircle,
         fillColor: Config.colors.rangeCircle,
         fillOpacity: 0.15,
-        radius: 100, weight: 2, dashArray: '5, 8', interactive: false
+        radius: 100,
+        weight: 2,
+        dashArray: '5, 8',
+        interactive: false
     }).addTo(State.rangeLayerGroup);
 
-    if (zoom >= 17) {
-        const latRad = lat * Math.PI / 180;
-        const kmPerDegLon = 111.32 * Math.cos(latRad);
-        const offsetLon = 0.05 / kmPerDegLon;
+    // Bei < 17 nur den Kreis (Label wäre zu störend / würde überlappen)
+    if (currentZoom >= 17) {
+        // Berechne den genauen Nord-Punkt für das Label
+        // Radius=100m in lat (~0.0009 Grad)
+        const latRad = lat * (Math.PI / 180);
+        // ~ 111.32 km pro Breitengrad (1 = 111320m)
+        const latOffset = 100 / (111.32 * 1000 * Math.cos(latRad));
 
-        const labelMarker = L.marker([lat, lon + offsetLon], { opacity: 0, interactive: false }).addTo(State.rangeLayerGroup);
-        labelMarker.bindTooltip("100 m", { permanent: true, direction: 'center', className: 'range-label', offset: [0, 0] }).openTooltip();
+        // Marker für das Text-Label am oberen Rand
+        L.marker([lat + latOffset, lon], { opacity: 0, interactive: false })
+            .addTo(State.rangeLayerGroup)
+            .bindTooltip('100 m', {
+                permanent: true,
+                direction: 'center',
+                className: 'range-label',
+                offset: [0, 0]
+            })
+            .openTooltip();
+    }
+}
+
+// ============================================================================
+// BLAUE DISTANZ-LINIE
+// ============================================================================
+
+export function clearDistanceLine() {
+    if (State.distanceLayerGroup) {
+        State.distanceLayerGroup.clearLayers();
+    }
+    State.distanceTarget = null;
+}
+
+export function drawBlueLine(targetLat, targetLon, isRedraw = false) {
+    if (!State.userMarker) {
+        clearDistanceLine();
+        return;
+    }
+    const zoom = State.map.getZoom();
+
+    // Position immer speichern, auch wenn wir sie gerade wegen Zoom nicht rendern
+    if (!isRedraw) {
+        State.distanceTarget = { lat: targetLat, lon: targetLon };
+    }
+
+    if (zoom < 17) {
+        if (State.distanceLayerGroup) State.distanceLayerGroup.clearLayers();
+        return;
+    }
+
+    if (State.distanceLayerGroup) {
+        State.distanceLayerGroup.clearLayers();
+    }
+
+    const { lat: startLat, lng: startLon } = State.userMarker.getLatLng();
+
+    const dist = Math.round(distanceMeters({ lat: startLat, lon: startLon }, { lat: targetLat, lon: targetLon }));
+
+    // Linie zeichnen
+    L.polyline([[startLat, startLon], [targetLat, targetLon]], {
+        color: '#3b82f6', // tailwind blue-500
+        weight: 3,
+        dashArray: '5, 8',
+        interactive: false
+    }).addTo(State.distanceLayerGroup);
+
+    // Label zeichnen
+    const midLat = (startLat + targetLat) / 2;
+    const midLon = (startLon + targetLon) / 2;
+
+    const labelIcon = L.divIcon({
+        className: 'distance-label-icon',
+        html: `<div style="background: rgba(255,255,255,0.9); border: 1px solid #3b82f6; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #3b82f6; white-space: nowrap; transform: translate(-50%, -50%); box-shadow: 0 1px 3px rgba(0,0,0,0.2); pointer-events: none;">${dist} m</div>`,
+        iconSize: [0, 0]
+    });
+
+    L.marker([midLat, midLon], { icon: labelIcon, interactive: false }).addTo(State.distanceLayerGroup);
+}
+
+export function drawLineToNearest() {
+    if (!State.userMarker) return;
+
+    let closest = null;
+    let minDist = Infinity;
+    const { lat: startLat, lng: startLon } = State.userMarker.getLatLng();
+
+    for (const data of State.markerCache.values()) {
+        // Only consider markers that are currently rendered and not stations/defibs
+        if (data.marker && !data.isStation && !data.isDefib) {
+            const markerLatLng = data.marker.getLatLng();
+            const dist = distanceMeters({ lat: startLat, lon: startLon }, { lat: markerLatLng.lat, lon: markerLatLng.lng });
+            if (dist < minDist) {
+                minDist = dist;
+                closest = markerLatLng;
+            }
+        }
+    }
+
+    if (closest) {
+        drawBlueLine(closest.lat, closest.lon);
     }
 }
 /**
@@ -886,11 +991,12 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         // Daher: alle Click-Listener entfernen und unseren Radius-Click danach gezielt wieder anbinden.
         marker.off('click');
 
-        // Klick bleibt ausschließlich für den 100 m Radius (Hydranten/Wasser etc.),
+        // Klick bleibt ausschließlich für den 100 m Radius (Hydranten/Wasser etc.) und Distanz-Linie,
         // NICHT für Tooltips.
         if (!isStation && !isDefib) {
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
+                drawBlueLine(lat, lon); // Update Linie
                 showRangeCircle(lat, lon);
             });
         }

@@ -20,7 +20,7 @@ async function getExport() {
     return _exportModule;
 }
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
-import { setBaseLayer } from './map.js';
+import { setBaseLayer, clearDistanceLine, drawLineToNearest } from './map.js';
 
 // ...
 
@@ -296,6 +296,7 @@ export function locateUser() {
             // 2. Alten Marker entfernen
             if (State.userMarker) {
                 State.map.removeLayer(State.userMarker);
+                clearDistanceLine();
             }
 
             // 3. NEUER MARKER (Die Lösung für das "Wandern")
@@ -308,6 +309,9 @@ export function locateUser() {
 
             State.userMarker = L.marker([lat, lng], { icon: dotIcon }).addTo(State.map);
 
+            // 3b. Blaue Linie zum nächsten Hydranten zeichnen
+            drawLineToNearest();
+
             // 4. Timer (25 Sekunden)
             if (State.userLocationTimer) clearTimeout(State.userLocationTimer);
 
@@ -315,6 +319,7 @@ export function locateUser() {
                 if (State.userMarker) {
                     State.map.removeLayer(State.userMarker);
                     State.userMarker = null;
+                    clearDistanceLine();
                 }
             }, 25000);
 
