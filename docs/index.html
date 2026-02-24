@@ -7,6 +7,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <title>OpenFireMap.org</title>
+    <!-- DPR Scaling Script for Android High-DPI displays -->
+    <script>
+        document.documentElement.style.setProperty('--dpr', Math.max(1, window.devicePixelRatio || 1));
+        if (/Android/i.test(navigator.userAgent)) {
+            document.documentElement.classList.add('is-android');
+        }
+    </script>
 
     <meta property="og:title" content="OpenFireMap.org">
     <meta property="og:description"
@@ -43,8 +50,8 @@
       So bleibt die Reihenfolge stabil (Leaflet -> config -> app),
       ohne Timing-Probleme mit defer/module.
     -->
-  <script type="module" crossorigin src="./assets/index-BfkG40qS.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-Bq5nqH65.css">
+  <script type="module" crossorigin src="./assets/index-AtYs-_E1.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BgMggkDS.css">
 </head>
 
 <body>

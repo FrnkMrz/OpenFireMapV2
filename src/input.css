@@ -244,12 +244,39 @@ body {
         justify-content: center;
 
         border-radius: 0.75rem;
-        font-size: 10px;
-        line-height: 1.1;
+        font-size: 13px;
+        min-width: 70px;
+        line-height: 1.2;
     }
 
     #status-box span[data-i18n] {
         display: none;
     }
 
+}
+/* =========================================
+   ANDROID SCALING FIX
+   ========================================= */
+/* Android WebViews often render text and UI elements too small.
+   We apply a slight upscale here specifically for Android. */
+html.is-android body {
+    /* Scale text up globally on Android by using a multiplier */
+    font-size: calc(14px * var(--dpr, 1));
+}
+
+html.is-android .glass-panel {
+    /* Slightly increase padding on Android so hit targets are larger */
+    padding: calc(0.75rem * var(--dpr, 1));
+}
+
+/* Fix specific mobile elements that get too tiny */
+html.is-android #status-box {
+    font-size: calc(14px * var(--dpr, 1));
+    height: calc(48px * var(--dpr, 1));
+}
+
+html.is-android .layer-btn {
+    font-size: calc(16px * var(--dpr, 1));
+    padding-top: calc(10px * var(--dpr, 1));
+    padding-bottom: calc(10px * var(--dpr, 1));
 }

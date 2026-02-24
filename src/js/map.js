@@ -413,14 +413,14 @@ export function setBaseLayer(key) {
     });
 }
 
-// Hilfsfunktion für SVGs (jetzt mit Farben aus Config)
-function getSVGContent(type) {
+// Hilfsfunktion für SVGs (jetzt mit Farben aus Config und expliziter Pixelgröße für Android)
+function getSVGContent(type, pixelSize = 28) {
     // Farben holen
     const c = Config.colors;
 
     // 1. Defibrillator
     if (type === 'defibrillator') {
-        return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        return `<svg width="${pixelSize}px" height="${pixelSize}px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="45" fill="${c.defib}" stroke="white" stroke-width="5"/>
             <path d="M50 80 C10 40 10 10 50 35 C90 10 90 40 50 80 Z" fill="white"/>
             <path d="M55 45 L45 55 L55 55 L45 65" stroke="${c.defib}" stroke-width="3" fill="none"/>
@@ -433,7 +433,7 @@ function getSVGContent(type) {
 
     // 2. Wandhydrant
     if (type === 'wall') {
-        return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        return `<svg width="${pixelSize}px" height="${pixelSize}px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
             <circle cx="42" cy="52" r="18" fill="none" stroke="white" stroke-width="6" />
             <line x1="64" y1="34" x2="64" y2="70" stroke="white" stroke-width="6" stroke-linecap="round" />
@@ -451,10 +451,10 @@ function getSVGContent(type) {
     }
 
     // 3. Wache
-    if (type === 'station') return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="${c.station}" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
+    if (type === 'station') return `<svg width="${pixelSize}px" height="${pixelSize}px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="${c.station}" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
 
     // 4. Standard
-    return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
+    return `<svg width="${pixelSize}px" height="${pixelSize}px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
 }
 
 
@@ -912,10 +912,6 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10, 10] }) });
         }
     } else {
-        // SVG Icons für hohe Zoomstufen
-        iconHtml = getSVGContent(type); // Nutzt deine existierende Funktion
-        className = 'icon-container';
-
         if (isStation) {
             size = [32, 32]; zIndex = 1000;
         } else if (isDefib) {
@@ -923,6 +919,9 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         } else {
             zIndex = 0;
         }
+
+        iconHtml = getSVGContent(type, size[0]); // Explicit Pixel Size übergeben
+        className = 'icon-container';
 
         marker = L.marker([lat, lon], {
             icon: L.divIcon({ className, html: iconHtml, iconSize: size }),
