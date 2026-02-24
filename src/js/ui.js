@@ -12,24 +12,28 @@ import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
 
-// Wir importieren Funktionen aus export.js, um sie auf Buttons zu legen
-import { setExportFormat, setExportZoom, startSelection, exportAsPNG, exportAsGPX, exportAsPDF, cancelExport, fetchLocationTitle } from './export.js';
+// Lazy-Loader: export.js (inkl. jspdf + html2canvas) wird erst bei Bedarf geladen.
+// Das spart ~70 KB gzipped bei jedem App-Start.
+let _exportModule = null;
+async function getExport() {
+    if (!_exportModule) _exportModule = await import('./export.js');
+    return _exportModule;
+}
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
 import { setBaseLayer } from './map.js';
 
 // ...
 
-// 6. Export-Aktionen
-// 6. Export-Aktionen (Jetzt mit Bestätigungs-Dialog)
-addClick('select-btn', startSelection);
+// 6. Export-Aktionen (Lazy Loading: export.js wird erst bei Klick geladen)
+addClick('select-btn', async () => { const m = await getExport(); m.startSelection(); });
 
-// Hilfsfunktion: Button -> Dialog -> Export
-const withTitleConfirm = (fn) => () => openTitleConfirmation(fn);
+// Hilfsfunktion: Button -> Dialog -> Export (lazy)
+const withTitleConfirm = (lazyFnName) => () => openTitleConfirmation(lazyFnName);
 
-addClick('png-btn', withTitleConfirm(exportAsPNG));
-addClick('pdf-btn', withTitleConfirm(exportAsPDF));
-addClick('gpx-btn', withTitleConfirm(exportAsGPX));
-addClick('cancel-export-btn', cancelExport);
+addClick('png-btn', withTitleConfirm('exportAsPNG'));
+addClick('pdf-btn', withTitleConfirm('exportAsPDF'));
+addClick('gpx-btn', withTitleConfirm('exportAsGPX'));
+addClick('cancel-export-btn', async () => { const m = await getExport(); m.cancelExport(); });
 
 // Bestätigungs-Dialog Events
 let pendingExportAction = null;
@@ -46,14 +50,18 @@ addClick('export-confirm-ok', () => {
     if (pendingExportAction) pendingExportAction();
 });
 
-function openTitleConfirmation(actionCallback) {
+function openTitleConfirmation(exportFnName) {
     // 0. Daten-Check: Haben wir überhaupt Hydranten?
     if (!State.cachedElements || State.cachedElements.length === 0) {
         showNotification(t('no_objects'), 3000);
         return;
     }
 
-    pendingExportAction = actionCallback;
+    // Lazy: Die eigentliche Export-Funktion wird erst bei "OK" geladen
+    pendingExportAction = async () => {
+        const m = await getExport();
+        m[exportFnName]();
+    };
 
     // 1. Export-Menü schließen
     const exportMenu = document.getElementById('export-menu');
@@ -72,12 +80,14 @@ function openTitleConfirmation(actionCallback) {
             input.placeholder = "Lade Ortsnamen...";
 
             const center = State.map.getCenter();
-            fetchLocationTitle(center.lat, center.lng).then(city => {
-                if (city) {
-                    input.value = `Ort- und Hydrantenplan ${city}`;
-                } else {
-                    input.placeholder = "Titel eingeben";
-                }
+            getExport().then(m => {
+                m.fetchLocationTitle(center.lat, center.lng).then(city => {
+                    if (city) {
+                        input.value = `Ort- und Hydrantenplan ${city}`;
+                    } else {
+                        input.placeholder = "Titel eingeben";
+                    }
+                });
             });
             input.focus();
         }
@@ -352,21 +362,21 @@ export function setupUI() {
         addClick(`btn-${key}`, () => setBaseLayer(key));
     });
 
-    // 4. Export-Format (A4, Frei, etc.)
+    // 4. Export-Format (A4, Frei, etc.) — lazy
     ['free', 'a4l', 'a4p'].forEach(fmt => {
-        addClick(`fmt-${fmt}`, () => setExportFormat(fmt));
+        addClick(`fmt-${fmt}`, async () => { const m = await getExport(); m.setExportFormat(fmt); });
     });
 
-    // 5. Export-Zoom (15-18)
+    // 5. Export-Zoom (15-18) — lazy
     [15, 16, 17, 18].forEach(z => {
-        addClick(`zoom-${z}`, () => setExportZoom(z));
+        addClick(`zoom-${z}`, async () => { const m = await getExport(); m.setExportZoom(z); });
     });
 
     // 6. Export-Aktionen (wurden oben bereits mit withTitleConfirm initialisiert)
-    addClick('select-btn', startSelection);
+    addClick('select-btn', async () => { const m = await getExport(); m.startSelection(); });
     // addClick('png-btn', exportAsPNG); <-- FEHLER: Das umgeht den Dialog!
     // addClick('gpx-btn', exportAsGPX);
-    addClick('cancel-export-btn', cancelExport);
+    addClick('cancel-export-btn', async () => { const m = await getExport(); m.cancelExport(); });
 
     // Automatische Schließ-Logik aktivieren
     setupMenuAutoClose();

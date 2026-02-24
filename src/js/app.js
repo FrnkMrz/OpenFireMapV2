@@ -16,7 +16,7 @@
 import { initMapLogic } from './map.js';
 import { initI18n, updatePageLanguage } from './i18n.js';
 import { setupUI, showNotification } from './ui.js';
-import { initSelectionLogic } from './export.js';
+// export.js wird jetzt lazy bei Bedarf geladen (siehe Zeile 63)
 import { State } from './state.js';
 
 /**
@@ -58,9 +58,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 4) Karte starten
     initMapLogic();
 
-    // 5) Export-Logik nur, wenn Karte existiert
+    // 5) Export-Logik lazy laden (jspdf + html2canvas werden erst jetzt geholt)
     if (State.map) {
-      initSelectionLogic();
+      const exportModule = await import('./export.js');
+      exportModule.initSelectionLogic();
     } else {
       const msg = 'Karte wurde nicht initialisiert (State.map ist leer).';
       console.error('[OpenFireMapV2]', msg);
