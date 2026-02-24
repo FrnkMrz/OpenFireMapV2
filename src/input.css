@@ -166,7 +166,6 @@ body {
 .user-location-wrapper {
     background: transparent;
     border: none;
-    margin: 0 !important; /* Wichtig: Keine eigenen Ränder, sonst verschiebt es sich */
 }
 
 /* 2. Der innere Punkt (wird animiert) */

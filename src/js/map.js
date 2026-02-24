@@ -730,13 +730,13 @@ export function drawBlueLine(targetLat, targetLon, isRedraw = false) {
         interactive: false
     }).addTo(State.distanceLayerGroup);
 
-    // Label zeichnen
+    // Label zeichnen (Text mit Shadow statt weißer Box, leicht verschoben)
     const midLat = (startLat + targetLat) / 2;
     const midLon = (startLon + targetLon) / 2;
 
     const labelIcon = L.divIcon({
         className: 'distance-label-icon',
-        html: `<div style="background: rgba(255,255,255,0.9); border: 1px solid #3b82f6; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #3b82f6; white-space: nowrap; transform: translate(-50%, -50%); box-shadow: 0 1px 3px rgba(0,0,0,0.2); pointer-events: none;">${dist} m</div>`,
+        html: `<div style="padding: 2px 6px; font-size: 13px; font-weight: 800; color: #3b82f6; white-space: nowrap; transform: translate(-50%, -120%); text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; pointer-events: none;">${dist} m</div>`,
         iconSize: [0, 0]
     });
 
