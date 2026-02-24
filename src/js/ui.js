@@ -263,6 +263,8 @@ export function searchLocation() {
             showNotification("Suche fehlgeschlagen");
         });
 }
+let isLocating = false;
+
 /**
  * Bestimmt den Standort des Nutzers via Browser-GPS.
  */
@@ -272,12 +274,29 @@ export function locateUser() {
         return;
     }
 
+    // Spam-Schutz: Wenn bereits eine Ortung läuft, ignorieren wir weitere Klicks.
+    // Das verhindert OS-seitige Timeouts (Safari/MacOS locken das GPS sonst temporär).
+    if (isLocating) return;
+
+    isLocating = true;
+
     const btn = document.getElementById('locate-btn');
     const icon = btn ? btn.querySelector('svg') : null;
     if (icon) icon.classList.add('animate-spin');
 
+    // Safety-Net: Manche Browser (Safari) verschlucken manchmal den Error-Callback bei Timeouts.
+    // Damit der Button nicht für immer gelockt bleibt, entsperren wir ihn nach 12 Sekunden hart.
+    const safetyTimer = setTimeout(() => {
+        if (isLocating) {
+            isLocating = false;
+            if (icon) icon.classList.remove('animate-spin');
+            console.warn('[GPS] Safety timeout triggered. Browser did not fire callback.');
+        }
+    }, 12000);
+
     navigator.geolocation.getCurrentPosition(
         (pos) => {
+            clearTimeout(safetyTimer);
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
 
@@ -325,13 +344,21 @@ export function locateUser() {
 
             if (icon) icon.classList.remove('animate-spin');
             showNotification(t('geo_found') || "Standort gefunden!");
+            isLocating = false;
         },
         (err) => {
+            clearTimeout(safetyTimer);
             if (icon) icon.classList.remove('animate-spin');
-            console.error(err);
-            showNotification("Standort konnte nicht ermittelt werden.");
+            console.error('[GPS Error]', err);
+            const errMsg = t('gps_error') || "Standort konnte nicht ermittelt werden.";
+            showNotification(`${errMsg} (${err.code}: ${err.message})`, 5000);
+            isLocating = false;
         },
-        { enableHighAccuracy: true, timeout: 5000 }
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 10000 // Erlaubt dem Browser, eine bis zu 10sek alte Position zu verwenden (schont Systemressourcen stark)
+        }
     );
 }
 
