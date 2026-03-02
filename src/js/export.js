@@ -507,8 +507,12 @@ async function generateMapCanvas() {
   setStatus(t("loading_data") || "Lade Daten..."); // Fallback String falls Key fehlt
   let elementsForExport = [];
 
-  // NEU: Zuerst Cache prüfen! Wenn da was drin ist (für diesen Bereich), nicht neu laden.
-  if (State.cachedElements && State.cachedElements.length > 0) {
+  // NEU: Wenn wir aktuell auf Zoom < 14 sind, sind KEINE Hydranten im Cache.
+  // Wir müssen zwingend die API fragen, weil der Export (targetZoom) diese Details braucht.
+  const currentMapZoom = State.map.getZoom();
+  const needsStrictOnlineFetch = currentMapZoom < 14 && targetZoom >= 14;
+
+  if (!needsStrictOnlineFetch && State.cachedElements && State.cachedElements.length > 0) {
     const cachedProcessed = preprocessElementsForExport(State.cachedElements);
     // Kurzer Check: Haben wir relevante Daten im Cache?
     const roughlyInBounds = cachedProcessed.some(el => {
@@ -523,10 +527,10 @@ async function generateMapCanvas() {
     }
   }
 
-  // Wenn Cache leer war oder keine passenden Daten enthielt -> Online-Abfrage
+  // Wenn strict online loading an war, Cache leer war oder keine passenden Daten enthielt -> Online-Abfrage
   if (elementsForExport.length === 0) {
     try {
-      console.log("Fetching export data for bounds:", bounds, "Zoom:", targetZoom);
+      console.log(`Fetching export data for bounds. Strict Online Fetch? ${needsStrictOnlineFetch}`);
       const data = await fetchDataForExport(bounds, targetZoom, signal);
       elementsForExport = preprocessElementsForExport(data.elements || []);
 
@@ -585,6 +589,11 @@ async function generateMapCanvas() {
     throw new Error(t("too_large") + " (>14000px)");
 
   // 5. CANVAS
+  setStatus(t("export_rendering") || "Karte wird gezeichnet...");
+
+  // Kurzer Timeout, damit das UI den Status aktualisieren kann, bevor der Main Thread blockiert
+  await new Promise(resolve => setTimeout(resolve, 50));
+
   const canvas = document.createElement("canvas");
   canvas.width = totalWidth;
   canvas.height = totalHeight;
