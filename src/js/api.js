@@ -532,7 +532,8 @@ export async function fetchDataForExport(bounds, zoom, signal) {
 
   const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 
-  const cacheKey = `export:${zoom}:${bbox}`;
+  // Wir nutzen v2 als Prefix, um fehlerhafte Caches der alten Version aus der lokalen DB zu umgehen.
+  const cacheKey = `export_v2:${zoom}:${bbox}`;
   return await fetchWithRetry(q, {
     cacheKey,
     cacheTtlMs: 1000 * 60 * 60, // 1h Cache
