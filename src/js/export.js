@@ -507,10 +507,10 @@ async function generateMapCanvas() {
   setStatus(t("loading_data") || "Lade Daten..."); // Fallback String falls Key fehlt
   let elementsForExport = [];
 
-  // NEU: Wenn wir aktuell auf Zoom < 14 sind, sind KEINE Hydranten im Cache.
+  // NEU: Wenn wir aktuell auf Zoom < 15 sind, sind KEINE Hydranten im Cache.
   // Wir müssen zwingend die API fragen, weil der Export (targetZoom) diese Details braucht.
   const currentMapZoom = State.map.getZoom();
-  const needsStrictOnlineFetch = currentMapZoom < 14 && targetZoom >= 14;
+  const needsStrictOnlineFetch = currentMapZoom < 15 && targetZoom >= 15;
 
   if (!needsStrictOnlineFetch) {
     // Falls die Karte gerade noch Daten im Hintergrund lädt (z. B. nach einem Pan), 
