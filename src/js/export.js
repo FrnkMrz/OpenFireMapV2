@@ -750,9 +750,9 @@ async function generateMapCanvas() {
     )
       continue;
 
-    if (isStation && targetZoom < 12) continue;
-    if (!isStation && targetZoom < 15) continue;
-
+    // Wir entfernen hier z.B. die künstliche Blockade (targetZoom < 15 für Hydranten),
+    // weil der Nutzer explizit hydrants auf _jedem_ PDF/PNG Export haben möchte, egal welcher Zoom.
+    // Falls man bei Z<12 keine Firestations will (was das UI ohnehin abblockt), behalten wir es bei Z<10 bei.
     if (targetZoom < 17 && !isStation) {
       ctx.beginPath();
       ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
