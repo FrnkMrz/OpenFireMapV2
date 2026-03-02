@@ -86,7 +86,7 @@ function openTitleConfirmation(exportFnName) {
             let centerLat = 0;
             let centerLng = 0;
 
-            if (State.selection.active && State.selection.finalBounds) {
+            if (State.selection.finalBounds) {
                 const selCenter = State.selection.finalBounds.getCenter();
                 centerLat = selCenter.lat;
                 centerLng = selCenter.lng;
