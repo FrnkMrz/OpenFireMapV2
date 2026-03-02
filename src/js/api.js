@@ -522,10 +522,10 @@ export async function fetchDataForExport(bounds, zoom, signal) {
     queryParts.push(`nwr["amenity"="fire_station"];`);
     queryParts.push(`nwr["building"="fire_station"];`);
   }
-  if (zoom >= 15) {
-    queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
-    queryParts.push(`node["emergency"="defibrillator"];`);
-  }
+  // Exporte sollen IMMER Detaildaten (Hydranten) enthalten, 
+  // selbst wenn der Nutzer sagt "Exportiere auf Zoom 14".
+  queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
+  queryParts.push(`node["emergency"="defibrillator"];`);
   const boundaryQuery = (zoom >= 14)
     ? `(way["boundary"="administrative"]["admin_level"="8"];)->.boundaries; .boundaries out geom;`
     : '';
