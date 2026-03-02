@@ -566,7 +566,12 @@ async function generateMapCanvas() {
 
   if (!displayTitle) {
     try {
-      const center = bounds.getCenter();
+      // WICHTIG: Wenn der Nutzer einen Bereich gewählt hat, nimm dessen Zentrum.
+      // Falls nicht, nimm das Zentrum der Karte.
+      const searchBounds = State.selection.active && State.selection.finalBounds
+        ? State.selection.finalBounds
+        : State.map.getBounds();
+      const center = searchBounds.getCenter();
       displayTitle = await fetchLocationTitle(center.lat, center.lng);
     } catch { /* ignore */ }
   }

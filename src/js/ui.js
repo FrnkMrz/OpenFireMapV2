@@ -80,16 +80,33 @@ function openTitleConfirmation(exportFnName) {
             input.value = "";
             input.placeholder = "Lade Ortsnamen...";
 
-            const center = State.map.getCenter();
-            getExport().then(m => {
-                m.fetchLocationTitle(center.lat, center.lng).then(city => {
-                    if (city) {
-                        input.value = `Ort- und Hydrantenplan ${city}`;
-                    } else {
-                        input.placeholder = "Titel eingeben";
-                    }
+            // Vorbefüllen des Ortsnamens für den Export-Dialog
+            // NEU: Wenn eine Auswahl (Selection) aktiv ist, nehmen wir das Zentrum DIESER Auswahl.
+            // Sonst nehmen wir das Zentrum der Karte.
+            let centerLat = 0;
+            let centerLng = 0;
+
+            if (State.selection.active && State.selection.finalBounds) {
+                const selCenter = State.selection.finalBounds.getCenter();
+                centerLat = selCenter.lat;
+                centerLng = selCenter.lng;
+            } else if (State.map) {
+                const mapCenter = State.map.getCenter();
+                centerLat = mapCenter.lat;
+                centerLng = mapCenter.lng;
+            }
+
+            if (centerLat && centerLng) {
+                getExport().then(m => {
+                    m.fetchLocationTitle(centerLat, centerLng).then(city => {
+                        if (city) {
+                            input.value = `Ort- und Hydrantenplan ${city}`;
+                        } else {
+                            input.placeholder = "Titel eingeben";
+                        }
+                    });
                 });
-            });
+            }
             input.focus();
         }
     }
