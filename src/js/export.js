@@ -512,22 +512,27 @@ async function generateMapCanvas() {
   const currentMapZoom = State.map.getZoom();
   const needsStrictOnlineFetch = currentMapZoom < 14 && targetZoom >= 14;
 
-  if (!needsStrictOnlineFetch && State.cachedElements && State.cachedElements.length > 0) {
-    const cachedProcessed = preprocessElementsForExport(State.cachedElements);
-    // Kurzer Check: Haben wir relevante Daten im Cache?
-    const roughlyInBounds = cachedProcessed.some(el => {
-      const lat = el.lat || el.center?.lat;
-      const lon = el.lon || el.center?.lon;
-      return bounds.contains([lat, lon]);
-    });
+  if (!needsStrictOnlineFetch) {
+    // Falls die Karte gerade noch Daten im Hintergrund lädt (z. B. nach einem Pan), 
+    // warten wir, bis der Vorgang abgeschlossen ist, damit wir den finalen Cache haben.
+    while (State.isFetchingData) {
+      setStatus(`${t("loading_data") || "Lade Daten..."} (Warte auf Karte)`);
+      await new Promise(r => setTimeout(r, 200));
+    }
 
-    if (roughlyInBounds) {
-      console.log("Export: Cache enthält Daten für diesen Bereich -> Nutze Cache.");
-      elementsForExport = cachedProcessed;
+    // Liegt der gewünschte Export-Ausschnitt VOLLSTÄNDIG innerhalb der BBox,
+    // die die App zuletzt für die Darstellung geladen hat?
+    if (State.cachedElements && State.cachedElements.length > 0) {
+      if (State.queryBounds && State.queryBounds.contains(bounds)) {
+        console.log("Export: Cache enthält Daten für diesen KOMPLETTEN Bereich -> Nutze Cache.");
+        elementsForExport = preprocessElementsForExport(State.cachedElements);
+      } else {
+        console.log("Export: Bereich ist zu groß oder liegt außerhalb des Karten-Caches -> Erzwinge Download.");
+      }
     }
   }
 
-  // Wenn strict online loading an war, Cache leer war oder keine passenden Daten enthielt -> Online-Abfrage
+  // Wenn Cache nicht reichte oder needsStrictOnlineFetch true war -> Online-Abfrage
   if (elementsForExport.length === 0) {
     try {
       console.log(`Fetching export data for bounds. Strict Online Fetch? ${needsStrictOnlineFetch}`);
@@ -537,7 +542,7 @@ async function generateMapCanvas() {
       // Fallback: Wenn Online leer, aber Cache existiert (vielleicht knapp daneben?), war vorher schon Handled.
       // Aber hier nochmal zur Sicherheit.
       if (elementsForExport.length === 0 && State.cachedElements && State.cachedElements.length > 0) {
-        console.warn("Export: Online-Daten leer (obwohl Cache leer schien?), nutze Cache.");
+        console.warn("Export: Online-Daten leer, nutze Cache als Fallback.");
         elementsForExport = preprocessElementsForExport(State.cachedElements);
       }
 

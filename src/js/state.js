@@ -22,21 +22,25 @@ export const State = {
     markerLayer: null,      // Hier kommen die Icons (Hydranten, Wachen) rein
     boundaryLayer: null,    // Hier kommen die Gemeindegrenzen rein
     rangeLayerGroup: null,  // Hier kommt der orangene 100m Kreis rein
-    
+
     // --- DATEN CACHE ---
     // Wenn wir Daten vom Server holen, speichern wir sie hier zwischen.
     // Warum? Wenn der Nutzer auf "Export PNG" klickt, müssen wir nicht nochmal
     // den Server fragen, sondern nehmen einfach die Daten, die wir schon haben.
     cachedElements: [],
-    
+
+    // --- LADE-STATUS ---
+    isFetchingData: false,  // Lädt die Map gerade im Hintergrund neue Daten?
+    queryBounds: null,      // Welche exakte BoundingBox hat die Map als letztes geladen?
+
     // Welcher Hintergrund ist gerade an? (Startwert: 'voyager')
     activeLayerKey: 'voyager',
-    
+
     // --- EXPORT EINSTELLUNGEN ---
     // Hier merken wir uns, was der Nutzer im Export-Menü eingestellt hat.
     exportFormat: 'free',       // 'free' (Frei), 'a4l' (DIN A4 Quer), 'a4p' (DIN A4 Hoch)
     exportZoomLevel: 18,        // Wie scharf soll das Bild sein? (Zoom 18 = sehr scharf)
-    
+
     // --- AUSWAHL WERKZEUG ---
     // Alles was passiert, wenn man auf "Ausschnitt wählen" klickt.
     selection: {

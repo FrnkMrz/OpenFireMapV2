@@ -389,6 +389,7 @@ export async function fetchOSMData(onProgressData = null) {
   const bboxKey = State.queryMeta?.bbox ? State.queryMeta.bbox : makeBBoxKey(b, 3);
 
   // loading state...
+  State.isFetchingData = true;
   emit({ phase: 'load_start', reqId, zoom, bboxKey });
 
   // Alte Anfrage abbrechen + neuen Controller setzen
@@ -463,9 +464,12 @@ export async function fetchOSMData(onProgressData = null) {
     const totalMs = Math.round(performance.now() - tAll0);
     emit({ phase: 'load_ok', reqId, zoom, totalMs, elements: State.cachedElements.length });
 
+    State.isFetchingData = false;
     return State.cachedElements;
 
   } catch (err) {
+    State.isFetchingData = false;
+
     if (err?.name === 'AbortError') {
       emit({ phase: 'aborted', reqId, zoom });
       throw err;
