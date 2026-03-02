@@ -756,29 +756,9 @@ async function generateMapCanvas() {
     )
       continue;
 
-    // Wir entfernen hier z.B. die künstliche Blockade (targetZoom < 15 für Hydranten),
-    // weil der Nutzer explizit hydrants auf _jedem_ PDF/PNG Export haben möchte, egal welcher Zoom.
-    // Falls man bei Z<12 keine Firestations will (was das UI ohnehin abblockt), behalten wir es bei Z<10 bei.
-    if (targetZoom < 17 && !isStation) {
-      ctx.beginPath();
-      ctx.arc(tx, ty, 5, 0, 2 * Math.PI);
-      const isWater = [
-        "water_tank",
-        "cistern",
-        "fire_water_pond",
-        "suction_point",
-      ].includes(type);
-      ctx.fillStyle =
-        type === "defibrillator"
-          ? Config.colors.defib
-          : isWater
-            ? Config.colors.water
-            : Config.colors.hydrant;
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      drawCanvasIcon(ctx, tx, ty, type, isStation, type === 'defibrillator');
-    }
+    // Wir zeichnen jetzt IMMER das volle Icon, egal welche Zoomstufe der Export ist. 
+    // Der Nutzer wünscht explizit gut lesbare Hydranten auf allen Plänen.
+    drawCanvasIcon(ctx, tx, ty, type, isStation, type === 'defibrillator');
   }
   ctx.restore();
 
