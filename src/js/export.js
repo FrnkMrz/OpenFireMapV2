@@ -577,15 +577,39 @@ async function generateMapCanvas() {
   }
 
   // 4. GRÖSSE BERECHNEN
-  const x1 = Math.floor(lon2tile(nw.lng, targetZoom));
+  let x1 = Math.floor(lon2tile(nw.lng, targetZoom));
   const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
-  const x2 = Math.floor(lon2tile(se.lng, targetZoom));
+  let x2 = Math.floor(lon2tile(se.lng, targetZoom));
   const y2 = Math.floor(lat2tile(se.lat, targetZoom));
 
   const margin = 40;
   const footerH = 60;
-  const mapWidth = (x2 - x1 + 1) * 256;
+  let mapWidth = (x2 - x1 + 1) * 256;
   const mapHeight = (y2 - y1 + 1) * 256;
+
+  // NEU: Prüfen, ob der Export-Titel breiter ist als die berechnete Kachel-Matrix.
+  // Falls ja, fügen wir links und rechts zusätzliche Kacheln (x1/x2) an, 
+  // damit das PDF breit genug für den Text ist und nicht abgeschnitten wird.
+  const tempCanvas = document.createElement("canvas");
+  const tempCtx = tempCanvas.getContext("2d");
+  tempCtx.font = "bold 44px Arial, sans-serif";
+  const titleText = displayTitle || "Ort- und Hydrantenplan";
+  const titleWidth = tempCtx.measureText(titleText).width;
+
+  // Wir sorgen für mindestens 650px (damit auch Datum / Maßstab etc. immer Platz haben)
+  const requiredMapWidth = Math.max(titleWidth + 60, 650);
+
+  if (mapWidth < requiredMapWidth) {
+    const neededTiles = Math.ceil(requiredMapWidth / 256);
+    const currentTiles = x2 - x1 + 1;
+    const missingTiles = neededTiles - currentTiles;
+
+    // Links und rechts erweitern
+    x1 -= Math.floor(missingTiles / 2);
+    x2 += Math.ceil(missingTiles / 2);
+    mapWidth = (x2 - x1 + 1) * 256;
+  }
+
   const totalWidth = mapWidth + margin * 2;
   const totalHeight = mapHeight + margin + footerH + margin;
 
@@ -777,7 +801,6 @@ async function generateMapCanvas() {
   ctx.fillStyle = Config.colors.textMain;
   ctx.textAlign = "center";
   ctx.font = "bold 44px Arial, sans-serif";
-  const titleText = displayTitle || "Ort- und Hydrantenplan";
   ctx.fillText(titleText, centerX, margin + 55);
 
   const now = new Date();

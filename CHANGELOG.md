@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.2] - 2026-03-03
+
+### Fixed
+- **Map Export (Visuals):** Fixed an issue where exporting a very small map area would cause the generated title string on the document to be cut off horizontally. The export map width will now dynamically padded horizontally to ensure the title always fits cleanly.
+
+
 ## [0.6.1] - 2026-03-03
 
 ### Fixed
