@@ -46,7 +46,7 @@ OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik (Vite, ES Module
 - 📦 **Intelligentes Caching** (IndexedDB) für schnelles Neuladen bekannter Bereiche
 - 🔄 **Stale-While-Revalidate** – sofortige Anzeige veralteter Daten, Live-Aktualisierung im Hintergrund
 - 🌍 **28 Sprachen** unterstützt
-- 📤 **Export** als PNG, PDF oder GPX
+- 📤 **Export** als PNG, PDF oder GPX (inkl. skalierungsfreier, vollständiger Hydranten-Renderings auf allen Zoomstufen)
 - 🛰️ **Satellitenansicht** (Bing Maps, benötigt Online-Verbindung)
 - 📱 **Responsive Design** – funktioniert auf Desktop und Mobil
 
