@@ -610,7 +610,6 @@ async function generateMapCanvas() {
       testTotalH = mapHeight + 2 * margin + footerH;
       testTotalW = testTotalH * A4_RATIO;
       mapWidth = testTotalW - 2 * margin;
-      mapHeight = mapHeight;
     } else {
       mapHeight = testMapH;
     }
@@ -747,24 +746,17 @@ async function generateMapCanvas() {
   console.log("Export: Rendering markers...", elementsForExport.length);
 
   // Versatz berechnen (für exakte Positionierung der Marker)
-  // Versatz berechnen (für exakte Positionierung der Marker)
-  // Wir müssen uns am Kachel-Gitter (x1, y1) orientieren, da die Kacheln dort bei (0,0) + margin beginnen.
-  // Sonst sind Marker um den Offset innerhalb der ersten Kachel verschoben.
-  const originX = x1 * 256;
-  const originY = y1 * 256;
+  const originTileX = startTileX;
+  const originTileY = startTileY;
 
   // Boundaries zeichnen (z.B. Gemeindegrenzen)
   // Annahme: sind in cachedElements enthalten (wenn Zoom passt)
-  // TODO: Boundaries rendern hier noch manuell, da sie Linien sind
-  // (Vereinfachung: Wir iterieren über State.boundaryLayer.getLayers() ist nicht thread-safe für Export ohne Map-Kontext)
-  // Besser: Wir nutzen die Daten aus elementsForExport.
-
   for (const el of elementsForExport) {
     if (el.tags && el.tags.boundary === 'administrative' && el.geometry) {
       // Linie zeichnen
       const coords = el.geometry.map(p => {
-        const px = (lon2tile(p.lon, targetZoom) * 256) - originX + margin;
-        const py = (lat2tile(p.lat, targetZoom) * 256) - originY + margin;
+        const px = (lon2tile(p.lon, targetZoom) - originTileX) * 256 + margin;
+        const py = (lat2tile(p.lat, targetZoom) - originTileY) * 256 + margin;
         return [px, py];
       });
 
