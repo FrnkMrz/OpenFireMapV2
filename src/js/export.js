@@ -576,20 +576,13 @@ async function generateMapCanvas() {
     } catch { /* ignore */ }
   }
 
-  // 4. GRÖSSE BERECHNEN
-  let x1 = Math.floor(lon2tile(nw.lng, targetZoom));
-  const y1 = Math.floor(lat2tile(nw.lat, targetZoom));
-  let x2 = Math.floor(lon2tile(se.lng, targetZoom));
-  const y2 = Math.floor(lat2tile(se.lat, targetZoom));
-
+  // 4. GRÖSSE BERECHNEN (Präzise Pixel-Mathe für exakte Export-Proportionen)
   const margin = 40;
   const footerH = 60;
-  let mapWidth = (x2 - x1 + 1) * 256;
-  const mapHeight = (y2 - y1 + 1) * 256;
 
-  // NEU: Prüfen, ob der Export-Titel breiter ist als die berechnete Kachel-Matrix.
-  // Falls ja, fügen wir links und rechts zusätzliche Kacheln (x1/x2) an, 
-  // damit das PDF breit genug für den Text ist und nicht abgeschnitten wird.
+  let exactMapW = (lon2tile(se.lng, targetZoom) - lon2tile(nw.lng, targetZoom)) * 256;
+  let exactMapH = (lat2tile(se.lat, targetZoom) - lat2tile(nw.lat, targetZoom)) * 256;
+
   const tempCanvas = document.createElement("canvas");
   const tempCtx = tempCanvas.getContext("2d");
   tempCtx.font = "bold 44px Arial, sans-serif";
@@ -597,21 +590,53 @@ async function generateMapCanvas() {
   const titleWidth = tempCtx.measureText(titleText).width;
 
   // Wir sorgen für mindestens 650px (damit auch Datum / Maßstab etc. immer Platz haben)
-  const requiredMapWidth = Math.max(titleWidth + 60, 650);
+  const minMapWidth = Math.max(titleWidth + 60, 650) - (2 * margin);
 
-  if (mapWidth < requiredMapWidth) {
-    const neededTiles = Math.ceil(requiredMapWidth / 256);
-    const currentTiles = x2 - x1 + 1;
-    const missingTiles = neededTiles - currentTiles;
+  let mapWidth = Math.max(exactMapW, minMapWidth);
+  let mapHeight = exactMapH;
 
-    // Links und rechts erweitern
-    x1 -= Math.floor(missingTiles / 2);
-    x2 += Math.ceil(missingTiles / 2);
-    mapWidth = (x2 - x1 + 1) * 256;
+  if (State.exportFormat !== "free") {
+    // A4 Proportion genau berechnen: 297/210 = ~1.4142857
+    const A4_RATIO = State.exportFormat === "a4l" ? 1.4142857 : 0.7070707;
+    // ratio = totalWidth / totalHeight
+    // totalWidth = mapWidth + 2*margin
+    // totalHeight = mapHeight + 2*margin + footerH
+    let testTotalW = mapWidth + 2 * margin;
+    let testTotalH = testTotalW / A4_RATIO;
+    let testMapH = testTotalH - 2 * margin - footerH;
+
+    if (testMapH < mapHeight) {
+      // Box war höher als erlaubt -> Höhe bestimmt die Breite
+      testTotalH = mapHeight + 2 * margin + footerH;
+      testTotalW = testTotalH * A4_RATIO;
+      mapWidth = testTotalW - 2 * margin;
+      mapHeight = mapHeight;
+    } else {
+      mapHeight = testMapH;
+    }
   }
+
+  mapWidth = Math.round(mapWidth);
+  mapHeight = Math.round(mapHeight);
 
   const totalWidth = mapWidth + margin * 2;
   const totalHeight = mapHeight + margin + footerH + margin;
+
+  // Zentrum der Auswahl in WebMercator
+  const centerTileX = (lon2tile(nw.lng, targetZoom) + lon2tile(se.lng, targetZoom)) / 2;
+  const centerTileY = (lat2tile(nw.lat, targetZoom) + lat2tile(se.lat, targetZoom)) / 2;
+
+  // Der exakte logische Kachel-Startpunkt dieses Canvas-Ausschnitts (als Fließkommazahl)
+  const startTileX = centerTileX - (mapWidth / 256) / 2;
+  const startTileY = centerTileY - (mapHeight / 256) / 2;
+  const endTileX = startTileX + (mapWidth / 256);
+  const endTileY = startTileY + (mapHeight / 256);
+
+  // Kacheln, die tatsächlich heruntergeladen werden müssen (Integer-Index)
+  const tileX1 = Math.floor(startTileX);
+  const tileY1 = Math.floor(startTileY);
+  const tileX2 = Math.floor(endTileX);
+  const tileY2 = Math.floor(endTileY);
 
   const mPerPx =
     (Math.cos((bounds.getCenter().lat * Math.PI) / 180) *
@@ -640,8 +665,8 @@ async function generateMapCanvas() {
   // 6. KACHELN LADEN
   setStatus(`${t("loading_tiles")} (Z${targetZoom})...`);
   const tileQueue = [];
-  for (let x = x1; x <= x2; x++) {
-    for (let y = y1; y <= y2; y++) {
+  for (let x = tileX1; x <= tileX2; x++) {
+    for (let y = tileY1; y <= tileY2; y++) {
       tileQueue.push({ x, y, z: targetZoom });
     }
   }
@@ -704,8 +729,9 @@ async function generateMapCanvas() {
 
   // 7. ZEICHNEN (Tiles)
   results.forEach((r) => {
-    const px = (r.x - x1) * 256 + margin;
-    const py = (r.y - y1) * 256 + margin;
+    // Pixel-Offset auf der Karte + Margin
+    const px = (r.x - startTileX) * 256 + margin;
+    const py = (r.y - startTileY) * 256 + margin;
     ctx.drawImage(r.img, px, py);
   });
 
@@ -761,8 +787,8 @@ async function generateMapCanvas() {
     const lat = el.lat || el.center?.lat;
     const lon = el.lon || el.center?.lon;
 
-    const tx = (lon2tile(lon, targetZoom) * 256) - originX + margin;
-    const ty = (lat2tile(lat, targetZoom) * 256) - originY + margin;
+    const tx = (lon2tile(lon, targetZoom) - originTileX) * 256 + margin;
+    const ty = (lat2tile(lat, targetZoom) - originTileY) * 256 + margin;
 
     const tags = el.tags || {};
     const isStation = tags.amenity === "fire_station" || tags.building === "fire_station";
