@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.3] - 2026-03-06
+
+### Added
+- **i18n für Cluster-Tooltips:** Hydranten-Namen-Fallbacks ("Hydranten-Details") und Cluster-Header ("X Objekte innerhalb 5m") werden nun vollständig über das Übersetzungs-Wörterbuch abgehandelt und sind für alle 30 Sprachen verfügbar.
+- **Hydranten-Clustering (Z17/Z18):** Das Rendern von extrem eng beieinander liegenden Hydranten (< 5 Meter) wurde überarbeitet. Sie werden nun visuell auf der Karte gebündelt, wobei ein Badge stattdessen das jeweilige Vielfache anzeigt ("2", "3" usw.). Die Einzelinformationen aller gebündelten POIs finden sich tabellarisch sortiert im dazugehörigen Tooltip-Fenster.
+
+### Fixed
+- **Root-Cause Fix (Clustering):** Behoben, dass der neue Code für das Hydranten-Clustering im Produktions-Build in der Rendering-Schleife nie aufgerufen wurde und eine versehentliche State-Mutation das Feature komplett blockiert hatte. Das Diffing- und Event-Caching arbeitet nun reibungslos, auch bei wilden Zoom- oder Schwenkmanövern im Zoom 17/18 Bereich.
+
 ## [0.6.2] - 2026-03-03
 
 ### Fixed
