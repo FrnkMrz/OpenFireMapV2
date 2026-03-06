@@ -90,5 +90,8 @@ export const strings = {
     "next_server": "seuraava palvelin",
     "seconds_short": "s",
     "objects": "objektit"
+,
+    cluster_info: "Objects within 5m",
+    details_hydrant: "Hydrant Details"
 };
 export default strings;

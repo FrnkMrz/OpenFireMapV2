@@ -731,7 +731,7 @@ function generateTooltip(tags, clusterMembers) {
     }
 
     // Cluster Logic: Render alle enthaltenen Hydranten
-    let html = `<div class="p-2 min-w-[200px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-2 text-blue-400">${clusterMembers.length} Objekte an diesem Ort</div><div class="flex flex-col gap-3">`;
+    let html = `<div class="p-2 min-w-[200px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-2 text-blue-400">${clusterMembers.length} ${t('cluster_info')}</div><div class="flex flex-col gap-3">`;
 
     clusterMembers.forEach((member, i) => {
         const safeTags = member.tags || {};

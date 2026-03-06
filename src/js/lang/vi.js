@@ -88,5 +88,8 @@ export const strings = {
     "next_server": "máy chủ tiếp theo",
     "seconds_short": "giây",
     "objects": "đối tượng"
+,
+    cluster_info: "Objects within 5m",
+    details_hydrant: "Hydrant Details"
 };
 export default strings;

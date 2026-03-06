@@ -90,5 +90,8 @@ export const strings = {
     "next_server": "serveur suivant",
     "seconds_short": "s",
     "objects": "objets"
+,
+    cluster_info: "Objets dans un rayon de 5m",
+    details_hydrant: "Détails de l'hydrante"
 };
 export default strings;

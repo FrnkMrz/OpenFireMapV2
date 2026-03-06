@@ -88,5 +88,8 @@ export const strings = {
     "next_server": "server berikutnya",
     "seconds_short": "d",
     "objects": "objek"
+,
+    cluster_info: "Objects within 5m",
+    details_hydrant: "Hydrant Details"
 };
 export default strings;

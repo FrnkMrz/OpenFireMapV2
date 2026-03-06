@@ -90,5 +90,8 @@ export const strings = {
     "next_server": "下一个服务器",
     "seconds_short": "秒",
     "objects": "对象"
+,
+    cluster_info: "5米内的对象",
+    details_hydrant: "消防栓详情"
 };
 export default strings;

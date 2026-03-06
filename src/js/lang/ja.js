@@ -90,5 +90,8 @@ export const strings = {
     "next_server": "次のサーバー",
     "seconds_short": "秒",
     "objects": "オブジェクト"
+,
+    cluster_info: "5m以内のオブジェクト",
+    details_hydrant: "消火栓の詳細"
 };
 export default strings;

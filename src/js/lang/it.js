@@ -90,5 +90,8 @@ export const strings = {
     "next_server": "server successivo",
     "seconds_short": "s",
     "objects": "oggetti"
+,
+    cluster_info: "Oggetti entro 5m",
+    details_hydrant: "Dettagli idrante"
 };
 export default strings;
