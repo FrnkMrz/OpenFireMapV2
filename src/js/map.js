@@ -886,6 +886,10 @@ export function renderMarkers(elements, zoom) {
     // - nur amenity=fire_station betroffen ist
     // - Hydranten/Defis/Wasserstellen/Sirenen etc. exakt so bleiben, wie sie aus Overpass kommen
     const preprocessedElements = clusterFireStations(elements, 150);
+
+    // POI-Clustering: Hydranten/Wasserstellen < 5m auf Z17/Z18 bündeln
+    const displayElements = clusterPOIs(preprocessedElements, zoom, 5);
+
     // Grenzen (Boundaries) werden weiterhin komplett neu gezeichnet, 
     // da es meist nur wenige sind und sich die Geometrie bei Zoom ändern kann.
     State.boundaryLayer.clearLayers();
@@ -895,7 +899,7 @@ export function renderMarkers(elements, zoom) {
     const markersToKeep = new Set();
     const renderedLocations = []; // Für die Duplikat-Prüfung (z.B. bei Wachen)
 
-    preprocessedElements.forEach(el => {
+    displayElements.forEach(el => {
         const tags = el.tags || {};
         const id = `${el.type || 'node'}:${el.id}`; // Stabiler Key: type:id (node/way/relation können gleiche id haben)
 
