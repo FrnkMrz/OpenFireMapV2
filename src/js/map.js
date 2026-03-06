@@ -453,7 +453,16 @@ function getSVGContent(type, pixelSize = 28) {
     // 3. Wache
     if (type === 'station') return `<svg width="${pixelSize}px" height="${pixelSize}px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="${c.station}" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
 
-    // 4. Standard
+    // 4. Cluster Badge (NEU)
+    if (type === 'cluster_badge') {
+        const count = arguments[2] || 2; // Wir nutzen arguments wg. fehlendem 3. Parameter z.B. bei explizitem Abruf
+        return `<svg width="${pixelSize}px" height="${pixelSize}px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
+            <text x="50" y="70" font-family="Arial" font-weight="bold" font-size="52" text-anchor="middle" fill="white">${count}</text>
+        </svg>`;
+    }
+
+    // 5. Standard
     return `<svg width="${pixelSize}px" height="${pixelSize}px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
 }
 
@@ -632,16 +641,101 @@ function clusterFireStations(rawElements, radiusMeters = 150) {
 }
 
 
-function generateTooltip(tags) {
-    const safeTags = tags || {};
-    const tooltipTitleRaw = safeTags.name || t('details');
-    const tooltipTitle = escapeHtml(tooltipTitleRaw);
+/**
+ * ==========================================================================================
+ * POI CLUSTERING (Z17/Z18: Nahe Wasserstellen bündeln)
+ * ==========================================================================================
+ */
+function clusterPOIs(rawElements, zoom, radiusMeters = 5) {
+    if (zoom !== 17 && zoom !== 18) return rawElements; // Nur auf Z17 und Z18 aktiv
+    if (!Array.isArray(rawElements) || rawElements.length === 0) return rawElements;
 
-    let html = `<div class="p-2 min-w-[180px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div><div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
+    const pois = [];
+    const others = [];
 
-    for (const [key, val] of Object.entries(safeTags)) {
-        html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 break-words">${escapeHtml(val)}</div>`;
+    // Wir clustern nur Hydranten / Wasserstellen. Stationen und Defis bleiben unberührt.
+    for (const el of rawElements) {
+        if (isFireStation(el) || (el.tags && el.tags.emergency === 'defibrillator')) {
+            others.push(el);
+        } else {
+            // POIs ohne Location brauchen wir nicht zu berücksichtigen
+            const pos = getElementLatLon(el);
+            if (pos) pois.push(el);
+            else others.push(el);
+        }
     }
+
+    if (pois.length < 2) return rawElements;
+
+    const processed = new Set();
+    const clustered = [];
+
+    for (const master of pois) {
+        if (processed.has(master.id)) continue;
+
+        const masterPos = getElementLatLon(master);
+        let sumLat = masterPos.lat;
+        let sumLon = masterPos.lon;
+        let memberCount = 1;
+
+        master.clusterMembers = [master]; // Sich selbst merken
+
+        for (const cand of pois) {
+            if (cand.id === master.id || processed.has(cand.id)) continue;
+
+            const candPos = getElementLatLon(cand);
+            if (distanceMeters(masterPos, candPos) < radiusMeters) {
+                processed.add(cand.id);
+                master.clusterMembers.push(cand);
+                sumLat += candPos.lat;
+                sumLon += candPos.lon;
+                memberCount++;
+            }
+        }
+
+        if (memberCount > 1) {
+            master.isHydrantCluster = true;
+            master.clusterCount = memberCount;
+            // Exakt auf die mathematische Mitte setzen
+            master.lat = sumLat / memberCount;
+            master.lon = sumLon / memberCount;
+            if (master.center) {
+                master.center.lat = master.lat;
+                master.center.lon = master.lon;
+            }
+        }
+
+        processed.add(master.id);
+        clustered.push(master);
+    }
+
+    return clustered.concat(others);
+}
+
+function generateTooltip(tags, clusterMembers) {
+    // Single POI Logic
+    if (!clusterMembers || clusterMembers.length === 0) {
+        const safeTags = tags || {};
+        const tooltipTitle = escapeHtml(safeTags.name || t('details'));
+        let html = `<div class="p-2 min-w-[180px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div><div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
+        for (const [key, val] of Object.entries(safeTags)) {
+            html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 break-words">${escapeHtml(val)}</div>`;
+        }
+        return html + `</div></div>`;
+    }
+
+    // Cluster Logic: Render alle enthaltenen Hydranten
+    let html = `<div class="p-2 min-w-[200px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-2 text-blue-400">${clusterMembers.length} Objekte an diesem Ort</div><div class="flex flex-col gap-3">`;
+
+    clusterMembers.forEach((member, i) => {
+        const safeTags = member.tags || {};
+        const displayName = escapeHtml(safeTags.name || t('details_hydrant'));
+        html += `<div class="text-[10px] bg-white/5 rounded p-1"><div class="font-bold text-slate-300 mb-1 border-b border-white/10 pb-0.5">${i + 1}. ${displayName}</div><div class="font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
+        for (const [key, val] of Object.entries(safeTags)) {
+            html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 break-words">${escapeHtml(val)}</div>`;
+        }
+        html += `</div></div>`;
+    });
 
     html += `</div></div>`;
     return html;
@@ -874,7 +968,7 @@ export function renderMarkers(elements, zoom) {
         }
 
         // Fall 3: Marker ist neu (oder wurde gerade in Fall 2 gelöscht) -> Neu erstellen
-        createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isDefib);
+        createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isDefib, el.isHydrantCluster, el.clusterCount, el.clusterMembers);
     });
 
     // --- H. AUFRÄUMEN (Garbage Collection) ---
@@ -891,7 +985,7 @@ export function renderMarkers(elements, zoom) {
  * Hilfsfunktion zum Erstellen eines einzelnen Markers.
  * Ausgelagert für bessere Lesbarkeit.
  */
-function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isDefib) {
+function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isDefib, isHydrantCluster, clusterCount, clusterMembers) {
     let marker;
     let iconHtml;
     let className = '';
@@ -921,7 +1015,9 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             // Falls keines davon, bleibt size auf [28, 28] vom Standard oben
         }
 
-        iconHtml = getSVGContent(type, size[0]); // Explicit Pixel Size übergeben
+        // Übersteuerung für Clustering
+        const finalType = isHydrantCluster ? 'cluster_badge' : type;
+        iconHtml = getSVGContent(finalType, size[0], clusterCount); // Explicit Pixel Size übergeben
         className = 'icon-container';
 
         marker = L.marker([lat, lon], {
@@ -963,7 +1059,7 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
          */
 
         marker.unbindTooltip();
-        marker.bindTooltip(generateTooltip(tags), {
+        marker.bindTooltip(generateTooltip(tags, clusterMembers), {
             interactive: true,
             permanent: false,
             direction: 'top',
@@ -1125,5 +1221,6 @@ export const _testing = {
     getElementLatLon,
     distanceMeters,
     countTags,
+    clusterPOIs,
     clusterFireStations
 };
