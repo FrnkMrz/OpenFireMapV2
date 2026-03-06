@@ -647,7 +647,7 @@ function clusterFireStations(rawElements, radiusMeters = 150) {
  * ==========================================================================================
  */
 function clusterPOIs(rawElements, zoom, radiusMeters = 5) {
-    if (zoom !== 17 && zoom !== 18) return rawElements; // Nur auf Z17 und Z18 aktiv
+    if (zoom < 17 || zoom >= 19) return rawElements; // Nur auf Z17 und Z18 aktiv
     if (!Array.isArray(rawElements) || rawElements.length === 0) return rawElements;
 
     const pois = [];
@@ -953,15 +953,18 @@ export function renderMarkers(elements, zoom) {
         // Prüfen, ob wir den Marker schon haben
         const cached = State.markerCache.get(id);
 
-        // Fall 1: Marker existiert UND Modus (Dot vs SVG) ist gleich geblieben
-        if (cached && cached.mode === mode) {
+        // Fall 1: Marker existiert UND Modus (Dot vs SVG) ist gleich geblieben, sowie Cluster-Status ist identisch
+        if (cached &&
+            cached.mode === mode &&
+            cached.isHydrantCluster === el.isHydrantCluster &&
+            cached.clusterCount === el.clusterCount) {
             // Nichts tun! Der Marker bleibt einfach auf der Karte.
             // Das verhindert das Flackern und spart Rechenleistung.
             return;
         }
 
-        // Fall 2: Marker existiert, aber Modus hat sich geändert (z.B. Zoom von 16 auf 17 -> Dot zu SVG)
-        if (cached && cached.mode !== mode) {
+        // Fall 2: Marker existiert, aber Modus oder Cluster-Status hat sich geändert
+        if (cached && (cached.mode !== mode || cached.isHydrantCluster !== el.isHydrantCluster || cached.clusterCount !== el.clusterCount)) {
             // Alten Marker entfernen, da er neu gezeichnet werden muss
             State.markerLayer.removeLayer(cached.marker);
             State.markerCache.delete(id);
@@ -1195,7 +1198,9 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             lat,
             lon,
             isStation,
-            isDefib
+            isDefib,
+            isHydrantCluster,
+            clusterCount
         });
     }
 }
