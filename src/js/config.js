@@ -73,7 +73,7 @@ export const Config = {
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
         '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
       textAttr: "© OpenStreetMap contributors, © CARTO",
-      maxZoom: 19,
+      maxZoom: 18,
     },
     positron: {
       url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
@@ -81,7 +81,7 @@ export const Config = {
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
         '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
       textAttr: "© OpenStreetMap contributors, © CARTO",
-      maxZoom: 19,
+      maxZoom: 18,
     },
     dark: {
       url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
@@ -89,14 +89,14 @@ export const Config = {
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
         '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
       textAttr: "© OpenStreetMap contributors, © CARTO",
-      maxZoom: 19,
+      maxZoom: 18,
     },
     satellite: {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       attr:
         "Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, " +
         "Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
-      maxZoom: 19,
+      maxZoom: 18,
       maxNativeZoom: 17
     },
     topo: {
@@ -106,22 +106,21 @@ export const Config = {
         'Darstellung: &copy; <a href="http://opentopomap.org">OpenTopoMap</a> ' +
         '(<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
       textAttr: "Daten: © OpenStreetMap-Mitwirkende, SRTM | Darstellung: © OpenTopoMap (CC-BY-SA)",
-      maxZoom: 19,
-      maxNativeZoom: 17
+      maxZoom: 17
     },
     osm: {
       url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       attr:
         '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
       textAttr: "© OpenStreetMap contributors",
-      maxZoom: 19,
+      maxZoom: 18,
     },
     osmde: {
       url: "https://tile.openstreetmap.de/{z}/{x}/{y}.png",
       attr:
         '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
       textAttr: "© OpenStreetMap contributors",
-      maxZoom: 19,
+      maxZoom: 18,
     },
   },
 
