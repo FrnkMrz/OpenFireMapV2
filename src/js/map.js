@@ -414,7 +414,7 @@ export function setBaseLayer(key) {
 }
 
 // Hilfsfunktion für SVGs (jetzt mit Farben aus Config und expliziter Pixelgröße für Android)
-function getSVGContent(type, pixelSize = 28) {
+function getSVGContent(type, pixelSize = 28, clusterCount = 2) {
     // Farben holen
     const c = Config.colors;
 
@@ -455,10 +455,9 @@ function getSVGContent(type, pixelSize = 28) {
 
     // 4. Cluster Badge (NEU)
     if (type === 'cluster_badge') {
-        const count = arguments[2] || 2; // Wir nutzen arguments wg. fehlendem 3. Parameter z.B. bei explizitem Abruf
         return `<svg width="${pixelSize}px" height="${pixelSize}px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
-            <text x="50" y="70" font-family="Arial" font-weight="bold" font-size="52" text-anchor="middle" fill="white">${count}</text>
+            <text x="50" y="70" font-family="Arial" font-weight="bold" font-size="52" text-anchor="middle" fill="white">${clusterCount}</text>
         </svg>`;
     }
 
@@ -653,12 +652,10 @@ function clusterPOIs(rawElements, zoom, radiusMeters = 5) {
     const pois = [];
     const others = [];
 
-    // Wir clustern nur Hydranten / Wasserstellen. Stationen und Defis bleiben unberührt.
     for (const el of rawElements) {
         if (isFireStation(el) || (el.tags && el.tags.emergency === 'defibrillator')) {
             others.push(el);
         } else {
-            // POIs ohne Location brauchen wir nicht zu berücksichtigen
             const pos = getElementLatLon(el);
             if (pos) pois.push(el);
             else others.push(el);
@@ -670,23 +667,25 @@ function clusterPOIs(rawElements, zoom, radiusMeters = 5) {
     const processed = new Set();
     const clustered = [];
 
-    for (const master of pois) {
-        if (processed.has(master.id)) continue;
+    // Priorisiere Hydranten von links nach rechts / oben nach unten, um stabile Cluster-Zentren zu behalten
+    pois.sort((a, b) => (a.id || 0) - (b.id || 0));
 
-        const masterPos = getElementLatLon(master);
+    for (const rawMaster of pois) {
+        if (processed.has(rawMaster.id)) continue;
+
+        const masterPos = getElementLatLon(rawMaster);
         let sumLat = masterPos.lat;
         let sumLon = masterPos.lon;
         let memberCount = 1;
-
-        master.clusterMembers = [master]; // Sich selbst merken
+        const clusterMembers = [rawMaster];
 
         for (const cand of pois) {
-            if (cand.id === master.id || processed.has(cand.id)) continue;
+            if (cand.id === rawMaster.id || processed.has(cand.id)) continue;
 
             const candPos = getElementLatLon(cand);
             if (distanceMeters(masterPos, candPos) < radiusMeters) {
                 processed.add(cand.id);
-                master.clusterMembers.push(cand);
+                clusterMembers.push(cand);
                 sumLat += candPos.lat;
                 sumLon += candPos.lon;
                 memberCount++;
@@ -694,19 +693,26 @@ function clusterPOIs(rawElements, zoom, radiusMeters = 5) {
         }
 
         if (memberCount > 1) {
-            master.isHydrantCluster = true;
-            master.clusterCount = memberCount;
-            // Exakt auf die mathematische Mitte setzen
-            master.lat = sumLat / memberCount;
-            master.lon = sumLon / memberCount;
-            if (master.center) {
-                master.center.lat = master.lat;
-                master.center.lon = master.lon;
+            // Unabhängiges Cluster-Objekt erzeugen, damit wir rawElements NICHT kaputt mutieren
+            // Das verhindert, dass die Geometrie in Z16 oder nach Reloads abdriftet
+            const clusterMaster = {
+                ...rawMaster,
+                isHydrantCluster: true,
+                clusterCount: memberCount,
+                clusterMembers: clusterMembers,
+                lat: sumLat / memberCount,
+                lon: sumLon / memberCount
+            };
+            if (clusterMaster.center) {
+                clusterMaster.center = { ...clusterMaster.center, lat: clusterMaster.lat, lon: clusterMaster.lon };
             }
+            clustered.push(clusterMaster);
+        } else {
+            // Nur Einzelobjekt kopieren
+            clustered.push({ ...rawMaster, isHydrantCluster: false, clusterCount: 1, clusterMembers: [] });
         }
 
-        processed.add(master.id);
-        clustered.push(master);
+        processed.add(rawMaster.id);
     }
 
     return clustered.concat(others);
