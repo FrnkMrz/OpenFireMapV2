@@ -948,6 +948,27 @@ export function renderMarkers(elements, zoom) {
         // Wir merken uns, dass diese ID in diesem Durchlauf gültig ist
         markersToKeep.add(id);
 
+        // WICHTIGER FIX: Wenn dieses Element ein Master-Cluster ist, 
+        // müssen wir AUCH die IDs aller Kandidaten-Mitglieder in markersToKeep eintragen.
+        // Andernfalls löscht der Garbage-Collector nachher die gecachten Dot-Marker der
+        // Kandidaten, was beim Rauszoomen zu massivem Flackern und Fehl-Rendern führt, 
+        // weil die Map denkt, sie seien gelöscht worden.
+        if (el.isHydrantCluster && el.clusterMembers) {
+            el.clusterMembers.forEach(member => {
+                const memberId = `${member.type || 'node'}:${member.id}`;
+                markersToKeep.add(memberId);
+
+                // Wir müssen auch sicherstellen, dass die Kandidaten-Einträge im Cache
+                // gelöscht werden, damit sie optisch verschwinden und Platz für das Badge machen.
+                // Nur der Master darf "überleben" und gezeichnet werden.
+                if (memberId !== id && State.markerCache.has(memberId)) {
+                    const cachedCand = State.markerCache.get(memberId);
+                    State.markerLayer.removeLayer(cachedCand.marker);
+                    State.markerCache.delete(memberId);
+                }
+            });
+        }
+
         // --- G. DIFFING LOGIK (Das Herzstück) ---
 
         // Prüfen, ob wir den Marker schon haben
