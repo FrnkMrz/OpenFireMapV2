@@ -727,7 +727,7 @@ function generateTooltip(tags, clusterMembers) {
         const tooltipTitle = escapeHtml(safeTags.name || t('details_hydrant'));
         let html = `<div class="p-2 min-w-[180px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div>`;
         
-        if (safeTags['fire_hydrant:style'] === 'wsh') {
+        if (safeTags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
             html += `<div class="text-[11px] text-orange-400 font-bold mb-2 pb-1 border-b border-white/10 italic">${escapeHtml(t('wsh_hint') || "Württembergischer Schachthydrant")}</div>`;
         }
 
@@ -746,7 +746,7 @@ function generateTooltip(tags, clusterMembers) {
         const displayName = escapeHtml(safeTags.name || t('details_hydrant'));
         html += `<div class="text-[10px] bg-white/5 rounded p-1"><div class="font-bold text-slate-300 mb-1 border-b border-white/10 pb-0.5">${i + 1}. ${displayName}</div>`;
         
-        if (safeTags['fire_hydrant:style'] === 'wsh') {
+        if (safeTags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
             html += `<div class="text-[11px] text-orange-400 font-bold mb-1 pb-1 border-b border-white/10 italic">${escapeHtml(t('wsh_hint') || "Württembergischer Schachthydrant")}</div>`;
         }
         
@@ -944,7 +944,7 @@ export function renderMarkers(elements, zoom) {
         const isDefib = tags.emergency === 'defibrillator';
         // Fallback für Typen
         let type = isStation ? 'station' : (isDefib ? 'defibrillator' : (tags['fire_hydrant:type'] || tags.emergency));
-        if (type === 'underground' && tags['fire_hydrant:style'] === 'wsh') {
+        if (type === 'underground' && tags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
             type = 'wsh';
         }
 
