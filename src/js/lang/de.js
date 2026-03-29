@@ -88,7 +88,7 @@ export const strings = {
     alt_server: "Alternativ-Server",
     next_server: "nächsten Server",
     seconds_short: "s",
-    wsh_hint: "Württembergischer Schachthydrant (Standrohr benötigt)",
+    wsh_hint: "Württembergischer Schachthydrant",
     cluster_info: "Objekte innerhalb 5m",
     details_hydrant: "Hydranten-Details"
 };
