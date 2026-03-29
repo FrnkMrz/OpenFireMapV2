@@ -1088,9 +1088,19 @@ function drawCanvasIcon(ctx, x, y, type, isStation, isDefib) {
       ctx.beginPath(); ctx.arc(42, 52, 18, 0, 2 * Math.PI); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(64, 34); ctx.lineTo(64, 70); ctx.stroke();
     } else {
-      // Buchstabe
+      // Buchstabe und extra Grafiken (z.B. WSH Innenring)
       let char = '';
       if (type === 'underground') char = 'U';
+      if (type === 'wsh') {
+        char = 'W';
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 4;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath(); 
+        ctx.arc(50, 50, 36, 0, Math.PI * 2); 
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       if (type === 'pillar') char = 'O';
       if (type === 'pipe') char = 'I';
       if (type === 'dry_barrel') char = 'Ø';
