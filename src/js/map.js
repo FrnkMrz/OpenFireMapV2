@@ -781,13 +781,19 @@ export function showRangeCircle(lat, lon) {
 
     // Bei < 17 nur den Kreis (Label wäre zu störend / würde überlappen)
     if (currentZoom >= 17) {
-        // Berechne den genauen Nord-Punkt für das Label (ca. 2/3 des Radius, damit es gut im Kreis sitzt)
+        // Berechne den genauen Punkt für das Label: 11 Uhr Position auf der Linie (Radius = 100m)
+        // 11 Uhr bedeutet: -30° (oder 330°) Richtung Nord-West
+        // dy (Nord) = 100m * cos(30°) ≈ 86.6m
+        // dx (West) = 100m * sin(-30°) = -50m
         const latRad = lat * (Math.PI / 180);
-        // ~ 111.32 km pro Breitengrad (1 = 111320m)
-        const latOffset = 66 / (111.32 * 1000 * Math.cos(latRad));
+        const mPerDegLat = 111320; // 1° Latitude = ~111.32 km überall
+        const mPerDegLon = 111320 * Math.cos(latRad); // 1° Longitude = schrumpft je nach Breitengrad
+        
+        const latOffset = 86.6 / mPerDegLat;
+        const lonOffset = -50 / mPerDegLon;
 
-        // Marker für das Text-Label am oberen Rand
-        L.marker([lat + latOffset, lon], { opacity: 0, interactive: false })
+        // Marker für das Text-Label genau auf der Kreislinie bei 11 Uhr
+        L.marker([lat + latOffset, lon + lonOffset], { opacity: 0, interactive: false })
             .addTo(State.rangeLayerGroup)
             .bindTooltip('100 m', {
                 permanent: true,
