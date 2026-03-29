@@ -49,6 +49,8 @@ OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik (Vite, ES Module
 - 📤 **Export** als PNG, PDF oder GPX (inkl. skalierungsfreier, vollständiger Hydranten-Renderings auf allen Zoomstufen)
 - 🛰️ **Satellitenansicht** (Bing Maps, benötigt Online-Verbindung)
 - 📱 **Responsive Design** – funktioniert auf Desktop und Mobil
+- 🔧 **Smart Clustering & POI Bündelung**: Intelligente Gruppierung nah beieinander liegender Hydranten (unter 5m) inkl. Multi-Tooltips.
+- 💧 **Support für spezielle Typen**: Nativer Support für besondere regionale Hydrantentypen wie den *Württembergischen Schachthydrant (WSH)* inkl. visuellem Hinweis auf das benötigte spezielle Standrohr.
 
 ### Projektstruktur
 

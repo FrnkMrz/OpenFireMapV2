@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.4] - 2026-03-29
+### Neue Features
+- **Württembergischer Schachthydrant (WSH)**: Spezielles Rendering (W-Icon mit gestricheltem Innenring) und exakte Tooltip-Warnung für Unterflurhydranten, die mit dem OSM-Tag `fire_hydrant:style=wsh` gekennzeichnet sind (auch bei abweichender Groß-/Kleinschreibung wie `WSH`).
+
+### Fehlerbehebungen (Bugfixes)
+- **100m Entfernungsring-Label**: Das 100-Meter-Label ("100 m") wurde optisch korrigiert und liegt nun wieder ordentlich auf zwei Dritteln des Radius innerhalb des gestrichelten Kreises anstatt zu weit nach außen zu ragen.
+- **Hydranten Parser**: Case-Insensitivity-Bug („=== 'wsh'“) via `.toLowerCase()` behoben, sodass manuelle Großschreibungen durch OSM Mapper ("WSH") toleriert werden.
+
 ## [0.6.3] - 2026-03-06
 
 ### Added
