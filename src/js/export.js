@@ -404,8 +404,11 @@ export async function exportAsGPX() {
       let name =
         tags.name ||
         (isStation ? t("station") : isDefib ? t("defib") : t("hydrant"));
-      if (!tags.name && tags["fire_hydrant:type"])
-        name = `H ${tags["fire_hydrant:type"]}`;
+      if (!tags.name && tags["fire_hydrant:type"]) {
+        let hType = tags["fire_hydrant:type"];
+        if (hType === 'underground' && tags['fire_hydrant:style'] === 'wsh') hType = 'wsh';
+        name = `H ${hType}`;
+      }
       if (!tags.name && tags["ref"])
         name = `${isStation ? "Wache" : "H"} ${tags["ref"]}`;
 
@@ -784,11 +787,14 @@ async function generateMapCanvas() {
 
     const tags = el.tags || {};
     const isStation = tags.amenity === "fire_station" || tags.building === "fire_station";
-    const type = isStation
+    let type = isStation
       ? "station"
       : tags.emergency === "defibrillator"
         ? "defibrillator"
         : tags["fire_hydrant:type"] || tags.emergency || "fire_hydrant";
+    if (type === 'underground' && tags['fire_hydrant:style'] === 'wsh') {
+      type = 'wsh';
+    }
 
     if (
       tx < margin ||

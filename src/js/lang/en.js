@@ -89,9 +89,9 @@ export const strings = {
     server_error_type_connection: "Connection problem",
     alt_server: "alternative server",
     next_server: "next server",
-    seconds_short: "s"
-,
+    seconds_short: "s",
     cluster_info: "Objects within 5m",
-    details_hydrant: "Hydrant Details"
+    details_hydrant: "Hydrant Details",
+    wsh_hint: "Württemberg underground hydrant (Requires special standpipe)"
 };
 export default strings;

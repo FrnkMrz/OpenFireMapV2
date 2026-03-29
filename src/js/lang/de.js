@@ -87,8 +87,8 @@ export const strings = {
     server_error_type_connection: "Verbindungsproblem",
     alt_server: "Alternativ-Server",
     next_server: "nächsten Server",
-    seconds_short: "s"
-,
+    seconds_short: "s",
+    wsh_hint: "Württembergischer Schachthydrant (Standrohr benötigt)",
     cluster_info: "Objekte innerhalb 5m",
     details_hydrant: "Hydranten-Details"
 };

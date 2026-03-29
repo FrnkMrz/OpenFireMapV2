@@ -444,6 +444,7 @@ function getSVGContent(type, pixelSize = 28, clusterCount = 2) {
     let char;
     switch (type) {
         case 'underground': char = 'U'; break;
+        case 'wsh': char = 'W'; break;
         case 'pillar': char = 'O'; break;
         case 'pipe': char = 'I'; break;
         case 'dry_barrel': char = 'Ø'; break;
@@ -462,7 +463,8 @@ function getSVGContent(type, pixelSize = 28, clusterCount = 2) {
     }
 
     // 5. Standard
-    return `<svg width="${pixelSize}px" height="${pixelSize}px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
+    const innerRing = type === 'wsh' ? `<circle cx="50" cy="50" r="36" fill="none" stroke="white" stroke-dasharray="6 4" stroke-width="4"/>` : '';
+    return `<svg width="${pixelSize}px" height="${pixelSize}px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>${innerRing}${char ? `<text x="50" y="72" font-family="Arial" font-weight="bold" font-size="50" text-anchor="middle" fill="white">${char}</text>` : ''}</svg>`;
 }
 
 
@@ -722,8 +724,14 @@ function generateTooltip(tags, clusterMembers) {
     // Single POI Logic
     if (!clusterMembers || clusterMembers.length === 0) {
         const safeTags = tags || {};
-        const tooltipTitle = escapeHtml(safeTags.name || t('details'));
-        let html = `<div class="p-2 min-w-[180px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div><div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
+        const tooltipTitle = escapeHtml(safeTags.name || t('details_hydrant'));
+        let html = `<div class="p-2 min-w-[180px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div>`;
+        
+        if (safeTags['fire_hydrant:style'] === 'wsh') {
+            html += `<div class="text-[11px] text-orange-400 font-bold mb-2 pb-1 border-b border-white/10 italic">${escapeHtml(t('wsh_hint') || "Württembergischer Schachthydrant")}</div>`;
+        }
+
+        html += `<div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
         for (const [key, val] of Object.entries(safeTags)) {
             html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 break-words">${escapeHtml(val)}</div>`;
         }
@@ -736,7 +744,13 @@ function generateTooltip(tags, clusterMembers) {
     clusterMembers.forEach((member, i) => {
         const safeTags = member.tags || {};
         const displayName = escapeHtml(safeTags.name || t('details_hydrant'));
-        html += `<div class="text-[10px] bg-white/5 rounded p-1"><div class="font-bold text-slate-300 mb-1 border-b border-white/10 pb-0.5">${i + 1}. ${displayName}</div><div class="font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
+        html += `<div class="text-[10px] bg-white/5 rounded p-1"><div class="font-bold text-slate-300 mb-1 border-b border-white/10 pb-0.5">${i + 1}. ${displayName}</div>`;
+        
+        if (safeTags['fire_hydrant:style'] === 'wsh') {
+            html += `<div class="text-[11px] text-orange-400 font-bold mb-1 pb-1 border-b border-white/10 italic">${escapeHtml(t('wsh_hint') || "Württembergischer Schachthydrant")}</div>`;
+        }
+        
+        html += `<div class="font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
         for (const [key, val] of Object.entries(safeTags)) {
             html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 break-words">${escapeHtml(val)}</div>`;
         }
@@ -930,6 +944,9 @@ export function renderMarkers(elements, zoom) {
         const isDefib = tags.emergency === 'defibrillator';
         // Fallback für Typen
         let type = isStation ? 'station' : (isDefib ? 'defibrillator' : (tags['fire_hydrant:type'] || tags.emergency));
+        if (type === 'underground' && tags['fire_hydrant:style'] === 'wsh') {
+            type = 'wsh';
+        }
 
         // --- D. Zoom-Filter (Sichtbarkeit) ---
         // Stationen ab Zoom 12, Hydranten/Defis ab Zoom 15
