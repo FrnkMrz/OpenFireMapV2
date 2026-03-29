@@ -781,11 +781,10 @@ export function showRangeCircle(lat, lon) {
 
     // Bei < 17 nur den Kreis (Label wäre zu störend / würde überlappen)
     if (currentZoom >= 17) {
-        // Berechne den genauen Nord-Punkt für das Label
-        // Radius=100m in lat (~0.0009 Grad)
+        // Berechne den genauen Nord-Punkt für das Label (ca. 2/3 des Radius, damit es gut im Kreis sitzt)
         const latRad = lat * (Math.PI / 180);
         // ~ 111.32 km pro Breitengrad (1 = 111320m)
-        const latOffset = 100 / (111.32 * 1000 * Math.cos(latRad));
+        const latOffset = 66 / (111.32 * 1000 * Math.cos(latRad));
 
         // Marker für das Text-Label am oberen Rand
         L.marker([lat + latOffset, lon], { opacity: 0, interactive: false })
