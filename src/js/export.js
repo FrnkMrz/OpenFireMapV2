@@ -1029,90 +1029,98 @@ export async function fetchLocationTitle(lat, lon) {
   }
 }
 
+const iconCache = {};
+
 /**
  * Hilfsfunktion zum Zeichnen der Icons auf Canvas (statt SVG-String parsing).
- * Verhindert Probleme mit "Tainted Canvas" oder ungeladenen Bildern.
+ * Nutzt Offscreen-Caching zur Performance-Steigerung und Vermeidung
+ * von Safari-Bugs (fillText auf riesigen Canvases wird oft verschluckt).
  */
 function drawCanvasIcon(ctx, x, y, type, isStation, isDefib) {
   const c = Config.colors;
-  ctx.save();
-  ctx.translate(x, y);
+  const cacheKey = isStation ? 'station' : (isDefib ? 'defib' : type);
 
-  // Skalierung: SVG ist 100x100, wir wollen ca 32x32
-  // Stationen etwas größer
-  const scale = isStation ? 0.4 : 0.35;
-  ctx.scale(scale, scale);
-  ctx.translate(-50, -50); // Center at 0,0
+  // Icon generieren und cachen, falls noch nicht vorhanden
+  if (!iconCache[cacheKey]) {
+    const offCanvas = document.createElement("canvas");
+    offCanvas.width = 100;
+    offCanvas.height = 100;
+    const offCtx = offCanvas.getContext("2d");
 
-  if (isStation) {
-    // Wache: Haus-Symbol
-    ctx.fillStyle = c.station;
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(10, 40); ctx.lineTo(50, 5); ctx.lineTo(90, 40); ctx.lineTo(90, 90); ctx.lineTo(10, 90); ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    // Tor
-    ctx.fillStyle = "white";
-    ctx.globalAlpha = 0.9;
-    ctx.fillRect(30, 55, 40, 35);
-    ctx.globalAlpha = 1;
-  } else if (isDefib) {
-    // Defi: Herz + Blitz
-    ctx.fillStyle = c.defib;
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(50, 50, 45, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    // Herz
-    ctx.fillStyle = "white";
-    ctx.beginPath(); ctx.moveTo(50, 80); ctx.quadraticCurveTo(10, 40, 50, 35); ctx.quadraticCurveTo(90, 40, 50, 80); ctx.fill();
-    // Blitz (vereinfacht)
-    ctx.strokeStyle = c.defib; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(55, 45); ctx.lineTo(45, 55); ctx.lineTo(55, 55); ctx.lineTo(45, 65); ctx.stroke();
-  } else {
-    // Hydrant / Wasser
-    const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
-    const color = isWater ? c.water : c.hydrant;
-
-    // Kreis
-    ctx.fillStyle = color;
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(50, 50, 45, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-
-    if (type === 'wall') {
-      // Wandhydrant Symbol
-      ctx.fillStyle = "none";
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.arc(42, 52, 18, 0, 2 * Math.PI); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(64, 34); ctx.lineTo(64, 70); ctx.stroke();
+    if (isStation) {
+      // Wache: Haus-Symbol
+      offCtx.fillStyle = c.station;
+      offCtx.strokeStyle = "white";
+      offCtx.lineWidth = 4;
+      offCtx.beginPath();
+      offCtx.moveTo(10, 40); offCtx.lineTo(50, 5); offCtx.lineTo(90, 40); offCtx.lineTo(90, 90); offCtx.lineTo(10, 90); offCtx.closePath();
+      offCtx.fill(); offCtx.stroke();
+      // Tor
+      offCtx.fillStyle = "white";
+      offCtx.globalAlpha = 0.9;
+      offCtx.fillRect(30, 55, 40, 35);
+      offCtx.globalAlpha = 1;
+    } else if (isDefib) {
+      // Defi: Herz + Blitz
+      offCtx.fillStyle = c.defib;
+      offCtx.strokeStyle = "white";
+      offCtx.lineWidth = 5;
+      offCtx.beginPath(); offCtx.arc(50, 50, 45, 0, Math.PI * 2); offCtx.fill(); offCtx.stroke();
+      // Herz
+      offCtx.fillStyle = "white";
+      offCtx.beginPath(); offCtx.moveTo(50, 80); offCtx.quadraticCurveTo(10, 40, 50, 35); offCtx.quadraticCurveTo(90, 40, 50, 80); offCtx.fill();
+      // Blitz
+      offCtx.strokeStyle = c.defib; offCtx.lineWidth = 3;
+      offCtx.beginPath(); offCtx.moveTo(55, 45); offCtx.lineTo(45, 55); offCtx.lineTo(55, 55); offCtx.lineTo(45, 65); offCtx.stroke();
     } else {
-      // Buchstabe und extra Grafiken (z.B. WSH Innenring)
-      let char = '';
-      if (type === 'underground') char = 'U';
-      if (type === 'wsh') {
-        char = 'W';
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 4;
-        ctx.setLineDash([6, 4]);
-        ctx.beginPath(); 
-        ctx.arc(50, 50, 36, 0, Math.PI * 2); 
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-      if (type === 'pillar') char = 'O';
-      if (type === 'pipe') char = 'I';
-      if (type === 'dry_barrel') char = 'Ø';
+      // Hydrant / Wasser
+      const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
+      const color = isWater ? c.water : c.hydrant;
 
-      if (char) {
-        ctx.fillStyle = "white";
-        ctx.font = "bold 50px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(char, 50, 55);
+      // Kreis
+      offCtx.fillStyle = color;
+      offCtx.strokeStyle = "white";
+      offCtx.lineWidth = 5;
+      offCtx.beginPath(); offCtx.arc(50, 50, 45, 0, Math.PI * 2); offCtx.fill(); offCtx.stroke();
+
+      if (type === 'wall') {
+        offCtx.fillStyle = "none";
+        offCtx.strokeStyle = "white";
+        offCtx.lineWidth = 6;
+        offCtx.beginPath(); offCtx.arc(42, 52, 18, 0, 2 * Math.PI); offCtx.stroke();
+        offCtx.beginPath(); offCtx.moveTo(64, 34); offCtx.lineTo(64, 70); offCtx.stroke();
+      } else {
+        // Buchstabe und extra Grafiken
+        let char = '';
+        if (type === 'underground') char = 'U';
+        if (type === 'wsh') {
+          char = 'W';
+          offCtx.strokeStyle = "white";
+          offCtx.lineWidth = 4;
+          offCtx.setLineDash([6, 4]);
+          offCtx.beginPath(); 
+          offCtx.arc(50, 50, 36, 0, Math.PI * 2); 
+          offCtx.stroke();
+          offCtx.setLineDash([]);
+        }
+        if (type === 'pillar') char = 'O';
+        if (type === 'pipe') char = 'I';
+        if (type === 'dry_barrel') char = 'Ø';
+
+        if (char) {
+          offCtx.fillStyle = "white";
+          offCtx.font = "bold 50px Arial, sans-serif";
+          offCtx.textAlign = "center";
+          offCtx.textBaseline = "middle";
+          offCtx.fillText(char, 50, 55);
+        }
       }
     }
+    iconCache[cacheKey] = offCanvas;
   }
-  ctx.restore();
+
+  // Auf Ziel-Canvas zeichnen
+  const scale = isStation ? 0.4 : 0.35;
+  const size = 100 * scale;
+  ctx.drawImage(iconCache[cacheKey], x - size / 2, y - size / 2, size, size);
 }
