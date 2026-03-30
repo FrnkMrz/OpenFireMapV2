@@ -729,6 +729,12 @@ async function generateMapCanvas() {
 
   if (signal.aborted) throw new Error("Export abgebrochen");
 
+  // Nur innerhalb der eigentlichen Karte zeichnen (schützt Rand & Header vor Kacheln/Icons)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(margin, margin, mapWidth, mapHeight);
+  ctx.clip(); 
+
   // 7. ZEICHNEN (Tiles)
   results.forEach((r) => {
     // Pixel-Offset auf der Karte + Margin
@@ -739,10 +745,6 @@ async function generateMapCanvas() {
 
   // 8. OVERLAYS ZEICHNEN
   setStatus(t("render_infra"));
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(margin, margin, mapWidth, mapHeight);
-  ctx.clip(); // Nur innerhalb der Karte zeichnen
 
 
 
