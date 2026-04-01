@@ -21,7 +21,7 @@ async function getExport() {
     return _exportModule;
 }
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
-import { setBaseLayer, clearDistanceLine, drawLineToNearest } from './map.js';
+import { setBaseLayer, clearDistanceLine, drawLineToNearest, shareMap } from './map.js';
 
 // ...
 
@@ -410,6 +410,7 @@ export function setupUI() {
     // 1. Haupt-Buttons verbinden
     addClick('layer-btn-trigger', toggleLayerMenu);
     addClick('export-btn-trigger', toggleExportMenu);
+    addClick('share-btn-trigger', shareMap);
 
     // Info & Recht Button (öffnet das Modal)
     addClick('btn-legal-trigger', toggleLegalModal);

@@ -124,6 +124,7 @@
   const mobileBurger = $('mobile-burger-btn');
   const mobileLocate = $('mobile-locate-btn');
   const mobileOpenLayers = $('mobile-open-layers');
+  const mobileOpenShare = $('mobile-open-share');
   const mobileOpenSearch = $('mobile-open-search');
   const mobileOpenLegal = $('mobile-open-legal');
   const mobileClose = $('mobile-close-menu');
@@ -266,6 +267,18 @@
       setTimeout(() => {
         wireLayerMenuAutoClose();
       }, 0);
+    });
+  }
+
+  // ---------------------------
+  // Share (Mobile -> Desktop Share Trigger)
+  // ---------------------------
+  if (mobileOpenShare) {
+    mobileOpenShare.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeMobileMenu();
+      closeDesktopPopupMenus();
+      safeClick('share-btn-trigger');
     });
   }
 

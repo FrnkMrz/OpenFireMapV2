@@ -92,6 +92,8 @@ export const strings = {
     seconds_short: "s",
     cluster_info: "Objects within 5m",
     details_hydrant: "Hydrant Details",
-    wsh_hint: "Württemberg underground hydrant"
+    wsh_hint: "Württemberg underground hydrant",
+    share_map: "Share Map View",
+    link_copied: "Link copied to clipboard!"
 };
 export default strings;

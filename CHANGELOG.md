@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.5] - 2026-04-01
+### Neue Features
+- **Permalink & Teilen**: Kartenansicht (Position, Zoom, aktiver Layer) kann nun direkt über die URL geteilt werden. Ein neuer "Teilen"-Button im Web und Mobile (nutzt native Share-API auf dem Smartphone) kopiert den genauen Link und erlaubt ein schnelles Weiterleiten des Kartenausschnitts.
+
+
 ## [v0.6.4] - 2026-03-29
 ### Neue Features
 - **Württembergischer Schachthydrant (WSH)**: Spezielles Rendering (W-Icon mit gestricheltem Innenring) und exakte Tooltip-Warnung für Unterflurhydranten, die mit dem OSM-Tag `fire_hydrant:style=wsh` gekennzeichnet sind (auch bei abweichender Groß-/Kleinschreibung wie `WSH`).

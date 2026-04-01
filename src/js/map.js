@@ -11,6 +11,85 @@ import { t } from './i18n.js';
 import { fetchOSMData } from './api.js';
 import { showNotification } from './ui.js';
 
+// ---------------------------------------------------------------------------
+// Permalink — URL-Hash Hilfsfunktionen
+// Format: #zoom/lat/lon/layer  (z.B. #17/48.1234/9.5678/topo)
+// ---------------------------------------------------------------------------
+
+/** Liest den URL-Hash und gibt {lat, lon, zoom, layer} zurück oder null. */
+function parsePermalinkHash() {
+    const hash = window.location.hash.replace(/^#/, '');
+    if (!hash) return null;
+    const parts = hash.split('/');
+    if (parts.length < 3) return null;
+
+    const zoom = Number(parts[0]);
+    const lat  = Number(parts[1]);
+    const lon  = Number(parts[2]);
+    const layer = parts[3] || null; // optional
+
+    if (!Number.isFinite(zoom) || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if (zoom < 1 || zoom > 22) return null;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+
+    return { lat, lon, zoom: Math.round(zoom), layer };
+}
+
+let _permalinkTimer = null;
+
+/** Aktualisiert den URL-Hash mit der aktuellen Kartenposition (debounced). */
+function updatePermalink() {
+    if (_permalinkTimer) clearTimeout(_permalinkTimer);
+    _permalinkTimer = setTimeout(() => {
+        if (!State.map) return;
+        const c = State.map.getCenter();
+        const z = Math.round(State.map.getZoom());
+        const layer = State.activeLayerKey || 'voyager';
+        const newHash = `#${z}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}/${layer}`;
+        if (window.location.hash !== newHash) {
+            window.history.replaceState(null, '', newHash);
+        }
+    }, 300);
+}
+
+/**
+ * Teilt die aktuelle Kartenansicht via Web Share API (Mobile)
+ * oder kopiert den Link in die Zwischenablage (Desktop-Fallback).
+ */
+export async function shareMap() {
+    if (!State.map) return;
+    // Permalink sofort aktualisieren, damit der geteilte Link aktuell ist
+    const c = State.map.getCenter();
+    const z = Math.round(State.map.getZoom());
+    const layer = State.activeLayerKey || 'voyager';
+    const url = `${window.location.origin}${window.location.pathname}#${z}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}/${layer}`;
+
+    // Web Share API (native Share-Sheet auf Mobile)
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: 'OpenFireMap.org',
+                text: t('share_map') || 'Kartenansicht teilen',
+                url
+            });
+            return; // Erfolgreich geteilt
+        } catch (e) {
+            // User hat Share-Dialog abgebrochen – kein Fehler
+            if (e.name === 'AbortError') return;
+            console.warn('[Share] Web Share fehlgeschlagen, Fallback auf Clipboard', e);
+        }
+    }
+
+    // Fallback: Zwischenablage
+    try {
+        await navigator.clipboard.writeText(url);
+        showNotification(t('link_copied') || 'Link kopiert!', 3000);
+    } catch (e) {
+        // Letzter Fallback: prompt
+        window.prompt(t('link_copied') || 'Link kopiert!', url);
+    }
+}
+
 export function initMapLogic() {
     State.markerLayer = L.layerGroup();
     State.boundaryLayer = L.layerGroup();
@@ -28,23 +107,36 @@ export function initMapLogic() {
     State.openTooltipMarker = null;
 
 
-    // 1) Versuchen, letzte Position aus localStorage zu laden
+    // 1) Startposition bestimmen: Permalink-Hash > localStorage > Config-Default
     let startCenter = Config.defaultCenter;
     let startZoom = Config.defaultZoom;
-    try {
-        const savedView = localStorage.getItem('ofm_last_view');
-        if (savedView) {
-            const parsed = JSON.parse(savedView);
-            // Validierung: Lat/Lon/Zoom müssen sinnvoll sein
-            if (Array.isArray(parsed.center) && parsed.center.length === 2 &&
-                typeof parsed.center[0] === 'number' && typeof parsed.center[1] === 'number' &&
-                typeof parsed.zoom === 'number') {
-                startCenter = parsed.center;
-                startZoom = parsed.zoom;
-            }
+    let startLayer = 'voyager';
+
+    // 1a) Permalink-Hash hat höchste Priorität
+    const permalink = parsePermalinkHash();
+    if (permalink) {
+        startCenter = [permalink.lat, permalink.lon];
+        startZoom = permalink.zoom;
+        if (permalink.layer && Config.layers[permalink.layer]) {
+            startLayer = permalink.layer;
         }
-    } catch (e) {
-        console.warn('Fehler beim Laden der letzten Position:', e);
+        console.log('[Permalink] Starte mit Hash-Position:', permalink);
+    } else {
+        // 1b) Fallback: letzte Position aus localStorage
+        try {
+            const savedView = localStorage.getItem('ofm_last_view');
+            if (savedView) {
+                const parsed = JSON.parse(savedView);
+                if (Array.isArray(parsed.center) && parsed.center.length === 2 &&
+                    typeof parsed.center[0] === 'number' && typeof parsed.center[1] === 'number' &&
+                    typeof parsed.zoom === 'number') {
+                    startCenter = parsed.center;
+                    startZoom = parsed.zoom;
+                }
+            }
+        } catch (e) {
+            console.warn('Fehler beim Laden der letzten Position:', e);
+        }
     }
 
     State.map = L.map('map', {
@@ -59,7 +151,7 @@ export function initMapLogic() {
     State.distanceLayerGroup.addTo(State.map);
     State.markerLayer.addTo(State.map);
 
-    setBaseLayer('voyager');
+    setBaseLayer(startLayer);
 
     let debounceTimer;
     let isFirstLoad = true; // NEU: Flag für Sofort-Start
@@ -192,6 +284,8 @@ export function initMapLogic() {
 
 
     State.map.on('moveend zoomend', () => {
+        // Permalink-Hash aktualisieren
+        updatePermalink();
         const zoom = State.map.getZoom();
 
         // 0) Blaue Linie auf Zoom < 17 verbergen, sonst neu rendern falls Ziel aktiv
@@ -411,6 +505,9 @@ export function setBaseLayer(key) {
             layer.setStyle({ color: boundsColor, weight: boundsWeight });
         }
     });
+
+    // Permalink aktualisieren (Layer hat sich geändert)
+    updatePermalink();
 }
 
 // Hilfsfunktion für SVGs (jetzt mit Farben aus Config und expliziter Pixelgröße für Android)
