@@ -508,7 +508,11 @@ export function setBaseLayer(key) {
         if (layer instanceof L.TileLayer) State.map.removeLayer(layer);
     });
     const conf = Config.layers[key];
-    L.tileLayer(conf.url, { attribution: conf.attr, maxZoom: conf.maxZoom }).addTo(State.map);
+    const options = { attribution: conf.attr, maxZoom: conf.maxZoom };
+    if (conf.subdomains) options.subdomains = conf.subdomains;
+    if (conf.maxNativeZoom) options.maxNativeZoom = conf.maxNativeZoom;
+
+    L.tileLayer(conf.url, options).addTo(State.map);
 
     document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
     const btn = document.getElementById(`btn-${key}`);
