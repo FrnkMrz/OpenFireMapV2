@@ -12,7 +12,7 @@
  * veraltete Wasserentnahmestellen suggerieren könnte.
  */
 
-const CACHE_NAME = 'ofm-v4-static';
+const CACHE_NAME = 'ofm-v5-static';
 // Nur wirklich statische Assets precachen (keine gehashten Bundles!)
 const ASSETS = [
     '/',
