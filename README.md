@@ -52,6 +52,7 @@ OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik (Vite, ES Module
 - 🔧 **Smart Clustering & POI Bündelung**: Intelligente Gruppierung nah beieinander liegender Hydranten (unter 5m) inkl. Multi-Tooltips.
 - 💧 **Support für spezielle Typen**: Nativer Support für besondere regionale Hydrantentypen wie den *Württembergischen Schachthydrant (WSH)* inkl. visuellem Hinweis auf das benötigte spezielle Standrohr.
 - 🔗 **Permalink & Teilen**: Teile die exakte Sicht auf die Karte inklusive Kartenebene als Web-Link oder per nativer Smartphone-Share-API (WhatsApp, SMS, etc.).
+- 🗺️ **Regionale Basisdaten**: Vollautomatische, standortbezogene Einblendung der perfekten lokalen Daten, wie z.B. die amtlichen Luftbilder (DOP) und die Webkarte des Freistaats Bayern (nur Desktop).
 
 ### Projektstruktur
 

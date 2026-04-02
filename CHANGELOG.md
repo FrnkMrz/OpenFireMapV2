@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.6] - 2026-04-02
+### Neue Features
+- **Regionale Hintergrundkarten (BayernAtlas)**: Integration der amtlichen "Webkarte Bayern" sowie der hochauflösenden digitalen Orthophotos (DOP/Luftbild) der bayerischen Vermessungsverwaltung über deren freie OpenData WMTS-Server.
+- **Automatische Bounding-Box für regionale Daten**: Der BayernAtlas und das Bayern-Luftbild werden als Overlay-Option im Desktop-Layer-Menü dynamisch ein- und ausgeblendet, basierend auf dem geographischen Standort des Benutzers (Bayern Gemarkung). Ein weicher Fallback greift, falls der Benutzer den Gültigkeitsbereich verlässt.
+- **Erweiterter CSP**: Anpassungen zur sicheren Einbindung der `bayernwolke.de` Kartenserver in die Content-Security-Policy von OpenFireMap.
+
 ## [v0.6.5] - 2026-04-01
 ### Neue Features
 - **Permalink & Teilen**: Kartenansicht (Position, Zoom, aktiver Layer) kann nun direkt über die URL geteilt werden. Ein neuer "Teilen"-Button im Web und Mobile (nutzt native Share-API auf dem Smartphone) kopiert den genauen Link und erlaubt ein schnelles Weiterleiten des Kartenausschnitts.
