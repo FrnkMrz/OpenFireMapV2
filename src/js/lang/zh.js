@@ -92,6 +92,11 @@ export const strings = {
     "objects": "对象"
 ,
     cluster_info: "5米内的对象",
-    details_hydrant: "消防栓详情"
+    details_hydrant: "消防栓详情",
+    wsh_hint: "Württemberg underground hydrant",
+    share_map: "Share Map View",
+    link_copied: "Link copied to clipboard!",
+    layer_bayern: "Bavaria Base",
+    layer_bayern_dop: "Bavaria Aerial"
 };
 export default strings;

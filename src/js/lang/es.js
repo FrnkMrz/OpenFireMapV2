@@ -92,6 +92,11 @@ export const strings = {
     "objects": "objetos"
 ,
     cluster_info: "Objetos a menos de 5m",
-    details_hydrant: "Detalles del hidrante"
+    details_hydrant: "Detalles del hidrante",
+    wsh_hint: "Württemberg underground hydrant",
+    share_map: "Share Map View",
+    link_copied: "Link copied to clipboard!",
+    layer_bayern: "Bavaria Base",
+    layer_bayern_dop: "Bavaria Aerial"
 };
 export default strings;
