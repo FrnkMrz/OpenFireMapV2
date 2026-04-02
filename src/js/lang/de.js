@@ -92,6 +92,8 @@ export const strings = {
     cluster_info: "Objekte innerhalb 5m",
     details_hydrant: "Hydranten-Details",
     share_map: "Kartenansicht teilen",
-    link_copied: "Link in die Zwischenablage kopiert!"
+    link_copied: "Link in die Zwischenablage kopiert!",
+    layer_bayern: "BayernAtlas",
+    layer_bayern_dop: "Bayern Luftbild"
 };
 export default strings;

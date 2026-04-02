@@ -122,6 +122,20 @@ export const Config = {
       textAttr: "© OpenStreetMap contributors",
       maxZoom: 18,
     },
+    bayern: {
+      url: "https://wmtsod{s}.bayernwolke.de/wmts/by_webkarte/smerc/{z}/{x}/{y}",
+      subdomains: ["1","2","3","4"],
+      attr: "Kartendaten: &copy; Bayerische Vermessungsverwaltung (OpenData)",
+      textAttr: "© Bayerische Vermessungsverwaltung",
+      maxZoom: 19
+    },
+    bayern_dop: {
+      url: "https://wmtsod{s}.bayernwolke.de/wmts/by_dop/smerc/{z}/{x}/{y}",
+      subdomains: ["1","2","3","4"],
+      attr: "Kartendaten: &copy; Bayerische Vermessungsverwaltung (DOP)",
+      textAttr: "© Bayerische Vermessungsverwaltung",
+      maxZoom: 19
+    }
   },
 
   // ----------------------------------------------------------------------------------------

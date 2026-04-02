@@ -430,7 +430,7 @@ export function setupUI() {
     addClick('locate-btn', locateUser);
 
     // 3. Layer-Auswahl (Hintergrundbilder)
-    ['voyager', 'positron', 'dark', 'satellite', 'topo', 'osm', 'osmde'].forEach(key => {
+    ['voyager', 'positron', 'dark', 'satellite', 'topo', 'osm', 'osmde', 'bayern', 'bayern_dop'].forEach(key => {
         addClick(`btn-${key}`, () => setBaseLayer(key));
     });
 

@@ -286,6 +286,26 @@ export function initMapLogic() {
     State.map.on('moveend zoomend', () => {
         // Permalink-Hash aktualisieren
         updatePermalink();
+
+        // 0) BayernAtlas: Buttons ein-/ausblenden anhand der Bounding Box
+        const center = State.map.getCenter();
+        const bavariaBounds = L.latLngBounds([47.27, 8.97], [50.56, 13.84]);
+        const btnBayern = document.getElementById('btn-bayern');
+        const btnBayernDop = document.getElementById('btn-bayern_dop');
+
+        if (bavariaBounds.contains(center)) {
+            if (btnBayern) btnBayern.style.display = '';
+            if (btnBayernDop) btnBayernDop.style.display = '';
+        } else {
+            if (btnBayern) btnBayern.style.display = 'none';
+            if (btnBayernDop) btnBayernDop.style.display = 'none';
+            
+            // Wenn man Bayern verlässt, aber der Layer noch aktiv ist -> Fallback
+            if (State.activeLayerKey === 'bayern' || State.activeLayerKey === 'bayern_dop') {
+                setBaseLayer('voyager');
+            }
+        }
+
         const zoom = State.map.getZoom();
 
         // 0) Blaue Linie auf Zoom < 17 verbergen, sonst neu rendern falls Ziel aktiv
