@@ -447,10 +447,13 @@ export async function fetchOSMData(onProgressData = null) {
       console.log('[API] CACHE HIT!', State.cachedElements.length, 'elements');
       emit({ phase: 'swr_hit', reqId, cacheKey });
 
-      // SWR: Nur rendern, wenn tatsächlich Daten vorhanden
+      // Cache gültig → sofort anzeigen und kein Netzwerk-Request nötig
       if (typeof onProgressData === 'function' && State.cachedElements.length > 0) {
         onProgressData(State.cachedElements);
       }
+      // Cache ist frisch (innerhalb TTL) → kein Hintergrund-Fetch
+      State.isFetchingData = false;
+      return State.cachedElements;
     }
   } catch (e) {
     console.log('[API] CACHE MISS or error:', e?.message || 'no data');
