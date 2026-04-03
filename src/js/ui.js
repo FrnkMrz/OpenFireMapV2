@@ -419,6 +419,21 @@ export function setupUI() {
     addClick('legal-close-btn', toggleLegalModal);
     addClick('export-close-btn', toggleExportMenu);
 
+    // Cache-Dauer Einstellungen
+    const cacheSelect = document.getElementById('cache-duration-select');
+    if (cacheSelect) {
+        // Aktuell gespeicherten Wert vorbelegen (Standard: 168 = 7 Tage)
+        const savedHours = localStorage.getItem('ofm_cache_hours') || '168';
+        cacheSelect.value = savedHours;
+        // Fallback: falls gespeicherter Wert kein Option ist, auf 168 setzen
+        if (!cacheSelect.value) { cacheSelect.value = '168'; }
+
+        cacheSelect.addEventListener('change', () => {
+            localStorage.setItem('ofm_cache_hours', cacheSelect.value);
+            showNotification(t('cache_saved'), 2500);
+        });
+    }
+
     // 2. Suche (Enter-Taste Unterstützung)
     const searchInp = document.getElementById('search-input');
     if (searchInp) {

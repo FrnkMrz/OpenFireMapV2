@@ -97,6 +97,15 @@ export const strings = {
     share_map: "Share Map View",
     link_copied: "Link copied to clipboard!",
     layer_bayern: "Bavaria Base",
-    layer_bayern_dop: "Bavaria Aerial"
+    layer_bayern_dop: "Bavaria Aerial",
+    settings: "Settings",
+    cache_duration: "Local Cache",
+    cache_off: "Off",
+    cache_1h: "1 Hour",
+    cache_1d: "1 Day",
+    cache_3d: "3 Days",
+    cache_7d: "7 Days",
+    cache_30d: "30 Days",
+    cache_saved: "Cache setting saved."
 };
 export default strings;

@@ -94,6 +94,15 @@ export const strings = {
     share_map: "Kartenansicht teilen",
     link_copied: "Link in die Zwischenablage kopiert!",
     layer_bayern: "BayernAtlas",
-    layer_bayern_dop: "Bayern Luftbild"
+    layer_bayern_dop: "Bayern Luftbild",
+    settings: "Einstellungen",
+    cache_duration: "Lokaler Cache",
+    cache_off: "Aus",
+    cache_1h: "1 Stunde",
+    cache_1d: "1 Tag",
+    cache_3d: "3 Tage",
+    cache_7d: "7 Tage",
+    cache_30d: "30 Tage",
+    cache_saved: "Cache-Einstellung gespeichert."
 };
 export default strings;

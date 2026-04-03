@@ -427,8 +427,12 @@ export async function fetchOSMData(onProgressData = null) {
 
   // Caching:
   // User-Wunsch: "Einmal geladen, länger behalten".
-  // UND: "Trotzdem aktualisieren" (Stale-While-Revalidate).
-  const ONE_DAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 Tage Cache
+  // Cache-Dauer (dynamisch abrufbar über Einstellungen)
+  const getCacheTtlMs = () => {
+    const hours = parseFloat(localStorage.getItem('ofm_cache_hours') || '168');
+    return hours * 60 * 60 * 1000;
+  };
+  const CACHE_TTL_MS = getCacheTtlMs();
   const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
 
   // SCHRITT 1: Cache prüfen & sofort anzeigen
@@ -436,7 +440,7 @@ export async function fetchOSMData(onProgressData = null) {
   console.log('[API] queryKind:', queryKind, '| zoom:', zoom, '| bboxKey:', bboxKey);
   let hasCachedData = false;
   try {
-    const cached = await getCache(cacheKey, ONE_DAY_MS);
+    const cached = await getCache(cacheKey, CACHE_TTL_MS);
     if (cached) {
       hasCachedData = true;
       State.cachedElements = cached.elements || [];
@@ -458,7 +462,7 @@ export async function fetchOSMData(onProgressData = null) {
   const tAll0 = performance.now();
 
   try {
-    const data = await fetchWithRetry(q, { cacheKey, cacheTtlMs: ONE_DAY_MS, reqId, skipCache: true });
+    const data = await fetchWithRetry(q, { cacheKey, cacheTtlMs: CACHE_TTL_MS, reqId, skipCache: true });
 
     State.cachedElements = data.elements || [];
     const totalMs = Math.round(performance.now() - tAll0);
