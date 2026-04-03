@@ -160,7 +160,7 @@ export function initMapLogic() {
     // die am Ladeumfang nichts ändern.
     let lastRenderBucket = null;
     let lastFetchKey = null;
-    let lastFetchStartTs = 0;
+
 
     // Debug/Tracing (aktivieren mit: localStorage.setItem('OFM_DEBUG','1') + Reload)
     const DEBUG = localStorage.getItem('OFM_DEBUG') === '1';
@@ -360,16 +360,6 @@ export function initMapLogic() {
                     (zoom === 17) ? 250 :
                         200;
 
-        // Mindestabstand zwischen gestarteten Requests (Rate-Limit/Overpass-Last).
-        // Wir zeigen bei Zoom 15 ALLES, aber wir starten nicht 10 Requests pro Sekunde.
-        const minIntervalMs =
-            (zoom <= 15) ? 2000 : // war 2500
-                (zoom === 16) ? 1500 : // war 1800
-                    (zoom === 17) ? 1000 : // war 1200
-                        800;
-
-        800;
-
         // 4) Sofort-Start beim ersten Mal (KEIN Debounce)
         if (isFirstLoad) {
             isFirstLoad = false;
@@ -386,16 +376,10 @@ export function initMapLogic() {
             const statusEl = document.getElementById('data-status');
 
             // Wenn sich seit dem letzten gestarteten Fetch nichts geändert hat: skip.
+            // WICHTIG: Diese Guard verhindert bereits doppelte Netzwerkanfragen für denselben
+            // Bereich. Eine zusätzliche minIntervalMs-Sperre ist redundant und verhindert
+            // beim schnellen Hin- und Hernavigieren das sofortige Anzeigen von Cache-Daten.
             if (fetchKey === lastFetchKey) {
-                if (statusEl) {
-                    statusEl.innerText = t('status_current');
-                    statusEl.className = 'text-green-400';
-                }
-                return;
-            }
-
-            const now = Date.now();
-            if (now - lastFetchStartTs < minIntervalMs) {
                 if (statusEl) {
                     statusEl.innerText = t('status_current');
                     statusEl.className = 'text-green-400';
@@ -409,7 +393,6 @@ export function initMapLogic() {
                 statusEl.className = 'text-amber-400 font-bold';
             }
 
-            lastFetchStartTs = now;
             lastFetchKey = fetchKey;
             dbg('fetchOSMData()', { fetchKey });
             window.dispatchEvent(new CustomEvent('ofm:overpass', { detail: { phase: 'trigger', fetchKey } }));
