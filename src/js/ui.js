@@ -412,8 +412,9 @@ export function setupUI() {
     addClick('export-btn-trigger', toggleExportMenu);
     addClick('share-btn-trigger', shareMap);
 
-    // Info & Recht Button (öffnet das Modal)
+    // Info & Recht Button (Desktop: ⓘ unten links / Mobile: Burger-Menü-Eintrag)
     addClick('btn-legal-trigger', toggleLegalModal);
+    addClick('mobile-open-legal', () => { closeAllMenus(); toggleLegalModal(); });
 
     // Schließen-Buttons (das X oben rechts in den Fenstern)
     addClick('legal-close-btn', toggleLegalModal);
