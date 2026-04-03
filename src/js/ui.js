@@ -130,6 +130,32 @@ function addClick(id, fn) {
     }
 }
 
+function setupCacheDurationSelects() {
+    const selects = Array.from(document.querySelectorAll('[data-cache-duration-select]'));
+    if (!selects.length) return;
+
+    const syncValue = (value) => {
+        selects.forEach((select) => {
+            select.value = value;
+            if (!select.value) select.value = '168';
+        });
+    };
+
+    syncValue(localStorage.getItem('ofm_cache_hours') || '168');
+
+    selects.forEach((select) => {
+        if (select.__ofmCacheBound) return;
+        select.__ofmCacheBound = true;
+
+        select.addEventListener('change', () => {
+            const nextValue = select.value || '168';
+            localStorage.setItem('ofm_cache_hours', nextValue);
+            syncValue(nextValue);
+            showNotification(t('cache_saved'), 2500);
+        });
+    });
+}
+
 /**
  * HAUPTFUNKTION: showNotification
  * Zeigt die kleinen Meldungen oben rechts an (z.B. "GPS gefunden").
@@ -421,19 +447,7 @@ export function setupUI() {
     addClick('export-close-btn', toggleExportMenu);
 
     // Cache-Dauer Einstellungen
-    const cacheSelect = document.getElementById('cache-duration-select');
-    if (cacheSelect) {
-        // Aktuell gespeicherten Wert vorbelegen (Standard: 168 = 7 Tage)
-        const savedHours = localStorage.getItem('ofm_cache_hours') || '168';
-        cacheSelect.value = savedHours;
-        // Fallback: falls gespeicherter Wert kein Option ist, auf 168 setzen
-        if (!cacheSelect.value) { cacheSelect.value = '168'; }
-
-        cacheSelect.addEventListener('change', () => {
-            localStorage.setItem('ofm_cache_hours', cacheSelect.value);
-            showNotification(t('cache_saved'), 2500);
-        });
-    }
+    setupCacheDurationSelects();
 
     // 2. Suche (Enter-Taste Unterstützung)
     const searchInp = document.getElementById('search-input');

@@ -168,7 +168,25 @@
                     <span data-i18n="menu_search">Suche</span>
                 </button>
 
-
+                <section class="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-left">
+                    <div class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500" data-i18n="settings">
+                        Einstellungen
+                    </div>
+                    <div class="flex items-center justify-between gap-3">
+                        <label for="mobile-cache-duration-select" class="text-sm text-slate-300 leading-tight" data-i18n="cache_duration">
+                            Lokaler Cache
+                        </label>
+                        <select id="mobile-cache-duration-select" data-cache-duration-select
+                            class="bg-slate-800 text-white text-xs rounded-lg px-2 py-1.5 border border-white/10 focus:outline-none focus:border-blue-500 cursor-pointer shrink-0">
+                            <option value="0" data-i18n="cache_off">Aus</option>
+                            <option value="1" data-i18n="cache_1h">1 Stunde</option>
+                            <option value="24" data-i18n="cache_1d">1 Tag</option>
+                            <option value="72" data-i18n="cache_3d">3 Tage</option>
+                            <option value="168" data-i18n="cache_7d">7 Tage</option>
+                            <option value="720" data-i18n="cache_30d">30 Tage</option>
+                        </select>
+                    </div>
+                </section>
 
                 <button id="mobile-open-legal" type="button"
                     class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -425,11 +443,11 @@
             <div class="overflow-y-auto custom-scroll pr-2 text-xs space-y-6">
 
                 <!-- Einstellungen -->
-                <section>
+                <section class="hidden md:block">
                     <h3 class="text-sm font-bold text-white mb-2" data-i18n="settings">Einstellungen</h3>
                     <div class="flex items-center justify-between gap-2">
                         <label for="cache-duration-select" class="text-slate-400 leading-tight" data-i18n="cache_duration">Lokaler Cache</label>
-                        <select id="cache-duration-select"
+                        <select id="cache-duration-select" data-cache-duration-select
                             class="bg-slate-800 text-white text-xs rounded-lg px-2 py-1.5 border border-white/10 focus:outline-none focus:border-blue-500 cursor-pointer shrink-0">
                             <option value="0" data-i18n="cache_off">Aus</option>
                             <option value="1" data-i18n="cache_1h">1 Stunde</option>
