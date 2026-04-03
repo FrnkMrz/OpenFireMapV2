@@ -30,6 +30,12 @@ const emit = (detail) => {
 
 let REQ_SEQ = 0;
 
+/** ---- SWR Hintergrund-Refresh Tracking ----------------------------------- */
+// Verhindert doppelte Hintergrund-Requests für denselben Bereich und
+// stellt sicher, dass veraltete Callbacks (nach Bereichswechsel) ignoriert werden.
+let _bgRefresh = null; // { controller: AbortController, cacheKey: string } | null
+let _bgGen = 0;        // Hochzählen = alle laufenden Callbacks ungültig machen
+
 /** ---- Globaler Backoff (429/Server-Überlast) ----------------------------- */
 let GLOBAL_BACKOFF_MS = 0;
 let GLOBAL_BACKOFF_UNTIL = 0;
@@ -435,6 +441,16 @@ export async function fetchOSMData(onProgressData = null) {
   const CACHE_TTL_MS = getCacheTtlMs();
   const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
 
+  // Query-String wird für Cache-Miss UND Hintergrund-Refresh gebraucht → hier bauen
+  const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
+
+  // Hintergrund-Refresh für anderen Bereich abbrechen (User hat Gebiet gewechselt)
+  if (_bgRefresh && _bgRefresh.cacheKey !== cacheKey) {
+    _bgRefresh.controller.abort();
+    ++_bgGen;
+    _bgRefresh = null;
+  }
+
   // SCHRITT 1: Cache prüfen & sofort anzeigen
   console.log('[API] Cache Key:', cacheKey);
   console.log('[API] queryKind:', queryKind, '| zoom:', zoom, '| bboxKey:', bboxKey);
@@ -447,20 +463,52 @@ export async function fetchOSMData(onProgressData = null) {
       console.log('[API] CACHE HIT!', State.cachedElements.length, 'elements');
       emit({ phase: 'swr_hit', reqId, cacheKey });
 
-      // Cache gültig → sofort anzeigen und kein Netzwerk-Request nötig
+      // SCHRITT 1a: Sofort aus Cache rendern
       if (typeof onProgressData === 'function' && State.cachedElements.length > 0) {
         onProgressData(State.cachedElements);
       }
-      // Cache ist frisch (innerhalb TTL) → kein Hintergrund-Fetch
+
+      // SCHRITT 1b: Hintergrund-Refresh – prüft ob sich Daten geändert haben
+      // Nur starten wenn noch kein Refresh für diesen Bereich läuft
+      if (!_bgRefresh) {
+        const bgController = new AbortController();
+        const myGen = ++_bgGen;
+        _bgRefresh = { controller: bgController, cacheKey };
+        const cachedCount = State.cachedElements.length;
+
+        fetchWithRetry(q, {
+          cacheKey,
+          cacheTtlMs: CACHE_TTL_MS,
+          reqId: reqId + '_bg',
+          skipCache: true,
+          signal: bgController.signal
+        })
+          .then(freshData => {
+            if (_bgGen !== myGen) return; // Veraltet – User hat Bereich gewechselt
+            _bgRefresh = null;
+            const freshElements = freshData?.elements || [];
+            emit({ phase: 'swr_refresh_ok', reqId, elements: freshElements.length, changed: freshElements.length !== cachedCount });
+            // Nur neu rendern wenn sich die Anzahl geändert hat
+            if (freshElements.length !== cachedCount) {
+              State.cachedElements = freshElements;
+              if (typeof onProgressData === 'function') {
+                onProgressData(freshElements);
+              }
+            }
+          })
+          .catch(err => {
+            if (_bgGen !== myGen) return;
+            _bgRefresh = null;
+            emit({ phase: 'swr_refresh_err', reqId, err: err?.name });
+          });
+      }
+
       State.isFetchingData = false;
       return State.cachedElements;
     }
   } catch (e) {
     console.log('[API] CACHE MISS or error:', e?.message || 'no data');
   }
-
-
-  const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 
   const tAll0 = performance.now();
 
