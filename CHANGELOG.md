@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.7] - 2026-04-03
+### Neue Features
+- **Einstellbarer Daten-Cache**: Benutzer können nun im "Info & Recht"-Modal die Dauer des lokalen Zwischenspeichers (Offline-Cache) einstellen: Aus, 1 Stunde, 1 Tag, 3 Tage, 7 Tage (Standard), 30 Tage.
+- **Transparente Quellen**: Quellverweis für den BayernAtlas (LDBV) in den Lizenzen ergänzt.
+
+### Fehlerbehebungen (Bugfixes)
+- **Cache-Navigation**: Ein Bug wurde behoben, bei dem Hydranten beim schnellen Zurücknavigieren in einen bereits besuchten Bereich nicht sofort aus dem Cache angezeigt wurden (Optimierung der Request-Sperre).
+- **Mobile-Fix**: Der Button "Info & Recht" im mobilen Burger-Menü wurde aktiviert und öffnet nun zuverlässig das Info-Modal (inkl. Einstellungen).
+- **Lokalisierung**: Vollständige Synchronisation aller 30 Sprachdateien für die neuen Cache-Einstellungs-Keys.
+
 ## [v0.6.6] - 2026-04-02
 ### Neue Features
 - **Regionale Hintergrundkarten (BayernAtlas)**: Integration der amtlichen "Webkarte Bayern" sowie der hochauflösenden digitalen Orthophotos (DOP/Luftbild) der bayerischen Vermessungsverwaltung über deren freie OpenData WMTS-Server.
