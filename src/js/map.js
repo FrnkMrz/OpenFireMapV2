@@ -247,22 +247,20 @@ export function initMapLogic() {
         }
 
         // Umrechnung Meter -> Grad
-        const lat = center.lat;
+        // Schritt 1: Lat snappen – metersPerDegLon von der gesnapten Lat ableiten.
+        // So sind dLon und snapLon für alle center.lat innerhalb derselben Snap-Zelle
+        // identisch → stabiler Longitude-Key auch bei minimalen Zoom-Animations-Drifts.
         const metersPerDegLat = 111320;
-        const metersPerDegLon = 111320 * Math.cos(lat * Math.PI / 180);
-
-        const dLat = radiusMeters / metersPerDegLat;
-        const dLon = radiusMeters / metersPerDegLon;
-
-        // Snap to Grid – CENTER snappen, Ecken symmetrisch ableiten.
-        // Ecken-Snapping war instabil: minimale Center-Bewegung durch Zoom-Animation
-        // kippte eine Ecke in die nächste Zelle → neuer Cache-Key pro Zoom-Schritt.
-        // Center-Snapping: Key ändert sich erst wenn User > snapMeters/2 bewegt.
         const snapLat = snapMeters / metersPerDegLat;
-        const snapLon = snapMeters / metersPerDegLon;
         const snap = (v, step) => Math.round(v / step) * step;
 
         const snappedLat = snap(center.lat, snapLat);
+        const metersPerDegLon = 111320 * Math.cos(snappedLat * Math.PI / 180);
+
+        const dLat = radiusMeters / metersPerDegLat;
+        const dLon = radiusMeters / metersPerDegLon;
+        const snapLon = snapMeters / metersPerDegLon;
+
         const snappedLng = snap(center.lng, snapLon);
 
         const south = snappedLat - dLat;
