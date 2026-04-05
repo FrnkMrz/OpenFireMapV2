@@ -254,21 +254,21 @@ export function initMapLogic() {
         const dLat = radiusMeters / metersPerDegLat;
         const dLon = radiusMeters / metersPerDegLon;
 
-        // BBox um den Center
-        let south = center.lat - dLat;
-        let north = center.lat + dLat;
-        let west = center.lng - dLon;
-        let east = center.lng + dLon;
-
-        // Snap to Grid
+        // Snap to Grid – CENTER snappen, Ecken symmetrisch ableiten.
+        // Ecken-Snapping war instabil: minimale Center-Bewegung durch Zoom-Animation
+        // kippte eine Ecke in die nächste Zelle → neuer Cache-Key pro Zoom-Schritt.
+        // Center-Snapping: Key ändert sich erst wenn User > snapMeters/2 bewegt.
         const snapLat = snapMeters / metersPerDegLat;
         const snapLon = snapMeters / metersPerDegLon;
         const snap = (v, step) => Math.round(v / step) * step;
 
-        south = snap(south, snapLat);
-        north = snap(north, snapLat);
-        west = snap(west, snapLon);
-        east = snap(east, snapLon);
+        const snappedLat = snap(center.lat, snapLat);
+        const snappedLng = snap(center.lng, snapLon);
+
+        const south = snappedLat - dLat;
+        const north = snappedLat + dLat;
+        const west = snappedLng - dLon;
+        const east = snappedLng + dLon;
 
         // Für api.js
         State.queryBounds = L.latLngBounds([[south, west], [north, east]]);
