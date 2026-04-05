@@ -272,14 +272,15 @@ export function initMapLogic() {
 
         // Für api.js
         State.queryBounds = L.latLngBounds([[south, west], [north, east]]);
+        const bboxStr = `${south.toFixed(5)},${west.toFixed(5)},${north.toFixed(5)},${east.toFixed(5)}`;
         State.queryMeta = {
             zoom: rawZoom,
-            bbox: `${south},${west},${north},${east}`,
+            bbox: bboxStr,
             snapMeters // Info
         };
 
         // Cache Key
-        return `${south.toFixed(5)},${west.toFixed(5)},${north.toFixed(5)},${east.toFixed(5)}`;
+        return bboxStr;
     };
 
 
