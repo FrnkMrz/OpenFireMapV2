@@ -219,7 +219,7 @@ function epHealthyOrder(endpoints) {
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
-async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId, skipCache = false, signal = null }) {
+async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId, skipCache = false, signal = null, minElementCount = null }) {
   if (!navigator.onLine) throw new Error('err_offline');
 
   // Cache lesen (nur wenn nicht übersprungen)
@@ -283,8 +283,15 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
 
       epMarkOk(endpoint, 200);
 
-      // Cache schreiben (immer, wenn wir Key haben)
-      if (cacheKey) await setCache(cacheKey, json);
+      // Cache schreiben – aber nur wenn das Ergebnis nicht schlechter als der Schwellwert ist.
+      // minElementCount verhindert, dass ein degradiertes Overpass-Ergebnis gute Cache-Daten überschreibt.
+      const elementCount = Array.isArray(json?.elements) ? json.elements.length : 0;
+      const meetsThreshold = minElementCount == null || elementCount >= minElementCount;
+      if (cacheKey && meetsThreshold) {
+        await setCache(cacheKey, json);
+      } else if (cacheKey) {
+        emit({ phase: 'cache_skip_degraded', reqId, elements: elementCount, minRequired: minElementCount });
+      }
 
       const ms = Math.round(performance.now() - t0);
       const elements = Array.isArray(json?.elements) ? json.elements.length : null;
@@ -481,7 +488,10 @@ export async function fetchOSMData(onProgressData = null) {
           cacheTtlMs: CACHE_TTL_MS,
           reqId: reqId + '_bg',
           skipCache: true,
-          signal: bgController.signal
+          signal: bgController.signal,
+          // Cache nur überschreiben wenn frische Daten mind. 50% des gecachten Bestands haben.
+          // Schützt vor degradierten Overpass-Antworten (Timeout/Überlast).
+          minElementCount: Math.floor(cachedCount * 0.5)
         })
           .then(freshData => {
             if (_bgGen !== myGen) return; // Veraltet – User hat Bereich gewechselt

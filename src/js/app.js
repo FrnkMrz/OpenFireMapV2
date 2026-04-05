@@ -81,4 +81,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.warn('[SW] Fehler bei Registrierung:', e);
     }
   }
+
+  // Persistenten Speicher anfordern (verhindert aggressive IndexedDB-Löschung durch iOS Safari)
+  // Gibt true zurück wenn gewährt (z.B. PWA auf dem Home Screen), false im Browser-Modus.
+  if (navigator.storage && typeof navigator.storage.persist === 'function') {
+    navigator.storage.persist().then(granted => {
+      console.log('[Storage] Persistent storage granted:', granted);
+    }).catch(e => {
+      console.warn('[Storage] persist() nicht verfügbar:', e);
+    });
+  }
 });
