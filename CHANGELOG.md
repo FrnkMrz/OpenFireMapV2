@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.8] - 2026-04-05
+
+### Fehlerbehebungen (Bugfixes)
+- **Cache-Key stabil (Mobile):** Der Overpass-Cache-Key wechselte bei Zoom-Animationen ständig, weil die Bbox-Ecken unabhängig auf ein 400m-Raster gesnapped wurden. Minimale Center-Verschiebungen durch Leaflet-Animationen kippten einzelne Ecken in benachbarte Grid-Zellen. Fix: Center wird gesnapped (1km-Raster), Ecken symmetrisch abgeleitet; `metersPerDegLon` wird von der gesnapten Latitude berechnet, damit auch West/Ost-Werte stabil bleiben. Cache-Hit bei Zoom/Pan innerhalb des gleichen Bereichs ist jetzt zuverlässig.
+- **Blaue Distanz-Linie (Crash):** `drawLineToNearest()` speicherte den nächsten Hydranten als rohes Leaflet-`LatLng`-Objekt. Leaflet nutzt `.lng`, nicht `.lon` → `drawBlueLine(closest.lat, closest.lon)` übergab `undefined` als Longitude → `Invalid LatLng object`-Crash bei jedem Reload/Moveend. Fix: `closest = { lat, lon: markerLatLng.lng }`.
+- **IndexedDB-Persistenz (iOS Safari):** `navigator.storage.persist()` wird beim App-Start aufgerufen, damit iOS Safari den IndexedDB-Cache nicht automatisch unter Speicherdruck löscht.
+- **Cache-Schutz vor degradierten Overpass-Antworten:** Der SWR-Hintergrund-Refresh überschreibt den Cache nicht mehr wenn Overpass unter Last weniger als 50% der gecachten Elemente zurückgibt (`minElementCount`-Guard).
+- **Cache-Key Konsistenz:** `State.queryMeta.bbox` nutzt jetzt `toFixed(5)` wie der Gate-Key – rohe IEEE-754-Floats wurden ersetzt.
+- **CI:** Node.js auf Version 22 (LTS) angehoben; GitHub-Actions-Runtimes auf Node.js 24 umgestellt (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`).
+
 ## [v0.6.7] - 2026-04-03
 ### Neue Features
 - **Einstellbarer Daten-Cache**: Benutzer können nun im "Info & Recht"-Modal die Dauer des lokalen Zwischenspeichers (Offline-Cache) einstellen: Aus, 1 Stunde, 1 Tag, 3 Tage, 7 Tage (Standard), 30 Tage.

@@ -1,6 +1,6 @@
 {
   "name": "openfiremapv2",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "description": "OpenFireMapV2 is a personal, non-commercial project focused on learning Git, GitHub, and modern CI/CD workflows, using OpenStreetMap (OSM) data and ideas inspired by the original OpenFireMap.",
   "private": true,
   "directories": {
