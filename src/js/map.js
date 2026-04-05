@@ -233,7 +233,7 @@ export function initMapLogic() {
         // Bucket: High Zoom (Hydranten) -> Wir simulieren immer ein Z15-Fenster
         if (rawZoom >= 15) {
             radiusMeters = 2500; // ca. 5km Box (etwas größer für mehr Overlap)
-            snapMeters = 400;    // Größeres Raster für stabilere Keys bei Zoom-Wechsel
+            snapMeters = 1000;   // 1km-Raster: stabil über Zoom-Animationen hinweg (400m war zu fein)
         }
         // Bucket: Mid Zoom (Feuerwachen) -> Wir simulieren ein Z12-Fenster
         else if (rawZoom >= 12) {
@@ -987,7 +987,7 @@ export function drawLineToNearest() {
             const dist = distanceMeters({ lat: startLat, lon: startLon }, { lat: markerLatLng.lat, lon: markerLatLng.lng });
             if (dist < minDist) {
                 minDist = dist;
-                closest = markerLatLng;
+                closest = { lat: markerLatLng.lat, lon: markerLatLng.lng };
             }
         }
     }
