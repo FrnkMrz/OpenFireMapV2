@@ -84,7 +84,7 @@ export async function shareMap() {
     try {
         await navigator.clipboard.writeText(url);
         showNotification(t('link_copied') || 'Link kopiert!', 3000);
-    } catch (e) {
+    } catch {
         // Letzter Fallback: prompt
         window.prompt(t('link_copied') || 'Link kopiert!', url);
     }
