@@ -372,7 +372,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
 
       // Erneuter Versuch
       emit({ phase: 'retry_after_cooldown', reqId });
-      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId, skipCache, signal });
+      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId, skipCache, signal, minElementCount });
     }
   }
 
