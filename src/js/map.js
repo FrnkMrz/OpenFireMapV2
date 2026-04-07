@@ -257,6 +257,21 @@ export function initMapLogic() {
         return elements.map(elementFingerprint).sort().join('||');
     };
 
+    const poiCoverageMatchesMode = (mode) => {
+        if (!State.loadedPoiBounds || !State.map) return false;
+        const viewBounds = State.map.getBounds();
+        if (!State.loadedPoiBounds.contains(viewBounds)) return false;
+        if (mode === 'all') return State.loadedPoiMode === 'all';
+        if (mode === 'stations') return State.loadedPoiMode === 'stations' || State.loadedPoiMode === 'all';
+        return false;
+    };
+
+    const boundaryCoverageMatchesView = (zoom) => {
+        if (zoom < 14) return true;
+        if (!State.loadedBoundaryBounds || !State.map) return false;
+        return State.loadedBoundaryBounds.contains(State.map.getBounds());
+    };
+
     // Hilfsfunktion: Bounding Box des aktuellen Viewports als stabiler String.
     // Wir runden bewusst,
     // Liefert eine (gepufferte + gesnappte) BBox-Key-String-Repräsentation.
@@ -391,6 +406,26 @@ export function initMapLogic() {
             State.cachedPoiElements = [];
             State.cachedBoundaryElements = [];
             State.cachedElements = [];
+            State.loadedPoiBounds = null;
+            State.loadedBoundaryBounds = null;
+            State.loadedPoiMode = null;
+            return;
+        }
+
+        if (poiCoverageMatchesMode(mode) && boundaryCoverageMatchesView(zoom)) {
+            const statusEl = document.getElementById('data-status');
+            if (statusEl) {
+                statusEl.innerText = t('status_current');
+                statusEl.className = 'text-green-400';
+            }
+            window.dispatchEvent(new CustomEvent('ofm:overpass', {
+                detail: {
+                    phase: 'covered_by_loaded_bounds',
+                    dataset: 'view',
+                    mode,
+                    zoom
+                }
+            }));
             return;
         }
 
