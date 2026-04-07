@@ -8,7 +8,7 @@
 import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
-import { fetchOSMData } from './api.js';
+import { fetchBoundaryData, fetchOSMData } from './api.js';
 import { showNotification } from './ui.js';
 
 // ---------------------------------------------------------------------------
@@ -160,6 +160,11 @@ export function initMapLogic() {
     // die am Ladeumfang nichts ändern.
     let lastRenderBucket = null;
     let lastFetchKey = null;
+    let lastMotionAt = 0;
+    let latestFetchIntent = 0;
+    let idleRefreshTimer = null;
+    const RAPID_INTERACTION_MS = 1200;
+    const IDLE_REFRESH_MS = 900;
 
 
     // Debug/Tracing (aktivieren mit: localStorage.setItem('OFM_DEBUG','1') + Reload)
@@ -179,11 +184,25 @@ export function initMapLogic() {
             const d = ev.detail || {};
             const z = State.map?.getZoom?.() ?? '?';
             const m = State.queryMeta ? ` pad=${State.queryMeta.padMeters}m snap=${State.queryMeta.snapMeters}m` : '';
-            const line = `${d.phase || 'evt'} z=${z}${m} ${d.endpoint ? ('ep=' + d.endpoint.replace('https://', '')) : ''} ${d.ms ? (d.ms + 'ms') : ''} ${d.status ? ('HTTP ' + d.status) : ''}`;
+            const parts = [
+                `${d.phase || 'evt'} z=${z}${m}`,
+                d.dataset ? `ds=${d.dataset}` : '',
+                d.endpoint ? `ep=${d.endpoint.replace('https://', '')}` : '',
+                Number.isFinite(d.elements) ? `el=${d.elements}` : '',
+                d.ms ? `${d.ms}ms` : '',
+                d.status ? `HTTP ${d.status}` : ''
+            ].filter(Boolean);
+            const line = parts.join(' ');
             set(line);
         });
 
         State.map?.on?.('zoomstart movestart', () => {
+            lastMotionAt = Date.now();
+            latestFetchIntent += 1;
+            if (idleRefreshTimer) {
+                clearTimeout(idleRefreshTimer);
+                idleRefreshTimer = null;
+            }
             const z = State.map.getZoom();
             set(`move/zoom… z=${z}`);
         });
@@ -208,6 +227,34 @@ export function initMapLogic() {
         if (zoom < 17) return 'z15-16';
         if (zoom < 18) return 'z17';
         return 'z18+';
+    };
+
+    const stableObjectEntries = (obj) => {
+        if (!obj || typeof obj !== 'object') return [];
+        return Object.entries(obj).sort(([a], [b]) => a.localeCompare(b));
+    };
+
+    const elementFingerprint = (el) => {
+        if (!el || typeof el !== 'object') return '';
+        const tags = stableObjectEntries(el.tags).map(([k, v]) => `${k}:${String(v)}`).join('|');
+        const centerLat = Number(el.center?.lat ?? el.lat ?? 0).toFixed(5);
+        const centerLon = Number(el.center?.lon ?? el.lon ?? 0).toFixed(5);
+        const geometry = Array.isArray(el.geometry)
+            ? el.geometry.map((p) => `${Number(p.lat).toFixed(5)},${Number(p.lon).toFixed(5)}`).join(';')
+            : '';
+        return [
+            el.type || 'node',
+            el.id ?? '',
+            centerLat,
+            centerLon,
+            tags,
+            geometry
+        ].join('#');
+    };
+
+    const elementsFingerprint = (elements) => {
+        if (!Array.isArray(elements) || elements.length === 0) return 'empty';
+        return elements.map(elementFingerprint).sort().join('||');
     };
 
     // Hilfsfunktion: Bounding Box des aktuellen Viewports als stabiler String.
@@ -317,9 +364,10 @@ export function initMapLogic() {
         // 1) Re-Rendering aus Cache, aber nur bei Bucket-Wechsel.
         // Beim Zoomen (vor allem raus) wollen wir sofort reagieren, aber nicht bei jedem moveend alles neu bauen.
         const bucket = getZoomBucket(zoom);
-        if (State.cachedElements && bucket !== lastRenderBucket) {
+        if (State.cachedPoiElements && bucket !== lastRenderBucket) {
             lastRenderBucket = bucket;
-            renderMarkers(State.cachedElements, zoom);
+            renderMarkers(State.cachedPoiElements, zoom);
+            renderBoundaries(State.cachedBoundaryElements, zoom);
         }
 
         // Tooltips gibt es nur ab Zoom 18. Bei Zoom-Out: offenen Tooltip sofort schließen.
@@ -340,6 +388,9 @@ export function initMapLogic() {
             }
             State.markerLayer.clearLayers();
             State.boundaryLayer.clearLayers();
+            State.cachedPoiElements = [];
+            State.cachedBoundaryElements = [];
+            State.cachedElements = [];
             return;
         }
 
@@ -348,6 +399,7 @@ export function initMapLogic() {
         dbg('gate', { zoom, mode, bboxKey, queryMeta: State.queryMeta });
         const boundaryFlag = (zoom >= 14) ? 'b1' : 'b0';
         const fetchKey = `${mode}|${boundaryFlag}|${bboxKey}`;
+        const fetchIntent = ++latestFetchIntent;
 
         if (debounceTimer) clearTimeout(debounceTimer);
 
@@ -373,6 +425,8 @@ export function initMapLogic() {
 
         async function doFetch() {
             const statusEl = document.getElementById('data-status');
+            const movingRecently = (Date.now() - lastMotionAt) < RAPID_INTERACTION_MS;
+            const hasStaleToKeep = (State.cachedPoiElements?.length || State.cachedBoundaryElements?.length);
 
             // Wenn sich seit dem letzten gestarteten Fetch nichts geändert hat: skip.
             // WICHTIG: Diese Guard verhindert bereits doppelte Netzwerkanfragen für denselben
@@ -386,6 +440,26 @@ export function initMapLogic() {
                 return;
             }
 
+            if (movingRecently && hasStaleToKeep) {
+                if (statusEl) {
+                    statusEl.innerText = t('status_current');
+                    statusEl.className = 'text-green-400';
+                }
+                window.dispatchEvent(new CustomEvent('ofm:overpass', {
+                    detail: {
+                        phase: 'hold_stale_while_moving',
+                        dataset: 'view',
+                        fetchKey
+                    }
+                }));
+                if (idleRefreshTimer) clearTimeout(idleRefreshTimer);
+                idleRefreshTimer = setTimeout(() => {
+                    if (fetchIntent !== latestFetchIntent) return;
+                    doFetch();
+                }, IDLE_REFRESH_MS);
+                return;
+            }
+
             // Status "Warten" setzen
             if (statusEl) {
                 statusEl.innerText = t('status_waiting');
@@ -394,7 +468,7 @@ export function initMapLogic() {
 
             lastFetchKey = fetchKey;
             dbg('fetchOSMData()', { fetchKey });
-            window.dispatchEvent(new CustomEvent('ofm:overpass', { detail: { phase: 'trigger', fetchKey } }));
+            window.dispatchEvent(new CustomEvent('ofm:overpass', { detail: { phase: 'trigger', dataset: 'view', fetchKey } }));
 
             try {
                 // Status auf "Lädt" setzen (SWR Pattern: wir zeigen Cache, laden aber neu)
@@ -408,22 +482,29 @@ export function initMapLogic() {
 
                 // Track if we rendered cached data
                 let cachedCount = 0;
+                let cachedFingerprint = 'empty';
 
                 // SWR: Wir geben renderMarkers als Callback mit, 
                 // damit Cache-Daten sofort gezeichnet werden.
-                const data = await fetchOSMData((cachedData) => {
+                const poiPromise = fetchOSMData((cachedData) => {
                     cachedCount = cachedData?.length || 0;
+                    cachedFingerprint = elementsFingerprint(cachedData);
                     if (cachedCount > 0) {
                         // Cache-Hit: Zeige Daten + Hinweis auf Aktualisierung
                         showNotification(`${cachedCount} ${t('cached_objects')} – ${t('refreshing')}`, 30000);
                     }
                     renderMarkers(cachedData, zoom);
                 });
+                const boundaryPromise = fetchBoundaryData((cachedBoundaryData) => {
+                    renderBoundaries(cachedBoundaryData, zoom);
+                });
+                const [data] = await Promise.all([poiPromise, boundaryPromise]);
 
                 if (data) {
                     // Nur erneut rendern, wenn sich die Datenmenge geändert hat
                     const networkCount = data.length || 0;
-                    if (networkCount !== cachedCount) {
+                    const networkChanged = elementsFingerprint(data) !== cachedFingerprint;
+                    if (networkChanged) {
                         renderMarkers(data, zoom);
                     }
 
@@ -433,7 +514,7 @@ export function initMapLogic() {
                     }
 
                     // Erfolgs-Nachricht: Cache-Info erhalten, wenn Cache aktuell war
-                    if (cachedCount > 0 && networkCount === cachedCount) {
+                    if (cachedCount > 0 && !networkChanged) {
                         // Cache war aktuell - zeige das deutlich
                         showNotification(`${t('from_cache')} (${cachedCount} ${t('objects')})`, 3000);
                     } else if (cachedCount > 0) {
@@ -1012,10 +1093,6 @@ export function renderMarkers(elements, zoom) {
     // POI-Clustering: Hydranten/Wasserstellen < 5m auf Z17/Z18 bündeln
     const displayElements = clusterPOIs(preprocessedElements, zoom, 5);
 
-    // Grenzen (Boundaries) werden weiterhin komplett neu gezeichnet, 
-    // da es meist nur wenige sind und sich die Geometrie bei Zoom ändern kann.
-    State.boundaryLayer.clearLayers();
-
     // 1. Vorbereitung: Welche Marker sollen aktuell angezeigt werden?
     // Wir sammeln hier nur die Daten, wir zeichnen noch nicht.
     const markersToKeep = new Set();
@@ -1025,29 +1102,12 @@ export function renderMarkers(elements, zoom) {
         const tags = el.tags || {};
         const id = `${el.type || 'node'}:${el.id}`; // Stabiler Key: type:id (node/way/relation können gleiche id haben)
 
-        // --- A. Grenzen verarbeiten (wie bisher) ---
-        if (tags.boundary === 'administrative' && el.geometry && zoom >= 14) {
-            const latlngs = el.geometry.map(p => [p.lat, p.lon]);
-            // Farbe & Dicke wählen: Wenn Satellit, dann Gelb und dicker
-            const isSat = (State.activeLayerKey === 'satellite');
-            const bColor = isSat ? Config.colors.boundsSatellite : Config.colors.bounds;
-            const bWeight = isSat ? 3 : 1;
-
-            L.polyline(latlngs, {
-                color: bColor,
-                weight: bWeight,
-                dashArray: '10, 10',
-                opacity: 0.7
-            }).addTo(State.boundaryLayer);
-            return;
-        }
-
-        // --- B. Datenvalidierung ---
+        // --- A. Datenvalidierung ---
         const lat = el.lat || el.center?.lat;
         const lon = el.lon || el.center?.lon;
         if (!lat || !lon) return;
 
-        // --- C. Typ-Bestimmung ---
+        // --- B. Typ-Bestimmung ---
         const isStation = tags.amenity === 'fire_station' || tags.building === 'fire_station';
         const isDefib = tags.emergency === 'defibrillator';
         // Fallback für Typen
@@ -1056,7 +1116,7 @@ export function renderMarkers(elements, zoom) {
             type = 'wsh';
         }
 
-        // --- D. Zoom-Filter (Sichtbarkeit) ---
+        // --- C. Zoom-Filter (Sichtbarkeit) ---
         // Stationen ab Zoom 12, Hydranten/Defis ab Zoom 15
         if (isStation && zoom < 12) return;
         if (!isStation && !isDefib && zoom < 15) return;
@@ -1137,6 +1197,27 @@ export function renderMarkers(elements, zoom) {
             State.markerLayer.removeLayer(entry.marker);
             State.markerCache.delete(id);
         }
+    }
+}
+
+export function renderBoundaries(elements, zoom) {
+    State.boundaryLayer.clearLayers();
+    if (!Array.isArray(elements) || elements.length === 0 || zoom < 14) return;
+
+    const isSat = (State.activeLayerKey === 'satellite');
+    const bColor = isSat ? Config.colors.boundsSatellite : Config.colors.bounds;
+    const bWeight = isSat ? 3 : 1;
+
+    for (const el of elements) {
+        if (el?.tags?.boundary !== 'administrative' || !Array.isArray(el.geometry)) continue;
+
+        const latlngs = el.geometry.map(p => [p.lat, p.lon]);
+        L.polyline(latlngs, {
+            color: bColor,
+            weight: bWeight,
+            dashArray: '10, 10',
+            opacity: 0.7
+        }).addTo(State.boundaryLayer);
     }
 }
 

@@ -28,6 +28,8 @@ export const State = {
     // Warum? Wenn der Nutzer auf "Export PNG" klickt, müssen wir nicht nochmal
     // den Server fragen, sondern nehmen einfach die Daten, die wir schon haben.
     cachedElements: [],
+    cachedPoiElements: [],
+    cachedBoundaryElements: [],
 
     // --- LADE-STATUS ---
     isFetchingData: false,  // Lädt die Map gerade im Hintergrund neue Daten?
@@ -55,7 +57,8 @@ export const State = {
     // Wenn der Nutzer schnell zoomt, brechen wir die alte (langsame) Anfrage ab,
     // damit die neue (wichtige) Anfrage sofort starten kann.
     controllers: {
-        fetch: null,    // Für das Laden der Hydranten
+        fetch: null,    // Für das Laden der Hydranten / POIs
+        boundaryFetch: null, // Für Gemeindegrenzen
         export: null    // Für den PNG Export Prozess
     }
 };
