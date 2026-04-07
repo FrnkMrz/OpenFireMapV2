@@ -119,7 +119,22 @@ export async function getCacheEntry(key) {
       const req = store.get(key);
 
       req.onerror = () => reject(req.error);
-      req.onsuccess = () => resolve(normalizeCacheEntry(req.result));
+      req.onsuccess = () => {
+        const normalized = normalizeCacheEntry(req.result);
+
+        if (!normalized) {
+          resolve(null);
+          return;
+        }
+
+        if (normalized.version !== CACHE_ENTRY_VERSION) {
+          deleteCacheEntry(key).catch(console.warn);
+          resolve(null);
+          return;
+        }
+
+        resolve(normalized);
+      };
     });
   } catch (e) {
     console.warn('[Cache] Entry read error', e);
@@ -127,7 +142,7 @@ export async function getCacheEntry(key) {
   }
 }
 
-async function deleteCacheEntry(key) {
+export async function deleteCacheEntry(key) {
   try {
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');

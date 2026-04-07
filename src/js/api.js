@@ -23,7 +23,8 @@ import {
   getCachePolicy,
   isCacheFresh,
   isCacheUsableStale,
-  setCache
+  setCache,
+  deleteCacheEntry
 } from './cache.js';
 
 /** ---- Debug/Event-Hook --------------------------------------------------- */
@@ -279,6 +280,11 @@ function elementsFingerprint(elements) {
   return elements.map(elementFingerprint).sort().join('||');
 }
 
+function computeMinElementCount(cachedCount, ratio = 0.5, floor = 1) {
+  const normalizedCount = Number.isFinite(cachedCount) ? cachedCount : 0;
+  return Math.max(floor, Math.floor(normalizedCount * ratio));
+}
+
 async function readDatasetCache(cacheKey, cachePolicy) {
   const entry = await getCacheEntry(cacheKey);
   if (!entry) return { entry: null, freshData: null, staleData: null };
@@ -290,10 +296,23 @@ async function readDatasetCache(cacheKey, cachePolicy) {
     staleTtlMs: entry.staleTtlMs ?? cachePolicy.staleTtlMs
   };
 
+  const fresh = isCacheFresh(mergedEntry);
+  const stale = isCacheUsableStale(mergedEntry);
+
+  if (!fresh && !stale) {
+    try {
+      await deleteCacheEntry(cacheKey);
+    } catch {
+      // ignore cache cleanup errors
+    }
+
+    return { entry: null, freshData: null, staleData: null };
+  }
+
   return {
     entry: mergedEntry,
-    freshData: isCacheFresh(mergedEntry) ? mergedEntry.data : null,
-    staleData: isCacheUsableStale(mergedEntry) ? mergedEntry.data : null
+    freshData: fresh ? mergedEntry.data : null,
+    staleData: !fresh && stale ? mergedEntry.data : null
   };
 }
 
@@ -570,7 +589,7 @@ export async function fetchOSMData(onProgressData = null) {
           signal: bgController.signal,
           // Cache nur überschreiben wenn frische Daten mind. 50% des gecachten Bestands haben.
           // Schützt vor degradierten Overpass-Antworten (Timeout/Überlast).
-          minElementCount: Math.floor(cachedCount * 0.5)
+          minElementCount: computeMinElementCount(cachedCount, 0.5, 1)
         })
           .then(freshData => {
             if (_bgPoiGen !== myGen) return; // Veraltet – User hat Bereich gewechselt
@@ -720,7 +739,8 @@ export async function fetchBoundaryData(onProgressData = null) {
           cacheMeta: cachePolicy,
           reqId: reqId + '_bg_boundary',
           skipCache: true,
-          signal: bgController.signal
+          signal: bgController.signal,
+          minElementCount: computeMinElementCount(cachedCount, 0.5, 1)
         })
           .then((freshData) => {
             if (_bgBoundaryGen !== myGen) return;
