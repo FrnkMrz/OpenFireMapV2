@@ -704,17 +704,21 @@ async function generateMapCanvas() {
       while (active < CONCURRENCY && tileQueue.length > 0) {
         const item = tileQueue.shift();
         active++;
-        const sSub = ["a", "b", "c"][Math.abs(item.x + item.y) % 3];
+        const layerConf = Config.layers[State.activeLayerKey];
+        const subdomains = Array.isArray(layerConf?.subdomains) && layerConf.subdomains.length > 0
+          ? layerConf.subdomains
+          : ["a", "b", "c"];
+        const sSub = subdomains[Math.abs(item.x + item.y) % subdomains.length];
         let url;
-        if (State.activeLayerKey === 'maptiler') {
-          // Satellite (ArcGIS) hat kein Subdomain-Replacement {s}
-          url = Config.layers[State.activeLayerKey].url
+        if (layerConf?.url.includes("{s}")) {
+          url = layerConf.url
+            .replace("{s}", sSub)
             .replace("{z}", item.z)
             .replace("{x}", item.x)
             .replace("{y}", item.y);
         } else {
-          url = Config.layers[State.activeLayerKey].url
-            .replace("{s}", sSub)
+          // Layer ohne Subdomains, z.B. ArcGIS Satellite
+          url = layerConf.url
             .replace("{z}", item.z)
             .replace("{x}", item.x)
             .replace("{y}", item.y);

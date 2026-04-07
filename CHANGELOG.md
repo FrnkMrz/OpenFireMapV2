@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Neue Features
+- **Getrennte Client-Loads für POIs und Grenzen:** Verwaltungsgrenzen werden nicht mehr zusammen mit den normalen POI-Abfragen behandelt, sondern über einen eigenen Fetch- und Cache-Pfad geladen.
+- **Cache-Profile pro Datenklasse:** Der Browser-Cache speichert nun zusätzliche Metadaten wie `dataClass`, `createdAt`, `ttlMs`, `staleTtlMs` und `version`, damit Grenzen, Feuerwachen und Hydranten/Wasserpunkte unterschiedlich lange wiederverwendet werden können.
+- **Verbesserte Debug-Sicht:** Overpass-Debug-Events unterscheiden jetzt zwischen `poi`, `boundary` und `view`, sodass Request-Verhalten und Cache-Treffer im Debug-Overlay klarer nachvollziehbar sind.
+
+### Änderungen
+- **Stale-While-Moving:** Beim schnellen Verschieben oder Zoomen hält die Karte bereits geladene Daten bewusst sichtbar und verschiebt das Nachladen auf einen stabileren Moment, statt sofort neue Requests zu starten.
+- **Export nutzt getrennte Caches:** PNG- und GPX-Export führen POI- und Boundary-Daten jetzt gezielt aus den getrennten Caches zusammen, anstatt implizit von einer einzigen kombinierten Liste abzuhängen.
+- **Refresh-Erkennung robuster:** SWR-Refreshes erkennen echte inhaltliche Änderungen jetzt über einen stabilen Fingerprint von IDs, Positionen, Tags und Geometrien statt nur über die Elementanzahl.
+
+### Fehlerbehebungen (Bugfixes)
+- **Viewport-Coverage statt Key-Wechsel:** Kleine Pan-Bewegungen, besonders auf Zoom 16 bis 18, lösen nicht mehr allein wegen eines neuen gesnappten `bboxKey` einen Reload aus. Neu geladen wird jetzt erst, wenn der sichtbare Viewport die zuletzt geladene gepufferte Fläche für POIs oder Grenzen wirklich verlässt.
+- **Export-Fallback stabilisiert:** Der Cache-Fallback im Export greift wieder zuverlässig, auch wenn ein Online-Fetch erzwungen wurde oder fehlschlägt.
+
 ## [v0.6.8] - 2026-04-05
 
 ### Fehlerbehebungen (Bugfixes)
