@@ -17,7 +17,14 @@ import { t } from './i18n.js';
 import { showNotification } from './ui.js';
 
 import { fetchJson, HttpError } from './net.js';
-import { getCache, setCache } from './cache.js';
+import {
+  getCache,
+  getCacheEntry,
+  getCachePolicy,
+  isCacheFresh,
+  isCacheUsableStale,
+  setCache
+} from './cache.js';
 
 /** ---- Debug/Event-Hook --------------------------------------------------- */
 const DEBUG = () => (localStorage.getItem('OFM_DEBUG') === '1');
@@ -33,8 +40,10 @@ let REQ_SEQ = 0;
 /** ---- SWR Hintergrund-Refresh Tracking ----------------------------------- */
 // Verhindert doppelte Hintergrund-Requests für denselben Bereich und
 // stellt sicher, dass veraltete Callbacks (nach Bereichswechsel) ignoriert werden.
-let _bgRefresh = null; // { controller: AbortController, cacheKey: string } | null
-let _bgGen = 0;        // Hochzählen = alle laufenden Callbacks ungültig machen
+let _bgPoiRefresh = null; // { controller: AbortController, cacheKey: string } | null
+let _bgPoiGen = 0;        // Hochzählen = alle laufenden Callbacks ungültig machen
+let _bgBoundaryRefresh = null;
+let _bgBoundaryGen = 0;
 
 /** ---- Globaler Backoff (429/Server-Überlast) ----------------------------- */
 let GLOBAL_BACKOFF_MS = 0;
@@ -189,7 +198,98 @@ function makeOverpassCacheKey({ zoom, bboxKey, queryKind }) {
   else if (zoom >= 12 && zoom < 14) zKey = '12-13';
   // z14 bleibt separat (Stations + Boundaries)
 
-  return `overpass:v2:${queryKind}:z${zKey}:bbox:${bboxKey}`;
+  return `overpass:v3:${queryKind}:z${zKey}:bbox:${bboxKey}`;
+}
+
+function makeBoundaryCacheKey({ bboxKey }) {
+  return `overpass:v3:boundaries:bbox:${bboxKey}`;
+}
+
+function syncCombinedCachedElements() {
+  State.cachedElements = [
+    ...(State.cachedPoiElements || []),
+    ...(State.cachedBoundaryElements || [])
+  ];
+}
+
+function getViewQueryMeta() {
+  const b = State.queryBounds || State.map.getBounds();
+  return {
+    bbox: State.queryMeta?.bbox || `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`,
+    bboxKey: State.queryMeta?.bbox ? State.queryMeta.bbox : makeBBoxKey(b)
+  };
+}
+
+function buildPoiQuery(zoom, bbox) {
+  const queryParts = [];
+  if (zoom >= 12) {
+    queryParts.push(`nwr["amenity"="fire_station"];`);
+    queryParts.push(`nwr["building"="fire_station"];`);
+  }
+  if (zoom >= 15) {
+    queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
+    queryParts.push(`node["emergency"="defibrillator"];`);
+  }
+  if (queryParts.length === 0) return { query: '', queryKind: 'none', dataClass: 'default' };
+
+  const queryKind = zoom >= 15 ? 'pois' : 'stations';
+  const dataClass = zoom >= 15 ? 'hydrants_and_water_points' : 'fire_stations';
+  return {
+    query: `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;`,
+    queryKind,
+    dataClass
+  };
+}
+
+function buildBoundaryQuery(zoom, bbox) {
+  if (zoom < 14) return '';
+  return `[out:json][timeout:25][bbox:${bbox}];(way["boundary"="administrative"]["admin_level"="8"];)->.boundaries;.boundaries out geom;`;
+}
+
+function stableObjectEntries(obj) {
+  if (!obj || typeof obj !== 'object') return [];
+  return Object.entries(obj).sort(([a], [b]) => a.localeCompare(b));
+}
+
+function elementFingerprint(el) {
+  if (!el || typeof el !== 'object') return '';
+  const tags = stableObjectEntries(el.tags).map(([k, v]) => `${k}:${String(v)}`).join('|');
+  const centerLat = Number(el.center?.lat ?? el.lat ?? 0).toFixed(5);
+  const centerLon = Number(el.center?.lon ?? el.lon ?? 0).toFixed(5);
+  const geometry = Array.isArray(el.geometry)
+    ? el.geometry.map((p) => `${Number(p.lat).toFixed(5)},${Number(p.lon).toFixed(5)}`).join(';')
+    : '';
+  return [
+    el.type || 'node',
+    el.id ?? '',
+    centerLat,
+    centerLon,
+    tags,
+    geometry
+  ].join('#');
+}
+
+function elementsFingerprint(elements) {
+  if (!Array.isArray(elements) || elements.length === 0) return 'empty';
+  return elements.map(elementFingerprint).sort().join('||');
+}
+
+async function readDatasetCache(cacheKey, cachePolicy) {
+  const entry = await getCacheEntry(cacheKey);
+  if (!entry) return { entry: null, freshData: null, staleData: null };
+
+  const mergedEntry = {
+    ...entry,
+    dataClass: entry.dataClass || cachePolicy.dataClass,
+    ttlMs: entry.ttlMs ?? cachePolicy.ttlMs,
+    staleTtlMs: entry.staleTtlMs ?? cachePolicy.staleTtlMs
+  };
+
+  return {
+    entry: mergedEntry,
+    freshData: isCacheFresh(mergedEntry) ? mergedEntry.data : null,
+    staleData: isCacheUsableStale(mergedEntry) ? mergedEntry.data : null
+  };
 }
 
 function epHealthyOrder(endpoints) {
@@ -219,7 +319,7 @@ function epHealthyOrder(endpoints) {
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
-async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId, skipCache = false, signal = null, minElementCount = null }) {
+async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null }) {
   if (!navigator.onLine) throw new Error('err_offline');
 
   // Cache lesen (nur wenn nicht übersprungen)
@@ -288,7 +388,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId
       const elementCount = Array.isArray(json?.elements) ? json.elements.length : 0;
       const meetsThreshold = minElementCount == null || elementCount >= minElementCount;
       if (cacheKey && meetsThreshold) {
-        await setCache(cacheKey, json);
+        await setCache(cacheKey, json, cacheMeta || (cacheTtlMs ? { ttlMs: cacheTtlMs } : {}));
       } else if (cacheKey) {
         emit({ phase: 'cache_skip_degraded', reqId, elements: elementCount, minRequired: minElementCount });
       }
@@ -391,71 +491,34 @@ export async function fetchOSMData(onProgressData = null) {
 
   // Unter Zoom 12: komplett aus
   if (zoom < 12) {
-    State.cachedElements = [];
+    State.cachedPoiElements = [];
+    syncCombinedCachedElements();
     emit({ phase: 'skip', reqId, reason: 'zoom<12', zoom });
     return [];
   }
 
-  // map.js kann gepaddete/snappted Query-Bounds setzen
-  const b = State.queryBounds || State.map.getBounds();
-  const bbox = State.queryMeta?.bbox || `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
-  const bboxKey = State.queryMeta?.bbox ? State.queryMeta.bbox : makeBBoxKey(b, 3);
+  const { bbox, bboxKey } = getViewQueryMeta();
+  const { query: q, queryKind, dataClass } = buildPoiQuery(zoom, bbox);
+  if (!q) {
+    emit({ phase: 'skip', reqId, reason: 'no_query_parts', zoom });
+    return [];
+  }
+  const cachePolicy = getCachePolicy(dataClass);
+  const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
 
   // loading state...
   State.isFetchingData = true;
-  emit({ phase: 'load_start', reqId, zoom, bboxKey });
+  emit({ phase: 'load_start', reqId, zoom, bboxKey, dataset: 'poi', dataClass });
 
   // Alte Anfrage abbrechen + neuen Controller setzen
   if (State.controllers.fetch) State.controllers.fetch.abort();
   State.controllers.fetch = new AbortController();
 
-  const queryParts = [];
-
-  // Feuerwachen ab 12
-  if (zoom >= 12) {
-    queryParts.push(`nwr["amenity"="fire_station"];`);
-    queryParts.push(`nwr["building"="fire_station"];`);
-  }
-
-  // Hydranten/Wasser/Defi ab 15
-  if (zoom >= 15) {
-    queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
-    queryParts.push(`node["emergency"="defibrillator"];`);
-  }
-
-  // Boundaries ab 14 (admin_level=8)
-  const boundaryQuery = (zoom >= 14)
-    ? `(way["boundary"="administrative"]["admin_level"="8"];)->.boundaries; .boundaries out geom;`
-    : '';
-
-  if (queryParts.length === 0 && boundaryQuery === '') {
-    emit({ phase: 'skip', reqId, reason: 'no_query_parts', zoom });
-    return null;
-  }
-
-  const queryKind =
-    (zoom >= 15 && zoom >= 14) ? 'pois+boundary' :
-      (zoom >= 14) ? 'stations+boundary' :
-        'stations';
-
-  // Caching:
-  // User-Wunsch: "Einmal geladen, länger behalten".
-  // Cache-Dauer (dynamisch abrufbar über Einstellungen)
-  const getCacheTtlMs = () => {
-    const hours = parseFloat(localStorage.getItem('ofm_cache_hours') || '168');
-    return hours * 60 * 60 * 1000;
-  };
-  const CACHE_TTL_MS = getCacheTtlMs();
-  const cacheKey = makeOverpassCacheKey({ zoom, bboxKey, queryKind });
-
-  // Query-String wird für Cache-Miss UND Hintergrund-Refresh gebraucht → hier bauen
-  const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
-
   // Hintergrund-Refresh für anderen Bereich abbrechen (User hat Gebiet gewechselt)
-  if (_bgRefresh && _bgRefresh.cacheKey !== cacheKey) {
-    _bgRefresh.controller.abort();
-    ++_bgGen;
-    _bgRefresh = null;
+  if (_bgPoiRefresh && _bgPoiRefresh.cacheKey !== cacheKey) {
+    _bgPoiRefresh.controller.abort();
+    ++_bgPoiGen;
+    _bgPoiRefresh = null;
   }
 
   // SCHRITT 1: Cache prüfen & sofort anzeigen
@@ -463,29 +526,34 @@ export async function fetchOSMData(onProgressData = null) {
   console.log('[API] queryKind:', queryKind, '| zoom:', zoom, '| bboxKey:', bboxKey);
   let hasCachedData = false;
   try {
-    const cached = await getCache(cacheKey, CACHE_TTL_MS);
-    if (cached) {
+    const { freshData, staleData } = await readDatasetCache(cacheKey, cachePolicy);
+    const cached = freshData || staleData;
+    if (cached?.elements) {
       hasCachedData = true;
-      State.cachedElements = cached.elements || [];
-      console.log('[API] CACHE HIT!', State.cachedElements.length, 'elements');
-      emit({ phase: 'swr_hit', reqId, cacheKey });
+      const isFresh = Boolean(freshData);
+      State.cachedPoiElements = cached.elements || [];
+      syncCombinedCachedElements();
+      console.log('[API] CACHE HIT!', State.cachedPoiElements.length, 'elements');
+      emit({ phase: isFresh ? 'swr_hit' : 'swr_stale_hit', reqId, cacheKey, dataset: 'poi', dataClass, elements: State.cachedPoiElements.length });
 
       // SCHRITT 1a: Sofort aus Cache rendern
-      if (typeof onProgressData === 'function' && State.cachedElements.length > 0) {
-        onProgressData(State.cachedElements);
+      if (typeof onProgressData === 'function' && State.cachedPoiElements.length > 0) {
+        onProgressData(State.cachedPoiElements);
       }
 
       // SCHRITT 1b: Hintergrund-Refresh – prüft ob sich Daten geändert haben
       // Nur starten wenn noch kein Refresh für diesen Bereich läuft
-      if (!_bgRefresh) {
+      if (!_bgPoiRefresh) {
         const bgController = new AbortController();
-        const myGen = ++_bgGen;
-        _bgRefresh = { controller: bgController, cacheKey };
-        const cachedCount = State.cachedElements.length;
+        const myGen = ++_bgPoiGen;
+        _bgPoiRefresh = { controller: bgController, cacheKey };
+        const cachedCount = State.cachedPoiElements.length;
+        const cachedFingerprint = elementsFingerprint(State.cachedPoiElements);
 
         fetchWithRetry(q, {
           cacheKey,
-          cacheTtlMs: CACHE_TTL_MS,
+          cacheTtlMs: cachePolicy.ttlMs,
+          cacheMeta: cachePolicy,
           reqId: reqId + '_bg',
           skipCache: true,
           signal: bgController.signal,
@@ -494,27 +562,28 @@ export async function fetchOSMData(onProgressData = null) {
           minElementCount: Math.floor(cachedCount * 0.5)
         })
           .then(freshData => {
-            if (_bgGen !== myGen) return; // Veraltet – User hat Bereich gewechselt
-            _bgRefresh = null;
+            if (_bgPoiGen !== myGen) return; // Veraltet – User hat Bereich gewechselt
+            _bgPoiRefresh = null;
             const freshElements = freshData?.elements || [];
-            emit({ phase: 'swr_refresh_ok', reqId, elements: freshElements.length, changed: freshElements.length !== cachedCount });
-            // Nur neu rendern wenn sich die Anzahl geändert hat
-            if (freshElements.length !== cachedCount) {
-              State.cachedElements = freshElements;
+            const changed = elementsFingerprint(freshElements) !== cachedFingerprint;
+            emit({ phase: 'swr_refresh_ok', reqId, dataset: 'poi', elements: freshElements.length, changed });
+            if (changed) {
+              State.cachedPoiElements = freshElements;
+              syncCombinedCachedElements();
               if (typeof onProgressData === 'function') {
                 onProgressData(freshElements);
               }
             }
           })
           .catch(err => {
-            if (_bgGen !== myGen) return;
-            _bgRefresh = null;
-            emit({ phase: 'swr_refresh_err', reqId, err: err?.name });
+            if (_bgPoiGen !== myGen) return;
+            _bgPoiRefresh = null;
+            emit({ phase: 'swr_refresh_err', reqId, dataset: 'poi', err: err?.name });
           });
       }
 
       State.isFetchingData = false;
-      return State.cachedElements;
+      return State.cachedPoiElements;
     }
   } catch (e) {
     console.log('[API] CACHE MISS or error:', e?.message || 'no data');
@@ -523,14 +592,22 @@ export async function fetchOSMData(onProgressData = null) {
   const tAll0 = performance.now();
 
   try {
-    const data = await fetchWithRetry(q, { cacheKey, cacheTtlMs: CACHE_TTL_MS, reqId, skipCache: true });
+    const data = await fetchWithRetry(q, {
+      cacheKey,
+      cacheTtlMs: cachePolicy.ttlMs,
+      cacheMeta: cachePolicy,
+      reqId,
+      skipCache: true,
+      signal: State.controllers.fetch.signal
+    });
 
-    State.cachedElements = data.elements || [];
+    State.cachedPoiElements = data.elements || [];
+    syncCombinedCachedElements();
     const totalMs = Math.round(performance.now() - tAll0);
-    emit({ phase: 'load_ok', reqId, zoom, totalMs, elements: State.cachedElements.length });
+    emit({ phase: 'load_ok', reqId, zoom, totalMs, dataset: 'poi', elements: State.cachedPoiElements.length, dataClass });
 
     State.isFetchingData = false;
-    return State.cachedElements;
+    return State.cachedPoiElements;
 
   } catch (err) {
     State.isFetchingData = false;
@@ -551,7 +628,7 @@ export async function fetchOSMData(onProgressData = null) {
 
       // WICHTIG: NICHT werfen! Wir haben ja erfolgreiche Daten (aus Cache).
       // Der User sieht Marker, also ist das KEIN Fehler-Zustand.
-      return State.cachedElements;
+      return State.cachedPoiElements;
     } else {
       // Kein Cache UND kein Netzwerk -> Fehler
       const msgKey = mapErrorKey(err);
@@ -567,6 +644,112 @@ export async function fetchOSMData(onProgressData = null) {
       showNotification(t(msgKey), 5000);
       throw err;
     }
+  }
+}
+
+export async function fetchBoundaryData(onProgressData = null) {
+  const reqId = Math.random().toString(36).substring(2, 7);
+  const zoom = State.map.getZoom();
+
+  if (zoom < 14) {
+    State.cachedBoundaryElements = [];
+    syncCombinedCachedElements();
+    emit({ phase: 'skip_boundary', reqId, reason: 'zoom<14', zoom, dataset: 'boundary' });
+    return [];
+  }
+
+  const { bbox, bboxKey } = getViewQueryMeta();
+  const q = buildBoundaryQuery(zoom, bbox);
+  const cachePolicy = getCachePolicy('boundaries');
+  const cacheKey = makeBoundaryCacheKey({ bboxKey });
+
+  if (!q) return [];
+
+  if (State.controllers.boundaryFetch) State.controllers.boundaryFetch.abort();
+  State.controllers.boundaryFetch = new AbortController();
+
+  if (_bgBoundaryRefresh && _bgBoundaryRefresh.cacheKey !== cacheKey) {
+    _bgBoundaryRefresh.controller.abort();
+    ++_bgBoundaryGen;
+    _bgBoundaryRefresh = null;
+  }
+
+  let hasCachedData = false;
+  try {
+    const { freshData, staleData } = await readDatasetCache(cacheKey, cachePolicy);
+    const cached = freshData || staleData;
+    if (cached?.elements) {
+      hasCachedData = true;
+      const isFresh = Boolean(freshData);
+      State.cachedBoundaryElements = cached.elements || [];
+      syncCombinedCachedElements();
+      emit({ phase: isFresh ? 'boundary_cache_hit' : 'boundary_stale_hit', reqId, cacheKey, dataset: 'boundary', elements: State.cachedBoundaryElements.length });
+
+      if (typeof onProgressData === 'function') {
+        onProgressData(State.cachedBoundaryElements);
+      }
+
+      if (!_bgBoundaryRefresh) {
+        const bgController = new AbortController();
+        const myGen = ++_bgBoundaryGen;
+        const cachedCount = State.cachedBoundaryElements.length;
+        const cachedFingerprint = elementsFingerprint(State.cachedBoundaryElements);
+        _bgBoundaryRefresh = { controller: bgController, cacheKey };
+
+        fetchWithRetry(q, {
+          cacheKey,
+          cacheTtlMs: cachePolicy.ttlMs,
+          cacheMeta: cachePolicy,
+          reqId: reqId + '_bg_boundary',
+          skipCache: true,
+          signal: bgController.signal
+        })
+          .then((freshData) => {
+            if (_bgBoundaryGen !== myGen) return;
+            _bgBoundaryRefresh = null;
+            const freshElements = freshData?.elements || [];
+            const changed = elementsFingerprint(freshElements) !== cachedFingerprint;
+            emit({ phase: 'boundary_refresh_ok', reqId, dataset: 'boundary', elements: freshElements.length, changed });
+            if (changed) {
+              State.cachedBoundaryElements = freshElements;
+              syncCombinedCachedElements();
+              if (typeof onProgressData === 'function') onProgressData(freshElements);
+            }
+          })
+          .catch((err) => {
+            if (_bgBoundaryGen !== myGen) return;
+            _bgBoundaryRefresh = null;
+            emit({ phase: 'boundary_refresh_err', reqId, dataset: 'boundary', err: err?.name });
+          });
+      }
+
+      return State.cachedBoundaryElements;
+    }
+  } catch (e) {
+    console.log('[API] Boundary cache miss or error:', e?.message || 'no data');
+  }
+
+  try {
+    const data = await fetchWithRetry(q, {
+      cacheKey,
+      cacheTtlMs: cachePolicy.ttlMs,
+      cacheMeta: cachePolicy,
+      reqId,
+      skipCache: true,
+      signal: State.controllers.boundaryFetch.signal
+    });
+
+    State.cachedBoundaryElements = data?.elements || [];
+    syncCombinedCachedElements();
+    emit({ phase: 'boundary_load_ok', reqId, zoom, dataset: 'boundary', elements: State.cachedBoundaryElements.length });
+    return State.cachedBoundaryElements;
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    if (hasCachedData) {
+      emit({ phase: 'boundary_stale_if_error', reqId, zoom, dataset: 'boundary' });
+      return State.cachedBoundaryElements;
+    }
+    throw err;
   }
 }
 

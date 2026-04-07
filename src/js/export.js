@@ -37,7 +37,7 @@ function getExportFilename(title, zoom) {
    HILFSFUNKTIONEN: PRE-PROCESSING FÜR EXPORT (Clustering nur für Feuerwachen)
    -----------------------------------------------------------------------------
    Warum hier?
-   - Export (PNG/GPX) nutzt State.cachedElements direkt.
+   - Export nutzt getrennte POI-/Boundary-Caches und führt sie gezielt zusammen.
    - Auf der Karte clustern wir Feuerwachen (150 m), damit nicht mehrere Haus-Icons
      auf einem Gelände erscheinen (z.B. mehrere Gebäude einer Wache).
    - Damit Export und Karte identisch sind, wenden wir das gleiche Clustering auch
@@ -152,7 +152,7 @@ function preprocessElementsForExport(
 
     processed.add(masterKey);
 
-    // Master klonen, damit wir State.cachedElements nicht “nebenbei” kaputt mutieren.
+    // Master klonen, damit wir die aktuell vorbereiteten Export-Daten nicht nebenbei mutieren.
     const merged = {
       ...master,
       tags: { ...(master.tags || {}) },
@@ -195,6 +195,17 @@ function preprocessElementsForExport(
 
   // Reihenfolge ist für Export egal; wir lassen "clustered + others".
   return clustered.concat(others);
+}
+
+function getCachedExportElements() {
+  return [
+    ...(State.cachedPoiElements || []),
+    ...(State.cachedBoundaryElements || []),
+  ];
+}
+
+function getPreparedCachedExportElements() {
+  return preprocessElementsForExport(getCachedExportElements());
 }
 
 /* =============================================================================
@@ -354,7 +365,7 @@ function escapeXML(str) {
 export async function exportAsGPX() {
   try {
     const bounds = State.selection.finalBounds || State.map.getBounds();
-    const elementsForExport = preprocessElementsForExport(State.cachedElements);
+    const elementsForExport = getPreparedCachedExportElements();
     const pointsToExport = elementsForExport.filter((el) => {
       const lat = el.lat || el.center?.lat;
       const lon = el.lon || el.center?.lon;
@@ -509,6 +520,7 @@ async function generateMapCanvas() {
   // DATEN LADEN (Explizit für diesen Ausschnitt & Zoom)
   setStatus(t("loading_data") || "Lade Daten..."); // Fallback String falls Key fehlt
   let elementsForExport = [];
+  const cachedExportElements = getCachedExportElements();
 
   // NEU: Wenn wir aktuell auf Zoom < 15 sind, sind KEINE Hydranten im Cache.
   // Wir müssen zwingend die API fragen, da jeder Export zwingend Hydranten beinhalten soll,
@@ -526,10 +538,10 @@ async function generateMapCanvas() {
 
     // Liegt der gewünschte Export-Ausschnitt VOLLSTÄNDIG innerhalb der BBox,
     // die die App zuletzt für die Darstellung geladen hat?
-    if (State.cachedElements && State.cachedElements.length > 0) {
+    if (cachedExportElements.length > 0) {
       if (State.queryBounds && State.queryBounds.contains(bounds)) {
         console.log("Export: Cache enthält Daten für diesen KOMPLETTEN Bereich -> Nutze Cache.");
-        elementsForExport = preprocessElementsForExport(State.cachedElements);
+        elementsForExport = preprocessElementsForExport(cachedExportElements);
       } else {
         console.log("Export: Bereich ist zu groß oder liegt außerhalb des Karten-Caches -> Erzwinge Download.");
       }
@@ -545,15 +557,15 @@ async function generateMapCanvas() {
 
       // Fallback: Wenn Online leer, aber Cache existiert (vielleicht knapp daneben?), war vorher schon Handled.
       // Aber hier nochmal zur Sicherheit.
-      if (elementsForExport.length === 0 && State.cachedElements && State.cachedElements.length > 0) {
+      if (elementsForExport.length === 0 && cachedExportElements.length > 0) {
         console.warn("Export: Online-Daten leer, nutze Cache als Fallback.");
-        elementsForExport = preprocessElementsForExport(State.cachedElements);
+        elementsForExport = preprocessElementsForExport(cachedExportElements);
       }
 
       showNotification(`Export: ${elementsForExport.length} Objekte (Online geladen).`, 3000);
     } catch (e) {
       console.warn("Export-Fetch fehlgeschlagen, nutze Cache als Fallback", e);
-      elementsForExport = preprocessElementsForExport(State.cachedElements);
+      elementsForExport = preprocessElementsForExport(cachedExportElements);
       showNotification(`Export Warnung: Ladefehler, nutze Cache (${elementsForExport.length} Objekte).`, 5000);
     }
   } else {
@@ -755,7 +767,6 @@ async function generateMapCanvas() {
   const originTileY = startTileY;
 
   // Boundaries zeichnen (z.B. Gemeindegrenzen)
-  // Annahme: sind in cachedElements enthalten (wenn Zoom passt)
   for (const el of elementsForExport) {
     if (el.tags && el.tags.boundary === 'administrative' && el.geometry) {
       // Linie zeichnen
