@@ -30,10 +30,13 @@ export const State = {
     cachedElements: [],
     cachedPoiElements: [],
     cachedBoundaryElements: [],
+    loadedPoiBounds: null,
+    loadedBoundaryBounds: null,
+    loadedPoiMode: null,
 
     // --- LADE-STATUS ---
     isFetchingData: false,  // Lädt die Map gerade im Hintergrund neue Daten?
-    queryBounds: null,      // Welche exakte BoundingBox hat die Map als letztes geladen?
+    queryBounds: null,      // Welche Query-Bounds für den nächsten/aktuellen Fetch berechnet wurden?
 
     // Welcher Hintergrund ist gerade an? (Startwert: 'voyager')
     activeLayerKey: 'voyager',

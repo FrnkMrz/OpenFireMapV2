@@ -205,6 +205,11 @@ function makeBoundaryCacheKey({ bboxKey }) {
   return `overpass:v3:boundaries:bbox:${bboxKey}`;
 }
 
+function cloneBounds(bounds) {
+  if (!bounds) return null;
+  return L.latLngBounds(bounds.getSouthWest(), bounds.getNorthEast());
+}
+
 function syncCombinedCachedElements() {
   State.cachedElements = [
     ...(State.cachedPoiElements || []),
@@ -488,10 +493,14 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
 export async function fetchOSMData(onProgressData = null) {
   const reqId = Math.random().toString(36).substring(2, 7);
   const zoom = State.map.getZoom();
+  const requestedBounds = cloneBounds(State.queryBounds || State.map.getBounds());
+  const requestedMode = zoom >= 15 ? 'all' : 'stations';
 
   // Unter Zoom 12: komplett aus
   if (zoom < 12) {
     State.cachedPoiElements = [];
+    State.loadedPoiBounds = null;
+    State.loadedPoiMode = null;
     syncCombinedCachedElements();
     emit({ phase: 'skip', reqId, reason: 'zoom<12', zoom });
     return [];
@@ -532,6 +541,8 @@ export async function fetchOSMData(onProgressData = null) {
       hasCachedData = true;
       const isFresh = Boolean(freshData);
       State.cachedPoiElements = cached.elements || [];
+      State.loadedPoiBounds = requestedBounds;
+      State.loadedPoiMode = requestedMode;
       syncCombinedCachedElements();
       console.log('[API] CACHE HIT!', State.cachedPoiElements.length, 'elements');
       emit({ phase: isFresh ? 'swr_hit' : 'swr_stale_hit', reqId, cacheKey, dataset: 'poi', dataClass, elements: State.cachedPoiElements.length });
@@ -569,6 +580,8 @@ export async function fetchOSMData(onProgressData = null) {
             emit({ phase: 'swr_refresh_ok', reqId, dataset: 'poi', elements: freshElements.length, changed });
             if (changed) {
               State.cachedPoiElements = freshElements;
+              State.loadedPoiBounds = requestedBounds;
+              State.loadedPoiMode = requestedMode;
               syncCombinedCachedElements();
               if (typeof onProgressData === 'function') {
                 onProgressData(freshElements);
@@ -602,6 +615,8 @@ export async function fetchOSMData(onProgressData = null) {
     });
 
     State.cachedPoiElements = data.elements || [];
+    State.loadedPoiBounds = requestedBounds;
+    State.loadedPoiMode = requestedMode;
     syncCombinedCachedElements();
     const totalMs = Math.round(performance.now() - tAll0);
     emit({ phase: 'load_ok', reqId, zoom, totalMs, dataset: 'poi', elements: State.cachedPoiElements.length, dataClass });
@@ -650,9 +665,11 @@ export async function fetchOSMData(onProgressData = null) {
 export async function fetchBoundaryData(onProgressData = null) {
   const reqId = Math.random().toString(36).substring(2, 7);
   const zoom = State.map.getZoom();
+  const requestedBounds = cloneBounds(State.queryBounds || State.map.getBounds());
 
   if (zoom < 14) {
     State.cachedBoundaryElements = [];
+    State.loadedBoundaryBounds = null;
     syncCombinedCachedElements();
     emit({ phase: 'skip_boundary', reqId, reason: 'zoom<14', zoom, dataset: 'boundary' });
     return [];
@@ -682,6 +699,7 @@ export async function fetchBoundaryData(onProgressData = null) {
       hasCachedData = true;
       const isFresh = Boolean(freshData);
       State.cachedBoundaryElements = cached.elements || [];
+      State.loadedBoundaryBounds = requestedBounds;
       syncCombinedCachedElements();
       emit({ phase: isFresh ? 'boundary_cache_hit' : 'boundary_stale_hit', reqId, cacheKey, dataset: 'boundary', elements: State.cachedBoundaryElements.length });
 
@@ -712,6 +730,7 @@ export async function fetchBoundaryData(onProgressData = null) {
             emit({ phase: 'boundary_refresh_ok', reqId, dataset: 'boundary', elements: freshElements.length, changed });
             if (changed) {
               State.cachedBoundaryElements = freshElements;
+              State.loadedBoundaryBounds = requestedBounds;
               syncCombinedCachedElements();
               if (typeof onProgressData === 'function') onProgressData(freshElements);
             }
@@ -740,6 +759,7 @@ export async function fetchBoundaryData(onProgressData = null) {
     });
 
     State.cachedBoundaryElements = data?.elements || [];
+    State.loadedBoundaryBounds = requestedBounds;
     syncCombinedCachedElements();
     emit({ phase: 'boundary_load_ok', reqId, zoom, dataset: 'boundary', elements: State.cachedBoundaryElements.length });
     return State.cachedBoundaryElements;
