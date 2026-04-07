@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v0.6.9] - 2026-04-07
 
 ### Neue Features
 - **Getrennte Client-Loads für POIs und Grenzen:** Verwaltungsgrenzen werden nicht mehr zusammen mit den normalen POI-Abfragen behandelt, sondern über einen eigenen Fetch- und Cache-Pfad geladen.
