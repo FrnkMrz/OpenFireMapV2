@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 ### Fehlerbehebungen (Bugfixes)
 - **Viewport-Coverage statt Key-Wechsel:** Kleine Pan-Bewegungen, besonders auf Zoom 16 bis 18, lösen nicht mehr allein wegen eines neuen gesnappten `bboxKey` einen Reload aus. Neu geladen wird jetzt erst, wenn der sichtbare Viewport die zuletzt geladene gepufferte Fläche für POIs oder Grenzen wirklich verlässt.
 - **Export-Fallback stabilisiert:** Der Cache-Fallback im Export greift wieder zuverlässig, auch wenn ein Online-Fetch erzwungen wurde oder fehlschlägt.
+- **Cache-SWR robuster gemacht:** Cache-Einträge mit alter Versionsnummer werden beim Lesen verworfen und gelöscht, hart abgelaufene stale-Einträge im SWR-Pfad aktiv aufgeräumt, und Background-Refreshes für POIs wie Grenzen schützen gute Cache-Daten jetzt konsistent mit einer Mindestschwelle vor degradierten Overpass-Antworten.
 
 ## [v0.6.8] - 2026-04-05
 
