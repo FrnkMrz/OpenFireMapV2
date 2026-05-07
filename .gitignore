@@ -16,6 +16,9 @@ __MACOSX/
 .idea/
 .vscode/
 
+# Local agent/tool settings
+.claude/settings.local.json
+
 # Build artefacts (falls später relevant)
 *.map
 
@@ -36,4 +39,3 @@ osv-scanner.*
 test-results/
 playwright-report/
 playwright/.cache/
-
