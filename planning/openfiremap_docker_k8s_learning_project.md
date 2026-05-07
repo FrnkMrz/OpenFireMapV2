@@ -70,7 +70,7 @@ Verhalten:
 
 ## Warum dieses Projekt sinnvoll ist
 
-Öffentliche Overpass-Server sind für geteilte Nutzung gedacht und nicht ideal als Live-Backend für eine produktive Kartenanwendung. Für OpenFireMap ist eine vorbereitete DACH-Datenquelle daher mittelfristig die bessere Lösung. Docker eignet sich gut, um Anwendungen und ihre Abhängigkeiten reproduzierbar zu paketieren. Docker Compose ist für Multi-Container-Anwendungen gedacht. Docker Desktop bringt eine lokale Kubernetes-Umgebung mit. K3s ist eine leichtgewichtige, voll kompatible Kubernetes-Distribution und passt gut für Lernen und kleine Server. citeturn462957search0turn462957search3turn462957search1turn462957search2
+Öffentliche Overpass-Server sind für geteilte Nutzung gedacht und nicht ideal als Live-Backend für eine produktive Kartenanwendung. Für OpenFireMap ist eine vorbereitete DACH-Datenquelle daher mittelfristig die bessere Lösung. Docker eignet sich gut, um Anwendungen und ihre Abhängigkeiten reproduzierbar zu paketieren. Docker Compose ist für Multi-Container-Anwendungen gedacht. Docker Desktop bringt eine lokale Kubernetes-Umgebung mit. K3s ist eine leichtgewichtige, voll kompatible Kubernetes-Distribution und passt gut für Lernen und kleine Server.
 
 ## Lernpfad
 
@@ -112,7 +112,7 @@ Ergebnis:
 - Build erzeugt Datendateien
 - Web-Container liefert diese Dateien aus
 
-Docker beschreibt Container als isolierte Prozesse mit allen benötigten Dateien. Compose definiert Multi-Container-Anwendungen in YAML und startet sie mit einem Befehl. citeturn462957search16turn462957search21
+Docker beschreibt Container als isolierte Prozesse mit allen benötigten Dateien. Compose definiert Multi-Container-Anwendungen in YAML und startet sie mit einem Befehl.
 
 ### Phase 2: Lokales Kubernetes verstehen
 
@@ -127,7 +127,7 @@ Vorgehen:
 - Docker Desktop Kubernetes lokal aktivieren
 - denselben Build- und Web-Stack in Kubernetes-Manifeste überführen
 
-Docker Desktop enthält einen lokalen Kubernetes-Server und Client für Entwicklung und Tests direkt auf dem eigenen Rechner. citeturn462957search1turn462957search9
+Docker Desktop enthält einen lokalen Kubernetes-Server und Client für Entwicklung und Tests direkt auf dem eigenen Rechner.
 
 ### Phase 3: Deployment auf kleinem Server
 
@@ -143,7 +143,7 @@ Vorgehen:
 - zuerst Docker Compose deployen
 - danach optional auf K3s umstellen
 
-K3s bündelt die Kubernetes-Control-Plane in einer einzelnen Binärdatei, reduziert externe Abhängigkeiten und eignet sich gut für kleine Umgebungen. citeturn462957search2turn462957search6
+K3s bündelt die Kubernetes-Control-Plane in einer einzelnen Binärdatei, reduziert externe Abhängigkeiten und eignet sich gut für kleine Umgebungen.
 
 ### Phase 4: K3s auf dem Server
 
@@ -223,7 +223,7 @@ Der erste MVP soll klein bleiben.
 - später K3s
 - Nginx oder einfacher Web-Container
 
-Docker Compose ist für das Definieren und Starten von Multi-Container-Anwendungen gedacht. Auf Linux wird Compose als Plugin für Docker Engine bereitgestellt. citeturn462957search3turn462957search13turn462957search11
+Docker Compose ist für das Definieren und Starten von Multi-Container-Anwendungen gedacht. Auf Linux wird Compose als Plugin für Docker Engine bereitgestellt.
 
 ## Repo-Struktur als Ausgangspunkt
 
