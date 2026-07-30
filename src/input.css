@@ -254,6 +254,43 @@ body {
     }
 
 }
+
+/* Status für den asynchronen Hydranten-Download. */
+.hydrant-download-status {
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(96, 165, 250, 0.45);
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+    color: #e2e8f0;
+    font-size: 12px;
+    line-height: 1.35;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hydrant-download-status__indicator { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 9999px; background: #60a5fa; }
+.hydrant-download-status[data-state="loading"] .hydrant-download-status__indicator,
+.hydrant-download-status[data-state="refreshing"] .hydrant-download-status__indicator { border: 2px solid #93c5fd; border-top-color: transparent; background: transparent; animation: hydrant-status-spin 0.8s linear infinite; }
+.hydrant-download-status[data-state="success"] .hydrant-download-status__indicator { background: #34d399; }
+.hydrant-download-status[data-state="slow"] .hydrant-download-status__indicator,
+.hydrant-download-status[data-state="error"] .hydrant-download-status__indicator { background: #fbbf24; }
+.hydrant-download-status__retry { margin-left: 4px; border: 0; border-radius: 9999px; background: rgba(255,255,255,.12); color: inherit; cursor: pointer; font: inherit; font-weight: 700; padding: 4px 8px; }
+
+@keyframes hydrant-status-spin { to { transform: rotate(360deg); } }
+
+.hydrant-download-status[data-state="loading"],
+.hydrant-download-status[data-state="refreshing"],
+.hydrant-download-status[data-state="slow"] {
+    border-color: rgba(96, 165, 250, 0.75);
+}
+
+.hydrant-download-status[data-state="slow"] { border-color: rgba(251, 191, 36, 0.85); color: #fef3c7; }
+.hydrant-download-status[data-state="success"] { border-color: rgba(52, 211, 153, 0.65); }
+.hydrant-download-status[data-state="error"] { border-color: rgba(248, 113, 113, 0.75); color: #fecaca; }
 /* =========================================
    ANDROID SCALING FIX
    ========================================= */

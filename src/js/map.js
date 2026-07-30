@@ -10,6 +10,7 @@ import { Config } from './config.js';
 import { t } from './i18n.js';
 import { fetchBoundaryData, fetchOSMData } from './api.js';
 import { showNotification } from './ui.js';
+import { createHydrantDownloadStatus } from './hydrant-download-status.js';
 
 // ---------------------------------------------------------------------------
 // Permalink — URL-Hash Hilfsfunktionen
@@ -165,6 +166,15 @@ export function initMapLogic() {
     let idleRefreshTimer = null;
     const RAPID_INTERACTION_MS = 1200;
     const IDLE_REFRESH_MS = 900;
+    const hydrantDownloadStatus = createHydrantDownloadStatus(
+        document.getElementById('hydrant-download-status'),
+        {
+            onRetry: () => {
+                lastFetchKey = null;
+                State.map.fire('moveend');
+            }
+        }
+    );
 
 
     // Debug/Tracing (aktivieren mit: localStorage.setItem('OFM_DEBUG','1') + Reload)
@@ -529,7 +539,7 @@ export function initMapLogic() {
                         showNotification(`${cachedCount} ${t('cached_objects')} – ${t('refreshing')}`, 30000);
                     }
                     renderMarkers(cachedData, zoom);
-                });
+                }, (status) => hydrantDownloadStatus.update(status));
                 const boundaryPromise = fetchBoundaryData((cachedBoundaryData) => {
                     renderBoundaries(cachedBoundaryData, zoom);
                 });

@@ -193,8 +193,11 @@ export const Config = {
    */
   performance: {
     overpassTimeoutMs: 25000,
-    overpassMaxRetries: 2,
-    moveDebounceMs: 400,
-    cacheTtlMs: 5 * 60 * 1000, // 5 Minuten
+   overpassMaxRetries: 2,
+   moveDebounceMs: 400,
+    hydrantStatusShowDelayMs: 500,
+    hydrantStatusSlowAfterMs: 6000,
+    hydrantStatusSuccessDurationMs: 1600,
+   cacheTtlMs: 5 * 60 * 1000, // 5 Minuten
   },
 };

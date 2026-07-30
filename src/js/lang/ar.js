@@ -104,6 +104,11 @@ export const strings = {
     cache_3d: "3 Days",
     cache_7d: "7 Days",
     cache_30d: "30 Days",
-    cache_saved: "Cache setting saved."
+    cache_saved: "Cache setting saved.",
+    hydrant_load_started: "Loading hydrant data …",
+    hydrant_load_more: "{count} hydrants loaded – loading more data …",
+    hydrant_load_success: "Hydrant data loaded successfully: {count} hydrants.",
+    hydrant_load_error: "Hydrant data could not be loaded.",
+    hydrant_load_slow: "Hydrant data is still loading – {count} hydrants so far."
 };
 export default strings;

@@ -509,11 +509,23 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
  * Wenn onProgressData übergeben wird, rufen wir es SOFORT mit Cache-Daten auf,
  * während wir im Hintergrund die neuen Daten laden.
  */
-export async function fetchOSMData(onProgressData = null) {
+export function countHydrants(elements) {
+  if (!Array.isArray(elements)) return 0;
+  return elements.filter(element => element?.tags?.emergency === 'fire_hydrant').length;
+}
+
+function reportHydrantDownload(onStatus, state, elements = []) {
+  if (typeof onStatus !== 'function') return;
+  onStatus({ state, count: countHydrants(elements) });
+}
+
+export async function fetchOSMData(onProgressData = null, onStatus = null) {
   const reqId = Math.random().toString(36).substring(2, 7);
   const zoom = State.map.getZoom();
   const requestedBounds = cloneBounds(State.queryBounds || State.map.getBounds());
   const requestedMode = zoom >= 15 ? 'all' : 'stations';
+  // Der sichtbare Status bezieht sich bewusst nur auf den Hydrantenmodus.
+  const hydrantStatus = zoom >= 15 ? onStatus : null;
 
   // Unter Zoom 12: komplett aus
   if (zoom < 12) {
@@ -537,6 +549,7 @@ export async function fetchOSMData(onProgressData = null) {
   // loading state...
   State.isFetchingData = true;
   emit({ phase: 'load_start', reqId, zoom, bboxKey, dataset: 'poi', dataClass });
+  reportHydrantDownload(hydrantStatus, 'loading');
 
   // Alte Anfrage abbrechen + neuen Controller setzen
   if (State.controllers.fetch) State.controllers.fetch.abort();
@@ -565,6 +578,7 @@ export async function fetchOSMData(onProgressData = null) {
       syncCombinedCachedElements();
       console.log('[API] CACHE HIT!', State.cachedPoiElements.length, 'elements');
       emit({ phase: isFresh ? 'swr_hit' : 'swr_stale_hit', reqId, cacheKey, dataset: 'poi', dataClass, elements: State.cachedPoiElements.length });
+      reportHydrantDownload(hydrantStatus, 'refreshing', State.cachedPoiElements);
 
       // SCHRITT 1a: Sofort aus Cache rendern
       if (typeof onProgressData === 'function' && State.cachedPoiElements.length > 0) {
@@ -606,11 +620,13 @@ export async function fetchOSMData(onProgressData = null) {
                 onProgressData(freshElements);
               }
             }
+            reportHydrantDownload(hydrantStatus, 'success', freshElements);
           })
           .catch(err => {
             if (_bgPoiGen !== myGen) return;
             _bgPoiRefresh = null;
             emit({ phase: 'swr_refresh_err', reqId, dataset: 'poi', err: err?.name });
+            if (err?.name !== 'AbortError') reportHydrantDownload(hydrantStatus, 'error');
           });
       }
 
@@ -639,6 +655,7 @@ export async function fetchOSMData(onProgressData = null) {
     syncCombinedCachedElements();
     const totalMs = Math.round(performance.now() - tAll0);
     emit({ phase: 'load_ok', reqId, zoom, totalMs, dataset: 'poi', elements: State.cachedPoiElements.length, dataClass });
+    reportHydrantDownload(hydrantStatus, 'success', State.cachedPoiElements);
 
     State.isFetchingData = false;
     return State.cachedPoiElements;
@@ -676,6 +693,7 @@ export async function fetchOSMData(onProgressData = null) {
       });
 
       showNotification(t(msgKey), 5000);
+      reportHydrantDownload(hydrantStatus, 'error');
       throw err;
     }
   }
@@ -840,5 +858,6 @@ export const _testing = {
   epGet,
   epMarkOk,
   epMarkFail,
-  EP
+  EP,
+  countHydrants
 };

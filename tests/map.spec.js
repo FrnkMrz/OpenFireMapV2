@@ -105,3 +105,25 @@ test('Escape schließt offene Menüs', async ({ page }) => {
     await page.keyboard.press('Escape');
     await expect(layerMenu).toHaveClass(/hidden/);
 });
+
+test('Hydranten-Ladestatus zeigt Fortschritt und erfolgreichen Abschluss', async ({ page }) => {
+    await page.route('**/api/interpreter', async (route) => {
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        await route.fulfill({
+            contentType: 'application/json',
+            body: JSON.stringify({
+                elements: [
+                    { type: 'node', id: 1, lat: 49.55, lon: 11.35, tags: { emergency: 'fire_hydrant' } },
+                    { type: 'node', id: 2, lat: 49.56, lon: 11.36, tags: { emergency: 'fire_hydrant' } },
+                    { type: 'node', id: 3, lat: 49.57, lon: 11.37, tags: { emergency: 'water_tank' } }
+                ]
+            })
+        });
+    });
+
+    await page.goto('/?lang=de#15/49.555/11.35/voyager');
+    const status = page.locator('#hydrant-download-status [role="status"]');
+    await expect(status).toBeVisible();
+    await expect(status).toContainText('Hydrantendaten werden geladen');
+    await expect(status).toContainText('2 Hydranten', { timeout: 5000 });
+});

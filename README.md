@@ -54,6 +54,16 @@ OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik (Vite, ES Module
 - 🔗 **Permalink & Teilen**: Teile die exakte Sicht auf die Karte inklusive Kartenebene als Web-Link oder per nativer Smartphone-Share-API (WhatsApp, SMS, etc.).
 - 🗺️ **Regionale Basisdaten**: Vollautomatische, standortbezogene Einblendung der perfekten lokalen Daten, wie z.B. die amtlichen Luftbilder (DOP) und die Webkarte des Freistaats Bayern (nur Desktop).
 
+### Hydranten-Ladestatus
+
+Beim Abruf von Hydrantendaten zeigt die Karte einen nicht blockierenden Status an. Damit schnelle Overpass-Antworten nicht flackern, erscheint er erst nach 500 ms. Nach 6 Sekunden weist er auf einen weiterhin laufenden Abruf hin und nennt die bislang geladene Hydrantenanzahl. Ein erfolgreicher Abruf wird für 1,6 Sekunden bestätigt; bei einem Fehler kann der Abruf direkt über den Wiederholen-Button erneut gestartet werden.
+
+Die Zeitwerte liegen zentral unter `Config.performance` in `src/js/config.js`:
+
+- `hydrantStatusShowDelayMs`
+- `hydrantStatusSlowAfterMs`
+- `hydrantStatusSuccessDurationMs`
+
 ### Projektstruktur
 
 ```
@@ -125,6 +135,7 @@ Please note: This is an **online-only application** by design and requires an ac
 - **Leaflet** (Map logic)
 - **Tailwind CSS**
 - **GitHub Pages** Hosting
+- **Hydrant loading status** with delayed display, slow-load feedback, success confirmation, and retry
 
 ### Development
 
