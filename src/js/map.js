@@ -164,6 +164,7 @@ export function initMapLogic() {
     let lastMotionAt = 0;
     let latestFetchIntent = 0;
     let idleRefreshTimer = null;
+    let retryTimer = null;
     const RAPID_INTERACTION_MS = 1200;
     const IDLE_REFRESH_MS = 900;
     const hydrantDownloadStatus = createHydrantDownloadStatus(
@@ -213,8 +214,30 @@ export function initMapLogic() {
                 clearTimeout(idleRefreshTimer);
                 idleRefreshTimer = null;
             }
+            if (retryTimer) {
+                clearTimeout(retryTimer);
+                retryTimer = null;
+            }
             const z = State.map.getZoom();
             set(`move/zoom… z=${z}`);
+        });
+    }
+
+    // Die Bewegungssteuerung darf nicht vom optionalen Debug-Modus abhängen.
+    // Ohne diesen Listener wurden laufende Antworten bei normaler Nutzung erst
+    // bei moveend invalidiert und geplante Wiederholungen nicht sofort verworfen.
+    if (!DEBUG) {
+        State.map.on('zoomstart movestart', () => {
+            lastMotionAt = Date.now();
+            latestFetchIntent += 1;
+            if (idleRefreshTimer) {
+                clearTimeout(idleRefreshTimer);
+                idleRefreshTimer = null;
+            }
+            if (retryTimer) {
+                clearTimeout(retryTimer);
+                retryTimer = null;
+            }
         });
     }
 
@@ -545,6 +568,10 @@ export function initMapLogic() {
                 });
                 const [data] = await Promise.all([poiPromise, boundaryPromise]);
 
+                // Während des Abrufs wurde die Karte weiterbewegt: Der nächste
+                // Request ist bereits zuständig und darf nicht überschrieben werden.
+                if (fetchIntent !== latestFetchIntent) return;
+
                 if (data) {
                     // Nur erneut rendern, wenn sich die Datenmenge geändert hat
                     const networkCount = data.length || 0;
@@ -582,6 +609,8 @@ export function initMapLogic() {
                     return;
                 }
 
+                if (fetchIntent !== latestFetchIntent) return;
+
                 // Fehlerbehandlung
                 if (statusEl) {
                     const msgKey = (err?.status === 429) ? 'err_ratelimit' :
@@ -589,6 +618,15 @@ export function initMapLogic() {
                     statusEl.innerText = t(msgKey);
                     statusEl.className = 'text-red-500 font-bold';
                 }
+
+                // Ein Fehler darf den Bereich nicht dauerhaft blockieren: lastFetchKey
+                // würde sonst einen weiteren Versuch erst nach einer Kartenbewegung erlauben.
+                lastFetchKey = null;
+                if (retryTimer) clearTimeout(retryTimer);
+                retryTimer = setTimeout(() => {
+                    retryTimer = null;
+                    if (fetchIntent === latestFetchIntent) doFetch();
+                }, 8000);
             }
         } // end doFetch
     });

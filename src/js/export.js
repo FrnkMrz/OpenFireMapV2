@@ -275,18 +275,19 @@ export function setExportZoom(z) {
  * Das Rechteck definiert den Export-Ausschnitt (Bounds).
  */
 export function startSelection() {
-  State.selection.active = true;
   clearSelection();
+  State.selection.active = true;
   State.map.dragging.disable();
   State.map.getContainer().classList.add("selection-mode");
   showNotification(t("drag_area"));
 }
 
 function clearSelection() {
-  if (State.selection.rect) {
+  if (State.selection.rect && State.map) {
     State.map.removeLayer(State.selection.rect);
-    State.selection.rect = null;
   }
+  State.selection.rect = null;
+  State.selection.startPoint = null;
   State.selection.finalBounds = null;
   document.getElementById("selection-info").classList.add("hidden");
 }
@@ -301,6 +302,8 @@ export function handleSelectionEvents(e, type) {
   if (!State.selection.active) return;
 
   if (type === "down") {
+    // Ein erneuter Start darf niemals das vorherige Rechteck zurücklassen.
+    if (State.selection.rect) State.map.removeLayer(State.selection.rect);
     State.selection.startPoint = e.latlng;
     State.selection.rect = L.rectangle([e.latlng, e.latlng], {
       color: Config.colors.selection,
@@ -604,10 +607,10 @@ async function generateMapCanvas() {
   const titleText = displayTitle || "Ort- und Hydrantenplan";
   const titleWidth = tempCtx.measureText(titleText).width;
 
-  // Wir sorgen für mindestens 650px (damit auch Datum / Maßstab etc. immer Platz haben)
-  const minMapWidth = Math.max(titleWidth + 60, 650) - (2 * margin);
-
-  let mapWidth = Math.max(exactMapW, minMapWidth);
+  // Der Kartenausschnitt muss exakt der Nutzerauswahl entsprechen. Eine
+  // künstliche Mindestbreite würde die Karte seitlich über den Ausschnitt hinaus
+  // erweitern und bei kleinen Auswahlen die Kopfzeile über die ganze Karte legen.
+  let mapWidth = exactMapW;
   let mapHeight = exactMapH;
 
   if (State.exportFormat !== "free") {
@@ -633,8 +636,12 @@ async function generateMapCanvas() {
   mapWidth = Math.round(mapWidth);
   mapHeight = Math.round(mapHeight);
 
+  // Kopfzeile und Karte liegen untereinander. Zuvor lag die Kopfzeile über der
+  // Karte; bei Kartenhöhen unter 170 px war deshalb nur noch die Überschrift zu sehen.
+  const bannerH = 170;
   const totalWidth = mapWidth + margin * 2;
-  const totalHeight = mapHeight + margin + footerH + margin;
+  const totalHeight = margin + bannerH + mapHeight + footerH + margin;
+  const mapTop = margin + bannerH;
 
   // Zentrum der Auswahl in WebMercator
   const centerTileX = (lon2tile(nw.lng, targetZoom) + lon2tile(se.lng, targetZoom)) / 2;
@@ -748,14 +755,14 @@ async function generateMapCanvas() {
   // Nur innerhalb der eigentlichen Karte zeichnen (schützt Rand & Header vor Kacheln/Icons)
   ctx.save();
   ctx.beginPath();
-  ctx.rect(margin, margin, mapWidth, mapHeight);
+  ctx.rect(margin, mapTop, mapWidth, mapHeight);
   ctx.clip(); 
 
   // 7. ZEICHNEN (Tiles)
   results.forEach((r) => {
     // Pixel-Offset auf der Karte + Margin
     const px = (r.x - startTileX) * 256 + margin;
-    const py = (r.y - startTileY) * 256 + margin;
+    const py = (r.y - startTileY) * 256 + mapTop;
     ctx.drawImage(r.img, px, py);
   });
 
@@ -776,7 +783,7 @@ async function generateMapCanvas() {
       // Linie zeichnen
       const coords = el.geometry.map(p => {
         const px = (lon2tile(p.lon, targetZoom) - originTileX) * 256 + margin;
-        const py = (lat2tile(p.lat, targetZoom) - originTileY) * 256 + margin;
+        const py = (lat2tile(p.lat, targetZoom) - originTileY) * 256 + mapTop;
         return [px, py];
       });
 
@@ -800,7 +807,7 @@ async function generateMapCanvas() {
     const lon = el.lon || el.center?.lon;
 
     const tx = (lon2tile(lon, targetZoom) - originTileX) * 256 + margin;
-    const ty = (lat2tile(lat, targetZoom) - originTileY) * 256 + margin;
+    const ty = (lat2tile(lat, targetZoom) - originTileY) * 256 + mapTop;
 
     const tags = el.tags || {};
     const isStation = tags.amenity === "fire_station" || tags.building === "fire_station";
@@ -816,8 +823,8 @@ async function generateMapCanvas() {
     if (
       tx < margin ||
       tx > mapWidth + margin ||
-      ty < margin ||
-      ty > mapHeight + margin
+      ty < mapTop ||
+      ty > mapHeight + mapTop
     )
       continue;
 
@@ -830,18 +837,18 @@ async function generateMapCanvas() {
   // 9. HEADER & FOOTER
   setStatus(t("layout_final"));
 
-  const bannerH = 170;
   ctx.fillStyle = Config.colors.bgHeader;
   ctx.fillRect(margin, margin, mapWidth, bannerH);
   ctx.strokeStyle = "rgba(15, 23, 42, 0.2)";
   ctx.lineWidth = 3;
   ctx.strokeRect(margin, margin, mapWidth, bannerH);
-  ctx.strokeRect(margin, margin + bannerH, mapWidth, mapHeight - bannerH);
+  ctx.strokeRect(margin, mapTop, mapWidth, mapHeight);
 
   const centerX = margin + mapWidth / 2;
   ctx.fillStyle = Config.colors.textMain;
   ctx.textAlign = "center";
-  ctx.font = "bold 44px Arial, sans-serif";
+  const titleFontSize = Math.max(18, Math.min(44, ((mapWidth - 40) / titleWidth) * 44));
+  ctx.font = `bold ${titleFontSize}px Arial, sans-serif`;
   ctx.fillText(titleText, centerX, margin + 55);
 
   const now = new Date();
@@ -876,7 +883,7 @@ async function generateMapCanvas() {
     }
   }
   const sX = margin + mapWidth - scaleW - 40;
-  const sY = margin + mapHeight - 40;
+  const sY = mapTop + mapHeight - 40;
   ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
   ctx.fillRect(sX - 10, sY - 50, scaleW + 20, 60);
   ctx.strokeStyle = "#0f172a";
@@ -892,7 +899,7 @@ async function generateMapCanvas() {
   ctx.fillText(`${distM} m`, sX + scaleW / 2, sY - 15);
 
   // Footer
-  const footerY = margin + mapHeight + footerH / 2 + 10;
+  const footerY = mapTop + mapHeight + footerH / 2 + 10;
   ctx.fillStyle = Config.colors.textSub;
   ctx.textAlign = "left";
   ctx.font = "16px Arial, sans-serif";

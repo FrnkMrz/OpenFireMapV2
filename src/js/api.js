@@ -50,9 +50,36 @@ let _bgBoundaryGen = 0;
 let GLOBAL_BACKOFF_MS = 0;
 let GLOBAL_BACKOFF_UNTIL = 0;
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function createAbortError() {
+  return new DOMException('The operation was aborted.', 'AbortError');
+}
 
-async function maybeGlobalBackoff(reqId) {
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw createAbortError();
+}
+
+function sleep(ms, signal = null) {
+  if (!signal) return new Promise(resolve => setTimeout(resolve, ms));
+  throwIfAborted(signal);
+
+  return new Promise((resolve, reject) => {
+    let timer;
+    const abort = () => {
+      clearTimeout(timer);
+      cleanup();
+      reject(createAbortError());
+    };
+    const cleanup = () => signal.removeEventListener('abort', abort);
+    const cleanupAndResolve = () => {
+      cleanup();
+      resolve();
+    };
+    timer = setTimeout(cleanupAndResolve, ms);
+    signal.addEventListener('abort', abort, { once: true });
+  });
+}
+
+async function maybeGlobalBackoff(reqId, signal = null) {
   const now = Date.now();
   if (GLOBAL_BACKOFF_UNTIL > now) {
     const waitMs = GLOBAL_BACKOFF_UNTIL - now;
@@ -62,7 +89,7 @@ async function maybeGlobalBackoff(reqId) {
     const waitSec = Math.ceil(waitMs / 1000);
     showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000));
 
-    await sleep(waitMs);
+    await sleep(waitMs, signal);
   }
 }
 
@@ -344,6 +371,7 @@ function epHealthyOrder(endpoints) {
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null }) {
+  throwIfAborted(signal);
   if (!navigator.onLine) throw new Error('err_offline');
 
   // Cache lesen (nur wenn nicht übersprungen)
@@ -359,11 +387,12 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
   const endpoints = epHealthyOrder(Config.overpassEndpoints || []);
   if (endpoints.length === 0) throw new Error('err_generic');
 
-  await maybeGlobalBackoff(reqId);
+  await maybeGlobalBackoff(reqId, signal);
 
   let lastErr = null;
 
   for (let attemptNum = 0; attemptNum < endpoints.length; attemptNum++) {
+    throwIfAborted(signal);
     const endpoint = endpoints[attemptNum];
     const s = epGet(endpoint);
     const now = Date.now();
@@ -448,7 +477,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
             showNotification(t('all_servers_busy'), 6000);
           }
 
-          await sleep(300);
+          await sleep(300, signal);
           continue;
         }
         if (err.status >= 500) {
@@ -461,13 +490,13 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
           }
 
 
-          await sleep(400);
+          await sleep(400, signal);
           continue;
         }
       }
 
       epMarkFail(endpoint, status, 20000);
-      await sleep(300);
+      await sleep(300, signal);
       continue;
     }
 
@@ -492,11 +521,11 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       emit({ phase: 'wait_for_cooldown', reqId, waitMs: minCooldown });
       showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown);
 
-      await sleep(minCooldown + 500); // +500ms Puffer
+      await sleep(minCooldown + 500, signal); // +500ms Puffer
 
       // Erneuter Versuch
       emit({ phase: 'retry_after_cooldown', reqId });
-      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, reqId, skipCache, signal, minElementCount });
+      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta, reqId, skipCache, signal, minElementCount });
     }
   }
 
@@ -553,7 +582,12 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
   // Alte Anfrage abbrechen + neuen Controller setzen
   if (State.controllers.fetch) State.controllers.fetch.abort();
-  State.controllers.fetch = new AbortController();
+  const controller = new AbortController();
+  State.controllers.fetch = controller;
+  const isCurrentRequest = () => State.controllers.fetch === controller;
+  const ensureCurrentRequest = () => {
+    if (!isCurrentRequest()) throw createAbortError();
+  };
 
   // Hintergrund-Refresh für anderen Bereich abbrechen (User hat Gebiet gewechselt)
   if (_bgPoiRefresh && _bgPoiRefresh.cacheKey !== cacheKey) {
@@ -568,6 +602,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
   let hasCachedData = false;
   try {
     const { freshData, staleData } = await readDatasetCache(cacheKey, cachePolicy);
+    ensureCurrentRequest();
     const cached = freshData || staleData;
     if (cached?.elements) {
       hasCachedData = true;
@@ -630,7 +665,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           });
       }
 
-      State.isFetchingData = false;
+      if (isCurrentRequest()) State.isFetchingData = false;
       return State.cachedPoiElements;
     }
   } catch (e) {
@@ -646,8 +681,10 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
       cacheMeta: cachePolicy,
       reqId,
       skipCache: true,
-      signal: State.controllers.fetch.signal
+      signal: controller.signal
     });
+
+    ensureCurrentRequest();
 
     State.cachedPoiElements = data.elements || [];
     State.loadedPoiBounds = requestedBounds;
@@ -657,11 +694,11 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
     emit({ phase: 'load_ok', reqId, zoom, totalMs, dataset: 'poi', elements: State.cachedPoiElements.length, dataClass });
     reportHydrantDownload(hydrantStatus, 'success', State.cachedPoiElements);
 
-    State.isFetchingData = false;
+    if (isCurrentRequest()) State.isFetchingData = false;
     return State.cachedPoiElements;
 
   } catch (err) {
-    State.isFetchingData = false;
+    if (isCurrentRequest()) State.isFetchingData = false;
 
     if (err?.name === 'AbortError') {
       emit({ phase: 'aborted', reqId, zoom });
@@ -720,7 +757,11 @@ export async function fetchBoundaryData(onProgressData = null) {
   if (!q) return [];
 
   if (State.controllers.boundaryFetch) State.controllers.boundaryFetch.abort();
-  State.controllers.boundaryFetch = new AbortController();
+  const controller = new AbortController();
+  State.controllers.boundaryFetch = controller;
+  const ensureCurrentRequest = () => {
+    if (State.controllers.boundaryFetch !== controller) throw createAbortError();
+  };
 
   if (_bgBoundaryRefresh && _bgBoundaryRefresh.cacheKey !== cacheKey) {
     _bgBoundaryRefresh.controller.abort();
@@ -731,6 +772,7 @@ export async function fetchBoundaryData(onProgressData = null) {
   let hasCachedData = false;
   try {
     const { freshData, staleData } = await readDatasetCache(cacheKey, cachePolicy);
+    ensureCurrentRequest();
     const cached = freshData || staleData;
     if (cached?.elements) {
       hasCachedData = true;
@@ -793,8 +835,10 @@ export async function fetchBoundaryData(onProgressData = null) {
       cacheMeta: cachePolicy,
       reqId,
       skipCache: true,
-      signal: State.controllers.boundaryFetch.signal
+      signal: controller.signal
     });
+
+    ensureCurrentRequest();
 
     State.cachedBoundaryElements = data?.elements || [];
     State.loadedBoundaryBounds = requestedBounds;

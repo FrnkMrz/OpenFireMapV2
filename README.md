@@ -64,6 +64,12 @@ Die Zeitwerte liegen zentral unter `Config.performance` in `src/js/config.js`:
 - `hydrantStatusSlowAfterMs`
 - `hydrantStatusSuccessDurationMs`
 
+### Zuverlässigkeit von Datenabruf und Export
+
+Overpass-Abfragen verwenden mehrere Endpunkte, einen lokalen IndexedDB-Cache sowie einen Backoff bei Überlastung. Beim Verschieben der Karte werden veraltete Abrufe abgebrochen; nur die Antwort des aktuellsten Ausschnitts darf die angezeigten Daten aktualisieren. Schlägt ein Abruf für den aktuellen Bereich endgültig fehl, startet die Anwendung nach kurzer Wartezeit automatisch einen neuen Versuch.
+
+Beim PNG- und PDF-Export wird der gewählte Kartenausschnitt unverändert übernommen. Ein erneuter Klick auf **„Ausschnitt wählen“** verwirft das vorherige Rechteck. Kopfzeile und Karte werden getrennt gerendert, damit die Kopfzeile auch bei kleinen Ausschnitten keine Kartendaten verdeckt.
+
 ### Projektstruktur
 
 ```

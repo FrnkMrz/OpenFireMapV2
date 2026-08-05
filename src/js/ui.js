@@ -25,17 +25,12 @@ import { setBaseLayer, clearDistanceLine, drawLineToNearest, shareMap } from './
 
 // ...
 
-// 6. Export-Aktionen (Lazy Loading: export.js wird erst bei Klick geladen)
-addClick('select-btn', async () => { const m = await getExport(); m.startSelection(); });
-
 // Hilfsfunktion: Button -> Dialog -> Export (lazy)
 const withTitleConfirm = (lazyFnName) => () => openTitleConfirmation(lazyFnName);
 
 addClick('png-btn', withTitleConfirm('exportAsPNG'));
 addClick('pdf-btn', withTitleConfirm('exportAsPDF'));
 addClick('gpx-btn', withTitleConfirm('exportAsGPX'));
-addClick('cancel-export-btn', async () => { const m = await getExport(); m.cancelExport(); });
-
 // Bestätigungs-Dialog Events
 let pendingExportAction = null;
 
