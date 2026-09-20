@@ -58,6 +58,7 @@ self.addEventListener('fetch', (e) => {
         url.hostname.includes('nominatim') ||
         url.hostname.includes('openstreetmap') ||
         url.hostname.includes('arcgisonline') ||
+        url.hostname.includes('cartocdn') ||
         url.hostname.includes('maptiler')) {
         return;
     }

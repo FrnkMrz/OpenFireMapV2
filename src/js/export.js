@@ -872,13 +872,15 @@ async function generateMapCanvas() {
             .replace("{s}", sSub)
             .replace("{z}", item.z)
             .replace("{x}", item.x)
-            .replace("{y}", item.y);
+            .replace("{y}", item.y)
+            .replace("{r}", "");
         } else {
           // Layer ohne Subdomains, z.B. ArcGIS Satellite
           url = layerConf.url
             .replace("{z}", item.z)
             .replace("{x}", item.x)
-            .replace("{y}", item.y);
+            .replace("{y}", item.y)
+            .replace("{r}", "");
         }
 
         // Caching für Tiles nicht nötig für Export
