@@ -457,6 +457,7 @@ export function setupUI() {
     addClick('png-btn', withTitleConfirm('exportAsPNG'));
     addClick('pdf-btn', withTitleConfirm('exportAsPDF'));
     addClick('gpx-btn', withTitleConfirm('exportAsGPX'));
+    addClick('csv-btn', withTitleConfirm('exportAsCSV'));
     addClick('cancel-export-btn', async () => { const m = await getExport(); m.cancelExport(); });
 
     addClick('export-confirm-cancel', () => {

@@ -1,4 +1,10 @@
 import { test, expect } from '@playwright/test';
+ 
+// Hilfsfunktion: Wartet bis die App (Leaflet + UI) vollständig initialisiert ist
+async function gotoReady(page, url = '/') {
+    await page.goto(url);
+    await page.waitForSelector('.leaflet-container');
+}
 
 // Hilfsfunktion: Klickt ein Element per JavaScript (umgeht CSS-Visibility-Checks)
 async function jsClick(page, selector) {
@@ -9,15 +15,14 @@ async function jsClick(page, selector) {
 }
 
 test('has title and map container', async ({ page }) => {
-    await page.goto('/');
+    await gotoReady(page);
     await expect(page).toHaveTitle(/.*OpenFireMap.*/);
     const mapContainer = page.locator('#map');
     await expect(mapContainer).toBeVisible();
 });
 
 test('Layer-Menü öffnet und schließt', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await gotoReady(page);
 
     const layerMenu = page.locator('#layer-menu');
     await expect(layerMenu).toHaveClass(/hidden/);
@@ -32,8 +37,7 @@ test('Layer-Menü öffnet und schließt', async ({ page }) => {
 });
 
 test('Export-Menü öffnet und schließt', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await gotoReady(page);
 
     const exportMenu = page.locator('#export-menu');
     await expect(exportMenu).toHaveClass(/hidden/);
@@ -47,8 +51,7 @@ test('Export-Menü öffnet und schließt', async ({ page }) => {
 });
 
 test('Info & Recht Modal öffnet und schließt', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await gotoReady(page);
 
     const legalModal = page.locator('#legal-modal');
 
@@ -60,8 +63,7 @@ test('Info & Recht Modal öffnet und schließt', async ({ page }) => {
 });
 
 test('Suchfeld akzeptiert Eingabe', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await gotoReady(page);
 
     const searchInput = page.locator('#search-input');
     await expect(searchInput).toBeAttached();
@@ -75,8 +77,7 @@ test('Suchfeld akzeptiert Eingabe', async ({ page }) => {
 });
 
 test('Leaflet-Karte ist initialisiert', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await gotoReady(page);
 
     // Leaflet-Container existiert
     const leafletContainer = page.locator('.leaflet-container');
@@ -92,8 +93,7 @@ test('Leaflet-Karte ist initialisiert', async ({ page }) => {
 });
 
 test('Escape schließt offene Menüs', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await gotoReady(page);
 
     const layerMenu = page.locator('#layer-menu');
 
@@ -121,9 +121,67 @@ test('Hydranten-Ladestatus zeigt Fortschritt und erfolgreichen Abschluss', async
         });
     });
 
-    await page.goto('/?lang=de#15/49.555/11.35/voyager');
+    await gotoReady(page, '/?lang=de#15/49.555/11.35/voyager');
     const status = page.locator('#hydrant-download-status [role="status"]');
     await expect(status).toBeVisible();
     await expect(status).toContainText('Hydrantendaten werden geladen');
     await expect(status).toContainText('2 Hydranten', { timeout: 5000 });
 });
+
+test('CSV-Export-Button existiert unterhalb von GPX im Export-Menü', async ({ page }) => {
+    await gotoReady(page);
+
+    const exportMenu = page.locator('#export-menu');
+    await jsClick(page, '#export-btn-trigger');
+    await expect(exportMenu).not.toHaveClass(/hidden/);
+
+    const gpxBtn = page.locator('#gpx-btn');
+    const csvBtn = page.locator('#csv-btn');
+
+    await expect(gpxBtn).toBeAttached();
+    await expect(csvBtn).toBeAttached();
+
+    // Prüfen, dass der CSV-Button nach dem GPX-Button im DOM steht
+    const isCsvAfterGpx = await page.evaluate(() => {
+        const gpx = document.getElementById('gpx-btn');
+        const csv = document.getElementById('csv-btn');
+        return gpx && csv && gpx.compareDocumentPosition(csv) & Node.DOCUMENT_POSITION_FOLLOWING;
+    });
+    expect(Boolean(isCsvAfterGpx)).toBe(true);
+});
+
+test('Escape schließt Export-Menü und fokussiert Trigger-Button zurück', async ({ page }) => {
+    await gotoReady(page);
+
+    const exportMenu = page.locator('#export-menu');
+    await jsClick(page, '#export-btn-trigger');
+    await expect(exportMenu).not.toHaveClass(/hidden/);
+
+    await page.keyboard.press('Escape');
+    await expect(exportMenu).toHaveClass(/hidden/);
+
+    // Trigger-Button sollte fokussiert sein
+    const isTriggerFocused = await page.evaluate(() => {
+        return document.activeElement?.id === 'export-btn-trigger';
+    });
+    expect(isTriggerFocused).toBe(true);
+});
+
+test('Export-Titel-Modal schließt sich bei Klick auf Abbrechen', async ({ page }) => {
+    await gotoReady(page);
+
+    const modal = page.locator('#export-title-modal');
+    await expect(modal).toHaveClass(/hidden/);
+
+    // Modal öffnen (simulierter Klick mit vorhandenen Elementen)
+    await page.evaluate(() => {
+        const titleModal = document.getElementById('export-title-modal');
+        if (titleModal) titleModal.classList.remove('hidden');
+    });
+    await expect(modal).not.toHaveClass(/hidden/);
+
+    // Klick auf Abbrechen
+    await jsClick(page, '#export-confirm-cancel');
+    await expect(modal).toHaveClass(/hidden/);
+});
+

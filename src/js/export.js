@@ -456,6 +456,146 @@ export async function exportAsGPX() {
   }
 }
 
+function escapeCSV(val) {
+  if (val === null || val === undefined) return '""';
+  const str = String(val).replace(/"/g, '""');
+  return `"${str}"`;
+}
+
+/**
+ * Exportiert alle relevanten Punkte im ausgewählten Ausschnitt als CSV-Tabelle.
+ * UTF-8 BOM für Excel-Kompatibilität, Semikolon als Trennzeichen.
+ */
+export async function exportAsCSV() {
+  try {
+    const bounds = State.selection.finalBounds || State.map.getBounds();
+    const elementsForExport = getPreparedCachedExportElements();
+    const pointsToExport = elementsForExport.filter((el) => {
+      const lat = el.lat || el.center?.lat;
+      const lon = el.lon || el.center?.lon;
+      if (!lat || !lon) return false;
+      return bounds.contains(L.latLng(lat, lon));
+    });
+
+    if (pointsToExport.length === 0) {
+      showNotification(t("no_objects"));
+      return;
+    }
+
+    // TITEL HOLEN (Benutzer-Input)
+    let displayTitle = document.getElementById("export-confirm-title")?.value?.trim() || "";
+    if (!displayTitle) {
+      try {
+        const center = bounds.getCenter();
+        displayTitle = await fetchLocationTitle(center.lat, center.lng);
+      } catch (e) { console.warn(e); }
+    }
+
+    const filename = getExportFilename(displayTitle, State.exportZoomLevel);
+
+    const headers = [
+      "Typ",
+      "Subtyp",
+      "Name",
+      "Kennung_Ref",
+      "Breitengrad",
+      "Laengengrad",
+      "Durchmesser_mm",
+      "Druck_bar",
+      "Durchfluss_l_min",
+      "Strasse",
+      "Hausnummer",
+      "Postleitzahl",
+      "Ort",
+      "Betreiber",
+      "OSM_ID",
+      "OSM_URL"
+    ];
+
+    const rows = [headers.map(escapeCSV).join(";")];
+
+    pointsToExport.forEach((el) => {
+      const tags = el.tags || {};
+      const isStation = tags.amenity === "fire_station" || tags.building === "fire_station";
+      const isHydrant = tags.emergency && [
+        "fire_hydrant",
+        "water_tank",
+        "suction_point",
+        "fire_water_pond",
+        "cistern"
+      ].some((t) => tags.emergency.includes(t));
+      const isDefib = tags.emergency === "defibrillator";
+
+      if (!isStation && !isHydrant && !isDefib) return;
+
+      const type = isStation ? "Feuerwache" : isDefib ? "Defibrillator" : "Hydrant / Wasserstelle";
+      let subtype;
+      if (isStation) {
+        subtype = tags.fire_station?.type || tags.building || "Feuerwehr";
+      } else if (isDefib) {
+        subtype = "AED";
+      } else {
+        subtype = tags["fire_hydrant:type"] || tags.emergency || "";
+        if (subtype === 'underground' && tags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
+          subtype = 'WSH (Württembergischer Schachthydrant)';
+        }
+      }
+
+      const name = tags.name || "";
+      const ref = tags.ref || "";
+      const lat = el.lat || el.center?.lat || "";
+      const lon = el.lon || el.center?.lon || "";
+      const diameter = tags["fire_hydrant:diameter"] || tags.diameter || "";
+      const pressure = tags["fire_hydrant:pressure"] || tags.pressure || "";
+      const flow = tags["fire_hydrant:flow"] || tags.flow || "";
+      const street = tags["addr:street"] || "";
+      const housenumber = tags["addr:housenumber"] || "";
+      const postcode = tags["addr:postcode"] || "";
+      const city = tags["addr:city"] || "";
+      const operator = tags.operator || "";
+      const osmType = el.type || "node";
+      const osmId = el.id ? `${osmType}/${el.id}` : "";
+      const osmUrl = el.id ? `https://www.openstreetmap.org/${osmType}/${el.id}` : "";
+
+      const row = [
+        type,
+        subtype,
+        name,
+        ref,
+        lat,
+        lon,
+        diameter,
+        pressure,
+        flow,
+        street,
+        housenumber,
+        postcode,
+        city,
+        operator,
+        osmId,
+        osmUrl
+      ];
+
+      rows.push(row.map(escapeCSV).join(";"));
+    });
+
+    const csvContent = "\uFEFF" + rows.join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = `${filename}.csv`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    showNotification(`${pointsToExport.length} ${t("csv_success") || t("gpx_success")}`);
+    toggleExportMenu();
+  } catch (e) {
+    console.error("CSV Fehler:", e);
+    showNotification("CSV Fehler: " + e.message, 5000);
+  }
+}
+
 /* =============================================================================
    TEIL 3: PNG EXPORT
    ============================================================================= */
