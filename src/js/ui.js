@@ -27,24 +27,7 @@ import { setBaseLayer, clearDistanceLine, drawLineToNearest, shareMap } from './
 
 // Hilfsfunktion: Button -> Dialog -> Export (lazy)
 const withTitleConfirm = (lazyFnName) => () => openTitleConfirmation(lazyFnName);
-
-addClick('png-btn', withTitleConfirm('exportAsPNG'));
-addClick('pdf-btn', withTitleConfirm('exportAsPDF'));
-addClick('gpx-btn', withTitleConfirm('exportAsGPX'));
-// Bestätigungs-Dialog Events
 let pendingExportAction = null;
-
-addClick('export-confirm-cancel', () => {
-    document.getElementById('export-title-modal').classList.add('hidden');
-    // Zurück zum Trigger-Button fokussieren (Barrierefreiheit)
-    document.getElementById('export-btn-trigger')?.focus();
-});
-
-addClick('export-confirm-ok', () => {
-    const modal = document.getElementById('export-title-modal');
-    if (modal) modal.classList.add('hidden');
-    if (pendingExportAction) pendingExportAction();
-});
 
 function openTitleConfirmation(exportFnName) {
     // 0. Daten-Check: Haben wir überhaupt Hydranten?
@@ -469,11 +452,24 @@ export function setupUI() {
         addClick(`zoom-${z}`, async () => { const m = await getExport(); m.setExportZoom(z); });
     });
 
-    // 6. Export-Aktionen (wurden oben bereits mit withTitleConfirm initialisiert)
+    // 6. Export-Aktionen & Bestätigungs-Dialog
     addClick('select-btn', async () => { const m = await getExport(); m.startSelection(); });
-    // addClick('png-btn', exportAsPNG); <-- FEHLER: Das umgeht den Dialog!
-    // addClick('gpx-btn', exportAsGPX);
+    addClick('png-btn', withTitleConfirm('exportAsPNG'));
+    addClick('pdf-btn', withTitleConfirm('exportAsPDF'));
+    addClick('gpx-btn', withTitleConfirm('exportAsGPX'));
     addClick('cancel-export-btn', async () => { const m = await getExport(); m.cancelExport(); });
+
+    addClick('export-confirm-cancel', () => {
+        document.getElementById('export-title-modal')?.classList.add('hidden');
+        // Zurück zum Trigger-Button fokussieren (Barrierefreiheit)
+        document.getElementById('export-btn-trigger')?.focus();
+    });
+
+    addClick('export-confirm-ok', () => {
+        const modal = document.getElementById('export-title-modal');
+        if (modal) modal.classList.add('hidden');
+        if (pendingExportAction) pendingExportAction();
+    });
 
     // Automatische Schließ-Logik aktivieren
     setupMenuAutoClose();

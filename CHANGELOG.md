@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.10] - 2026-09-20
+
+### Neue Features
+- **Hydranten-Ladestatus-Anzeige:** Sichtbare, nicht-blockierende Rückmeldung beim Abruf von Hydrantendaten (`hydrant-download-status.js`). Zeigt den Ladefortschritt an (Laden, Aktualisieren mit Objektanzahl, Hinweis bei langsamer Verbindung nach 6s, Erfolgsbestätigung und Fehleranzeige mit direktem Wiederholen-Button ↻).
+
+### Verbesserungen & Fehlerbehebungen (Bugfixes)
+- **Export-Warteschleife gehärtet:** Die Warteschleife auf Hintergrund-Ladevorgänge im Export (`generateMapCanvas`) wurde mit einem 10-Sekunden-Timeout sowie sofortiger `signal.aborted`-Prüfung abgesichert, um Deadlocks und Einfrieren der Benutzeroberfläche zu verhindern. Nach dem Warten wird der Cache stets frisch ausgelesen.
+- **Ladezustands-Integrität (`isFetchingData`):** `fetchOSMData` setzt `State.isFetchingData` nun über einen garantierten `finally`-Block zurück, sodass der globale Ladezustand auch bei Netzwerkfehlern oder Rennbedingungen nicht hängen bleibt.
+- **UI Event-Listener Bereinigung:** Die Registrierung aller Export- und Dialog-Event-Listener (`png-btn`, `pdf-btn`, `gpx-btn`, `export-confirm-*`) wurde aus dem Top-Level-Modulcode in die zentrale Funktion `setupUI()` verschoben, wodurch potenzielle DOM-Timing-Probleme beim Start beseitigt wurden.
+- **Export & Lade-Zuverlässigkeit:** Verbesserter Fallback auf Cache-Daten beim PNG/PDF/GPX-Export bei fehlgeschlagenen Online-Abrufen.
+
 ## [v0.6.9] - 2026-04-07
 
 ### Neue Features

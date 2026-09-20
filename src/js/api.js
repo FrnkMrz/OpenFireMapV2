@@ -600,139 +600,140 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
   console.log('[API] Cache Key:', cacheKey);
   console.log('[API] queryKind:', queryKind, '| zoom:', zoom, '| bboxKey:', bboxKey);
   let hasCachedData = false;
+
   try {
-    const { freshData, staleData } = await readDatasetCache(cacheKey, cachePolicy);
-    ensureCurrentRequest();
-    const cached = freshData || staleData;
-    if (cached?.elements) {
-      hasCachedData = true;
-      const isFresh = Boolean(freshData);
-      State.cachedPoiElements = cached.elements || [];
+    try {
+      const { freshData, staleData } = await readDatasetCache(cacheKey, cachePolicy);
+      ensureCurrentRequest();
+      const cached = freshData || staleData;
+      if (cached?.elements) {
+        hasCachedData = true;
+        const isFresh = Boolean(freshData);
+        State.cachedPoiElements = cached.elements || [];
+        State.loadedPoiBounds = requestedBounds;
+        State.loadedPoiMode = requestedMode;
+        syncCombinedCachedElements();
+        console.log('[API] CACHE HIT!', State.cachedPoiElements.length, 'elements');
+        emit({ phase: isFresh ? 'swr_hit' : 'swr_stale_hit', reqId, cacheKey, dataset: 'poi', dataClass, elements: State.cachedPoiElements.length });
+        reportHydrantDownload(hydrantStatus, 'refreshing', State.cachedPoiElements);
+
+        // SCHRITT 1a: Sofort aus Cache rendern
+        if (typeof onProgressData === 'function' && State.cachedPoiElements.length > 0) {
+          onProgressData(State.cachedPoiElements);
+        }
+
+        // SCHRITT 1b: Hintergrund-Refresh – prüft ob sich Daten geändert haben
+        // Nur starten wenn noch kein Refresh für diesen Bereich läuft
+        if (!_bgPoiRefresh) {
+          const bgController = new AbortController();
+          const myGen = ++_bgPoiGen;
+          _bgPoiRefresh = { controller: bgController, cacheKey };
+          const cachedCount = State.cachedPoiElements.length;
+          const cachedFingerprint = elementsFingerprint(State.cachedPoiElements);
+
+          fetchWithRetry(q, {
+            cacheKey,
+            cacheTtlMs: cachePolicy.ttlMs,
+            cacheMeta: cachePolicy,
+            reqId: reqId + '_bg',
+            skipCache: true,
+            signal: bgController.signal,
+            // Cache nur überschreiben wenn frische Daten mind. 50% des gecachten Bestands haben.
+            // Schützt vor degradierten Overpass-Antworten (Timeout/Überlast).
+            minElementCount: computeMinElementCount(cachedCount, 0.5, 1)
+          })
+            .then(freshData => {
+              if (_bgPoiGen !== myGen) return; // Veraltet – User hat Bereich gewechselt
+              _bgPoiRefresh = null;
+              const freshElements = freshData?.elements || [];
+              const changed = elementsFingerprint(freshElements) !== cachedFingerprint;
+              emit({ phase: 'swr_refresh_ok', reqId, dataset: 'poi', elements: freshElements.length, changed });
+              if (changed) {
+                State.cachedPoiElements = freshElements;
+                State.loadedPoiBounds = requestedBounds;
+                State.loadedPoiMode = requestedMode;
+                syncCombinedCachedElements();
+                if (typeof onProgressData === 'function') {
+                  onProgressData(freshElements);
+                }
+              }
+              reportHydrantDownload(hydrantStatus, 'success', freshElements);
+            })
+            .catch(err => {
+              if (_bgPoiGen !== myGen) return;
+              _bgPoiRefresh = null;
+              emit({ phase: 'swr_refresh_err', reqId, dataset: 'poi', err: err?.name });
+              if (err?.name !== 'AbortError') reportHydrantDownload(hydrantStatus, 'error');
+            });
+        }
+
+        return State.cachedPoiElements;
+      }
+    } catch (e) {
+      console.log('[API] CACHE MISS or error:', e?.message || 'no data');
+    }
+
+    const tAll0 = performance.now();
+
+    try {
+      const data = await fetchWithRetry(q, {
+        cacheKey,
+        cacheTtlMs: cachePolicy.ttlMs,
+        cacheMeta: cachePolicy,
+        reqId,
+        skipCache: true,
+        signal: controller.signal
+      });
+
+      ensureCurrentRequest();
+
+      State.cachedPoiElements = data.elements || [];
       State.loadedPoiBounds = requestedBounds;
       State.loadedPoiMode = requestedMode;
       syncCombinedCachedElements();
-      console.log('[API] CACHE HIT!', State.cachedPoiElements.length, 'elements');
-      emit({ phase: isFresh ? 'swr_hit' : 'swr_stale_hit', reqId, cacheKey, dataset: 'poi', dataClass, elements: State.cachedPoiElements.length });
-      reportHydrantDownload(hydrantStatus, 'refreshing', State.cachedPoiElements);
+      const totalMs = Math.round(performance.now() - tAll0);
+      emit({ phase: 'load_ok', reqId, zoom, totalMs, dataset: 'poi', elements: State.cachedPoiElements.length, dataClass });
+      reportHydrantDownload(hydrantStatus, 'success', State.cachedPoiElements);
 
-      // SCHRITT 1a: Sofort aus Cache rendern
-      if (typeof onProgressData === 'function' && State.cachedPoiElements.length > 0) {
-        onProgressData(State.cachedPoiElements);
+      return State.cachedPoiElements;
+
+    } catch (err) {
+      if (err?.name === 'AbortError') {
+        emit({ phase: 'aborted', reqId, zoom });
+        throw err;
       }
 
-      // SCHRITT 1b: Hintergrund-Refresh – prüft ob sich Daten geändert haben
-      // Nur starten wenn noch kein Refresh für diesen Bereich läuft
-      if (!_bgPoiRefresh) {
-        const bgController = new AbortController();
-        const myGen = ++_bgPoiGen;
-        _bgPoiRefresh = { controller: bgController, cacheKey };
-        const cachedCount = State.cachedPoiElements.length;
-        const cachedFingerprint = elementsFingerprint(State.cachedPoiElements);
+      // Wenn Netzwerk fehlschlägt, wir aber Cached Data haben:
+      if (hasCachedData) {
+        console.warn("Background fetch failed, using stale data.", err);
 
-        fetchWithRetry(q, {
-          cacheKey,
-          cacheTtlMs: cachePolicy.ttlMs,
-          cacheMeta: cachePolicy,
-          reqId: reqId + '_bg',
-          skipCache: true,
-          signal: bgController.signal,
-          // Cache nur überschreiben wenn frische Daten mind. 50% des gecachten Bestands haben.
-          // Schützt vor degradierten Overpass-Antworten (Timeout/Überlast).
-          minElementCount: computeMinElementCount(cachedCount, 0.5, 1)
-        })
-          .then(freshData => {
-            if (_bgPoiGen !== myGen) return; // Veraltet – User hat Bereich gewechselt
-            _bgPoiRefresh = null;
-            const freshElements = freshData?.elements || [];
-            const changed = elementsFingerprint(freshElements) !== cachedFingerprint;
-            emit({ phase: 'swr_refresh_ok', reqId, dataset: 'poi', elements: freshElements.length, changed });
-            if (changed) {
-              State.cachedPoiElements = freshElements;
-              State.loadedPoiBounds = requestedBounds;
-              State.loadedPoiMode = requestedMode;
-              syncCombinedCachedElements();
-              if (typeof onProgressData === 'function') {
-                onProgressData(freshElements);
-              }
-            }
-            reportHydrantDownload(hydrantStatus, 'success', freshElements);
-          })
-          .catch(err => {
-            if (_bgPoiGen !== myGen) return;
-            _bgPoiRefresh = null;
-            emit({ phase: 'swr_refresh_err', reqId, dataset: 'poi', err: err?.name });
-            if (err?.name !== 'AbortError') reportHydrantDownload(hydrantStatus, 'error');
-          });
+        // Visuelles Feedback: Nutzer weiß, dass alte Daten angezeigt werden
+        const errType = (err instanceof HttpError && err.status === 429) ? t('server_error_type_overload') :
+          (err instanceof HttpError && err.status >= 500) ? t('server_error_type_server') : t('server_error_type_connection');
+        showNotification(`${errType} - ${t('showing_cached')}`, 4000);
+
+        // WICHTIG: NICHT werfen! Wir haben ja erfolgreiche Daten (aus Cache).
+        // Der User sieht Marker, also ist das KEIN Fehler-Zustand.
+        return State.cachedPoiElements;
+      } else {
+        // Kein Cache UND kein Netzwerk -> Fehler
+        const msgKey = mapErrorKey(err);
+        emit({
+          phase: 'load_fail',
+          reqId,
+          zoom,
+          code: msgKey,
+          status: (err instanceof HttpError) ? err.status : null,
+          message: String(err?.message || err)
+        });
+
+        showNotification(t(msgKey), 5000);
+        reportHydrantDownload(hydrantStatus, 'error');
+        throw err;
       }
-
-      if (isCurrentRequest()) State.isFetchingData = false;
-      return State.cachedPoiElements;
     }
-  } catch (e) {
-    console.log('[API] CACHE MISS or error:', e?.message || 'no data');
-  }
-
-  const tAll0 = performance.now();
-
-  try {
-    const data = await fetchWithRetry(q, {
-      cacheKey,
-      cacheTtlMs: cachePolicy.ttlMs,
-      cacheMeta: cachePolicy,
-      reqId,
-      skipCache: true,
-      signal: controller.signal
-    });
-
-    ensureCurrentRequest();
-
-    State.cachedPoiElements = data.elements || [];
-    State.loadedPoiBounds = requestedBounds;
-    State.loadedPoiMode = requestedMode;
-    syncCombinedCachedElements();
-    const totalMs = Math.round(performance.now() - tAll0);
-    emit({ phase: 'load_ok', reqId, zoom, totalMs, dataset: 'poi', elements: State.cachedPoiElements.length, dataClass });
-    reportHydrantDownload(hydrantStatus, 'success', State.cachedPoiElements);
-
+  } finally {
     if (isCurrentRequest()) State.isFetchingData = false;
-    return State.cachedPoiElements;
-
-  } catch (err) {
-    if (isCurrentRequest()) State.isFetchingData = false;
-
-    if (err?.name === 'AbortError') {
-      emit({ phase: 'aborted', reqId, zoom });
-      throw err;
-    }
-
-    // Wenn Netzwerk fehlschlägt, wir aber Cached Data haben:
-    if (hasCachedData) {
-      console.warn("Background fetch failed, using stale data.", err);
-
-      // Visuelles Feedback: Nutzer weiß, dass alte Daten angezeigt werden
-      const errType = (err instanceof HttpError && err.status === 429) ? t('server_error_type_overload') :
-        (err instanceof HttpError && err.status >= 500) ? t('server_error_type_server') : t('server_error_type_connection');
-      showNotification(`${errType} - ${t('showing_cached')}`, 4000);
-
-      // WICHTIG: NICHT werfen! Wir haben ja erfolgreiche Daten (aus Cache).
-      // Der User sieht Marker, also ist das KEIN Fehler-Zustand.
-      return State.cachedPoiElements;
-    } else {
-      // Kein Cache UND kein Netzwerk -> Fehler
-      const msgKey = mapErrorKey(err);
-      emit({
-        phase: 'load_fail',
-        reqId,
-        zoom,
-        code: msgKey,
-        status: (err instanceof HttpError) ? err.status : null,
-        message: String(err?.message || err)
-      });
-
-      showNotification(t(msgKey), 5000);
-      reportHydrantDownload(hydrantStatus, 'error');
-      throw err;
-    }
   }
 }
 

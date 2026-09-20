@@ -523,7 +523,6 @@ async function generateMapCanvas() {
   // DATEN LADEN (Explizit für diesen Ausschnitt & Zoom)
   setStatus(t("loading_data") || "Lade Daten..."); // Fallback String falls Key fehlt
   let elementsForExport = [];
-  const cachedExportElements = getCachedExportElements();
 
   // NEU: Wenn wir aktuell auf Zoom < 15 sind, sind KEINE Hydranten im Cache.
   // Wir müssen zwingend die API fragen, da jeder Export zwingend Hydranten beinhalten soll,
@@ -533,18 +532,26 @@ async function generateMapCanvas() {
 
   if (!needsStrictOnlineFetch) {
     // Falls die Karte gerade noch Daten im Hintergrund lädt (z. B. nach einem Pan), 
-    // warten wir, bis der Vorgang abgeschlossen ist, damit wir den finalen Cache haben.
-    while (State.isFetchingData) {
+    // warten wir mit Timeout (max. 10s), damit wir den finalen Cache haben.
+    let waitCycles = 0;
+    const MAX_WAIT_CYCLES = 50; // 50 * 200ms = 10 Sekunden
+    while (State.isFetchingData && waitCycles < MAX_WAIT_CYCLES) {
+      if (signal?.aborted) throw new DOMException('Export wurde abgebrochen.', 'AbortError');
       setStatus(`${t("loading_data") || "Lade Daten..."} (Warte auf Karte)`);
       await new Promise(r => setTimeout(r, 200));
+      waitCycles++;
+    }
+    if (waitCycles >= MAX_WAIT_CYCLES) {
+      console.warn("Export: Timeout beim Warten auf Hintergrund-Ladevorgang der Karte. Fahre mit verfügbaren Daten fort.");
     }
 
     // Liegt der gewünschte Export-Ausschnitt VOLLSTÄNDIG innerhalb der BBox,
     // die die App zuletzt für die Darstellung geladen hat?
-    if (cachedExportElements.length > 0) {
+    const availableCachedElements = getCachedExportElements();
+    if (availableCachedElements.length > 0) {
       if (State.queryBounds && State.queryBounds.contains(bounds)) {
         console.log("Export: Cache enthält Daten für diesen KOMPLETTEN Bereich -> Nutze Cache.");
-        elementsForExport = preprocessElementsForExport(cachedExportElements);
+        elementsForExport = preprocessElementsForExport(availableCachedElements);
       } else {
         console.log("Export: Bereich ist zu groß oder liegt außerhalb des Karten-Caches -> Erzwinge Download.");
       }
@@ -560,15 +567,18 @@ async function generateMapCanvas() {
 
       // Fallback: Wenn Online leer, aber Cache existiert (vielleicht knapp daneben?), war vorher schon Handled.
       // Aber hier nochmal zur Sicherheit.
-      if (elementsForExport.length === 0 && cachedExportElements.length > 0) {
+      const fallbackCachedElements = getCachedExportElements();
+      if (elementsForExport.length === 0 && fallbackCachedElements.length > 0) {
         console.warn("Export: Online-Daten leer, nutze Cache als Fallback.");
-        elementsForExport = preprocessElementsForExport(cachedExportElements);
+        elementsForExport = preprocessElementsForExport(fallbackCachedElements);
       }
 
       showNotification(`Export: ${elementsForExport.length} Objekte (Online geladen).`, 3000);
     } catch (e) {
+      if (e?.name === 'AbortError') throw e;
       console.warn("Export-Fetch fehlgeschlagen, nutze Cache als Fallback", e);
-      elementsForExport = preprocessElementsForExport(cachedExportElements);
+      const fallbackCachedElements = getCachedExportElements();
+      elementsForExport = preprocessElementsForExport(fallbackCachedElements);
       showNotification(`Export Warnung: Ladefehler, nutze Cache (${elementsForExport.length} Objekte).`, 5000);
     }
   } else {
