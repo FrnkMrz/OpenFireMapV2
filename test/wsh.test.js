@@ -1,7 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import { JSDOM } from 'jsdom';
 
 // We just test if our logic for `wsh` parsing stays stable.
 // Since map.js relies heavily on Leaflet and internal state which is hard to mock in Vitest without full setup,
