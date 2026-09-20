@@ -46,7 +46,7 @@ OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik (Vite, ES Module
 - 📦 **Intelligentes Caching** (IndexedDB) für schnelles Neuladen bekannter Bereiche
 - 🔄 **Stale-While-Revalidate** – sofortige Anzeige veralteter Daten, Live-Aktualisierung im Hintergrund
 - 🌍 **30+ Sprachen** unterstützt
-- 📤 **Export** als PNG, PDF oder GPX (inkl. skalierungsfreier, vollständiger Hydranten-Renderings auf allen Zoomstufen)
+- 📤 **Export** als PNG, PDF, GPX oder CSV (inkl. UTF-8 BOM für direkte Excel-Kompatibilität, vollständigen Attributen aller POIs und skalierungsfreier Hydranten-Renderings auf allen Zoomstufen)
 - 🛰️ **Satellitenansicht** (Bing Maps, benötigt Online-Verbindung)
 - 📱 **Responsive Design** – funktioniert auf Desktop und Mobil
 - 🔧 **Smart Clustering & POI Bündelung**: Intelligente Gruppierung nah beieinander liegender Hydranten (unter 5m) inkl. Multi-Tooltips.
@@ -142,6 +142,7 @@ Please note: This is an **online-only application** by design and requires an ac
 - **Tailwind CSS**
 - **GitHub Pages** Hosting
 - **Hydrant loading status** with delayed display, slow-load feedback, success confirmation, and retry
+- **Multi-format Export** (PNG, PDF, GPX, CSV with Excel-ready UTF-8 BOM)
 
 ### Development
 

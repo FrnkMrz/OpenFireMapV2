@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.11] - 2026-09-20
+
+### Neue Features
+- **CSV-Export**: Neuer Export-Button im Menü (direkt unterhalb von GPX). Exportiert alle sichtbaren POIs (Hydranten, Wasserentnahmestellen, Löschwasserbehälter, Saugstellen, AEDs) mit vollständigen Attributen als CSV-Datei. Ausgestattet mit UTF-8 BOM (`\uFEFF`) und Semikolon (`;`) als Separator für direkte, fehlerfreie Darstellung in Microsoft Excel.
+- **Vollständige i18n-Unterstützung für CSV**: Übersetzungsschlüssel `csv_btn` und `csv_success` für alle 30 Sprachen hinzugefügt.
+
+### Verbesserungen & Fehlerbehebungen (Bugfixes)
+- **CARTO Basemaps API-Key Integration**: Nach der Umstellung von CARTO auf obligatorische API-Keys für Kachelabrufe wurde die zentrale Konfiguration (`src/js/config.js`) um `cartoApiKey` erweitert. Das Wasserzeichen „API KEY REQUIRED / carto.com/basemaps/apikey“ auf den Basemaps `voyager`, `positron` und `dark` wird dadurch behoben.
+- **Export Retina-Handling**: In `src/js/export.js` wird der Retina-Platzhalter `{r}` beim Nachladen von Kacheln nun sauber entfernt, sodass Kacheln mit Kacheltemplates wie CARTO im PNG/PDF-Export fehlerfrei geladen werden.
+- **Service Worker Tile Cache**: `cartocdn` wurde zur Liste der vom Caching ausgeschlossenen Tile-Server in `public/sw.js` hinzugefügt, um veraltete oder fehlerhafte Kacheln im Offline-Cache zu vermeiden.
+- **Playwright E2E-Testerweiterung**: Zusätzliche Ende-zu-Ende-Tests für Tastaturnavigation (<kbd>Escape</kbd>) inklusive Rückfokussierung des Triggers, Bestätigungs- und Abbruch-Workflows im Export-Modal sowie Test für die Platzierung des CSV-Buttons.
+- **Desktop Viewport Stabilisierung im Test**: Viewport in `playwright.config.js` auf 1440x900 konfiguriert, um Desktop-Bedienelemente konsistent zu testen.
+
 ## [v0.6.10] - 2026-09-20
 
 ### Neue Features
