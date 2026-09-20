@@ -646,6 +646,16 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
               if (_bgPoiGen !== myGen) return; // Veraltet – User hat Bereich gewechselt
               _bgPoiRefresh = null;
               const freshElements = freshData?.elements || [];
+              const minRequired = computeMinElementCount(cachedCount, 0.5, 1);
+
+              // Schutz vor degradierten Overpass-Antworten: Wenn wir bereits gecachte Hydranten haben,
+              // darf eine leere oder unvollständige Server-Antwort den Bildschirm nicht leeren!
+              if (cachedCount > 0 && freshElements.length < minRequired) {
+                emit({ phase: 'swr_refresh_skip_degraded', reqId, dataset: 'poi', elements: freshElements.length, minRequired });
+                reportHydrantDownload(hydrantStatus, 'success', State.cachedPoiElements);
+                return;
+              }
+
               const changed = elementsFingerprint(freshElements) !== cachedFingerprint;
               emit({ phase: 'swr_refresh_ok', reqId, dataset: 'poi', elements: freshElements.length, changed });
               if (changed) {
@@ -807,6 +817,13 @@ export async function fetchBoundaryData(onProgressData = null) {
             if (_bgBoundaryGen !== myGen) return;
             _bgBoundaryRefresh = null;
             const freshElements = freshData?.elements || [];
+            const minRequired = computeMinElementCount(cachedCount, 0.5, 1);
+
+            if (cachedCount > 0 && freshElements.length < minRequired) {
+              emit({ phase: 'boundary_refresh_skip_degraded', reqId, dataset: 'boundary', elements: freshElements.length, minRequired });
+              return;
+            }
+
             const changed = elementsFingerprint(freshElements) !== cachedFingerprint;
             emit({ phase: 'boundary_refresh_ok', reqId, dataset: 'boundary', elements: freshElements.length, changed });
             if (changed) {

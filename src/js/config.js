@@ -44,6 +44,8 @@ export const Config = {
    * Idee: Wenn ein Server langsam ist oder ausfällt, kann auf den nächsten gewechselt werden.
    */
   overpassEndpoints: [
+    "https://lz4.overpass-api.de/api/interpreter",
+    "https://z.overpass-api.de/api/interpreter",
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",

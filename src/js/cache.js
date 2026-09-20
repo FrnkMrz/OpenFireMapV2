@@ -12,18 +12,49 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
 export function getCachePolicy(dataClass = 'default') {
+  let userTtlMs = null;
+  try {
+    const raw = localStorage.getItem('ofm_cache_hours');
+    if (raw !== null && raw !== undefined) {
+      const hours = Number(raw);
+      if (Number.isFinite(hours)) {
+        userTtlMs = hours * HOUR_MS;
+      }
+    }
+  } catch { /* ignore */ }
+
+  // Wenn der Benutzer den Cache explizit auf "Aus" (0) gestellt hat:
+  if (userTtlMs === 0) {
+    return { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 0, staleTtlMs: 0 };
+  }
+
+  let defaultPolicy;
   switch (dataClass) {
     case 'boundaries':
-      return { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 30 * DAY_MS, staleTtlMs: 120 * DAY_MS };
+      defaultPolicy = { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 30 * DAY_MS, staleTtlMs: 120 * DAY_MS };
+      break;
     case 'fire_stations':
-      return { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 14 * DAY_MS, staleTtlMs: 45 * DAY_MS };
+      defaultPolicy = { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 14 * DAY_MS, staleTtlMs: 45 * DAY_MS };
+      break;
     case 'aed':
-      return { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 2 * DAY_MS, staleTtlMs: 10 * DAY_MS };
+      defaultPolicy = { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 2 * DAY_MS, staleTtlMs: 10 * DAY_MS };
+      break;
     case 'hydrants_and_water_points':
-      return { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 3 * DAY_MS, staleTtlMs: 14 * DAY_MS };
+      defaultPolicy = { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 3 * DAY_MS, staleTtlMs: 14 * DAY_MS };
+      break;
     default:
-      return { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 7 * DAY_MS, staleTtlMs: 21 * DAY_MS };
+      defaultPolicy = { dataClass, version: CACHE_ENTRY_VERSION, ttlMs: 7 * DAY_MS, staleTtlMs: 21 * DAY_MS };
+      break;
   }
+
+  if (userTtlMs != null && userTtlMs > 0) {
+    // Bei individueller Benutzereinstellung orientieren sich POIs daran:
+    const ttlMs = (dataClass === 'boundaries') ? Math.max(defaultPolicy.ttlMs, userTtlMs) : userTtlMs;
+    const staleTtlMs = ttlMs * DEFAULT_STALE_MULTIPLIER;
+    return { dataClass, version: CACHE_ENTRY_VERSION, ttlMs, staleTtlMs };
+  }
+
+  return defaultPolicy;
 }
 
 function normalizeCacheEntry(entry) {

@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
 - **Vollständige i18n-Unterstützung für CSV**: Übersetzungsschlüssel `csv_btn` und `csv_success` für alle 30 Sprachen hinzugefügt.
 
 ### Verbesserungen & Fehlerbehebungen (Bugfixes)
+- **SWR Refresh Hydranten-Schutz**: Behoben, dass ein im Hintergrund laufender Overpass-Refresh bei leeren oder degradierten Server-Antworten (z. B. bei Überlastung oder Teilausfall) die bereits auf der Karte gerenderten Hydranten aus dem Cache überschrieb und vom Bildschirm löschte.
+- **Overpass-Endpunkte aktualisiert**: Schnelle und zuverlässige Overpass-Server (`lz4.overpass-api.de` und `z.overpass-api.de`) in `src/js/config.js` als primäre Endpunkte hinterlegt.
+- **Benutzerdefinierte Cache-Dauer wirksam**: Die im Einstellungsdialog ("Info & Recht") gewählte Cache-Dauer (`ofm_cache_hours`: Aus, 1h, 1d, 3d, 7d, 30d) wird nun in `cache.js` (`getCachePolicy`) dynamisch ausgewertet.
 - **CARTO Basemaps API-Key Integration**: Nach der Umstellung von CARTO auf obligatorische API-Keys für Kachelabrufe wurde die zentrale Konfiguration (`src/js/config.js`) um `cartoApiKey` erweitert. Das Wasserzeichen „API KEY REQUIRED / carto.com/basemaps/apikey“ auf den Basemaps `voyager`, `positron` und `dark` wird dadurch behoben.
 - **Export Retina-Handling**: In `src/js/export.js` wird der Retina-Platzhalter `{r}` beim Nachladen von Kacheln nun sauber entfernt, sodass Kacheln mit Kacheltemplates wie CARTO im PNG/PDF-Export fehlerfrei geladen werden.
 - **Service Worker Tile Cache**: `cartocdn` wurde zur Liste der vom Caching ausgeschlossenen Tile-Server in `public/sw.js` hinzugefügt, um veraltete oder fehlerhafte Kacheln im Offline-Cache zu vermeiden.
