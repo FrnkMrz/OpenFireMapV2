@@ -92,6 +92,6 @@ GitHub Actions workflow (`.github/workflows/pages.yml`) runs on push to `main`:
 - **State** (`state.js`): single mutable singleton; all modules share it via import. Key fields: `map`, `markerLayer`, `cachedElements`, `isFetchingData`, `activeLayerKey`, `exportFormat`, `selection`
 - **Permalink**: URL hash format `#zoom/lat/lon/layer` (e.g. `#17/48.12345/9.56789/topo`), updated debounced on map move
 - **Overpass requests**: debounced (400 ms), retried up to 2×, with fallback endpoint rotation; cancelled via `AbortController` on new request
-- **Cache**: localStorage-backed with user-configurable TTL (Off / 1h / 1d / 3d / 7d / 30d, default 7 days)
+- **Cache**: IndexedDB-backed (`OFM_DB`) with user-configurable TTL via `localStorage` (Off / 1h / 1d / 3d / 7d / 30d, default 7 days)
 - **Export**: jsPDF + html2canvas, lazy-loaded on startup; zoom-based area limits in `Config.exportZoomLimitsKm` prevent browser OOM
 - **i18n**: `t('key')` function from `i18n.js`; run `npm run i18n:check` to verify all keys are present across language files
