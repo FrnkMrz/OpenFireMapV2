@@ -194,23 +194,23 @@ Verhalten:
 
 Diese Phase sollte erst beginnen, wenn die Pipeline stabil statische Dateien liefert.
 
-## Phase 6: Server mit Docker Compose
+## Phase 6: Server mit Docker Compose (Proxmox oder VPS)
 
 Ziel:
 
-- erster Betrieb auf kleinem VPS
+- erster Betrieb auf eigenem Server (Proxmox VE im Keller neben Home Assistant oder kleiner VPS)
 - ohne Kubernetes produktionsnahe Abläufe lernen
 
 Vorgehen:
 
-- kleiner Ubuntu- oder Debian-Server
-- Docker Engine und Docker Compose Plugin
-- Webcontainer oeffentlich erreichbar machen
+- Proxmox LXC-Container (Debian 12 / Ubuntu 24.04) mit 2–4 vCPUs, 4 GB RAM, 30–50 GB SSD
+- Docker Engine und Docker Compose Plugin installieren
+- Webcontainer lokal erreichbar machen und für externe Tests optional per Cloudflare Tunnel anbinden (keine Portweiterleitung am Router nötig)
 - Datenbuild manuell oder per Cron starten
 
 Erfolgskriterium:
 
-- eine oeffentliche Daten-URL liefert GeoJSON-Dateien aus
+- eine (lokale oder öffentliche) Daten-URL liefert GeoJSON-Dateien aus
 - Logs, Neustarts und Updates sind praktisch verstanden
 
 ## Phase 7: Lokales Kubernetes
@@ -271,7 +271,8 @@ Erfolgskriterium:
 
 ## Offene Fragen vor Umsetzung
 
-- Eigenes GitHub-Repository oder Unterordner im bestehenden Repo?
+- Eigenes GitHub-Repository oder Unterordner im bestehenden Repo? (Empfehlung: eigenes Repo `openfiremap-dach-pipeline`)
+- Hosting-Infrastruktur: Proxmox VE im Keller (LXC-Container / VM neben Home Assistant) mit Docker Compose ist als Zielplattform gesetzt; Cloudflare Tunnel für sichere HTTPS-Anbindung.
 - GeoJSON als verbindliches Startformat?
 - Welches kleine Testgebiet soll zuerst verwendet werden?
 - Sollen DACH-Laender von Anfang an getrennt gebaut werden?

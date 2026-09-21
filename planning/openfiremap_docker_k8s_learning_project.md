@@ -129,18 +129,19 @@ Vorgehen:
 
 Docker Desktop enthält einen lokalen Kubernetes-Server und Client für Entwicklung und Tests direkt auf dem eigenen Rechner.
 
-### Phase 3: Deployment auf kleinem Server
+### Phase 3: Deployment auf eigenem Server (Proxmox oder VPS)
 
 Ziel:
 
 - ersten echten Linux-Server betreiben
-- den Stack öffentlich erreichbar machen
+- den Stack erreichbar machen (lokal und optional öffentlich)
 - Logs, Dateien, Updates und Neustarts praktisch lernen
 
 Vorgehen:
 
-- kleinen VPS mieten
+- eigenen Proxmox-Heimserver nutzen (LXC-Container oder VM neben Home Assistant) oder kleinen VPS mieten
 - zuerst Docker Compose deployen
+- für sicheren externen Zugriff: Cloudflare Tunnel (kein Portforwarding nötig, automatische HTTPS-Verschlüsselung)
 - danach optional auf K3s umstellen
 
 K3s bündelt die Kubernetes-Control-Plane in einer einzelnen Binärdatei, reduziert externe Abhängigkeiten und eignet sich gut für kleine Umgebungen.
@@ -217,10 +218,14 @@ Der erste MVP soll klein bleiben.
 
 ### Server später
 
-- kleiner Ubuntu- oder Debian-VPS
-- Docker Engine
-- Docker Compose Plugin
-- später K3s
+- **Proxmox VE (Heimserver im Keller)**:
+  - Eigener LXC-Container oder schlanke VM (Debian 12 / Ubuntu 24.04)
+  - Läuft parallel und ungestört neben Home Assistant
+  - Empfohlene Ressourcen: 2–4 vCPUs, 4 GB RAM, 30–50 GB SSD-Speicher
+  - Docker Engine + Docker Compose Plugin
+  - Sicherer externer Zugriff via Cloudflare Tunnel (kein Router-Portforwarding/DynDNS erforderlich)
+- **Alternativ:** kleiner Ubuntu- oder Debian-VPS
+- später optional K3s
 - Nginx oder einfacher Web-Container
 
 Docker Compose ist für das Definieren und Starten von Multi-Container-Anwendungen gedacht. Auf Linux wird Compose als Plugin für Docker Engine bereitgestellt.
