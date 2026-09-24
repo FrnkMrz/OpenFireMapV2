@@ -1,0 +1,18 @@
+# Daten & Caches nicht ins Git committen
+data/
+raw/
+publish/
+tmp/
+*.pbf
+*.pbf.download
+*.geojson
+metadata.json
+
+# Logs
+*.log
+
+# System & Python
+.DS_Store
+__pycache__/
+*.pyc
+.env

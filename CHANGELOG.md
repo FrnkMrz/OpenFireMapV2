@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.12] - 2026-09-24
+
+### Neue Features
+- **Lokale Pipeline & PMTiles Integration**: Unterstützung für ultra-schnelle lokale Vektorkacheln (`openfiremap.pmtiles`) via HTTP Range Requests (`pmtiles.js`). Lädt nur die für den aktuellen Viewport benötigten Byte-Ausschnitte in 20–30 ms statt ganzer GeoJSON-Dateien.
+- **Gemeindegrenzen lokal integriert**: Extraktionsebene `boundaries` (`w/boundary=administrative`, Geometrietyp `linestring`) in die Builder-Pipeline aufgenommen. Verwaltungsgrenzen laden nun verzögerungsfrei lokal aus den PMTiles-Vektorkacheln.
+- **Kaskadierender 3-Stufen-Fallback**: Primär PMTiles-Vektorkacheln, sekundär lokale GeoJSON-Dateien (mit In-Memory-Cache), tertiär öffentliche Overpass-Server für weltweite Abdeckung.
+
+### Verbesserungen & Fehlerbehebungen (Bugfixes)
+- **Safari / macOS Panning-Stabilität**:
+  - Behoben, dass Nginx bei gesetztem `Accept-Encoding: gzip` in Safari mit HTTP 200 OK statt 206 Partial Content antwortete (`gzip off;` für `.pmtiles`).
+  - Gehärtete Intent-Steuerung (`lastRenderedFetchIntent`): Kinetische Trackpad-Gesten in Safari verwerfen fertig geladene Kacheldaten nicht mehr.
+  - Deaktivierung der 1,2-Sekunden-Overpass-Pause für die lokale Pipeline für flüssiges Panning in Echtzeit.
+- **Speikern & Kachelkollisions-Fix**: Sub-Dezimeter-genaue, global eindeutige Koordinaten-IDs als Fallback für PMTiles-Features ohne native ID verhindern fehlerhaftes Verwerfen von Hydranten an Kachelgrenzen im Clustering.
+- **Service Worker Range-Bypass**: Range-Requests und Pipeline-Ressourcen werden im Service Worker direkt durchgewunken, um den bekannten WebKit-Range-Stripping-Bug zu umgehen. Cache-Version auf `ofm-v10-static` erhöht.
+
 ## [v0.6.11] - 2026-09-20
 
 ### Neue Features

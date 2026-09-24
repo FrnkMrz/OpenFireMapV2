@@ -44,10 +44,9 @@ export const Config = {
    * Idee: Wenn ein Server langsam ist oder ausfällt, kann auf den nächsten gewechselt werden.
    */
   overpassEndpoints: [
-    "https://overpass.openstreetmap.fr/api/interpreter",
+    "https://overpass-api.de/api/interpreter",
     "https://lz4.overpass-api.de/api/interpreter",
     "https://z.overpass-api.de/api/interpreter",
-    "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
   ],
 
@@ -56,6 +55,24 @@ export const Config = {
    * Hinweis: Nominatim hat Nutzungsrichtlinien (Rate-Limits, User-Agent/Referer etc.).
    */
   nominatimUrl: "https://nominatim.openstreetmap.org",
+
+  /**
+   * Lokale DACH Data Pipeline (Proxmox / Docker).
+   * Wird bevorzugt, wenn das Kartenfenster im Abdeckungsbereich liegt.
+   */
+  pipeline: {
+    enabled: true,
+    url: "http://192.168.178.152:8080",
+    usePmtiles: true,
+    pmtilesFile: "openfiremap.pmtiles",
+    // Abdeckungsbereich Mittelfranken (Schnaittach, Nürnberg, Fürth, Erlangen, etc.)
+    bounds: {
+      south: 49.0,
+      west: 10.1,
+      north: 50.0,
+      east: 11.9
+    }
+  },
 
   // ----------------------------------------------------------------------------------------
   // 3) Basemap-Layer

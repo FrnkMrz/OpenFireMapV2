@@ -32,10 +32,12 @@ src/
     mobile-ui.js # Additive mobile UI layer (IIFE, triggers desktop buttons via .click())
     i18n.js     # Internationalization (default: de, fallback: en)
     net.js      # Network utilities (fetch with AbortController/retry)
+    pipeline.js # Local pipeline integration (PMTiles vector tiles & GeoJSON)
     export.js   # Map export (PNG/PDF via jsPDF + html2canvas, lazy-loaded)
     version.js  # Version constant
   input.css     # Tailwind CSS source
 public/         # Static assets served as-is (sw.js, manifest.json, favicons, vendor assets)
+pipeline/       # Docker-based DACH data pipeline (builder, Nginx, setup scripts for VM 102)
 index.html      # Single page entry point (Vite root)
 scripts/
   i18n-check.mjs  # i18n completeness checker
@@ -95,3 +97,4 @@ GitHub Actions workflow (`.github/workflows/pages.yml`) runs on push to `main`:
 - **Cache**: localStorage-backed with user-configurable TTL (Off / 1h / 1d / 3d / 7d / 30d, default 7 days)
 - **Export**: jsPDF + html2canvas, lazy-loaded on startup; zoom-based area limits in `Config.exportZoomLimitsKm` prevent browser OOM
 - **i18n**: `t('key')` function from `i18n.js`; run `npm run i18n:check` to verify all keys are present across language files
+- **Local Pipeline / PMTiles**: Optional local pipeline via VM 102 (`Config.pipeline.url`, e.g. Mittelfranken extract). Fetches vector tiles via HTTP Range Requests (`pmtiles`), decodes directly into native Leaflet elements with 3-tier cascade fallback (PMTiles -> GeoJSON -> Overpass).

@@ -17,6 +17,7 @@ import { t } from './i18n.js';
 import { showNotification } from './ui.js';
 
 import { fetchJson, HttpError } from './net.js';
+import { isPipelineEligible, fetchPipelineData, fetchPipelineBoundaries } from './pipeline.js';
 import {
   getCache,
   getCacheEntry,
@@ -246,9 +247,9 @@ function syncCombinedCachedElements() {
 }
 
 function getViewQueryMeta() {
-  const b = State.queryBounds || State.map.getBounds();
+  const b = State.map?.getBounds?.() || State.queryBounds;
   return {
-    bbox: State.queryMeta?.bbox || `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`,
+    bbox: `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`,
     bboxKey: State.queryMeta?.bbox ? State.queryMeta.bbox : makeBBoxKey(b)
   };
 }
@@ -370,7 +371,7 @@ function epHealthyOrder(endpoints) {
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
-async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null }) {
+async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false }) {
   throwIfAborted(signal);
   if (!navigator.onLine) throw new Error('err_offline');
 
@@ -402,7 +403,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       emit({ phase: 'skip_endpoint', reqId, endpoint, untilMs: s.failUntil - now, lastStatus: s.lastStatus });
 
       // Zeige nur wenn es der letzte Endpoint ist (sonst zu viele Notifications)
-      if (attemptNum === endpoints.length - 1) {
+      if (!silent && attemptNum === endpoints.length - 1) {
         showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, 3000);
       }
       continue;
@@ -410,12 +411,11 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
 
     try {
       // Zeige bei Retry (nicht beim ersten Versuch) welcher Server probiert wird
-      if (attemptNum > 0) {
+      if (!silent && attemptNum > 0) {
         const serverName = endpoint.includes('overpass-api.de') ? 'Server 1' :
           endpoint.includes('z.overpass-api.de') ? 'Server 2' :
             endpoint.includes('lz4.overpass-api.de') ? 'Server 3' : 'Alternativ-Server';
 
-        // FIX: Dauer auf 60 Sekunden erhöht, damit der User sieht, dass noch was passiert.
         showNotification(`${t('trying_server')} ${serverName}...`, 60000);
       }
 
@@ -471,10 +471,12 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
           emit({ phase: 'ratelimit', reqId, endpoint, backoffMs: GLOBAL_BACKOFF_MS });
 
           // Visuelles Feedback: Rate Limit
-          if (attemptNum < endpoints.length - 1) {
-            showNotification(t('server_ratelimit_retry'), 4000);
-          } else {
-            showNotification(t('all_servers_busy'), 6000);
+          if (!silent) {
+            if (attemptNum < endpoints.length - 1) {
+              showNotification(t('server_ratelimit_retry'), 4000);
+            } else {
+              showNotification(t('all_servers_busy'), 6000);
+            }
           }
 
           await sleep(300, signal);
@@ -485,10 +487,9 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
           bumpGlobalBackoff({ minMs: 1200, maxMs: 8000 });
 
           // Visuelles Feedback: Server Error
-          if (attemptNum < endpoints.length - 1) {
+          if (!silent && attemptNum < endpoints.length - 1) {
             showNotification(t('server_error_retry'), 4000);
           }
-
 
           await sleep(400, signal);
           continue;
@@ -519,13 +520,15 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       // Lohnt sich zu warten!
       const waitSec = Math.ceil(minCooldown / 1000);
       emit({ phase: 'wait_for_cooldown', reqId, waitMs: minCooldown });
-      showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown);
+      if (!silent) {
+        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown);
+      }
 
       await sleep(minCooldown + 500, signal); // +500ms Puffer
 
       // Erneuter Versuch
       emit({ phase: 'retry_after_cooldown', reqId });
-      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta, reqId, skipCache, signal, minElementCount });
+      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta, reqId, skipCache, signal, minElementCount, silent });
     }
   }
 
@@ -602,6 +605,46 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
   let hasCachedData = false;
 
   try {
+    // Für die lokale Pipeline das tatsächliche sichtbare Kartenfenster nutzen
+    const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
+    if (isPipelineEligible(viewBounds, zoom)) {
+      try {
+        console.log('[API] Verwende lokale Pipeline für Mittelfranken...');
+        const pipelineElements = await fetchPipelineData(viewBounds, requestedMode, { signal: controller.signal, zoom });
+        ensureCurrentRequest();
+
+        if (Array.isArray(pipelineElements)) {
+          State.cachedPoiElements = pipelineElements;
+          State.loadedPoiBounds = pipelineElements.loadedBounds || viewBounds;
+          State.loadedPoiMode = requestedMode;
+          syncCombinedCachedElements();
+
+          emit({ phase: 'pipeline_hit', reqId, zoom, dataset: 'poi', elements: pipelineElements.length });
+          reportHydrantDownload(hydrantStatus, 'success', pipelineElements);
+
+          if (typeof onProgressData === 'function') {
+            try {
+              onProgressData(pipelineElements);
+            } catch (renderErr) {
+              console.warn('[API] Fehler beim Rendern der Pipeline-POIs:', renderErr);
+            }
+          }
+
+          const dataStatus = document.getElementById('data-status');
+          if (dataStatus) {
+            dataStatus.innerText = `${t('status_current')} (Lokal)`;
+            dataStatus.className = 'text-green-400 font-bold';
+          }
+
+          return pipelineElements;
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') throw err;
+        console.warn('[API] Pipeline-Abruf fehlgeschlagen, wechsle auf Overpass-Fallback:', err.message);
+        emit({ phase: 'pipeline_fallback_to_overpass', reqId, error: err.message });
+      }
+    }
+
     try {
       const { freshData, staleData } = await readDatasetCache(cacheKey, cachePolicy);
       ensureCurrentRequest();
@@ -640,7 +683,8 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
             signal: bgController.signal,
             // Cache nur überschreiben wenn frische Daten mind. 50% des gecachten Bestands haben.
             // Schützt vor degradierten Overpass-Antworten (Timeout/Überlast).
-            minElementCount: computeMinElementCount(cachedCount, 0.5, 1)
+            minElementCount: computeMinElementCount(cachedCount, 0.5, 1),
+            silent: true
           })
             .then(freshData => {
               if (_bgPoiGen !== myGen) return; // Veraltet – User hat Bereich gewechselt
@@ -780,6 +824,31 @@ export async function fetchBoundaryData(onProgressData = null) {
     _bgBoundaryRefresh = null;
   }
 
+  const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
+
+  if (isPipelineEligible(viewBounds, zoom)) {
+    try {
+      console.log('[API] Verwende lokale Pipeline für Gemeindegrenzen...');
+      const boundaryElements = await fetchPipelineBoundaries(viewBounds, { signal: controller.signal, zoom });
+      ensureCurrentRequest();
+
+      if (Array.isArray(boundaryElements) && boundaryElements.length > 0) {
+        State.cachedBoundaryElements = boundaryElements;
+        State.loadedBoundaryBounds = viewBounds;
+        syncCombinedCachedElements();
+
+        emit({ phase: 'boundary_pipeline_hit', reqId, zoom, dataset: 'boundary', elements: boundaryElements.length });
+        if (typeof onProgressData === 'function') {
+          onProgressData(boundaryElements);
+        }
+        return boundaryElements;
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      console.warn('[API] Pipeline Boundary-Abruf fehlgeschlagen, wechsle auf Overpass-Fallback:', err.message);
+    }
+  }
+
   let hasCachedData = false;
   try {
     const { freshData, staleData } = await readDatasetCache(cacheKey, cachePolicy);
@@ -811,7 +880,8 @@ export async function fetchBoundaryData(onProgressData = null) {
           reqId: reqId + '_bg_boundary',
           skipCache: true,
           signal: bgController.signal,
-          minElementCount: computeMinElementCount(cachedCount, 0.5, 1)
+          minElementCount: computeMinElementCount(cachedCount, 0.5, 1),
+          silent: true
         })
           .then((freshData) => {
             if (_bgBoundaryGen !== myGen) return;
@@ -853,7 +923,8 @@ export async function fetchBoundaryData(onProgressData = null) {
       cacheMeta: cachePolicy,
       reqId,
       skipCache: true,
-      signal: controller.signal
+      signal: controller.signal,
+      silent: true
     });
 
     ensureCurrentRequest();

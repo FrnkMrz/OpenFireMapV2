@@ -9,6 +9,7 @@ import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
 import { fetchBoundaryData, fetchOSMData } from './api.js';
+import { isPipelineEligible, lon2tile, lat2tile } from './pipeline.js';
 import { showNotification } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
 
@@ -163,6 +164,8 @@ export function initMapLogic() {
     let lastFetchKey = null;
     let lastMotionAt = 0;
     let latestFetchIntent = 0;
+    let lastRenderedFetchIntent = 0;
+    let lastRenderedBoundaryIntent = 0;
     let idleRefreshTimer = null;
     let retryTimer = null;
     const RAPID_INTERACTION_MS = 1200;
@@ -376,6 +379,18 @@ export function initMapLogic() {
         return bboxStr;
     };
 
+    // Liefert einen stabilen Key basierend auf den Kacheln der lokalen Pipeline
+    const getTileBBoxKey = (zoom) => {
+        if (!State.map) return '';
+        const b = State.map.getBounds();
+        const qZoom = Math.min(Math.max(zoom, 12), 14);
+        const minX = lon2tile(b.getWest(), qZoom);
+        const maxX = lon2tile(b.getEast(), qZoom);
+        const minY = lat2tile(b.getNorth(), qZoom);
+        const maxY = lat2tile(b.getSouth(), qZoom);
+        return `pl:${qZoom}:${minX}_${maxX}_${minY}_${maxY}`;
+    };
+
 
     State.map.on('moveend zoomend', () => {
         // Permalink-Hash aktualisieren
@@ -463,7 +478,8 @@ export function initMapLogic() {
         }
 
         // 3) Request-Gating: nur neu laden, wenn sich Mode oder Viewport sinnvoll geändert hat
-        const bboxKey = getRoundedBBox();
+        const inPipeline = isPipelineEligible(State.map.getBounds(), zoom);
+        const bboxKey = inPipeline ? getTileBBoxKey(zoom) : getRoundedBBox();
         dbg('gate', { zoom, mode, bboxKey, queryMeta: State.queryMeta });
         const boundaryFlag = (zoom >= 14) ? 'b1' : 'b0';
         const fetchKey = `${mode}|${boundaryFlag}|${bboxKey}`;
@@ -471,9 +487,8 @@ export function initMapLogic() {
 
         if (debounceTimer) clearTimeout(debounceTimer);
 
-        // Debounce je nach Zoom (Hydranten-Modus braucht mehr Ruhe, sonst hagelt es 429).
-        // OPTIMIERUNG: Niedrige Werte für schnelleren Initial-Load.
-        const debounceMs =
+        // Debounce je nach Zoom & Pipeline (lokale Pipeline braucht dank < 30ms Latenz kaum Debounce)
+        const debounceMs = inPipeline ? 100 :
             (zoom <= 15) ? 200 :  // Schneller Start für Stations/Low-Zoom
                 (zoom === 16) ? 300 :
                     (zoom === 17) ? 250 :
@@ -493,17 +508,14 @@ export function initMapLogic() {
 
         async function doFetch() {
             const statusEl = document.getElementById('data-status');
-            const movingRecently = (Date.now() - lastMotionAt) < RAPID_INTERACTION_MS;
+            const movingRecently = !inPipeline && (Date.now() - lastMotionAt) < RAPID_INTERACTION_MS;
             const hasStaleToKeep = (State.cachedPoiElements?.length || State.cachedBoundaryElements?.length);
 
-            // Wenn sich seit dem letzten gestarteten Fetch nichts geändert hat: skip.
-            // WICHTIG: Diese Guard verhindert bereits doppelte Netzwerkanfragen für denselben
-            // Bereich. Eine zusätzliche minIntervalMs-Sperre ist redundant und verhindert
-            // beim schnellen Hin- und Hernavigieren das sofortige Anzeigen von Cache-Daten.
-            if (fetchKey === lastFetchKey) {
+            // Wenn sich seit dem letzten gestarteten Fetch nichts geändert hat UND der Bereich abgedeckt ist: skip.
+            if (fetchKey === lastFetchKey && poiCoverageMatchesMode(mode)) {
                 if (statusEl) {
-                    statusEl.innerText = t('status_current');
-                    statusEl.className = 'text-green-400';
+                    statusEl.innerText = inPipeline ? `${t('status_current')} (Lokal)` : t('status_current');
+                    statusEl.className = 'text-green-400 font-bold';
                 }
                 return;
             }
@@ -563,14 +575,29 @@ export function initMapLogic() {
                     }
                     renderMarkers(cachedData, zoom);
                 }, (status) => hydrantDownloadStatus.update(status));
-                const boundaryPromise = fetchBoundaryData((cachedBoundaryData) => {
-                    renderBoundaries(cachedBoundaryData, zoom);
+                // Gemeindegrenzen asynchron im Hintergrund laden – blockiert POIs nicht!
+                fetchBoundaryData((cachedBoundaryData) => {
+                    if (fetchIntent >= lastRenderedBoundaryIntent) {
+                        renderBoundaries(cachedBoundaryData, zoom);
+                    }
+                }).then((boundaryData) => {
+                    if (fetchIntent >= lastRenderedBoundaryIntent && boundaryData) {
+                        lastRenderedBoundaryIntent = fetchIntent;
+                        renderBoundaries(boundaryData, zoom);
+                    }
+                }).catch((boundaryErr) => {
+                    if (boundaryErr?.name !== 'AbortError') {
+                        console.warn('[Map] Gemeindegrenzen konnten nicht geladen werden (nicht kritisch):', boundaryErr?.message);
+                    }
                 });
-                const [data] = await Promise.all([poiPromise, boundaryPromise]);
 
-                // Während des Abrufs wurde die Karte weiterbewegt: Der nächste
-                // Request ist bereits zuständig und darf nicht überschrieben werden.
-                if (fetchIntent !== latestFetchIntent) return;
+                const data = await poiPromise;
+
+                // Nur abbrechen, wenn bereits ein NEUERER Abruf fertig gerendert wurde.
+                // Ein reiner movestart durch kontinuierliche Safari-Gestensteuerung
+                // darf fertig geladene Kacheldaten NIEMALS verwerfen!
+                if (fetchIntent < lastRenderedFetchIntent) return;
+                lastRenderedFetchIntent = fetchIntent;
 
                 if (data) {
                     // Nur erneut rendern, wenn sich die Datenmenge geändert hat
@@ -580,9 +607,10 @@ export function initMapLogic() {
                         renderMarkers(data, zoom);
                     }
 
+                    const inPipelineArea = isPipelineEligible(State.map?.getBounds?.(), zoom);
                     if (statusEl) {
-                        statusEl.innerText = t('status_current');
-                        statusEl.className = 'text-green-400';
+                        statusEl.innerText = inPipelineArea ? `${t('status_current')} (Lokal)` : t('status_current');
+                        statusEl.className = 'text-green-400 font-bold';
                     }
 
                     // Erfolgs-Nachricht: Cache-Info erhalten, wenn Cache aktuell war
@@ -594,7 +622,8 @@ export function initMapLogic() {
                         showNotification(`${t('data_updated')} (${cachedCount} → ${networkCount})`, 2500);
                     } else {
                         // Frische Daten
-                        showNotification(`${t('data_complete')} (${networkCount} ${t('objects')})`, 2000);
+                        const suffix = inPipelineArea ? ' – Lokal' : '';
+                        showNotification(`${t('data_complete')} (${networkCount} ${t('objects')}${suffix})`, 2000);
                     }
                 } else if (data === null) {
                     // Kein Fehler, aber leere Query (z.B. Zoom zu klein)
@@ -609,7 +638,7 @@ export function initMapLogic() {
                     return;
                 }
 
-                if (fetchIntent !== latestFetchIntent) return;
+                if (fetchIntent < lastRenderedFetchIntent) return;
 
                 // Fehlerbehandlung
                 if (statusEl) {
@@ -937,7 +966,12 @@ function clusterPOIs(rawElements, zoom, radiusMeters = 5) {
     const clustered = [];
 
     // Priorisiere Hydranten von links nach rechts / oben nach unten, um stabile Cluster-Zentren zu behalten
-    pois.sort((a, b) => (a.id || 0) - (b.id || 0));
+    pois.sort((a, b) => {
+        if (typeof a.id === 'number' && typeof b.id === 'number') {
+            return a.id - b.id;
+        }
+        return String(a.id || '').localeCompare(String(b.id || ''));
+    });
 
     for (const rawMaster of pois) {
         if (processed.has(rawMaster.id)) continue;

@@ -16,8 +16,12 @@
 import { initMapLogic } from './map.js';
 import { initI18n, updatePageLanguage } from './i18n.js';
 import { setupUI, showNotification } from './ui.js';
-// export.js wird jetzt lazy bei Bedarf geladen (siehe Zeile 63)
 import { State } from './state.js';
+
+// Expose State globally for tests and debugging
+if (typeof window !== 'undefined') {
+  window.State = State;
+}
 
 /**
  * Wartet, bis Leaflet (window.L) verfügbar ist.

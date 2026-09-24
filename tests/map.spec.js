@@ -121,7 +121,7 @@ test('Hydranten-Ladestatus zeigt Fortschritt und erfolgreichen Abschluss', async
         });
     });
 
-    await gotoReady(page, '/?lang=de#15/49.555/11.35/voyager');
+    await gotoReady(page, '/?lang=de#15/52.5200/13.4050/voyager');
     const status = page.locator('#hydrant-download-status [role="status"]');
     await expect(status).toBeVisible();
     await expect(status).toContainText('Hydrantendaten werden geladen');

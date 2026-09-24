@@ -12,7 +12,7 @@
  * veraltete Wasserentnahmestellen suggerieren könnte.
  */
 
-const CACHE_NAME = 'ofm-v9-static';
+const CACHE_NAME = 'ofm-v10-static';
 // Nur wirklich statische Assets precachen (keine gehashten Bundles!)
 const ASSETS = [
     '/',
@@ -52,6 +52,15 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
     const url = new URL(e.request.url);
+
+    // Range-Requests und PMTiles/lokale Pipeline nie durch den Service Worker leiten
+    // (Verhindert den bekannten Safari/WebKit-Bug, bei dem der SW Range-Header verwirft)
+    if (e.request.headers.has('range') ||
+        url.pathname.endsWith('.pmtiles') ||
+        url.port === '8080' ||
+        url.hostname === '192.168.178.152') {
+        return;
+    }
 
     // API-Requests (Overpass/Nominatim/Tile-Server) nie cachen
     if (url.hostname.includes('overpass') ||
