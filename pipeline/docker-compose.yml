@@ -25,6 +25,7 @@ services:
       dockerfile: Dockerfile
     container_name: openfiremap-builder
     volumes:
+      - ./builder/build_features.py:/app/build_features.py:ro
       - ${DATA_PATH:-/srv/docker/data/openfiremap}/raw:/data/raw
       - ${DATA_PATH:-/srv/docker/data/openfiremap}/publish:/data/publish
     environment:
