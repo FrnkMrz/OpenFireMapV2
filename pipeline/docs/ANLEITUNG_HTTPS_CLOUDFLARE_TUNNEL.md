@@ -3,7 +3,7 @@
 Stand: 26. September 2026  
 Projekt: OpenFireMap DACH Data Pipeline (VM 102)
 
-Diese Anleitung beschreibt den exakten Ablauf zur Aktivierung von vollwertigem HTTPS für die lokale Pipeline auf VM 102 (`docker-lab-KW3`), ohne bestehende Dienste (GitHub Pages) zu unterbrechen oder Ports im Heimnetz zu öffnen.
+Diese Anleitung beschreibt den exakten Ablauf zur Aktivierung von vollwertigem HTTPS für die lokale Pipeline auf VM 102 (`docker-lab-KW3`), ohne bestehende Dienste (GitHub Pages, E-Mail-Empfang) zu unterbrechen oder Ports im Heimnetz zu öffnen.
 
 ---
 
@@ -11,11 +11,11 @@ Diese Anleitung beschreibt den exakten Ablauf zur Aktivierung von vollwertigem H
 
 | Phase | Zuständigkeit | Dauer | Was passiert? |
 |---|---|---|---|
-| **Phase 1: Cloudflare einrichten** | Du | ~5 Min. | Kostenlosen Account anlegen, Domain hinzufügen, DNS-Records prüfen. |
+| **Phase 1: Cloudflare einrichten** | Du | ~5 Min. | Kostenlosen Account anlegen, Domain hinzufügen, DNS-, Mail- (MX/SPF) & GitHub-Records prüfen. |
 | **Phase 2: Nameserver umstellen** | Du | ~3 Min. | Bei United-Domains die 2 Cloudflare-Nameserver eintragen. |
-| **Phase 3: Tunnel im Dashboard anlegen** | Du | ~3 Min. | Tunnel erstellen, Hostname `pipeline.openfiremap.org` vergeben, Token kopieren. |
-| **Phase 4: Docker-Container auf VM 102 starten** | Assistent | ~2 Min. | `cloudflared` in `docker-compose.yml` einbinden und starten. |
-| **Phase 5: Frontend umstellen & verifizieren** | Assistent | ~3 Min. | `config.js` auf `https://pipeline...` umstellen, testen, bauen und pushen. |
+| **Phase 3: Tunnel im Dashboard anlegen** | Du | ~3 Min. | Tunnel erstellen, Hostname `pipeline.openfiremap.org` vergeben, Token sichern. |
+| **Phase 4: Docker-Container auf VM 102 starten** | Du / Assistent | ~2 Min. | Token in `.env` eintragen, `cloudflared` via `docker-compose.yml` starten. |
+| **Phase 5: Frontend umstellen & verifizieren** | Assistent | ~3 Min. | `config.js` auf HTTPS schalten, testen, bauen und pushen. |
 
 ---
 
@@ -30,15 +30,31 @@ Diese Anleitung beschreibt den exakten Ablauf zur Aktivierung von vollwertigem H
 2. Gib exakt ein: `openfiremap.org`.
 3. Scrolle nach unten und wähle den Tarif **„Free“** (€0) aus ➔ auf **„Continue“** klicken.
 
-### 1.3 DNS-Records überprüfen
-Cloudflare scannt nun automatisch deine bestehenden Einträge bei United-Domains:
-1. Prüfe, ob die 4 A-Records von GitHub Pages gelistet sind:
+### 1.3 DNS-Records, E-Mail & GitHub Pages überprüfen
+Cloudflare scannt nun automatisch deine bestehenden DNS-Einträge bei United-Domains. Bitte überprüfe diese Liste sorgfältig:
+
+#### A) GitHub Pages (Webseite) – UNBEDINGT auf „Graue Wolke“ („DNS only“) stellen!
+1. Die 4 A-Records für die Root-Domain müssen vorhanden sein:
    - `openfiremap.org` ➔ `185.199.108.153`
    - `openfiremap.org` ➔ `185.199.109.153`
    - `openfiremap.org` ➔ `185.199.110.153`
    - `openfiremap.org` ➔ `185.199.111.153`
-2. **Wichtig:** Klicke bei diesen 4 Einträgen auf die Wolke, sodass sie **grau („DNS only“)** ist. *(Das stellt sicher, dass GitHub Pages sein SSL-Zertifikat 1:1 direkt verwaltet).*
-3. Klicke auf **„Continue“**.
+2. Der CNAME-Record für `www` muss vorhanden sein:
+   - `www` ➔ `frnkmrz.github.io.`
+3. **Sehr wichtig:** Klicke bei **allen 4 A-Records UND beim CNAME `www`** auf die orange Wolke, sodass sie **grau („DNS only“)** wird!
+   *(Grund: GitHub Pages verwaltet das Let’s Encrypt SSL-Zertifikat direkt selbst. Wenn Cloudflare dazwischen proxied, kann es zu Zertifikats- und Redirect-Konflikten kommen).*
+
+#### B) E-Mail-Schutz (MX & SPF) – Verhindert Ausfall von E-Mail-Empfang!
+Prüfe, ob deine E-Mail-Einträge von United-Domains übernommen wurden:
+- **MX:** `openfiremap.org` ➔ Priority `10`, Mailserver: `mx00.udag.de.`
+- **MX:** `openfiremap.org` ➔ Priority `20`, Mailserver: `mx01.udag.de.`
+- **TXT (SPF):** `openfiremap.org` ➔ `"v=spf1 include:_smtp.udag.de ~all"`
+> *Hinweis:* Falls Cloudflare die MX- oder TXT-Records nicht automatisch gefunden hat, klicke auf **„Add record“** und trage sie manuell nach. Das garantiert, dass eingehende Mails an `@openfiremap.org` unterbrechungsfrei weiterlaufen!
+
+#### C) DNSSEC Status
+> **Entwarnung:** Für `openfiremap.org` sind bei United-Domains keine DNSSEC DS-Records hinterlegt. Der Wechsel der Nameserver ist technisch unkritisch und führt zu keinen DNSSEC-Validierungsfehlern (kein `SERVFAIL`).
+
+4. Klicke auf **„Continue“**.
 
 ### 1.4 Nameserver notieren
 Cloudflare zeigt dir nun zwei Nameserver an, z. B.:
@@ -68,8 +84,13 @@ Sobald die Umstellung greift (nach 5–20 Minuten), prüfen wir im Terminal:
 dig +short NS openfiremap.org
 # Soll-Ergebnis: Die beiden Cloudflare-Nameserver
 
-# 2. Prüfen, ob GitHub Pages unterbrechungsfrei erreichbar ist:
+# 2. Prüfen, ob E-Mail-Routing intakt ist:
+dig +short MX openfiremap.org
+# Soll-Ergebnis: 10 mx00.udag.de. und 20 mx01.udag.de.
+
+# 3. Prüfen, ob GitHub Pages unterbrechungsfrei erreichbar ist:
 curl -I https://openfiremap.org
+curl -I https://www.openfiremap.org
 # Soll-Ergebnis: HTTP/2 200 OK (GitHub Pages)
 ```
 
@@ -90,7 +111,10 @@ curl -I https://openfiremap.org
    ```bash
    docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJh...
    ```
-5. **Kopiere nur den Token-Wert** (den langen String nach `--token eyJh...`). Den gibst du mir im Chat!
+5. ⚠️ **Sicherheitshinweis zum Token:**
+   Der Token (der lange String nach `--token`) ist ein **privates Geheimnis**.
+   **Teile ihn nicht öffentlich oder in LLM-Chats!**
+   Kopiere ihn und lege ihn direkt auf der VM ab (siehe Phase 4).
 6. Klicke unten rechts auf **„Next“**.
 
 ### 3.3 Public Hostname zuweisen
@@ -105,27 +129,31 @@ curl -I https://openfiremap.org
 
 ---
 
-## Phase 4: Container auf VM 102 aktivieren (Assistent)
+## Phase 4: Container auf VM 102 aktivieren (Du / Assistent)
 
-Sobald du mir den Token aus Schritt 3.2 gibst, übernehme ich:
+### 4.1 Token sicher auf VM 102 hinterlegen
+Führe auf VM 102 folgenden Befehl aus (oder trage es in `/srv/docker/projects/openfiremap-pipeline/.env` ein):
+```bash
+echo "TUNNEL_TOKEN=eyJhDEIN_KOPIERTER_TOKEN_HIER" >> /srv/docker/projects/openfiremap-pipeline/.env
+```
+*(Die Datei `.env` wird durch `.gitignore` automatisch von Git ignoriert und verlässt deinen Server nicht).*
 
-1. Ich binde den `cloudflared`-Dienst in `/srv/docker/projects/openfiremap-pipeline/docker-compose.yml` ein:
-   ```yaml
-     tunnel:
-       image: cloudflare/cloudflared:latest
-       container_name: openfiremap-tunnel
-       restart: unless-stopped
-       command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
-       logging:
-         driver: "json-file"
-         options:
-           max-size: "10m"
-           max-file: "3"
-   ```
-2. Ich starte den Dienst auf VM 102:
-   ```bash
-   docker compose up -d tunnel
-   ```
+### 4.2 Tunnel starten
+In der `docker-compose.yml` ist der Dienst `tunnel` bereits vorbereitet:
+```yaml
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: openfiremap-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    depends_on:
+      - web
+```
+
+Auf VM 102 starten:
+```bash
+docker compose up -d tunnel
+```
 
 ### 🔍 Überprüfung Phase 4:
 ```bash
@@ -146,25 +174,32 @@ curl -I -H "Range: bytes=0-100" https://pipeline.openfiremap.org/openfiremap.pmt
 
 ## Phase 5: OpenFireMap auf HTTPS umstellen & Deployen (Assistent)
 
-1. **Konfiguration anpassen (`src/js/config.js`):**
+Folgende Vorbereitungen sind im Code bereits getroffen:
+1. **Service Worker (`public/sw.js`):**
+   `pipeline.openfiremap.org` umgeht den Service Worker. Dies verhindert den bekannten Safari/WebKit-Bug, bei dem der SW HTTP-`Range`-Header verwirft und dadurch Vektorkacheln nicht laden können.
+2. **Content Security Policy (`index.html`):**
+   `https://pipeline.openfiremap.org` ist in `connect-src` freigeschaltet.
+
+### Letzter Schritt zur Produktivschaltung:
+1. **Konfiguration aktivieren (`src/js/config.js`):**
    ```javascript
    pipeline: {
      enabled: true,
-     url: "https://pipeline.openfiremap.org", // <--- HTTPS statt HTTP-LAN-IP
+     url: "https://pipeline.openfiremap.org", // <--- HTTPS statt lokaler IP
      usePmtiles: true,
-     ...
+     pmtilesFile: "openfiremap.pmtiles",
+     bounds: { south: 49.0, west: 10.1, north: 50.0, east: 11.9 }
+   },
    ```
-2. **CSP (Content-Security-Policy) aktualisieren (`index.html`):**
-   `https://pipeline.openfiremap.org` in `connect-src` eintragen.
-3. **Automatisierte Tests:**
+2. **Automatisierte Tests:**
    * `npm run test:ci` (Vitest)
    * `npx playwright test` (Playwright)
-4. **Produktions-Build & Push:**
+3. **Produktions-Build & Push:**
    * `npm run build`
    * `git commit` & `git push origin main`
 
 ### 🔍 Überprüfung Phase 5:
 * Aufruf von `https://openfiremap.org` im Browser (Desktop & Mobilfunk):
-  - Kein Mixed-Content-Fehler mehr in der Konsole.
-  - Vektorkacheln laden in 20–30 ms über `https://pipeline.openfiremap.org/openfiremap.pmtiles`.
-  - Vollständige Anzeige aller 38.157 Hydranten und 1.538 Gemeindegrenzen.
+  - Kein Mixed-Content-Fehler mehr in der Web-Konsole.
+  - Vektorkacheln laden in 20–30 ms über `https://pipeline.openfiremap.org/openfiremap.pmtiles` mit Status `206 Partial Content`.
+  - Vollständige Anzeige aller 38.157 Hydranten und 1.538 Gemeindegrenzen in Mittelfranken.

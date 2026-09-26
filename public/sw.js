@@ -58,7 +58,8 @@ self.addEventListener('fetch', (e) => {
     if (e.request.headers.has('range') ||
         url.pathname.endsWith('.pmtiles') ||
         url.port === '8080' ||
-        url.hostname === '192.168.178.152') {
+        url.hostname === '192.168.178.152' ||
+        url.hostname === 'pipeline.openfiremap.org') {
         return;
     }
 
