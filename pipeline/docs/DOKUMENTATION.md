@@ -63,6 +63,16 @@ Diese Dokumentation beschreibt die technische Architektur, den Betrieb und die W
   * Healthcheck-Endpunkt `/healthz`
   * Logging: Maximal 3 Dateien à 10 MB
 
+### 3.3 `openfiremap-tunnel` (Docker / Cloudflared)
+* **Image:** `cloudflare/cloudflared:latest`
+* **Aufgabe:**
+  * Baut einen verschlüsselten, rein ausgehenden Tunnel (Outbound TLS) zur Cloudflare Edge auf.
+  * Stellt die Pipeline über `https://pipeline.openfiremap.org` bereit – ohne Portweiterleitung an der FRITZ!Box.
+  * Ermöglicht die Einbindung in die HTTPS-Live-Webseite `https://openfiremap.org` (Mixed Content frei).
+* **Konfiguration & Token:**
+  * Das Authentifizierungs-Token wird sicher in `/srv/docker/projects/openfiremap-pipeline/.env` hinterlegt (`TUNNEL_TOKEN=...`).
+  * Detail-Anleitung: siehe [`ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md`](file:///Users/frank/Library/Mobile%20Documents/com~apple~CloudDocs/GitHub/Play_Antigravtiy/OpenFireMap.org/pipeline/docs/ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md).
+
 ---
 
 ## 4. Betrieb, Wartung & Automatisierung
@@ -94,6 +104,7 @@ Home Assistant (`192.168.178.191`) fragt alle 5 Minuten `http://192.168.178.152:
 
 ## 5. Sicherheit & Rollback
 
-* **Keine Portweiterleitung im Router:** Der Dienst läuft ausschließlich im lokalen Heimnetz (`192.168.178.0/24`).
+* **Keine Portweiterleitung im Router nötig:** Eingehende Anfragen laufen gesichert über den Cloudflare Zero Trust Tunnel (`cloudflared`). Eingehende Ports an der FRITZ!Box bleiben vollständig geschlossen.
+* **Token-Sicherheit:** Das `TUNNEL_TOKEN` ist in `.env` gespeichert und wird niemals in Git versioniert (`.gitignore`).
 * **Sicherer Rollback:** Falls auf VM 102 Probleme auftreten, kann in Proxmox auf den Snapshot `docker-basis-20260921` zurückgerollt werden.
 * **Neustart nach Stromausfall:** Das HP-BIOS ist auf automatischen Start nach Stromwiederkehr konfiguriert. Da VM 102 keinen Autostart hat, bleibt sie nach einem Host-Neustart aus, bis sie bewusst gestartet wird.

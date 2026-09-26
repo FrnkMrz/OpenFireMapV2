@@ -46,11 +46,14 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
 ---
 
 ### Schritt 3: Sicherer externer Zugriff & HTTPS (Cloudflare Tunnel)
-- **Ziel:** Zugriff auf die Pipeline von unterwegs (Smartphone im Mobilfunknetz) und von der HTTPS-Live-Webseite `https://openfiremap.org`.
-- **Konzept:**
-  1. Kleinen `cloudflared`-Container (ca. 15 MB RAM) in die `docker-compose.yml` auf VM 102 aufnehmen.
-  2. Verschlüsselter ausgehender Tunnel zu Cloudflare (keine offenen Ports / Portweiterleitungen am Router nötig).
-  3. Automatische HTTPS-Verschlüsselung mit gültigem Zertifikat.
+- **Status:** 🟡 Vorbereitet & dokumentiert (26. September 2026).
+- **Ziel:** Zugriff auf die Pipeline von unterwegs (Smartphone im Mobilfunknetz) und von der HTTPS-Live-Webseite `https://openfiremap.org` (Mixed-Content-Blockade aufheben).
+- **Umsetzung & Vorbereitungen:**
+  1. `cloudflared`-Container in `docker-compose.yml` integriert und auf VM 102 eingespielt.
+  2. Nginx Healthcheck auf IPv4 (`127.0.0.1`) gehärtet (`healthy`).
+  3. Service Worker ([`public/sw.js`](file:///Users/frank/Library/Mobile%20Documents/com~apple~CloudDocs/GitHub/Play_Antigravtiy/OpenFireMap.org/public/sw.js)) leitet `pipeline.openfiremap.org` am SW vorbei (verhindert Safari WebKit Range Bug).
+  4. Content Security Policy ([`index.html`](file:///Users/frank/Library/Mobile%20Documents/com~apple~CloudDocs/GitHub/Play_Antigravtiy/OpenFireMap.org/index.html)) auf `https://pipeline.openfiremap.org` erweitert.
+  5. Vollständige Schritt-für-Schritt-Anleitung inklusive E-Mail-Schutz (MX/SPF) und GitHub Pages CNAME-Schutz: [`ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md`](file:///Users/frank/Library/Mobile%20Documents/com~apple~CloudDocs/GitHub/Play_Antigravtiy/OpenFireMap.org/pipeline/docs/ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md).
 
 ---
 
