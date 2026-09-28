@@ -59,8 +59,22 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
 
 ---
 
-### Schritt 4: Skalierung auf DACH
-- **Ziel:** Erweiterung der Pipeline von Mittelfranken auf ganz Bayern und später DACH (Deutschland, Österreich, Schweiz).
-- **Konzept:**
-  1. Testen des Bayern-Auszugs (~700 MB `.osm.pbf`).
-  2. Prüfung der PMTiles-Dateigröße und Erstellungsdauer mit `tippecanoe`.
+### Schritt 4: Skalierung auf Bayern (Abgeschlossen) & DACH
+- **Status Bayern:** ✅ Erfolgreich umgesetzt & live (28. September 2026).
+- **Ergebnisse Bayern:**
+  - **Download:** `bayern-latest.osm.pbf` (813,5 MB in 31,8 Sek.).
+  - **Objektzahlen:**
+    - **233.534 Hydranten** (+195.377)
+    - **8.802 Feuerwachen** (+7.582)
+    - **6.180 Löschwasserstellen** (+5.419)
+    - **5.785 Defibrillatoren** (+4.824)
+    - **12.493 Gemeindegrenzen** (+10.955)
+  - **PMTiles-Generierung:** `openfiremap.pmtiles` ist **88,62 MB** groß (in 61,9 Sek. gebaut).
+  - **Gesamte Build-Dauer:** 280,11 Sekunden (~4,6 Minuten).
+  - **Systemstabilität:** 4 GB NVMe-Swap auf VM 102 eingerichtet; Auslastung der NVMe liegt bei nur 5,8 % (113,3 GB frei).
+  - **Frontend:** Abdeckungsbereich (`bounds`) in `src/js/config.js` auf ganz Bayern erweitert (Süd 47.2 bis Nord 50.6, West 8.9 bis Ost 13.9).
+
+- **Nächster Ausbauschritt: Deutschland & DACH:**
+  1. VM 102 in Proxmox auf 8 GiB RAM erhöhen.
+  2. Deutschland-PBF (`germany-latest.osm.pbf`, 4,2 GB) anbinden bzw. DACH via `osmium merge` (DE + AT + CH) zusammenführen.
+  3. Geschätzte DACH-PMTiles-Größe: ~500–650 MB (wird dank Range Requests weiterhin in Millisekunden ausgeliefert).
