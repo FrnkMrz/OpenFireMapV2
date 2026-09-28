@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.13] - 2026-09-28
+
+### Neue Features & Pipeline-Verbesserungen
+- **Präzises Bayern-Abdeckungspolygon**: Neues nach innen gepuffertes Abdeckungspolygon mit 1.296 Stützpunkten (`BAYERN_COVERAGE`, generiert via `pipeline/tools/build_coverage_polygon.py` aus OSM-Relation R2145268, 500 m Innenpuffer, 250 m Toleranz). Verhindert, dass Grenzgebiete außerhalb Bayerns fälschlicherweise der Pipeline zugeordnet werden und leer bleiben.
+- **Exakter Rechtecktest (`isRectInPolygon`)**: Viewports werden nun vollständig auf Kantenüberschneidungen und alle 4 Ecken geprüft (statt bisheriger 5-Punkt-Stichprobe). 40.000 zufällige Viewports in der Simulation verifiziert: 0 fehlerhafte Viewports (>0,1 % außerhalb Bayerns).
+- **Direkter Overpass-Fallback (GeoJSON abgeschaltet)**: Deaktivierung des extrem datenintensiven GeoJSON-Fallbacks (`Config.pipeline.geojsonFallback: false`). Bei PMTiles-Problemen schaltet die App transparent direkt auf Overpass um, ohne mehr als 60 MB GeoJSON auf Mobilgeräten herunterzuladen.
+
+### Sicherheit & Pipeline-Härtung
+- **`metadata.json` entschärft**: Der `system`-Block mit internen Server-Festplattenbelegungen wurde aus der öffentlichen `metadata.json` entfernt und in eine interne `system_stats.json` ausgelagert.
+- **Setup-Skript gehärtet**: `pipeline/setup-vm102.sh` um `openfiremap-tunnel` ergänzt mit Prüfung auf `TUNNEL_TOKEN` vor dem Start.
+- **Automatisierter Cache-Purge**: Vorbereitung für gezielten Cloudflare-Cache-Purge in `pipeline/update.sh`.
+
+### Aufräumarbeiten & Wartung
+- **Service Worker Bereinigung**: Veraltete lokale IP- und Port-8080-Bypässe aus `public/sw.js` entfernt. Cache-Version auf `ofm-v11-static` erhöht.
+- **Dokumentation aktualisiert**: Anpassung aller Dokumente und Roadmaps auf die neue 2-Stufen-Kaskade (PMTiles ➔ Overpass).
+
 ## [v0.6.12] - 2026-09-24
 
 ### Neue Features
