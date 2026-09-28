@@ -65,12 +65,12 @@ export const Config = {
     url: "https://pipeline.openfiremap.org",
     usePmtiles: true,
     pmtilesFile: "openfiremap.pmtiles",
-    // Abdeckungsbereich Mittelfranken (Schnaittach, Nürnberg, Fürth, Erlangen, etc.)
+    // Abdeckungsbereich Bayern (von Lindau/Oberstdorf bis Aschaffenburg/Hof/Wegscheid)
     bounds: {
-      south: 49.0,
-      west: 10.1,
-      north: 50.0,
-      east: 11.9
+      south: 47.2,
+      west: 8.9,
+      north: 50.6,
+      east: 13.9
     }
   },
 

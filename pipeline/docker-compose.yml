@@ -29,7 +29,7 @@ services:
       - ${DATA_PATH:-/srv/docker/data/openfiremap}/raw:/data/raw
       - ${DATA_PATH:-/srv/docker/data/openfiremap}/publish:/data/publish
     environment:
-      - OSM_EXTRACT_URL=${OSM_EXTRACT_URL:-https://download.geofabrik.de/europe/germany/bayern/mittelfranken-latest.osm.pbf}
+      - OSM_EXTRACT_URL=${OSM_EXTRACT_URL:-https://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf}
       - FORCE_DOWNLOAD=${FORCE_DOWNLOAD:-false}
     logging:
       driver: "json-file"

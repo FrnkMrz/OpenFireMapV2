@@ -18,10 +18,10 @@ RAW_DIR = os.getenv("DATA_RAW_DIR", "/data/raw")
 PUBLISH_DIR = os.getenv("DATA_PUBLISH_DIR", "/data/publish")
 TMP_DIR = os.path.join(RAW_DIR, "tmp")
 
-# Standard-Auszug: Mittelfranken (~70 MB, ideal für den Start auf VM 102)
+# Standard-Auszug: Bayern (~750 MB PBF)
 EXTRACT_URL = os.getenv(
     "OSM_EXTRACT_URL",
-    "https://download.geofabrik.de/europe/germany/bayern/mittelfranken-latest.osm.pbf"
+    "https://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf"
 )
 FORCE_DOWNLOAD = os.getenv("FORCE_DOWNLOAD", "false").lower() in ("true", "1", "yes")
 

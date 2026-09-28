@@ -8,20 +8,24 @@ describe('pipeline.js', () => {
     Config.pipeline.enabled = true;
     Config.pipeline.url = 'https://pipeline.openfiremap.org';
     Config.pipeline.bounds = {
-      south: 49.0,
-      west: 10.1,
-      north: 50.0,
-      east: 11.9
+      south: 47.2,
+      west: 8.9,
+      north: 50.6,
+      east: 13.9
     };
   });
 
   describe('isPipelineEligible', () => {
-    it('sollte true zurückgeben, wenn der Ausschnitt in Mittelfranken liegt (z. B. Schnaittach)', () => {
-      const mockBounds = {
+    it('sollte true zurückgeben, wenn der Ausschnitt in Bayern liegt (z. B. Schnaittach, München, Würzburg)', () => {
+      const schnaittachBounds = {
         getCenter: () => ({ lat: 49.555, lng: 11.35 })
       };
-      expect(isPipelineEligible(mockBounds, 15)).toBe(true);
-      expect(isPipelineEligible(mockBounds, 12)).toBe(true);
+      const muenchenBounds = {
+        getCenter: () => ({ lat: 48.137, lng: 11.576 })
+      };
+      expect(isPipelineEligible(schnaittachBounds, 15)).toBe(true);
+      expect(isPipelineEligible(schnaittachBounds, 12)).toBe(true);
+      expect(isPipelineEligible(muenchenBounds, 15)).toBe(true);
     });
 
     it('sollte false zurückgeben, wenn der Zoom unter 12 liegt', () => {
