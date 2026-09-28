@@ -80,6 +80,12 @@ Diese Dokumentation beschreibt die technische Architektur, den Betrieb und die W
 * **Edge-Zertifikat:**
   * Let's Encrypt Wildcard-Zertifikat (`*.openfiremap.org`) via Cloudflare Universal SSL (automatische Verlängerung alle 90 Tage).
 
+### 3.4 Client-Kaskade & Fallback-Strategie (PMTiles → Overpass)
+Im OpenFireMap Frontend (`src/js/pipeline.js` und `src/js/api.js`) gilt folgende Kaskade:
+1. **PMTiles (Standard):** Lädt nur die Kacheln für den aktuellen Sichtbereich per HTTP-206-Range-Requests (~10–50 KB je Kachel).
+2. **Overpass-Fallback:** Bei PMTiles-Fehlern (z. B. Netzwerkabbruch, 404, Tile-Fehler) wechselt die Anwendung sofort und transparent auf die Overpass-API (`pipeline_fallback_to_overpass`).
+3. **GeoJSON-Fallback (optional):** Das Laden kompletter GeoJSON-Dateien (`hydrants.geojson` ~57 MB, `boundaries.geojson` ~35 MB) ist standardmäßig **deaktiviert** (`Config.pipeline.geojsonFallback: false`), um mobile Endgeräte und Mobilfunkverbindungen vor massiven Datenmengen und Speicherengpässen zu schützen.
+
 ---
 
 ## 4. Betrieb, Wartung & Automatisierung

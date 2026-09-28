@@ -1,5 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { isPipelineEligible, isPointInPolygon, isRectInPolygon, geoJsonFeatureToElement, clearPipelineCache } from '../src/js/pipeline.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  isPipelineEligible,
+  isPointInPolygon,
+  isRectInPolygon,
+  geoJsonFeatureToElement,
+  clearPipelineCache,
+  fetchPipelineData,
+  fetchPipelineBoundaries
+} from '../src/js/pipeline.js';
 import { Config } from '../src/js/config.js';
 
 describe('pipeline.js', () => {
@@ -392,6 +400,68 @@ describe('pipeline.js', () => {
     it('sollte fetchPipelineBoundaries als Funktion exportieren', async () => {
       const { fetchPipelineBoundaries } = await import('../src/js/pipeline.js');
       expect(typeof fetchPipelineBoundaries).toBe('function');
+    });
+  });
+
+  describe('geojsonFallback Steuerung', () => {
+    it('sollte bei PMTiles-Fehler und geojsonFallback=false eine Exception werfen und KEIN GeoJSON fetchen', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.geojsonFallback = false;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      Config.pipeline.pmtilesFile = 'test_error.pmtiles';
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const bounds = {
+        getSouth: () => 48.12,
+        getNorth: () => 48.15,
+        getWest: () => 11.55,
+        getEast: () => 11.60
+      };
+
+      const { getPMTilesInstance } = await import('../src/js/pipeline.js');
+      const instance = getPMTilesInstance('https://pipeline.example.com/test_error.pmtiles');
+      vi.spyOn(instance, 'getHeader').mockRejectedValueOnce(new Error('PMTiles network failure'));
+
+      await expect(fetchPipelineData(bounds, 'all', { zoom: 14 })).rejects.toThrow(
+        /PMTiles-Abruf fehlgeschlagen.*GeoJSON-Fallback ist deaktiviert/
+      );
+
+      const geoJsonCalls = fetchSpy.mock.calls.filter(call => typeof call[0] === 'string' && call[0].endsWith('.geojson'));
+      expect(geoJsonCalls.length).toBe(0);
+
+      fetchSpy.mockRestore();
+    });
+
+    it('sollte bei Boundary-PMTiles-Fehler und geojsonFallback=false eine Exception werfen und KEIN boundaries.geojson fetchen', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.geojsonFallback = false;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      Config.pipeline.pmtilesFile = 'boundary_error.pmtiles';
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const bounds = {
+        getSouth: () => 48.12,
+        getNorth: () => 48.15,
+        getWest: () => 11.55,
+        getEast: () => 11.60
+      };
+
+      const { getPMTilesInstance } = await import('../src/js/pipeline.js');
+      const instance = getPMTilesInstance('https://pipeline.example.com/boundary_error.pmtiles');
+      vi.spyOn(instance, 'getHeader').mockRejectedValueOnce(new Error('PMTiles boundary failure'));
+
+      await expect(fetchPipelineBoundaries(bounds, { zoom: 14 })).rejects.toThrow(
+        /PMTiles-Boundary-Abruf fehlgeschlagen.*GeoJSON-Fallback ist deaktiviert/
+      );
+
+      const geoJsonCalls = fetchSpy.mock.calls.filter(call => typeof call[0] === 'string' && call[0].includes('boundaries.geojson'));
+      expect(geoJsonCalls.length).toBe(0);
+
+      fetchSpy.mockRestore();
     });
   });
 });

@@ -67,6 +67,8 @@ export const Config = {
     url: "https://pipeline.openfiremap.org",
     usePmtiles: true,
     pmtilesFile: "openfiremap.pmtiles",
+    // GeoJSON-Fallback für POIs und Grenzen (Default: false, um MB-Downloads auf Mobilgeräten zu verhindern)
+    geojsonFallback: false,
     // Abdeckungsbereich Bayern (von Lindau/Oberstdorf bis Aschaffenburg/Hof/Wegscheid)
     // Äußere Bounding-Box für schnelle Vorfilterung (O(1))
     bounds: {

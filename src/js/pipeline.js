@@ -475,11 +475,18 @@ export async function fetchPipelineData(bounds, mode, { signal, zoom } = {}) {
       }
     } catch (err) {
       if (err?.name === 'AbortError') throw err;
+      if (!Config.pipeline?.geojsonFallback) {
+        throw new Error(`PMTiles-Abruf fehlgeschlagen (${err.message}). GeoJSON-Fallback ist deaktiviert.`, { cause: err });
+      }
       console.warn('[Pipeline] PMTiles-Abruf fehlgeschlagen, wechsle auf GeoJSON-Fallback:', err.message);
     }
   }
 
-  // 2. Fallback: GeoJSON-Dataset mit 10-Minuten-In-Memory-Cache
+  // 2. Optionaler Fallback: GeoJSON-Dataset mit 10-Minuten-In-Memory-Cache
+  if (!Config.pipeline?.geojsonFallback) {
+    throw new Error('PMTiles nicht aktiv oder fehlgeschlagen und GeoJSON-Fallback ist deaktiviert.');
+  }
+
   const now = Date.now();
   const cacheKey = mode === 'stations' ? 'stations' : 'all';
   const isCacheValid = _pipelineCache[cacheKey] && (now - _pipelineCache.timestamp < 10 * 60 * 1000);
@@ -592,14 +599,21 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom } = {}) {
 
       await Promise.all(promises);
       const elements = Array.from(boundaryMap.values());
-      if (elements.length > 0) return elements;
+      return elements;
     } catch (pmErr) {
       if (pmErr?.name === 'AbortError') throw pmErr;
+      if (!Config.pipeline?.geojsonFallback) {
+        throw new Error(`PMTiles-Boundary-Abruf fehlgeschlagen (${pmErr.message}). GeoJSON-Fallback ist deaktiviert.`, { cause: pmErr });
+      }
       console.warn('[Pipeline] PMTiles-Boundary-Abruf fehlgeschlagen, wechsle auf GeoJSON:', pmErr.message);
     }
   }
 
-  // Stufe 2: Fallback auf boundaries.geojson
+  // Stufe 2: Optionaler Fallback auf boundaries.geojson
+  if (!Config.pipeline?.geojsonFallback) {
+    throw new Error('PMTiles nicht aktiv oder fehlgeschlagen und GeoJSON-Fallback ist deaktiviert.');
+  }
+
   try {
     const url = `${baseUrl.replace(/\/+$/, '')}/boundaries.geojson`;
     const res = await fetch(url, { signal, cache: 'no-cache' });
