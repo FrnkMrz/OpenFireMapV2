@@ -97,4 +97,4 @@ GitHub Actions workflow (`.github/workflows/pages.yml`) runs on push to `main`:
 - **Cache**: IndexedDB-backed (`OFM_DB`) with user-configurable TTL via `localStorage` (Off / 1h / 1d / 3d / 7d / 30d, default 7 days)
 - **Export**: jsPDF + html2canvas, lazy-loaded on startup; zoom-based area limits in `Config.exportZoomLimitsKm` prevent browser OOM
 - **i18n**: `t('key')` function from `i18n.js`; run `npm run i18n:check` to verify all keys are present across language files
-- **Local Pipeline / PMTiles**: Optional local pipeline via VM 102 (`Config.pipeline.url`, e.g. Mittelfranken extract). Fetches vector tiles via HTTP Range Requests (`pmtiles`), decodes directly into native Leaflet elements with 3-tier cascade fallback (PMTiles -> GeoJSON -> Overpass).
+- **Local Pipeline / PMTiles**: Optional local pipeline via VM 102 (`Config.pipeline.url`, e.g. Bayern extract). Fetches vector tiles via HTTP Range Requests (`pmtiles`), decodes directly into native Leaflet elements with 3-tier cascade fallback (PMTiles -> GeoJSON -> Overpass).

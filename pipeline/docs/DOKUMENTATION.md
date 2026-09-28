@@ -50,7 +50,7 @@ Diese Dokumentation beschreibt die technische Architektur, den Betrieb und die W
   2. Filterung nach OSM-Tags (Hydranten, Wachen, Löschwasserstellen, Defibrillatoren sowie Verwaltungsgrenzen `boundaries`).
   3. Export als GeoJSON nach `/srv/docker/data/openfiremap/publish/`.
   4. **PMTiles Vektorkachel-Erzeugung (`tippecanoe`):**  
-     Bündelt alle Layer (`fire_stations`, `hydrants`, `water_points`, `defibrillators`, `boundaries`) in eine einzige kompakte Datei `openfiremap.pmtiles` (12 MB inkl. aller Grenzlinien, Zoom 12–16) in unter 5 Sekunden.
+     Bündelt alle Layer (`fire_stations`, `hydrants`, `water_points`, `defibrillators`, `boundaries`) in eine einzige kompakte Datei `openfiremap.pmtiles` (**88,6 MB** für den gesamten Freistaat Bayern inkl. aller 12.493 Gemeindegrenzen und 233.534 Hydranten, Zoom 12–16) in ca. 62 Sekunden.
   5. Berechnung von Differenzen zum Vortag (`diff`), Speicherauslastung und Schreiben von `metadata.json`.
 
 ### 3.2 `openfiremap-web` (Docker / Nginx Alpine)
@@ -60,6 +60,8 @@ Diese Dokumentation beschreibt die technische Architektur, den Betrieb und die W
   * `gzip off;` dediziert für `.pmtiles`, damit HTTP Byte Serving auch in Safari/WebKit mit `Accept-Encoding: gzip` standardkonform funktioniert
   * `gzip on;` aktiv für GeoJSON und JSON (reduziert Transfergröße um ~80 %)
   * Vollständige CORS-Header inklusive `Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges, ETag`
+  * `etag on;` für versionsgenaue Client-Validierung
+  * `autoindex off;` zur Absicherung gegen ungewollte Verzeichnislisten
   * Healthcheck-Endpunkt `/healthz`
   * Logging: Maximal 3 Dateien à 10 MB
 
@@ -122,7 +124,7 @@ curl -4 -s https://pipeline.openfiremap.org/metadata.json | jq .summary
 Home Assistant (`192.168.178.191`) fragt alle 5 Minuten `http://192.168.178.152:8080/metadata.json` (oder `https://pipeline.openfiremap.org/metadata.json`) über einen REST-Sensor ab.
 Überwachte Werte:
 * **Systemstatus:** `ok` / `offline`
-* **Zusammenfassung:** z. B. `"38157 Hydranten (±0), 1220 Wachen (+8), 761 Wasserstellen (±0), 961 Defis (+5), 1538 Grenzen (±0)"`
+* **Zusammenfassung:** z. B. `"233534 Hydranten (+195377), 8802 Wachen (+7582), 6180 Wasserstellen (+5419), 5785 Defis (+4824), 12493 Grenzen (+10955)"`
 * **Tägliche Differenz:** `diff_text` pro Objekttyp
 * **Speicherplatz:** `disk_free_gb`, `disk_used_percent`
 * **Build-Dauer:** `timings.total_sec`
@@ -159,6 +161,43 @@ Home Assistant (`192.168.178.191`) fragt alle 5 Minuten `http://192.168.178.152:
 ## 6. Sicherheit & Rollback
 
 * **Keine Portweiterleitung im Router nötig:** Eingehende Anfragen laufen gesichert über den Cloudflare Zero Trust Tunnel (`cloudflared`). Eingehende Ports an der FRITZ!Box bleiben vollständig geschlossen.
+* **Keine Verzeichnisauflistung:** `autoindex off;` in Nginx verhindert Directory-Browsing.
+* **Öffentliches HTTPS:** Veraltete lokale IP-Adressen wurden aus dem Content-Security-Policy-Header (`connect-src`) entfernt. Der obsolete Header `Access-Control-Allow-Private-Network` wurde bereinigt.
 * **Token-Sicherheit:** Das `TUNNEL_TOKEN` ist in `.env` gespeichert und wird niemals in Git versioniert (`.gitignore`).
 * **Sicherer Rollback:** Falls auf VM 102 Probleme auftreten, kann in Proxmox auf den Snapshot `docker-basis-20260921` zurückgerollt werden.
 * **Neustart nach Stromausfall:** Das HP-BIOS ist auf automatischen Start nach Stromwiederkehr konfiguriert. Da VM 102 keinen Autostart hat, bleibt sie nach einem Host-Neustart aus, bis sie bewusst gestartet wird.
+
+---
+
+## 7. Cloudflare Caching & PMTiles Edge-Beschleunigung
+
+### 7.1 Hintergrund & Notwendigkeit einer Cache-Regel
+Standardmäßig cacht Cloudflare nur statische Dateien bekannter Endungen (`.css`, `.js`, `.png`, `.jpg` etc.). Die Dateiendung `.pmtiles` gehört nicht zur Cloudflare-Standardliste und wird ohne Regel standardmäßig mit `cf-cache-status: DYNAMIC` an VM 102 durchgereicht.
+
+Mit einer **Cloudflare Cache Rule** werden Byte-Ranges der Vektorkacheln direkt an den weltweiten Cloudflare-Edge-Knoten (z. B. Frankfurt, München, Berlin) zwischengespeichert. Beliebte Kacheln werden dadurch in **1–5 ms** ausgeliefert, während die Upstream-Bandbreite von VM 102 drastisch geschont wird.
+
+### 7.2 Konfiguration im Cloudflare Dashboard
+1. Öffne das [Cloudflare Dashboard](https://dash.cloudflare.com/) ➔ Zone `openfiremap.org`.
+2. Navigiere zu **Caching** ➔ **Cache Rules** ➔ **Create rule**.
+3. **Regel-Name:** `Cache PMTiles Vector Tiles`
+4. **Wenn eingehende Anfragen übereinstimmen (Matching criteria):**
+   * Feld: `Hostname` | Operator: `equals` | Wert: `pipeline.openfiremap.org`
+   * **AND**
+   * Feld: `URI Path` | Operator: `ends with` | Wert: `.pmtiles`
+5. **Aktion / Cache-Berechtigung:**
+   * **Cache eligibility:** `Eligible for cache` (Cache Everything)
+   * **Edge TTL:** `Respect origin` (nutzt Nginx-Vorgabe: `max-age=86400` / 1 Tag)
+   * **Browser TTL:** `Respect origin`
+6. Klicke auf **Deploy**.
+
+### 7.3 Cache-Invalidierung bei nächtlichen Builds
+Wenn VM 102 jede Nacht um 03:30 Uhr `openfiremap.pmtiles` neu generiert:
+* Durch `ETag` und `must-revalidate` im Nginx-Header prüft Cloudflare veraltete Kacheln automatisch.
+* **Manueller / Automatisierter Purge via Cloudflare API:**
+  ```bash
+  curl -X POST "https://api.cloudflare.com/client/v4/zones/<ZONE_ID>/purge_cache" \
+       -H "Authorization: Bearer <API_TOKEN>" \
+       -H "Content-Type: application/json" \
+       -d '{"files":["https://pipeline.openfiremap.org/openfiremap.pmtiles"]}'
+  ```
+  Dieser Aufruf kann optional am Ende von `update.sh` hinterlegt werden, sobald ein Cloudflare API-Token mit der Berechtigung `Zone:Cache Purge` existiert.

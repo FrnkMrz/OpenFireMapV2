@@ -24,7 +24,7 @@ Dieses Projekt stellt eine eigene, performante und ausfallsichere Datenquelle f�
 ```
                    +--------------------------------------------+
                    |            Geofabrik Download              |
-                   |   (z. B. mittelfranken-latest.osm.pbf)     |
+                   |      (z. B. bayern-latest.osm.pbf)         |
                    +---------------------+----------------------+
                                          |
                                          v
@@ -64,7 +64,7 @@ Dieses Projekt stellt eine eigene, performante und ausfallsichere Datenquelle f�
                       +--------------------------------------+
                       | OpenFireMap Web-Client (HTTPS)       |
                       | https://openfiremap.org              |
-                      +--------------------------------------+
+                      +------------------+-------------------+
 ```
 
 ---
@@ -76,15 +76,15 @@ Dieses Projekt stellt eine eigene, performante und ausfallsichere Datenquelle f�
 
 Alle Endpunkte unterstützen `CORS` (`Access-Control-Allow-Origin: *`) und HTTP Byte-Range-Requests:
 
-| Endpunkt | Typ | Beschreibung | Typischer Umfang (Mittelfranken) |
+| Endpunkt | Typ | Beschreibung | Typischer Umfang (Freistaat Bayern) |
 |---|---|---|---|
 | `/metadata.json` | JSON | Status, Build-Zeitstempel, Quell-URL, Objektstatistiken | Status-Info |
-| `/openfiremap.pmtiles` | PMTiles | **Vektor-Kacheln** (Z12–Z16, inkl. 1.538 Grenzen & aller Objekte) | **~11,5 MB** |
-| `/hydrants.geojson` | GeoJSON | Über-/Unterflurhydranten, WSH, Wandhydranten | ~38.157 Objekte (8,5 MB) |
-| `/fire_stations.geojson` | GeoJSON | Feuerwehrhäuser, Berufs-/Freiwillige Feuerwehren | ~1.220 Objekte |
-| `/water_points.geojson` | GeoJSON | Zisternen, Löschwasserteiche, Saugestellen | ~760 Objekte |
-| `/defibrillators.geojson` | GeoJSON | Öffentlich zugängliche AED-Geräte | ~960 Objekte |
-| `/boundaries.geojson` | GeoJSON | Gemeindegrenzen zur Einsatzgebiets-Erkennung | ~1.538 Polygone |
+| `/openfiremap.pmtiles` | PMTiles | **Vektor-Kacheln** (Z12–Z16, inkl. 12.493 Grenzen & aller Objekte) | **~88,6 MB** |
+| `/hydrants.geojson` | GeoJSON | Über-/Unterflurhydranten, WSH, Wandhydranten | ~233.534 Objekte (~65 MB) |
+| `/fire_stations.geojson` | GeoJSON | Feuerwehrhäuser, Berufs-/Freiwillige Feuerwehren | ~8.802 Objekte |
+| `/water_points.geojson` | GeoJSON | Zisternen, Löschwasserteiche, Saugestellen | ~6.180 Objekte |
+| `/defibrillators.geojson` | GeoJSON | Öffentlich zugängliche AED-Geräte | ~5.785 Objekte |
+| `/boundaries.geojson` | GeoJSON | Gemeindegrenzen zur Einsatzgebiets-Erkennung | ~12.493 Polygone |
 
 ---
 
@@ -156,14 +156,15 @@ This project provides an independent, fast, and resilient data source for OpenFi
 
 All endpoints support `CORS` (`Access-Control-Allow-Origin: *`) and `Gzip`:
 
-| Endpoint | Type | Description | Typical Size (Middle Franconia) |
+| Endpoint | Type | Description | Typical Size (Bavaria) |
 |---|---|---|---|
 | `/metadata.json` | JSON | Status, build timestamp, source URL, object counts | Status info |
-| `/openfiremap.pmtiles` | PMTiles | **Vector Tiles** (Z12–Z16) as a single compact archive for range requests | **~1.9 MB** |
-| `/hydrants.geojson` | GeoJSON | Underground/pillar hydrants, WSH, wall hydrants | ~38,000 objects (8.5 MB) |
-| `/fire_stations.geojson` | GeoJSON | Fire stations, volunteer & professional departments | ~1,200 objects |
-| `/water_points.geojson` | GeoJSON | Cisterns, fire water ponds, suction points | ~760 objects |
-| `/defibrillators.geojson` | GeoJSON | Publicly accessible AED devices | ~950 objects |
+| `/openfiremap.pmtiles` | PMTiles | **Vector Tiles** (Z12–Z16) as a single compact archive for range requests | **~88.6 MB** |
+| `/hydrants.geojson` | GeoJSON | Underground/pillar hydrants, WSH, wall hydrants | ~233,534 objects (~65 MB) |
+| `/fire_stations.geojson` | GeoJSON | Fire stations, volunteer & professional departments | ~8,802 objects |
+| `/water_points.geojson` | GeoJSON | Cisterns, fire water ponds, suction points | ~6,180 objects |
+| `/defibrillators.geojson` | GeoJSON | Publicly accessible AED devices | ~5,785 objects |
+| `/boundaries.geojson` | GeoJSON | Municipal boundaries for operational areas | ~12,493 polygons |
 
 ---
 

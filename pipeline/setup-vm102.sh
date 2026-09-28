@@ -44,30 +44,60 @@ server {
     gzip_types application/json application/geo+json text/plain application/javascript text/css;
     gzip_min_length 256;
 
-    add_header Access-Control-Allow-Origin * always;
-    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "*" always;
-    add_header Access-Control-Expose-Headers "Content-Range, Content-Length, Accept-Ranges" always;
-
     types {
+        text/html html htm;
+        application/json json;
+        application/geo+json geojson;
         application/vnd.pmtiles pmtiles;
     }
 
-    location / {
+    etag on;
+
+    # PMTiles Vektorkacheln:
+    # WICHTIG: gzip MUSS deaktiviert sein, damit HTTP-Byte-Range-Requests (206 Partial Content)
+    # in allen Browsern (insbesondere Safari/WebKit) einwandfrei und ohne Header-Kollisionen funktionieren!
+    location ~* \.pmtiles$ {
+        gzip off;
+
+        add_header Access-Control-Allow-Origin * always;
+        add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "*" always;
+        add_header Access-Control-Expose-Headers "Content-Range, Content-Length, Accept-Ranges, ETag" always;
+        add_header Cache-Control "public, max-age=86400, must-revalidate" always;
+
         if ($request_method = 'OPTIONS') {
             add_header Access-Control-Allow-Origin * always;
             add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
             add_header Access-Control-Allow-Headers "*" always;
+            add_header Access-Control-Expose-Headers "Content-Range, Content-Length, Accept-Ranges, ETag" always;
             add_header Content-Length 0;
             add_header Content-Type text/plain;
             return 204;
         }
 
-        autoindex on;
-        autoindex_exact_size off;
-        autoindex_localtime on;
+        try_files $uri =404;
+    }
 
-        add_header Cache-Control "public, max-age=3600, must-revalidate";
+    location / {
+        # CORS Header
+        add_header Access-Control-Allow-Origin * always;
+        add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "*" always;
+        add_header Access-Control-Expose-Headers "Content-Range, Content-Length, Accept-Ranges, ETag" always;
+        add_header Cache-Control "public, max-age=3600, must-revalidate" always;
+
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin * always;
+            add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+            add_header Access-Control-Allow-Headers "*" always;
+            add_header Access-Control-Expose-Headers "Content-Range, Content-Length, Accept-Ranges, ETag" always;
+            add_header Content-Length 0;
+            add_header Content-Type text/plain;
+            return 204;
+        }
+
+        autoindex off;
+
         try_files $uri $uri/ =404;
     }
 
@@ -117,7 +147,7 @@ TMP_DIR = os.path.join(RAW_DIR, "tmp")
 
 EXTRACT_URL = os.getenv(
     "OSM_EXTRACT_URL",
-    "https://download.geofabrik.de/europe/germany/bayern/mittelfranken-latest.osm.pbf"
+    "https://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf"
 )
 FORCE_DOWNLOAD = os.getenv("FORCE_DOWNLOAD", "false").lower() in ("true", "1", "yes")
 
@@ -315,7 +345,7 @@ services:
       - /srv/docker/data/openfiremap/raw:/data/raw
       - /srv/docker/data/openfiremap/publish:/data/publish
     environment:
-      - OSM_EXTRACT_URL=${OSM_EXTRACT_URL:-https://download.geofabrik.de/europe/germany/bayern/mittelfranken-latest.osm.pbf}
+      - OSM_EXTRACT_URL=${OSM_EXTRACT_URL:-https://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf}
       - FORCE_DOWNLOAD=${FORCE_DOWNLOAD:-false}
     logging:
       driver: "json-file"
@@ -330,7 +360,7 @@ cd "$PROJECT_DIR"
 docker compose build builder
 
 # 4. Ersten Daten-Build ausführen
-echo "⚡ [4/5] Führe Datenextraktion aus (Mittelfranken-Auszug)..."
+echo "⚡ [4/5] Führe Datenextraktion aus (Bayern-Auszug)..."
 docker compose run --rm builder
 
 # 5. Web-Server starten

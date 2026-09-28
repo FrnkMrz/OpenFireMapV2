@@ -65,8 +65,44 @@ export function getPMTilesInstance(url) {
 }
 
 /**
+ * Prüft mit dem Ray-Casting-Algorithmus (Jordan Curve Theorem), ob ein Punkt (lat, lon)
+ * innerhalb eines geschlossenen Polygons liegt.
+ * @param {number} lat Breitengrad
+ * @param {number} lon Längengrad
+ * @param {Array<[number, number]>} polygon Array von [lat, lon]-Koordinaten
+ * @returns {boolean}
+ */
+export function isPointInPolygon(lat, lon, polygon) {
+  if (!Array.isArray(polygon) || polygon.length < 3 || lat == null || lon == null) {
+    return false;
+  }
+  let inside = false;
+  const n = polygon.length;
+  let j = n - 1;
+
+  for (let i = 0; i < n; i++) {
+    const yi = polygon[i][0];
+    const xi = polygon[i][1];
+    const yj = polygon[j][0];
+    const xj = polygon[j][1];
+
+    const intersect = ((yi > lat) !== (yj > lat)) &&
+      (lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+    j = i;
+  }
+
+  return inside;
+}
+
+/**
  * Prüft, ob der aktuelle Kartenausschnitt im Abdeckungsbereich der Pipeline liegt.
- * @param {L.LatLngBounds} bounds 
+ * Nutzt ein zweistufiges Verfahren:
+ * 1. Schneller Bounding-Box Grobfilter O(1)
+ * 2. Exakter Polygon-Feinfilter (Ray-Casting) für Zentrum UND alle 4 Ecken des Viewports.
+ * Wenn der Viewport die Landesgrenze schneidet (z. B. Ulm/Neu-Ulm) oder außerhalb liegt
+ * (z. B. Salzburg/Tirol/Hessen), wird false zurückgegeben, damit Overpass lückenlos anspringt.
+ * @param {L.LatLngBounds|Object} bounds 
  * @param {number} zoom 
  * @returns {boolean}
  */
@@ -77,19 +113,46 @@ export function isPipelineEligible(bounds, zoom) {
   const pb = Config.pipeline.bounds;
   if (!pb) return false;
 
-  const center = typeof bounds.getCenter === 'function' ? bounds.getCenter() : null;
+  let center = typeof bounds.getCenter === 'function' ? bounds.getCenter() : null;
+  if (!center && bounds.south != null && bounds.north != null && bounds.west != null && bounds.east != null) {
+    center = { lat: (bounds.south + bounds.north) / 2, lon: (bounds.west + bounds.east) / 2 };
+  }
   if (!center) return false;
 
-  const lat = center.lat;
-  const lon = center.lng ?? center.lon;
-  if (lat == null || lon == null) return false;
+  const centerLat = center.lat;
+  const centerLon = center.lng ?? center.lon;
+  if (centerLat == null || centerLon == null) return false;
 
-  return (
-    lat >= pb.south &&
-    lat <= pb.north &&
-    lon >= pb.west &&
-    lon <= pb.east
+  // Stufe 1: Schneller Bounding-Box Check (Grobfilter O(1))
+  const inBBox = (
+    centerLat >= pb.south &&
+    centerLat <= pb.north &&
+    centerLon >= pb.west &&
+    centerLon <= pb.east
   );
+  if (!inBBox) return false;
+
+  // Stufe 2: Exakter Polygon-Check (Feinfilter)
+  const polygon = Config.pipeline.coveragePolygon;
+  if (Array.isArray(polygon) && polygon.length >= 3) {
+    // 2a. Zentrum prüfen
+    if (!isPointInPolygon(centerLat, centerLon, polygon)) return false;
+
+    // 2b. Alle 4 Ecken des Viewports ermitteln & prüfen
+    const south = typeof bounds.getSouth === 'function' ? bounds.getSouth() : (bounds.south ?? bounds._southWest?.lat);
+    const north = typeof bounds.getNorth === 'function' ? bounds.getNorth() : (bounds.north ?? bounds._northEast?.lat);
+    const west = typeof bounds.getWest === 'function' ? bounds.getWest() : (bounds.west ?? bounds._southWest?.lng);
+    const east = typeof bounds.getEast === 'function' ? bounds.getEast() : (bounds.east ?? bounds._northEast?.lng);
+
+    if (south != null && north != null && west != null && east != null) {
+      if (!isPointInPolygon(south, west, polygon)) return false; // Süd-West
+      if (!isPointInPolygon(north, west, polygon)) return false; // Nord-West
+      if (!isPointInPolygon(north, east, polygon)) return false; // Nord-Ost
+      if (!isPointInPolygon(south, east, polygon)) return false; // Süd-Ost
+    }
+  }
+
+  return true;
 }
 
 /**

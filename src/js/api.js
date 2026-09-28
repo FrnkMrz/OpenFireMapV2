@@ -609,7 +609,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
     const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
     if (isPipelineEligible(viewBounds, zoom)) {
       try {
-        console.log('[API] Verwende lokale Pipeline für Mittelfranken...');
+        console.log('[API] Verwende lokale Pipeline für Bayern...');
         const pipelineElements = await fetchPipelineData(viewBounds, requestedMode, { signal: controller.signal, zoom });
         ensureCurrentRequest();
 

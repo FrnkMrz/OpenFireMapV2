@@ -72,7 +72,7 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
   - **PMTiles-Generierung:** `openfiremap.pmtiles` ist **88,62 MB** groß (in 61,9 Sek. gebaut).
   - **Gesamte Build-Dauer:** 280,11 Sekunden (~4,6 Minuten).
   - **Systemstabilität:** 4 GB NVMe-Swap auf VM 102 eingerichtet; Auslastung der NVMe liegt bei nur 5,8 % (113,3 GB frei).
-  - **Frontend:** Abdeckungsbereich (`bounds`) in `src/js/config.js` auf ganz Bayern erweitert (Süd 47.2 bis Nord 50.6, West 8.9 bis Ost 13.9).
+  - **Frontend:** Exakte Grenzabdeckung via 124-Punkt-Polygon des Freistaates Bayern mit Ray-Casting Jordan Curve Theorem und 4-Ecken-Viewport-Prüfung in `src/js/pipeline.js` implementiert (verhindert leere Karten in Nachbarländern/Grenzgebieten wie Ulm oder Salzburg).
 
 - **Nächster Ausbauschritt: Deutschland & DACH:**
   1. VM 102 in Proxmox auf 8 GiB RAM erhöhen.

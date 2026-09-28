@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { isPipelineEligible, geoJsonFeatureToElement, clearPipelineCache } from '../src/js/pipeline.js';
+import { isPipelineEligible, isPointInPolygon, geoJsonFeatureToElement, clearPipelineCache } from '../src/js/pipeline.js';
 import { Config } from '../src/js/config.js';
 
 describe('pipeline.js', () => {
@@ -15,17 +15,125 @@ describe('pipeline.js', () => {
     };
   });
 
+  describe('isPointInPolygon (Ray-Casting Jordan Curve)', () => {
+    const polygon = Config.pipeline.coveragePolygon;
+
+    it('sollte bayerische Städte als innerhalb (true) erkennen', () => {
+      // München
+      expect(isPointInPolygon(48.137, 11.576, polygon)).toBe(true);
+      // Nürnberg
+      expect(isPointInPolygon(49.452, 11.077, polygon)).toBe(true);
+      // Augsburg
+      expect(isPointInPolygon(48.366, 10.894, polygon)).toBe(true);
+      // Würzburg
+      expect(isPointInPolygon(49.793, 9.953, polygon)).toBe(true);
+      // Regensburg
+      expect(isPointInPolygon(49.013, 12.101, polygon)).toBe(true);
+      // Passau (Zentrum)
+      expect(isPointInPolygon(48.566, 13.431, polygon)).toBe(true);
+      // Kempten (Allgäu)
+      expect(isPointInPolygon(47.728, 10.316, polygon)).toBe(true);
+      // Hof (Oberfranken)
+      expect(isPointInPolygon(50.319, 11.916, polygon)).toBe(true);
+      // Aschaffenburg (Unterfranken)
+      expect(isPointInPolygon(49.974, 9.155, polygon)).toBe(true);
+      // Neu-Ulm (bayerische Seite der Donau)
+      expect(isPointInPolygon(48.395, 10.005, polygon)).toBe(true);
+    });
+
+    it('sollte Städte außerhalb Bayerns (auch innerhalb der Bounding-Box) als außerhalb (false) erkennen', () => {
+      // Salzburg (Österreich - lag früher in der BBox!)
+      expect(isPointInPolygon(47.809, 13.055, polygon)).toBe(false);
+      // Ulm (Baden-Württemberg - direkt gegenüber von Neu-Ulm an der Donau)
+      expect(isPointInPolygon(48.401, 9.987, polygon)).toBe(false);
+      // Innsbruck (Österreich)
+      expect(isPointInPolygon(47.269, 11.404, polygon)).toBe(false);
+      // Stuttgart (Baden-Württemberg)
+      expect(isPointInPolygon(48.775, 9.182, polygon)).toBe(false);
+      // Fulda (Hessen)
+      expect(isPointInPolygon(50.553, 9.675, polygon)).toBe(false);
+      // Sonneberg (Thüringen)
+      expect(isPointInPolygon(50.360, 11.176, polygon)).toBe(false);
+      // Plauen (Sachsen)
+      expect(isPointInPolygon(50.495, 12.138, polygon)).toBe(false);
+      // Hamburg (weit außerhalb)
+      expect(isPointInPolygon(53.551, 9.993, polygon)).toBe(false);
+    });
+
+    it('sollte bei ungültigen Eingaben sicher false zurückgeben', () => {
+      expect(isPointInPolygon(null, 11.0, polygon)).toBe(false);
+      expect(isPointInPolygon(48.0, null, polygon)).toBe(false);
+      expect(isPointInPolygon(48.0, 11.0, null)).toBe(false);
+      expect(isPointInPolygon(48.0, 11.0, [])).toBe(false);
+      expect(isPointInPolygon(48.0, 11.0, [[48.0, 11.0]])).toBe(false);
+    });
+  });
+
   describe('isPipelineEligible', () => {
     it('sollte true zurückgeben, wenn der Ausschnitt in Bayern liegt (z. B. Schnaittach, München, Würzburg)', () => {
       const schnaittachBounds = {
-        getCenter: () => ({ lat: 49.555, lng: 11.35 })
+        getCenter: () => ({ lat: 49.555, lng: 11.35 }),
+        getSouth: () => 49.54,
+        getNorth: () => 49.57,
+        getWest: () => 11.33,
+        getEast: () => 11.37
       };
       const muenchenBounds = {
-        getCenter: () => ({ lat: 48.137, lng: 11.576 })
+        getCenter: () => ({ lat: 48.137, lng: 11.576 }),
+        getSouth: () => 48.12,
+        getNorth: () => 48.15,
+        getWest: () => 11.55,
+        getEast: () => 11.60
       };
       expect(isPipelineEligible(schnaittachBounds, 15)).toBe(true);
       expect(isPipelineEligible(schnaittachBounds, 12)).toBe(true);
       expect(isPipelineEligible(muenchenBounds, 15)).toBe(true);
+    });
+
+    it('sollte false zurückgeben für Salzburg (AT), obwohl es in der alten Bounding-Box lag', () => {
+      const salzburgBounds = {
+        getCenter: () => ({ lat: 47.809, lng: 13.055 }),
+        getSouth: () => 47.78,
+        getNorth: () => 47.83,
+        getWest: () => 13.02,
+        getEast: () => 13.08
+      };
+      expect(isPipelineEligible(salzburgBounds, 15)).toBe(false);
+    });
+
+    it('sollte false zurückgeben für Ulm (BW), obwohl es in der alten Bounding-Box lag', () => {
+      const ulmBounds = {
+        getCenter: () => ({ lat: 48.401, lng: 9.987 }),
+        getSouth: () => 48.38,
+        getNorth: () => 48.42,
+        getWest: () => 9.96,
+        getEast: () => 10.01
+      };
+      expect(isPipelineEligible(ulmBounds, 15)).toBe(false);
+    });
+
+    it('sollte false zurückgeben bei Grenzüberschreitung (z. B. Zentrum in Neu-Ulm/BY, aber Westkante in Ulm/BW)', () => {
+      // Zentrum ist in Neu-Ulm (BY), aber der Viewport reicht über die Donau nach Ulm (BW)
+      const borderCrossingBounds = {
+        getCenter: () => ({ lat: 48.395, lng: 10.005 }), // Neu-Ulm (in Bayern)
+        getSouth: () => 48.38,
+        getNorth: () => 48.41,
+        getWest: () => 9.97, // Liegt in Ulm (Baden-Württemberg)!
+        getEast: () => 10.02
+      };
+      // Da die Westecke außerhalb von Bayern liegt, MUSS isPipelineEligible false liefern,
+      // damit Overpass anspringt und Ulm nicht als leere Fläche gerendert wird!
+      expect(isPipelineEligible(borderCrossingBounds, 15)).toBe(false);
+    });
+
+    it('sollte Plain-Object Bounds mit south, west, north, east ohne Leaflet-Methoden unterstützen', () => {
+      const plainBounds = {
+        south: 48.12,
+        north: 48.15,
+        west: 11.55,
+        east: 11.60
+      };
+      expect(isPipelineEligible(plainBounds, 15)).toBe(true);
     });
 
     it('sollte false zurückgeben, wenn der Zoom unter 12 liegt', () => {

@@ -203,4 +203,4 @@ Folgende Vorbereitungen sind im Code bereits getroffen:
 * Aufruf von `https://openfiremap.org` im Browser (Desktop & Mobilfunk):
   - Kein Mixed-Content-Fehler mehr in der Web-Konsole.
   - Vektorkacheln laden in 20–30 ms über `https://pipeline.openfiremap.org/openfiremap.pmtiles` mit Status `206 Partial Content`.
-  - Vollständige Anzeige aller 38.157 Hydranten und 1.538 Gemeindegrenzen in Mittelfranken.
+  - Vollständige Anzeige aller 233.534 Hydranten und 12.493 Gemeindegrenzen im Freistaat Bayern.
