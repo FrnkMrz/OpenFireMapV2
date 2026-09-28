@@ -37,8 +37,8 @@ describe('pipeline.js', () => {
       expect(isPointInPolygon(50.319, 11.916, polygon)).toBe(true);
       // Aschaffenburg (Unterfranken)
       expect(isPointInPolygon(49.974, 9.155, polygon)).toBe(true);
-      // Neu-Ulm (bayerische Seite der Donau)
-      expect(isPointInPolygon(48.395, 10.005, polygon)).toBe(true);
+      // Neu-Ulm (bayerische Seite, südöstlich des 500m-Grenzstreifens)
+      expect(isPointInPolygon(48.38, 10.01, polygon)).toBe(true);
     });
 
     it('sollte Städte außerhalb Bayerns (auch innerhalb der Bounding-Box) als außerhalb (false) erkennen', () => {
