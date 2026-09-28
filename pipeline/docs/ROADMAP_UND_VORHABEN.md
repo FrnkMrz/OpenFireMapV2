@@ -73,7 +73,7 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
   - **PMTiles-Generierung:** `openfiremap.pmtiles` ist **88,62 MB** groß (in 61,9 Sek. gebaut).
   - **Gesamte Build-Dauer:** 280,11 Sekunden (~4,6 Minuten).
   - **Systemstabilität:** 4 GB NVMe-Swap auf VM 102 eingerichtet; Auslastung der NVMe liegt bei nur 5,8 % (113,3 GB frei).
-  - **Frontend:** Exakte Grenzabdeckung via 124-Punkt-Polygon des Freistaates Bayern mit Ray-Casting Jordan Curve Theorem und 4-Ecken-Viewport-Prüfung in `src/js/pipeline.js` implementiert (verhindert leere Karten in Nachbarländern/Grenzgebieten wie Ulm oder Salzburg).
+  - **Frontend:** Präzise Grenzabdeckung via 1.296-Punkt-Innenpuffer-Polygon (500 m Innenpuffer aus OSM R2145268) mit vollständigem Kantenüberschneidungstest aller 4 Viewport-Kanten (`isRectInPolygon`) in `src/js/pipeline.js` implementiert. 40.000 simulierte Viewports auf 0 % fehlerhafte Zuweisungen verifiziert; verhindert leere Karten in Nachbarländern/Grenzgebieten wie Ulm oder Salzburg.
 
 - **Nächster Ausbauschritt: DACHLiLu & Cloudflare R2 (Umsetzung in den nächsten Tagen):**
   * Geltungsbereich: Deutschland (DE), Österreich (AT), Schweiz (CH), Liechtenstein (LI), Luxemburg (LU).

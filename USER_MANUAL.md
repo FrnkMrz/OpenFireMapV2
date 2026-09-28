@@ -89,6 +89,7 @@ Du kannst Kartenausschnitte als Bild oder PDF speichern (z.B. für Einsatzpläne
    - **PNG:** Speichert ein hochauflösendes Bild.
    - **PDF:** Erzeugt eine druckfertige PDF-Datei.
    - **GPX:** Exportiert die sichtbaren Hydranten als GPS-Datei (für Navis).
+   - **CSV:** Exportiert alle sichtbaren Objekte mit Attributen als Tabelle (direkt in Microsoft Excel per Doppelklick öffenbar).
 
 ---
 

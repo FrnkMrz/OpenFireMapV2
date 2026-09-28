@@ -52,6 +52,7 @@ OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik (Vite, ES Module
 - 🔧 **Smart Clustering & POI Bündelung**: Intelligente Gruppierung nah beieinander liegender Hydranten (unter 5m) inkl. Multi-Tooltips.
 - 💧 **Support für spezielle Typen**: Nativer Support für besondere regionale Hydrantentypen wie den *Württembergischen Schachthydrant (WSH)* inkl. visuellem Hinweis auf das benötigte spezielle Standrohr.
 - 🔗 **Permalink & Teilen**: Teile die exakte Sicht auf die Karte inklusive Kartenebene als Web-Link oder per nativer Smartphone-Share-API (WhatsApp, SMS, etc.).
+- ⚡ **PMTiles Vektorkachel-Pipeline**: Ultraschnelles Laden feuerwehrrelevanter Geodaten im Freistaat Bayern in 20–30 ms per HTTP Range Requests direkt aus kompakten Vektorkacheln mit nahtlosem automatischem Fallback auf Overpass außerhalb des Abdeckungsgebiets.
 - 🗺️ **Regionale Basisdaten**: Vollautomatische, standortbezogene Einblendung der perfekten lokalen Daten, wie z.B. die amtlichen Luftbilder (DOP) und die Webkarte des Freistaats Bayern (nur Desktop).
 
 ### Hydranten-Ladestatus
@@ -142,6 +143,7 @@ Please note: This is an **online-only application** by design and requires an ac
 - **Tailwind CSS**
 - **GitHub Pages** Hosting
 - **Hydrant loading status** with delayed display, slow-load feedback, success confirmation, and retry
+- **PMTiles Vector Tile Pipeline** (HTTP Range Requests, 20–30 ms latency for regional Bavaria extract with transparent Overpass fallback)
 - **Multi-format Export** (PNG, PDF, GPX, CSV with Excel-ready UTF-8 BOM)
 
 ### Development

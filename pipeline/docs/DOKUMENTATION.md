@@ -132,7 +132,7 @@ Home Assistant (`192.168.178.191`) fragt alle 5 Minuten `http://192.168.178.152:
 * **Systemstatus:** `ok` / `offline`
 * **Zusammenfassung:** z. B. `"233534 Hydranten (+195377), 8802 Wachen (+7582), 6180 Wasserstellen (+5419), 5785 Defis (+4824), 12493 Grenzen (+10955)"`
 * **Tägliche Differenz:** `diff_text` pro Objekttyp
-* **Speicherplatz:** `disk_free_gb`, `disk_used_percent`
+* **Speicherplatz:** `disk_free_gb`, `disk_used_percent` (gespeichert in der internen `/srv/docker/data/openfiremap/system_stats.json`; aus Sicherheitsgründen nicht in der öffentlichen `metadata.json`)
 * **Build-Dauer:** `timings.total_sec`
 
 ---

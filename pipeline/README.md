@@ -94,11 +94,14 @@ Alle Endpunkte unterstützen `CORS` (`Access-Control-Allow-Origin: *`) und HTTP 
 * Ein Linux-Server oder VM mit Docker & Docker Compose (z. B. Debian 13 auf Proxmox).
 * SSH-Zugang zum Server.
 
-#### 1-Klick-Setup auf dem Zielserver
-Vom Mac/PC aus kann die gesamte Pipeline mit einem einzigen Befehl eingerichtet, gebaut und gestartet werden:
+#### Setup auf dem Zielserver
+Da `setup-vm102.sh` die Konfigurations- und Builder-Dateien direkt aus dem Repository bezieht, wird das Setup im geklonten Repository auf VM 102 ausgeführt:
 
 ```bash
-ssh frank@192.168.178.152 'bash -s' < setup-vm102.sh
+# Auf VM 102 (einmalig klonen oder aktualisieren):
+git clone https://github.com/FrnkMrz/OpenFireMapV2.git
+cd OpenFireMapV2
+bash pipeline/setup-vm102.sh
 ```
 
 ---
@@ -210,11 +213,14 @@ All endpoints support `CORS` (`Access-Control-Allow-Origin: *`) and `Gzip`:
 * Linux server or VM with Docker & Docker Compose (e.g. Debian 13 on Proxmox).
 * SSH access to the server.
 
-#### 1-Click Setup on the Target Server
-Run this single command from your Mac/PC to provision, build, and launch the pipeline:
+#### Setup on the Target Server
+Since `setup-vm102.sh` copies configuration and builder files directly from the repository, run the setup inside the cloned repository on VM 102:
 
 ```bash
-ssh frank@192.168.178.152 'bash -s' < setup-vm102.sh
+# On VM 102 (clone once or pull updates):
+git clone https://github.com/FrnkMrz/OpenFireMapV2.git
+cd OpenFireMapV2
+bash pipeline/setup-vm102.sh
 ```
 
 ---
