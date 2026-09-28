@@ -62,7 +62,7 @@ export const Config = {
    */
   pipeline: {
     enabled: true,
-    url: "http://192.168.178.152:8080",
+    url: "https://pipeline.openfiremap.org",
     usePmtiles: true,
     pmtilesFile: "openfiremap.pmtiles",
     // Abdeckungsbereich Mittelfranken (Schnaittach, Nürnberg, Fürth, Erlangen, etc.)

@@ -6,7 +6,7 @@ describe('pipeline.js', () => {
   beforeEach(() => {
     clearPipelineCache();
     Config.pipeline.enabled = true;
-    Config.pipeline.url = 'http://192.168.178.152:8080';
+    Config.pipeline.url = 'https://pipeline.openfiremap.org';
     Config.pipeline.bounds = {
       south: 49.0,
       west: 10.1,
