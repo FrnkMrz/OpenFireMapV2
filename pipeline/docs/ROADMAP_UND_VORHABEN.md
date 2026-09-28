@@ -27,10 +27,10 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
 - **Status:** ✅ Erfolgreich implementiert & verifiziert (24. September 2026).
 - **Architektur (Ansatz 1A - On-Demand PMTiles Decoding):**
   1. `pmtiles`, `@mapbox/vector-tile` und `pbf` integriert.
-  2. Direkte Byte-Range-Anfragen (HTTP 206) an `http://192.168.178.152:8080/openfiremap.pmtiles` nur für die im Viewport sichtbaren Kacheln.
+  2. Direkte Byte-Range-Anfragen (HTTP 206) an `https://pipeline.openfiremap.org/openfiremap.pmtiles` nur für die im Viewport sichtbaren Kacheln.
   3. Vollständige Abwärtskompatibilität: Alle SVG-Icons (`U`, `O`, `W`), Detail-Popups (Nenndurchmesser, Druck, Typ), 100m-Wirkungskreis, Entfernungsmesslinie, Marker-Clustering sowie hochauflösender PDF/PNG/GPX/CSV-Export bleiben zu 100 % erhalten.
   4. **Vollbild-Rendering-Fix:** Viewport-Berechnung nutzt exakte Kartengrenzen (`actualViewBounds` + 1-Tile-Puffer) statt veralteter 2,5-km-Beschränkung. 875 Objekte über 42 Kacheln rendern in ~135 ms über den gesamten Bildschirm.
-  5. **3-Stufen-Fallback-Kaskade:** PMTiles (Stufe 1) ➔ GeoJSON (Stufe 2) ➔ Öffentliche Overpass API (Stufe 3).
+  5. **Fallback-Kaskade:** PMTiles (Stufe 1) ➔ Öffentliche Overpass API (Stufe 2); GeoJSON optional via `Config.pipeline.geojsonFallback`.
   6. **Tippecanoe-Anpassung:** `build_features.py` auf `-z 16` erweitert für native Zoomstufen 15 & 16.
   7. Alle 60 Vitest-Unit-Tests und 11 Playwright-E2E-Tests erfolgreich.
 
@@ -75,7 +75,36 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
   - **Systemstabilität:** 4 GB NVMe-Swap auf VM 102 eingerichtet; Auslastung der NVMe liegt bei nur 5,8 % (113,3 GB frei).
   - **Frontend:** Exakte Grenzabdeckung via 124-Punkt-Polygon des Freistaates Bayern mit Ray-Casting Jordan Curve Theorem und 4-Ecken-Viewport-Prüfung in `src/js/pipeline.js` implementiert (verhindert leere Karten in Nachbarländern/Grenzgebieten wie Ulm oder Salzburg).
 
-- **Nächster Ausbauschritt: Deutschland & DACH:**
-  1. VM 102 in Proxmox auf 8 GiB RAM erhöhen.
-  2. Deutschland-PBF (`germany-latest.osm.pbf`, 4,2 GB) anbinden bzw. DACH via `osmium merge` (DE + AT + CH) zusammenführen.
-  3. Geschätzte DACH-PMTiles-Größe: ~500–650 MB (wird dank Range Requests weiterhin in Millisekunden ausgeliefert).
+- **Nächster Ausbauschritt: DACHLiLu & Cloudflare R2 (Umsetzung in den nächsten Tagen):**
+  * Geltungsbereich: Deutschland (DE), Österreich (AT), Schweiz (CH), Liechtenstein (LI), Luxemburg (LU).
+  * Hosting über **Cloudflare R2** (10 GB Free Tier, 0 € Egress, 100 % unabhängig vom Heimnetz).
+  * **Direkt mit eingeplante Build-Optimierungen (Punkt 1):**
+    1. *Conditional Download:* Vor dem Download prüft ein `HEAD`-Request `If-Modified-Since` bei Geofabrik, um unnötigen Traffic zu vermeiden.
+    2. *RAM-Disk (`tmpfs` in `/dev/shm`):* Zwischenfilterung der 5 PBFs läuft im RAM (0 NVMe-Schreiblast, 30 % schneller).
+    3. *Automatischer Cache-Purge:* `update.sh` leert den Cloudflare R2 Edge Cache nach erfolgreichem Upload automatisch per API.
+    4. *Auto-Cleanup:* Bereinigung temporärer Zwischendateien älter als 24 Stunden.
+  * Siehe vollständiges Konzept: [`dachlilu_r2_masterplan.md`](file:///Users/frank/.gemini/antigravity/brain/7d91eb9c-1098-4005-a9d5-7161f0e16cf2/dachlilu_r2_masterplan.md)
+
+---
+
+### Schritt 5: Zukünftige Frontend- & Client-Performance (Backlog: Bauen wir später)
+- **Status:** ⏳ Vorgemerkt für spätere Iteration nach dem DACHLiLu-Rollout.
+- **Geplante Maßnahmen:**
+  1. **Web Worker für Vektorkachel-Decoding:**
+     - Auslagerung des `@mapbox/vector-tile` und PBF-Parsings in einen Web Worker.
+     - Der Haupt-Thread bleibt bei 60/120 FPS absolut flüssig, selbst beim schnellen Scrollen über Metropolregionen (Ruhrgebiet, Berlin, Wien).
+  2. **Kachel-Vorabruf (Tile-Prefetching):**
+     - Vorausschauendes Nachladen eines 1-Kachel-Kranzes um den aktuellen Viewport im Leerlauf.
+     - Beim Weiterziehen der Karte sind die Hydranten bereits im Browser-Speicher (0 ms Ladezeit).
+  3. **Offline-Fähigkeit für Einsatzfahrzeuge (IndexedDB Kachel-Cache):**
+     - Persistentes Caching geladener PMTiles-Kacheln in der IndexedDB des Endgeräts.
+     - Einsatztablets behalten einmal angesehene Einsatzgebiete auch bei vollständigem Funkloch vor Ort.
+
+---
+
+### Schritt 6: Ideen-Pool: Feuerwehr-Fachfunktionen & Datenqualität (In Prüfung)
+- **Status:** 💡 Ideen-Pool (wird vor einer etwaigen Umsetzung erst detailliert geprüft – nicht alles soll übernommen werden).
+- **Mögliche Optionen zur Auswahl:**
+  1. *Qualitäts-Ampel / Fehlende Attribute:* Optische Kennzeichnung in Popups oder Icons, wenn in OSM wichtige Angaben fehlen (z. B. Nenndurchmesser `ref`, Typ Über-/Unterflur).
+  2. *„Hydrant melden / OSM-Korrektur“-Link:* Ein-Klick-Link im Popup zum Öffnen des OSM-Editors an der genauen GPS-Position zur einfachen Bürger-/Feuerwehr-Mitarbeit.
+  3. *B-Schlauchdistanzen:* Umrechnung der Entfernungslinie in B-Schlauchlängen (z. B. 20-Meter-Einheiten).

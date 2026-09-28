@@ -1,5 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { isPipelineEligible, isPointInPolygon, geoJsonFeatureToElement, clearPipelineCache } from '../src/js/pipeline.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  isPipelineEligible,
+  isPointInPolygon,
+  isRectInPolygon,
+  geoJsonFeatureToElement,
+  clearPipelineCache,
+  fetchPipelineData,
+  fetchPipelineBoundaries
+} from '../src/js/pipeline.js';
 import { Config } from '../src/js/config.js';
 
 describe('pipeline.js', () => {
@@ -37,8 +45,8 @@ describe('pipeline.js', () => {
       expect(isPointInPolygon(50.319, 11.916, polygon)).toBe(true);
       // Aschaffenburg (Unterfranken)
       expect(isPointInPolygon(49.974, 9.155, polygon)).toBe(true);
-      // Neu-Ulm (bayerische Seite der Donau)
-      expect(isPointInPolygon(48.395, 10.005, polygon)).toBe(true);
+      // Neu-Ulm (bayerische Seite, südöstlich des 500m-Grenzstreifens)
+      expect(isPointInPolygon(48.38, 10.01, polygon)).toBe(true);
     });
 
     it('sollte Städte außerhalb Bayerns (auch innerhalb der Bounding-Box) als außerhalb (false) erkennen', () => {
@@ -66,6 +74,56 @@ describe('pipeline.js', () => {
       expect(isPointInPolygon(48.0, 11.0, null)).toBe(false);
       expect(isPointInPolygon(48.0, 11.0, [])).toBe(false);
       expect(isPointInPolygon(48.0, 11.0, [[48.0, 11.0]])).toBe(false);
+    });
+  });
+
+  describe('isRectInPolygon (Exakter Rechteck-in-Polygon Test)', () => {
+    // Konkaves Test-Polygon in U-Form:
+    // Basis: lat 0 bis 4 (lon 0 bis 10)
+    // Linker Schenkel: lat 4 bis 10 (lon 0 bis 3)
+    // Rechter Schenkel: lat 4 bis 10 (lon 7 bis 10)
+    // Einbuchtung (konkav): lat 4 bis 10, lon 3 bis 7
+    const uPolygon = [
+      [0, 0],
+      [10, 0],
+      [10, 3],
+      [4, 3],
+      [4, 7],
+      [10, 7],
+      [10, 10],
+      [0, 10],
+      [0, 0]
+    ];
+
+    it('sollte false liefern, wenn alle 4 Ecken innen liegen, das Rechteck aber die Einbuchtung überspannt', () => {
+      // SW=(2, 1) [Basis], NW=(8, 1) [linker Schenkel], NE=(8, 9) [rechter Schenkel], SE=(2, 9) [Basis]
+      // Alle 4 Ecken sind im Polygon, aber die obere Kante von lon 1 bis 9 bei lat 8 schneidet
+      // die Einbuchtungskanten (bei lon 3 und lon 7).
+      expect(isRectInPolygon(2, 1, 8, 9, uPolygon)).toBe(false);
+    });
+
+    it('sollte true liefern, wenn das Rechteck vollständig in einem Schenkel oder der Basis liegt', () => {
+      // Vollständig im linken Schenkel
+      expect(isRectInPolygon(5, 0.5, 9, 2.5, uPolygon)).toBe(true);
+      // Vollständig in der Basis
+      expect(isRectInPolygon(0.5, 1, 3.5, 9, uPolygon)).toBe(true);
+      // Vollständig im rechten Schenkel
+      expect(isRectInPolygon(5, 7.5, 9, 9.5, uPolygon)).toBe(true);
+    });
+
+    it('sollte false liefern, wenn eine oder mehrere Ecken außerhalb liegen', () => {
+      // Liegt teilweise unterhalb der Basis (south < 0)
+      expect(isRectInPolygon(-1, 1, 2, 5, uPolygon)).toBe(false);
+      // Liegt in der Einbuchtung (lat 5..9, lon 4..6)
+      expect(isRectInPolygon(5, 4, 9, 6, uPolygon)).toBe(false);
+    });
+
+    it('sollte bei ungültigen Eingaben sicher false zurückgeben', () => {
+      expect(isRectInPolygon(null, 10, 50, 12, uPolygon)).toBe(false);
+      expect(isRectInPolygon(48, 10, 47, 12, uPolygon)).toBe(false); // south > north
+      expect(isRectInPolygon(48, 12, 49, 10, uPolygon)).toBe(false); // west > east
+      expect(isRectInPolygon(48, 10, 49, 11, null)).toBe(false);
+      expect(isRectInPolygon(48, 10, 49, 11, [])).toBe(false);
     });
   });
 
@@ -157,6 +215,44 @@ describe('pipeline.js', () => {
         getCenter: () => ({ lat: 49.555, lng: 11.35 })
       };
       expect(isPipelineEligible(mockBounds, 15)).toBe(false);
+    });
+
+    it('sollte false liefern für Grenz- und Auslandspositionen (Braunau, CZ, Salzburg, Ulm, Neu-Ulm mit Westkante 9.97)', () => {
+      const makeViewport = (lat, lon) => ({
+        south: lat - 0.015,
+        north: lat + 0.015,
+        west: lon - 0.01,
+        east: lon + 0.01
+      });
+
+      // Braunau am Inn (AT): 48.2512, 13.0693
+      expect(isPipelineEligible(makeViewport(48.2512, 13.0693), 15)).toBe(false);
+      // CZ bei Asch/Eger: 50.1247, 12.2107
+      expect(isPipelineEligible(makeViewport(50.1247, 12.2107), 15)).toBe(false);
+      // Salzburg (AT): 47.809, 13.055
+      expect(isPipelineEligible(makeViewport(47.809, 13.055), 15)).toBe(false);
+      // Ulm (BW): 48.401, 9.987
+      expect(isPipelineEligible(makeViewport(48.401, 9.987), 15)).toBe(false);
+      // Neu-Ulm-Viewport mit Westkante 9.97 (reicht über die Donau nach Ulm)
+      const borderCrossing = { south: 48.38, north: 48.41, west: 9.97, east: 10.02 };
+      expect(isPipelineEligible(borderCrossing, 15)).toBe(false);
+    });
+
+    it('sollte true liefern für bayerische Städte (München, Nürnberg, Würzburg, Regensburg, Hof, Kempten, Schnaittach)', () => {
+      const makeViewport = (lat, lon) => ({
+        south: lat - 0.015,
+        north: lat + 0.015,
+        west: lon - 0.01,
+        east: lon + 0.01
+      });
+
+      expect(isPipelineEligible(makeViewport(48.137, 11.576), 15)).toBe(true);  // München
+      expect(isPipelineEligible(makeViewport(49.452, 11.077), 15)).toBe(true);  // Nürnberg
+      expect(isPipelineEligible(makeViewport(49.793, 9.953), 15)).toBe(true);   // Würzburg
+      expect(isPipelineEligible(makeViewport(49.013, 12.101), 15)).toBe(true);  // Regensburg
+      expect(isPipelineEligible(makeViewport(50.319, 11.916), 15)).toBe(true);  // Hof
+      expect(isPipelineEligible(makeViewport(47.728, 10.316), 15)).toBe(true);  // Kempten
+      expect(isPipelineEligible(makeViewport(49.555, 11.350), 15)).toBe(true);  // Schnaittach
     });
   });
 
@@ -304,6 +400,68 @@ describe('pipeline.js', () => {
     it('sollte fetchPipelineBoundaries als Funktion exportieren', async () => {
       const { fetchPipelineBoundaries } = await import('../src/js/pipeline.js');
       expect(typeof fetchPipelineBoundaries).toBe('function');
+    });
+  });
+
+  describe('geojsonFallback Steuerung', () => {
+    it('sollte bei PMTiles-Fehler und geojsonFallback=false eine Exception werfen und KEIN GeoJSON fetchen', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.geojsonFallback = false;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      Config.pipeline.pmtilesFile = 'test_error.pmtiles';
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const bounds = {
+        getSouth: () => 48.12,
+        getNorth: () => 48.15,
+        getWest: () => 11.55,
+        getEast: () => 11.60
+      };
+
+      const { getPMTilesInstance } = await import('../src/js/pipeline.js');
+      const instance = getPMTilesInstance('https://pipeline.example.com/test_error.pmtiles');
+      vi.spyOn(instance, 'getHeader').mockRejectedValueOnce(new Error('PMTiles network failure'));
+
+      await expect(fetchPipelineData(bounds, 'all', { zoom: 14 })).rejects.toThrow(
+        /PMTiles-Abruf fehlgeschlagen.*GeoJSON-Fallback ist deaktiviert/
+      );
+
+      const geoJsonCalls = fetchSpy.mock.calls.filter(call => typeof call[0] === 'string' && call[0].endsWith('.geojson'));
+      expect(geoJsonCalls.length).toBe(0);
+
+      fetchSpy.mockRestore();
+    });
+
+    it('sollte bei Boundary-PMTiles-Fehler und geojsonFallback=false eine Exception werfen und KEIN boundaries.geojson fetchen', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.geojsonFallback = false;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      Config.pipeline.pmtilesFile = 'boundary_error.pmtiles';
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const bounds = {
+        getSouth: () => 48.12,
+        getNorth: () => 48.15,
+        getWest: () => 11.55,
+        getEast: () => 11.60
+      };
+
+      const { getPMTilesInstance } = await import('../src/js/pipeline.js');
+      const instance = getPMTilesInstance('https://pipeline.example.com/boundary_error.pmtiles');
+      vi.spyOn(instance, 'getHeader').mockRejectedValueOnce(new Error('PMTiles boundary failure'));
+
+      await expect(fetchPipelineBoundaries(bounds, { zoom: 14 })).rejects.toThrow(
+        /PMTiles-Boundary-Abruf fehlgeschlagen.*GeoJSON-Fallback ist deaktiviert/
+      );
+
+      const geoJsonCalls = fetchSpy.mock.calls.filter(call => typeof call[0] === 'string' && call[0].includes('boundaries.geojson'));
+      expect(geoJsonCalls.length).toBe(0);
+
+      fetchSpy.mockRestore();
     });
   });
 });

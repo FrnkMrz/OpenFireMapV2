@@ -3,7 +3,7 @@ node_modules/
 dist/
 .cache/
 .vite/
-coverage/
+/coverage/
 *.log
 
 # Environment

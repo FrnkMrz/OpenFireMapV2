@@ -133,6 +133,27 @@ docker logs -f openfiremap-web
 
 ---
 
+### 🗺️ Abdeckungspolygon erzeugen (Coverage Polygon)
+
+Damit OpenFireMap im Frontend entscheiden kann, ob ein Viewport vollständig innerhalb der Pipeline-Abdeckung liegt oder über Overpass angefragt werden muss, wird ein nach innen gepuffertes Abdeckungspolygon genutzt (`src/js/coverage/bayern.js`):
+
+```bash
+# Voraussetzungen: Python 3 mit shapely, pyproj, requests
+pip install shapely pyproj requests
+
+# Bayern-Polygon neu generieren:
+python3 pipeline/tools/build_coverage_polygon.py
+```
+
+Das Skript:
+1. Lädt die offizielle Landesgrenze von Bayern (OSM-Relation `R2145268`) via Nominatim.
+2. Projiziert nach `EPSG:25832` (UTM 32N), puffert **500 m nach innen** (`buffer(-500)`), vereinfacht mit **250 m Toleranz** (`simplify(250)`).
+3. Transformiert zurück nach WGS84, rundet auf 4 Nachkommastellen (`[lat, lon]`).
+4. Verifiziert strikt per Shapely (`within`), dass das vereinfachte Polygon zu 100 % innerhalb der realen Landesgrenze liegt.
+5. Exportiert das ES-Modul `src/js/coverage/bayern.js` (ca. 1.296 Punkte, ca. 1.129 km² verlorene Randfläche, die an Overpass übergeben wird).
+
+---
+
 ## 🇬🇧 English
 
 Automated data pipeline and serving infrastructure for fire-service-related geodata (hydrants, fire stations, water supply points, defibrillators) based on OpenStreetMap (OSM) for **OpenFireMap**.
@@ -210,6 +231,22 @@ OSM_EXTRACT_URL="https://download.geofabrik.de/europe/germany/bayern-latest.osm.
 # View web server logs
 docker logs -f openfiremap-web
 ```
+
+---
+
+### 🗺️ Generating the Coverage Polygon
+
+To determine client-side whether a map viewport lies completely inside the pipeline extract or should fall back to Overpass, an inwardly buffered coverage polygon is generated (`src/js/coverage/bayern.js`):
+
+```bash
+# Requirements: Python 3 with shapely, pyproj, requests
+pip install shapely pyproj requests
+
+# Regenerate Bavaria coverage polygon:
+python3 pipeline/tools/build_coverage_polygon.py
+```
+
+The script fetches the administrative boundary (OSM relation `R2145268`), projects to UTM 32N (`EPSG:25832`), buffers inward by 500 m (`buffer(-500)`), simplifies with a 250 m tolerance (`simplify(250)`), checks strict containment (`within`), and outputs the coordinates into `src/js/coverage/bayern.js`.
 
 ---
 

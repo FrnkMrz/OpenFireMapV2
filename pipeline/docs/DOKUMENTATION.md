@@ -80,6 +80,12 @@ Diese Dokumentation beschreibt die technische Architektur, den Betrieb und die W
 * **Edge-Zertifikat:**
   * Let's Encrypt Wildcard-Zertifikat (`*.openfiremap.org`) via Cloudflare Universal SSL (automatische Verlängerung alle 90 Tage).
 
+### 3.4 Client-Kaskade & Fallback-Strategie (PMTiles → Overpass)
+Im OpenFireMap Frontend (`src/js/pipeline.js` und `src/js/api.js`) gilt folgende Kaskade:
+1. **PMTiles (Standard):** Lädt nur die Kacheln für den aktuellen Sichtbereich per HTTP-206-Range-Requests (~10–50 KB je Kachel).
+2. **Overpass-Fallback:** Bei PMTiles-Fehlern (z. B. Netzwerkabbruch, 404, Tile-Fehler) wechselt die Anwendung sofort und transparent auf die Overpass-API (`pipeline_fallback_to_overpass`).
+3. **GeoJSON-Fallback (optional):** Das Laden kompletter GeoJSON-Dateien (`hydrants.geojson` ~57 MB, `boundaries.geojson` ~35 MB) ist standardmäßig **deaktiviert** (`Config.pipeline.geojsonFallback: false`), um mobile Endgeräte und Mobilfunkverbindungen vor massiven Datenmengen und Speicherengpässen zu schützen.
+
 ---
 
 ## 4. Betrieb, Wartung & Automatisierung
@@ -193,11 +199,18 @@ Mit einer **Cloudflare Cache Rule** werden Byte-Ranges der Vektorkacheln direkt 
 ### 7.3 Cache-Invalidierung bei nächtlichen Builds
 Wenn VM 102 jede Nacht um 03:30 Uhr `openfiremap.pmtiles` neu generiert:
 * Durch `ETag` und `must-revalidate` im Nginx-Header prüft Cloudflare veraltete Kacheln automatisch.
-* **Manueller / Automatisierter Purge via Cloudflare API:**
+* **Automatisierter URL-Purge via Cloudflare API in `update.sh`:**
+  In `pipeline/update.sh` ist ein gezielter Purge-Schritt integriert, der ausschließlich aktiv wird, wenn folgende Variablen in `/srv/docker/projects/openfiremap-pipeline/.env` gesetzt sind:
   ```bash
-  curl -X POST "https://api.cloudflare.com/client/v4/zones/<ZONE_ID>/purge_cache" \
-       -H "Authorization: Bearer <API_TOKEN>" \
-       -H "Content-Type: application/json" \
-       -d '{"files":["https://pipeline.openfiremap.org/openfiremap.pmtiles"]}'
+  CF_ZONE_ID="<zone_id>"
+  CF_API_TOKEN="<api_token>"
   ```
-  Dieser Aufruf kann optional am Ende von `update.sh` hinterlegt werden, sobald ein Cloudflare API-Token mit der Berechtigung `Zone:Cache Purge` existiert.
+  Sind diese Variablen nicht gesetzt, gibt das Skript einen Hinweis aus und läuft normal ohne Fehler weiter.
+* **Erforderliche Token-Berechtigungen bei Cloudflare:**
+  * Im Cloudflare Dashboard unter **My Profile** ➔ **API Tokens** ➔ **Create Custom Token**.
+  * **Permissions:** `Zone` ➔ `Cache Purge` ➔ `Purge`
+  * **Zone Resources:** `Include` ➔ `Specific zone` ➔ `openfiremap.org`
+  * Dieser Scope beschränkt den Token streng auf das Leeren des Caches für die definierte Zone (keine DNS- oder Kontoberechtigungen).
+* **Purge-Umfang:**
+  Es wird gezielt per URL-Liste gecleart (`openfiremap.pmtiles` und `metadata.json`), kein globaler „Purge Everything“, um andere gecachte Assets nicht zu beeinträchtigen.
+

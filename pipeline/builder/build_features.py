@@ -226,6 +226,25 @@ def process_features(input_pbf, download_duration=0):
     ]
     summary_text = ", ".join(summary_parts)
 
+    system_info = {
+        "disk_total_gb": round(total_b / (1024 ** 3), 1),
+        "disk_used_gb": round(used_b / (1024 ** 3), 1),
+        "disk_free_gb": round(free_b / (1024 ** 3), 1),
+        "disk_used_percent": round((used_b / total_b) * 100, 1)
+    }
+
+    # Interne Systemstatistiken separat außerhalb des öffentlichen Web-Verzeichnisses publish/ sichern
+    internal_meta_file = os.path.join(RAW_DIR, "system_stats.json")
+    try:
+        with open(internal_meta_file, "w", encoding="utf-8") as f:
+            json.dump({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "system": system_info
+            }, f, indent=2)
+        log(f"Interne System-Statistik geschrieben: {internal_meta_file}")
+    except Exception as err:
+        log(f"Hinweis: Konnte interne system_stats.json nicht schreiben: {err}")
+
     metadata = {
         "status": "ok",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -245,12 +264,6 @@ def process_features(input_pbf, download_duration=0):
             "extraction_sec": process_duration,
             "total_sec": total_duration
         },
-        "system": {
-            "disk_total_gb": round(total_b / (1024 ** 3), 1),
-            "disk_used_gb": round(used_b / (1024 ** 3), 1),
-            "disk_free_gb": round(free_b / (1024 ** 3), 1),
-            "disk_used_percent": round((used_b / total_b) * 100, 1)
-        },
         "features": stats
     }
 
@@ -259,7 +272,7 @@ def process_features(input_pbf, download_duration=0):
 
     log(f"Metadata geschrieben: {meta_file}")
     log("=== Alle Datensätze & Vektor-Kacheln erfolgreich erstellt! ===")
-    return metadata
+    return metadata, system_info
 
 
 def main():
@@ -272,10 +285,11 @@ def main():
         download_extract(EXTRACT_URL, local_pbf)
         dl_duration = time.time() - t_dl_start
 
-        metadata = process_features(local_pbf, download_duration=dl_duration)
+        metadata, system_info = process_features(local_pbf, download_duration=dl_duration)
         print("\n" + "=" * 50)
         print(f" Status: {metadata['summary']}")
-        print(f" Freier Speicher: {metadata['system']['disk_free_gb']} GB ({metadata['system']['disk_used_percent']}% belegt)")
+        if system_info:
+            print(f" Freier Speicher: {system_info['disk_free_gb']} GB ({system_info['disk_used_percent']}% belegt)")
         print(f" Dauer: {metadata['timings']['total_sec']}s (Download: {metadata['timings']['download_sec']}s, Filter: {metadata['timings']['extraction_sec']}s)")
         print("=" * 50 + "\n")
     except Exception as e:

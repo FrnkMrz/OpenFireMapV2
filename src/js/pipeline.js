@@ -96,12 +96,117 @@ export function isPointInPolygon(lat, lon, polygon) {
 }
 
 /**
+ * Prüft, ob sich zwei 2D-Liniensegmente AB und CD schneiden.
+ * Nutzt Vorzeichenprüfung des Kreuzprodukts (CCW) inklusive Grenzfallprüfung.
+ * A=(x1, y1), B=(x2, y2), C=(x3, y3), D=(x4, y4)
+ * @private
+ */
+function segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+  // Schneller Bounding-Box Vorfilter für die beiden Einzelsegmente
+  if (
+    Math.max(x1, x2) < Math.min(x3, x4) ||
+    Math.min(x1, x2) > Math.max(x3, x4) ||
+    Math.max(y1, y2) < Math.min(y3, y4) ||
+    Math.min(y1, y2) > Math.max(y3, y4)
+  ) {
+    return false;
+  }
+
+  const ccw = (ax, ay, bx, by, cx, cy) => (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+
+  const d1 = ccw(x1, y1, x2, y2, x3, y3);
+  const d2 = ccw(x1, y1, x2, y2, x4, y4);
+  const d3 = ccw(x3, y3, x4, y4, x1, y1);
+  const d4 = ccw(x3, y3, x4, y4, x2, y2);
+
+  // Echter Schnittpunkt (Vorzeichenwechsel bei beiden Linien)
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+      ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+    return true;
+  }
+
+  // Kollineare / Grenzfall-Prüfung (Punkt liegt auf Segment)
+  const onSegment = (px, py, rx, ry, sx, sy) =>
+    px >= Math.min(rx, sx) && px <= Math.max(rx, sx) &&
+    py >= Math.min(ry, sy) && py <= Math.max(ry, sy);
+
+  if (d1 === 0 && onSegment(x3, y3, x1, y1, x2, y2)) return true;
+  if (d2 === 0 && onSegment(x4, y4, x1, y1, x2, y2)) return true;
+  if (d3 === 0 && onSegment(x1, y1, x3, y3, x4, y4)) return true;
+  if (d4 === 0 && onSegment(x2, y2, x3, y3, x4, y4)) return true;
+
+  return false;
+}
+
+/**
+ * Prüft, ob ein gegebenes geografisches Rechteck [south, west, north, east] vollständig
+ * innerhalb eines geschlossenen Polygons liegt.
+ * 
+ * Bedingungen für 'true':
+ * 1. Alle 4 Ecken des Rechtecks liegen innerhalb des Polygons (Jordan Curve Ray-Casting).
+ * 2. Keine Kante des Polygons schneidet eine der 4 Kanten des Rechtecks (Segment-Schnitt-Test).
+ * 
+ * @param {number} south Südliche Grenze (Breitengrad min)
+ * @param {number} west Westliche Grenze (Längengrad min)
+ * @param {number} north Nördliche Grenze (Breitengrad max)
+ * @param {number} east Östliche Grenze (Längengrad max)
+ * @param {Array<[number, number]>} polygon Array von [lat, lon]-Koordinaten
+ * @returns {boolean} true, wenn das gesamte Rechteck im Polygon liegt
+ */
+export function isRectInPolygon(south, west, north, east, polygon) {
+  if (!Array.isArray(polygon) || polygon.length < 3) return false;
+  if (south == null || west == null || north == null || east == null) return false;
+  if (south > north || west > east) return false;
+
+  // Bedingung 1: Alle 4 Ecken des Rechtecks müssen im Polygon liegen
+  if (!isPointInPolygon(south, west, polygon)) return false; // Süd-West
+  if (!isPointInPolygon(north, west, polygon)) return false; // Nord-West
+  if (!isPointInPolygon(north, east, polygon)) return false; // Nord-Ost
+  if (!isPointInPolygon(south, east, polygon)) return false; // Süd-Ost
+
+  // Bedingung 2: Keine Polygonkante darf eine der 4 Rechteckkanten schneiden
+  const n = polygon.length;
+  for (let i = 0; i < n; i++) {
+    const nextIdx = (i + 1) % n;
+    const lat1 = polygon[i][0];
+    const lon1 = polygon[i][1];
+    const lat2 = polygon[nextIdx][0];
+    const lon2 = polygon[nextIdx][1];
+
+    if (lat1 === lat2 && lon1 === lon2) continue;
+
+    // Bounding-Box Vorfilter: Nur Kanten prüfen, die das Rechteck räumlich überlappen
+    const edgeMinLat = lat1 < lat2 ? lat1 : lat2;
+    const edgeMaxLat = lat1 > lat2 ? lat1 : lat2;
+    const edgeMinLon = lon1 < lon2 ? lon1 : lon2;
+    const edgeMaxLon = lon1 > lon2 ? lon1 : lon2;
+
+    if (edgeMaxLat < south || edgeMinLat > north || edgeMaxLon < west || edgeMinLon > east) {
+      continue;
+    }
+
+    // Exakter Schnitt-Test mit den 4 Kanten des Rechtecks
+    // Süd-Kante (lon: west -> east, lat: south)
+    if (segmentsIntersect(lon1, lat1, lon2, lat2, west, south, east, south)) return false;
+    // Nord-Kante (lon: west -> east, lat: north)
+    if (segmentsIntersect(lon1, lat1, lon2, lat2, west, north, east, north)) return false;
+    // West-Kante (lat: south -> north, lon: west)
+    if (segmentsIntersect(lon1, lat1, lon2, lat2, west, south, west, north)) return false;
+    // Ost-Kante (lat: south -> north, lon: east)
+    if (segmentsIntersect(lon1, lat1, lon2, lat2, east, south, east, north)) return false;
+  }
+
+  return true;
+}
+
+/**
  * Prüft, ob der aktuelle Kartenausschnitt im Abdeckungsbereich der Pipeline liegt.
  * Nutzt ein zweistufiges Verfahren:
- * 1. Schneller Bounding-Box Grobfilter O(1)
- * 2. Exakter Polygon-Feinfilter (Ray-Casting) für Zentrum UND alle 4 Ecken des Viewports.
+ * 1. Schneller Bounding-Box Grobfilter O(1) mit Config.pipeline.bounds
+ * 2. Exakter Rechteck-in-Polygon Check (isRectInPolygon): Alle 4 Ecken müssen
+ *    innerhalb des Abdeckungspolygons liegen UND keine Kante darf den Viewport schneiden.
  * Wenn der Viewport die Landesgrenze schneidet (z. B. Ulm/Neu-Ulm) oder außerhalb liegt
- * (z. B. Salzburg/Tirol/Hessen), wird false zurückgegeben, damit Overpass lückenlos anspringt.
+ * (z. B. Salzburg/Tirol/Hessen/Braunau), wird false zurückgegeben, damit Overpass lückenlos anspringt.
  * @param {L.LatLngBounds|Object} bounds 
  * @param {number} zoom 
  * @returns {boolean}
@@ -113,46 +218,24 @@ export function isPipelineEligible(bounds, zoom) {
   const pb = Config.pipeline.bounds;
   if (!pb) return false;
 
-  let center = typeof bounds.getCenter === 'function' ? bounds.getCenter() : null;
-  if (!center && bounds.south != null && bounds.north != null && bounds.west != null && bounds.east != null) {
-    center = { lat: (bounds.south + bounds.north) / 2, lon: (bounds.west + bounds.east) / 2 };
+  // Koordinaten aus Leaflet-Bounds oder Plain-Object extrahieren
+  const south = typeof bounds.getSouth === 'function' ? bounds.getSouth() : (bounds.south ?? bounds._southWest?.lat);
+  const north = typeof bounds.getNorth === 'function' ? bounds.getNorth() : (bounds.north ?? bounds._northEast?.lat);
+  const west = typeof bounds.getWest === 'function' ? bounds.getWest() : (bounds.west ?? bounds._southWest?.lng);
+  const east = typeof bounds.getEast === 'function' ? bounds.getEast() : (bounds.east ?? bounds._northEast?.lng);
+
+  if (south == null || north == null || west == null || east == null) {
+    return false;
   }
-  if (!center) return false;
 
-  const centerLat = center.lat;
-  const centerLon = center.lng ?? center.lon;
-  if (centerLat == null || centerLon == null) return false;
+  // Stufe 1: Schneller Bounding-Box Grobfilter O(1)
+  if (south < pb.south || north > pb.north || west < pb.west || east > pb.east) {
+    return false;
+  }
 
-  // Stufe 1: Schneller Bounding-Box Check (Grobfilter O(1))
-  const inBBox = (
-    centerLat >= pb.south &&
-    centerLat <= pb.north &&
-    centerLon >= pb.west &&
-    centerLon <= pb.east
-  );
-  if (!inBBox) return false;
-
-  // Stufe 2: Exakter Polygon-Check (Feinfilter)
+  // Stufe 2: Exakter Rechteck-in-Polygon Feinfilter
   const polygon = Config.pipeline.coveragePolygon;
-  if (Array.isArray(polygon) && polygon.length >= 3) {
-    // 2a. Zentrum prüfen
-    if (!isPointInPolygon(centerLat, centerLon, polygon)) return false;
-
-    // 2b. Alle 4 Ecken des Viewports ermitteln & prüfen
-    const south = typeof bounds.getSouth === 'function' ? bounds.getSouth() : (bounds.south ?? bounds._southWest?.lat);
-    const north = typeof bounds.getNorth === 'function' ? bounds.getNorth() : (bounds.north ?? bounds._northEast?.lat);
-    const west = typeof bounds.getWest === 'function' ? bounds.getWest() : (bounds.west ?? bounds._southWest?.lng);
-    const east = typeof bounds.getEast === 'function' ? bounds.getEast() : (bounds.east ?? bounds._northEast?.lng);
-
-    if (south != null && north != null && west != null && east != null) {
-      if (!isPointInPolygon(south, west, polygon)) return false; // Süd-West
-      if (!isPointInPolygon(north, west, polygon)) return false; // Nord-West
-      if (!isPointInPolygon(north, east, polygon)) return false; // Nord-Ost
-      if (!isPointInPolygon(south, east, polygon)) return false; // Süd-Ost
-    }
-  }
-
-  return true;
+  return isRectInPolygon(south, west, north, east, polygon);
 }
 
 /**
@@ -392,11 +475,18 @@ export async function fetchPipelineData(bounds, mode, { signal, zoom } = {}) {
       }
     } catch (err) {
       if (err?.name === 'AbortError') throw err;
+      if (!Config.pipeline?.geojsonFallback) {
+        throw new Error(`PMTiles-Abruf fehlgeschlagen (${err.message}). GeoJSON-Fallback ist deaktiviert.`, { cause: err });
+      }
       console.warn('[Pipeline] PMTiles-Abruf fehlgeschlagen, wechsle auf GeoJSON-Fallback:', err.message);
     }
   }
 
-  // 2. Fallback: GeoJSON-Dataset mit 10-Minuten-In-Memory-Cache
+  // 2. Optionaler Fallback: GeoJSON-Dataset mit 10-Minuten-In-Memory-Cache
+  if (!Config.pipeline?.geojsonFallback) {
+    throw new Error('PMTiles nicht aktiv oder fehlgeschlagen und GeoJSON-Fallback ist deaktiviert.');
+  }
+
   const now = Date.now();
   const cacheKey = mode === 'stations' ? 'stations' : 'all';
   const isCacheValid = _pipelineCache[cacheKey] && (now - _pipelineCache.timestamp < 10 * 60 * 1000);
@@ -509,14 +599,21 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom } = {}) {
 
       await Promise.all(promises);
       const elements = Array.from(boundaryMap.values());
-      if (elements.length > 0) return elements;
+      return elements;
     } catch (pmErr) {
       if (pmErr?.name === 'AbortError') throw pmErr;
+      if (!Config.pipeline?.geojsonFallback) {
+        throw new Error(`PMTiles-Boundary-Abruf fehlgeschlagen (${pmErr.message}). GeoJSON-Fallback ist deaktiviert.`, { cause: pmErr });
+      }
       console.warn('[Pipeline] PMTiles-Boundary-Abruf fehlgeschlagen, wechsle auf GeoJSON:', pmErr.message);
     }
   }
 
-  // Stufe 2: Fallback auf boundaries.geojson
+  // Stufe 2: Optionaler Fallback auf boundaries.geojson
+  if (!Config.pipeline?.geojsonFallback) {
+    throw new Error('PMTiles nicht aktiv oder fehlgeschlagen und GeoJSON-Fallback ist deaktiviert.');
+  }
+
   try {
     const url = `${baseUrl.replace(/\/+$/, '')}/boundaries.geojson`;
     const res = await fetch(url, { signal, cache: 'no-cache' });
