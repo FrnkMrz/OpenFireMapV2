@@ -37,11 +37,12 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
 ---
 
 ### Schritt 2: Live-Delta-Abfragen (Hybrid-Architektur)
+- **Status:** ⏳ Vorgemerkt für spätere Iteration (Backlog / ToDo).
 - **Ziel:** 100 % Aktualität garantieren, selbst wenn Daten nach dem nächtlichen Update in OSM editiert wurden.
 - **Konzept:**
-  1. Großes Fundament (38.151 Objekte) kommt blitzschnell aus der lokalen `openfiremap.pmtiles`.
-  2. Winzige Overpass-Abfrage holt nur Objekte, die *nach* dem Zeitstempel `metadata.json.generated_at` geändert wurden (`(newer:"...")`).
-  3. Minimale Serverlast bei maximaler Aktualität.
+  1. Großes Fundament (233.534 Objekte in Bayern) kommt blitzschnell (1–3 ms) aus der lokalen `openfiremap.pmtiles` via Cloudflare-Cache.
+  2. Winzige Overpass-Abfrage holt im Hintergrund nur Objekte, die *nach* dem Zeitstempel `metadata.json.generated_at` geändert wurden (`(newer:"...")`).
+  3. Minimale Serverlast bei maximaler Aktualität. Falls Overpass nicht erreichbar ist, greift kein Fehler durch.
 
 ---
 
