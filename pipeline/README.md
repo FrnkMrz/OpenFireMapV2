@@ -152,6 +152,21 @@ Das Skript:
 4. Verifiziert strikt per Shapely (`within`), dass das vereinfachte Polygon zu 100 % innerhalb der realen Landesgrenze liegt.
 5. Exportiert das ES-Modul `src/js/coverage/bayern.js` (ca. 1.296 Punkte, ca. 1.129 km² verlorene Randfläche, die an Overpass übergeben wird).
 
+### 🧪 Verifikation & Simulation der Abdeckung
+
+Zur Qualitätssicherung stehen zwei komplementäre Werkzeuge zur Verfügung:
+
+1. **`pipeline/tools/verify_coverage_js.mjs` (Simulation mit echtem JS-Code):**
+   * **Aufruf:** `node pipeline/tools/verify_coverage_js.mjs [--samples 4000] [--seed 42] [--out <datei.json>]`
+   * **Abhängigkeiten:** Node.js v20+ (importiert nativ `src/js/pipeline.js`).
+   * **Funktion:** Simuliert 40.000 Viewports (Desktop 1440×800, Mobil 390×750; Zoom 12–16), misst die Ausführungszeit pro Call und speichert alle durch `isPipelineEligible` positiv bewerteten Viewports in einer JSON-Datei.
+
+2. **`pipeline/tools/verify_coverage.py` (Geometrische Validierung):**
+   * **Aufruf (JS-Validierung):** `python3 pipeline/tools/verify_coverage.py --from-js pipeline/tools/js_approved_viewports.json`
+   * **Aufruf (Python-Simulation Alt vs. Neu):** `python3 pipeline/tools/verify_coverage.py [--samples 4000] [--seed 42]`
+   * **Abhängigkeiten:** Python 3 mit `shapely`, `pyproj`, `requests`.
+   * **Funktion:** Berechnet per Shapely & PyProj in `EPSG:25832` den exakten Flächenüberhang zur amtlichen Landesgrenze (OSM `R2145268`). Abnahmekriterium: 0 Viewports mit > 0,1 % Fläche außerhalb Bayerns.
+
 ---
 
 ## 🇬🇧 English
@@ -247,6 +262,21 @@ python3 pipeline/tools/build_coverage_polygon.py
 ```
 
 The script fetches the administrative boundary (OSM relation `R2145268`), projects to UTM 32N (`EPSG:25832`), buffers inward by 500 m (`buffer(-500)`), simplifies with a 250 m tolerance (`simplify(250)`), checks strict containment (`within`), and outputs the coordinates into `src/js/coverage/bayern.js`.
+
+### 🧪 Coverage Verification & Simulation
+
+Two tools ensure zero false-positive viewports outside Bavaria:
+
+1. **`pipeline/tools/verify_coverage_js.mjs` (Native JS Simulation):**
+   * **Run:** `node pipeline/tools/verify_coverage_js.mjs [--samples 4000] [--seed 42] [--out <file.json>]`
+   * **Dependencies:** Node.js v20+ (imports `src/js/pipeline.js`).
+   * **Purpose:** Runs 40,000 viewport checks through `isPipelineEligible`, benchmarks latency (< 1 ms), and exports approved viewports to JSON.
+
+2. **`pipeline/tools/verify_coverage.py` (Geometric Validation):**
+   * **Run (validate JS results):** `python3 pipeline/tools/verify_coverage.py --from-js pipeline/tools/js_approved_viewports.json`
+   * **Run (Python simulation old vs new):** `python3 pipeline/tools/verify_coverage.py [--samples 4000] [--seed 42]`
+   * **Dependencies:** Python 3 with `shapely`, `pyproj`, `requests`.
+   * **Purpose:** Computes geometric overlap with OSM relation `R2145268` in EPSG:25832. Acceptance criterion: 0 viewports with > 0.1% area outside Bavaria.
 
 ---
 

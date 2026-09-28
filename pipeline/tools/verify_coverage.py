@@ -25,7 +25,11 @@ NOMINATIM_URL = (
     "https://nominatim.openstreetmap.org/lookup"
     "?osm_ids=R2145268&format=json&polygon_geojson=1&polygon_threshold=0.0003"
 )
-USER_AGENT = "OpenFireMap-verify/1.0 (https://openfiremap.org)"
+USER_AGENT = "OpenFireMap-verify/1.0 (contact: github@rollhofen.de)"
+
+CACHE_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), ".bayern_boundary_cache.json")
+)
 
 # Altes 124-Punkte Polygon aus Commit 505293a
 OLD_COVERAGE_POLYGON = [
@@ -163,10 +167,114 @@ def main():
     parser = argparse.ArgumentParser(description="Viewport-Simulation zur Verifikation der Pipeline-Abdeckung")
     parser.add_argument("--samples", type=int, default=4000, help="Anzahl Zufalls-Viewports je Kombination (default: 4000)")
     parser.add_argument("--seed", type=int, default=42, help="Random Seed (default: 42)")
+    parser.add_argument("--from-js", type=str, dest="from_js", help="Pfad zu einer JSON-Datei mit durch JS genehmigten Viewports (aus verify_coverage_js.mjs)")
     args = parser.parse_args()
 
     random.seed(args.seed)
 
+    if os.path.exists(CACHE_PATH):
+        print(f"Lade offizielle Bayern-Grenze aus lokalem Cache ({CACHE_PATH})...")
+        with open(CACHE_PATH, "r", encoding="utf-8") as f:
+            raw_geojson = json.load(f)[0]["geojson"]
+    else:
+        print("Lade offizielle Bayern-Grenze von Nominatim...")
+        headers = {"User-Agent": USER_AGENT}
+        resp = requests.get(NOMINATIM_URL, headers=headers, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        with open(CACHE_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        raw_geojson = data[0]["geojson"]
+
+    orig_geom_wgs = shapely.geometry.shape(raw_geojson)
+    if not orig_geom_wgs.is_valid:
+        orig_geom_wgs = make_valid(orig_geom_wgs)
+
+    to_utm = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:25832", always_xy=True).transform
+    orig_bayern_utm = shapely.ops.transform(to_utm, orig_geom_wgs)
+    prepared_bayern_utm = prep(orig_bayern_utm)
+
+    # Modus 1: Prüfung einer von JS exportierten JSON-Datei
+    if args.from_js:
+        print(f"\nPrüfe genehmigte Viewports aus JS-Export: {args.from_js}")
+        with open(args.from_js, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        viewports = data.get("viewports", data) if isinstance(data, dict) else data
+        print(f"Geladene Viewports: {len(viewports):,}")
+
+        # Gruppieren nach Gerät und Zoom
+        grouped = {}
+        for vp in viewports:
+            key = (vp.get("device", "Standard"), vp.get("zoom", 0))
+            grouped.setdefault(key, []).append(vp)
+
+        devices = [
+            {"name": "Desktop (1440x800)", "w": 1440, "h": 800},
+            {"name": "Mobil (390x750)", "w": 390, "h": 750},
+        ]
+        zoom_levels = [12, 13, 14, 15, 16]
+
+        js_results_table = []
+        total_js_faulty = 0
+        total_js_checked = 0
+
+        for dev in devices:
+            for z in zoom_levels:
+                key = (dev["name"], z)
+                vps = grouped.get(key, [])
+                faulty_count = 0
+
+                for vp in vps:
+                    total_js_checked += 1
+                    south, north = vp["south"], vp["north"]
+                    west, east = vp["west"], vp["east"]
+
+                    box_wgs = shapely.geometry.box(west, south, east, north)
+                    box_utm = shapely.ops.transform(to_utm, box_wgs)
+                    box_area = box_utm.area
+
+                    if not prepared_bayern_utm.contains(box_utm):
+                        diff = box_utm.difference(orig_bayern_utm)
+                        outside_pct = (diff.area / box_area) * 100.0
+                        if outside_pct > 0.1:
+                            faulty_count += 1
+
+                total_js_faulty += faulty_count
+                faulty_pct = (faulty_count / len(vps) * 100.0) if len(vps) > 0 else 0.0
+
+                js_results_table.append({
+                    "device": dev["name"],
+                    "zoom": z,
+                    "approved": len(vps),
+                    "faulty": faulty_count,
+                    "faulty_pct": faulty_pct,
+                })
+
+                print(f"  {dev['name']:<22} Z{z}: {len(vps):>4} JS-Viewports geprüft | {faulty_count:>3} fehlerhaft ({faulty_pct:.1f}%)")
+
+        print("\n" + "=" * 80)
+        print("ERGEBNISTABELLE JS-CODE VALIDIERUNG GEGEN OSM-GRENZE:")
+        print("=" * 80)
+        print("| Gerät | Zoom | Genehmigt (JS) | Fehlerhaft (>0,1% außerhalb) | Quote | Status |")
+        print("|---|---|---|---|---|---|")
+        for r in js_results_table:
+            status = "PASSED (0 Fehler)" if r["faulty"] == 0 else "FAILED"
+            print(f"| {r['device']} | {r['zoom']} | {r['approved']:,} | {r['faulty']} | {r['faulty_pct']:.1f}% | {status} |")
+        print("=" * 80)
+
+        print(f"\nGesamtfazit JS-Validierung:")
+        print(f"  Geprüfte Viewports:    {total_js_checked:,}")
+        print(f"  Fehlerhafte Viewports: {total_js_faulty:,} (>0,1% außerhalb Bayerns)")
+
+        if total_js_faulty == 0:
+            print("\n Abnahmekriterium ERFÜLLT: Exakt 0 Viewports des echten JS-Codes ragen über Bayern hinaus!")
+            sys.exit(0)
+        else:
+            print(f"\n Abnahmekriterium NICHT ERFÜLLT: {total_js_faulty} Viewports ragen über Bayern hinaus!", file=sys.stderr)
+            sys.exit(1)
+
+    # Modus 2: Standard Python-Simulation (Alt vs Neu)
     bayern_js_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "..", "src", "js", "coverage", "bayern.js")
     )
@@ -177,19 +285,6 @@ def main():
     print("Lade neues Polygon aus src/js/coverage/bayern.js...")
     new_coverage = load_bayern_coverage_js(bayern_js_path)
     print(f"Neues Polygon geladen: {len(new_coverage)} Punkte")
-
-    print("Lade offizielle Bayern-Grenze von Nominatim...")
-    headers = {"User-Agent": USER_AGENT}
-    resp = requests.get(NOMINATIM_URL, headers=headers, timeout=60)
-    resp.raise_for_status()
-    raw_geojson = resp.json()[0]["geojson"]
-    orig_geom_wgs = shapely.geometry.shape(raw_geojson)
-    if not orig_geom_wgs.is_valid:
-        orig_geom_wgs = make_valid(orig_geom_wgs)
-
-    to_utm = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:25832", always_xy=True).transform
-    orig_bayern_utm = shapely.ops.transform(to_utm, orig_geom_wgs)
-    prepared_bayern_utm = prep(orig_bayern_utm)
 
     devices = [
         {"name": "Desktop (1440x800)", "w": 1440, "h": 800},
@@ -271,7 +366,7 @@ def main():
     print("|---|---|---|---|---|---|---|")
     for r in results_table:
         status = "PASSED (0 Fehler)" if r["new_faulty"] == 0 else "FAILED"
-        print(f"| {r['device']} | {r['zoom']} | {r['old_pipeline']:,} | {r['old_faulty']} ({r['old_faulty_pct']:.1f}%) | {r['new_pipeline']:,} | {r['new_faulty']} (0.0%) | {status} |")
+        print(f"| {r['device']} | {r['zoom']} | {r['old_pipeline']:,} | {r['old_faulty']} ({r['old_faulty_pct']:.1f}%) | {r['new_pipeline']:,} | {r['new_faulty']} ({r['new_faulty_pct']:.1f}%) | {status} |")
     print("=" * 80)
 
     print(f"\nGesamtfazit:")

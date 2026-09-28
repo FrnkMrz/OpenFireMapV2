@@ -39,3 +39,7 @@ osv-scanner.*
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Pipeline tool caches and simulation exports
+pipeline/tools/.*cache*
+pipeline/tools/*.json
