@@ -352,6 +352,19 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: openfiremap-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    depends_on:
+      - web
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 EOF
 
 # 3. Docker Image bauen
@@ -363,9 +376,32 @@ docker compose build builder
 echo "⚡ [4/5] Führe Datenextraktion aus (Bayern-Auszug)..."
 docker compose run --rm builder
 
-# 5. Web-Server starten
+# 5. Web-Server & Tunnel starten
 echo "🌐 [5/5] Starte Nginx Webserver..."
+cd "$PROJECT_DIR"
 docker compose up -d web
+
+# Tunnel prüfen und starten falls TUNNEL_TOKEN vorhanden
+HAS_TUNNEL_TOKEN=false
+if [ -f "${PROJECT_DIR}/.env" ] && grep -E -q '^TUNNEL_TOKEN=[^[:space:]]+' "${PROJECT_DIR}/.env"; then
+  HAS_TUNNEL_TOKEN=true
+elif [ -n "${TUNNEL_TOKEN:-}" ]; then
+  HAS_TUNNEL_TOKEN=true
+fi
+
+if [ "$HAS_TUNNEL_TOKEN" = true ]; then
+  echo "🔒 Starte Cloudflare Tunnel..."
+  docker compose up -d tunnel
+else
+  echo ""
+  echo "⚠️  HINWEIS: Kein TUNNEL_TOKEN in ${PROJECT_DIR}/.env gefunden."
+  echo "   Der Cloudflare-Tunnel wurde übersprungen. Die Pipeline ist lokal auf Port 8080 erreichbar."
+  echo "   Um den öffentlichen Tunnel zu aktivieren:"
+  echo "     1. echo 'TUNNEL_TOKEN=<dein-token>' >> ${PROJECT_DIR}/.env"
+  echo "     2. chmod 600 ${PROJECT_DIR}/.env"
+  echo "     3. cd ${PROJECT_DIR} && docker compose up -d tunnel"
+  echo ""
+fi
 
 echo ""
 echo "================================================================="
