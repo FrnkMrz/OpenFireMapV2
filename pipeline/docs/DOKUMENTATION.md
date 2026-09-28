@@ -65,13 +65,18 @@ Diese Dokumentation beschreibt die technische Architektur, den Betrieb und die W
 
 ### 3.3 `openfiremap-tunnel` (Docker / Cloudflared)
 * **Image:** `cloudflare/cloudflared:latest`
+* **Container:** `openfiremap-tunnel` (Restart: `unless-stopped`)
 * **Aufgabe:**
-  * Baut einen verschlüsselten, rein ausgehenden Tunnel (Outbound TLS) zur Cloudflare Edge auf.
-  * Stellt die Pipeline über `https://pipeline.openfiremap.org` bereit – ohne Portweiterleitung an der FRITZ!Box.
-  * Ermöglicht die Einbindung in die HTTPS-Live-Webseite `https://openfiremap.org` (Mixed Content frei).
+  * Baut 4 redundante, verschlüsselte Outbound-Tunnel-Verbindungen (QUIC/HTTP/2 via UDP/TCP Port 443) zur Cloudflare Edge (z. B. Frankfurt `fra08`, `fra10`, `fra16`, `fra18`) auf.
+  * Leitet Anfragen an `https://pipeline.openfiremap.org` direkt an den internen Container `openfiremap-web:80` weiter.
+  * Keine Portweiterleitung an der FRITZ!Box erforderlich (eingehende Ports bleiben vollständig geschlossen).
+  * Löst das Mixed-Content-Problem auf der Live-Webseite `https://openfiremap.org` (HTTPS zu HTTPS).
 * **Konfiguration & Token:**
-  * Das Authentifizierungs-Token wird sicher in `/srv/docker/projects/openfiremap-pipeline/.env` hinterlegt (`TUNNEL_TOKEN=...`).
-  * Detail-Anleitung: siehe [`ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md`](file:///Users/frank/Library/Mobile%20Documents/com~apple~CloudDocs/GitHub/Play_Antigravtiy/OpenFireMap.org/pipeline/docs/ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md).
+  * Das Authentifizierungs-Token wird aus `/srv/docker/projects/openfiremap-pipeline/.env` bezogen (`TUNNEL_TOKEN=...`).
+  * Datei-Rechte: `chmod 600 .env` (nur für Benutzer `frank` lesbar).
+  * Wird durch `.gitignore` vor versehentlichem Git-Commit geschützt.
+* **Edge-Zertifikat:**
+  * Let's Encrypt Wildcard-Zertifikat (`*.openfiremap.org`) via Cloudflare Universal SSL (automatische Verlängerung alle 90 Tage).
 
 ---
 
@@ -86,23 +91,72 @@ Auf VM 102 läuft in der Crontab von `frank`:
 * **Log-Datei:** `/srv/docker/data/openfiremap/update.log`
 
 ### 4.2 Wichtige Steuerungsbefehle
+
+#### Status & Überwachung:
 * **Container-Status prüfen:** `docker ps`
-* **Webserver neustarten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose restart web`
-* **Manuellen Datenbuild starten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose run --rm builder`
+* **Tunnel-Logs live einsehen:** `docker logs -f openfiremap-tunnel`
+* **Nginx-Logs live einsehen:** `docker logs -f openfiremap-web`
 * **Update-Log ansehen:** `tail -n 50 /srv/docker/data/openfiremap/update.log`
 
+#### Neustart & Wartung:
+* **Webserver neustarten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose restart web`
+* **Tunnel neustarten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose restart tunnel`
+* **Alle Dienste neu starten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose up -d`
+* **Manuellen Datenbuild starten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose run --rm builder`
+
+#### Endpunkt-Verifikation von außen:
+```bash
+# 1. Healthcheck über HTTPS:
+curl -4 -I https://pipeline.openfiremap.org/healthz
+# ➔ HTTP/2 200 OK
+
+# 2. PMTiles Byte-Range-Request (Vektorkacheln):
+curl -4 -I -H "Range: bytes=0-100" https://pipeline.openfiremap.org/openfiremap.pmtiles
+# ➔ HTTP/2 206 Partial Content
+
+# 3. Metadaten-Status abrufen:
+curl -4 -s https://pipeline.openfiremap.org/metadata.json | jq .summary
+```
+
 ### 4.3 Home-Assistant-Überwachung (KW3)
-Home Assistant (`192.168.178.191`) fragt alle 5 Minuten `http://192.168.178.152:8080/metadata.json` über einen REST-Sensor ab.
+Home Assistant (`192.168.178.191`) fragt alle 5 Minuten `http://192.168.178.152:8080/metadata.json` (oder `https://pipeline.openfiremap.org/metadata.json`) über einen REST-Sensor ab.
 Überwachte Werte:
 * **Systemstatus:** `ok` / `offline`
-* **Zusammenfassung:** z. B. `"38151 Hydranten (±0), 1212 Wachen (±0), 761 Wasserstellen (±0), 954 Defis (±0)"`
+* **Zusammenfassung:** z. B. `"38157 Hydranten (±0), 1220 Wachen (+8), 761 Wasserstellen (±0), 961 Defis (+5), 1538 Grenzen (±0)"`
 * **Tägliche Differenz:** `diff_text` pro Objekttyp
 * **Speicherplatz:** `disk_free_gb`, `disk_used_percent`
 * **Build-Dauer:** `timings.total_sec`
 
 ---
 
-## 5. Sicherheit & Rollback
+## 5. DNS- & Netzwerkarchitektur
+
+### 5.1 Domain-Delegation (`openfiremap.org`)
+* **Registrar:** United-Domains (Eigene Nameserver konfiguriert).
+* **Autoritative Nameserver:**
+  * `autumn.ns.cloudflare.com`
+  * `morgan.ns.cloudflare.com`
+* **DNSSEC:** Deaktiviert bei United-Domains (keine DS-Einträge).
+
+### 5.2 DNS-Einträge bei Cloudflare
+| Typ | Name | Ziel | Proxy-Status | Zweck |
+|---|---|---|---|---|
+| `A` | `openfiremap.org` (4x) | `185.199.108-111.153` | **DNS only (grau)** | GitHub Pages Apex |
+| `CNAME` | `www` | `frnkmrz.github.io.` | **DNS only (grau)** | GitHub Pages www Subdomain |
+| `CNAME` | `pipeline` | `<tunnel-id>.cfargotunnel.com.` | **Proxied (orange)** | Cloudflare Zero Trust Tunnel zu VM 102 |
+| `MX` | `openfiremap.org` | `mx00.udag.de.` (Prio 10) | DNS only | E-Mail-Empfang United-Domains |
+| `MX` | `openfiremap.org` | `mx01.udag.de.` (Prio 20) | DNS only | E-Mail-Empfang United-Domains Backup |
+| `TXT` | `openfiremap.org` | `"v=spf1 include:_smtp.udag.de ~all"` | DNS only | SPF E-Mail-Authentifizierung |
+
+> **Wichtig für GitHub Pages:** Die Apex-A-Records und der `www`-CNAME müssen dauerhaft auf **„DNS only“ (graue Wolke)** stehen, damit das SSL-Zertifikat von GitHub Pages / Let's Encrypt direkt ohne Proxy-Konflikte verwaltet wird.
+
+### 5.3 Service Worker & Safari WebKit Schutz
+* In `public/sw.js` ist `url.hostname === 'pipeline.openfiremap.org'` hinterlegt.
+* **Hintergrund:** Safari und WebKit-Browser haben einen bekannten Bug, bei dem Service Worker HTTP-`Range`-Header bei abgefangenen Fetch-Requests verwerfen. Durch den expliziten Bypass lädt Safari alle PMTiles-Kacheln direkt ohne Service-Worker-Eingriff via HTTP 206.
+
+---
+
+## 6. Sicherheit & Rollback
 
 * **Keine Portweiterleitung im Router nötig:** Eingehende Anfragen laufen gesichert über den Cloudflare Zero Trust Tunnel (`cloudflared`). Eingehende Ports an der FRITZ!Box bleiben vollständig geschlossen.
 * **Token-Sicherheit:** Das `TUNNEL_TOKEN` ist in `.env` gespeichert und wird niemals in Git versioniert (`.gitignore`).

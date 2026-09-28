@@ -1,21 +1,22 @@
 # 🔒 Schritt-für-Schritt-Anleitung: HTTPS & Cloudflare Tunnel für OpenFireMap
 
-Stand: 26. September 2026  
+Stand: 28. September 2026  
+Status: ✅ **Erfolgreich umgesetzt & produktiv live**  
 Projekt: OpenFireMap DACH Data Pipeline (VM 102)
 
-Diese Anleitung beschreibt den exakten Ablauf zur Aktivierung von vollwertigem HTTPS für die lokale Pipeline auf VM 102 (`docker-lab-KW3`), ohne bestehende Dienste (GitHub Pages, E-Mail-Empfang) zu unterbrechen oder Ports im Heimnetz zu öffnen.
+Diese Dokumentation beschreibt den durchgeführten Ablauf zur Aktivierung von vollwertigem HTTPS für die lokale Pipeline auf VM 102 (`docker-lab-KW3`), ohne bestehende Dienste (GitHub Pages, E-Mail-Empfang) zu unterbrechen oder Ports im Heimnetz zu öffnen.
 
 ---
 
-## Übersicht der Phasen
+## Übersicht der Phasen (Alle abgeschlossen)
 
-| Phase | Zuständigkeit | Dauer | Was passiert? |
-|---|---|---|---|
-| **Phase 1: Cloudflare einrichten** | Du | ~5 Min. | Kostenlosen Account anlegen, Domain hinzufügen, DNS-, Mail- (MX/SPF) & GitHub-Records prüfen. |
-| **Phase 2: Nameserver umstellen** | Du | ~3 Min. | Bei United-Domains die 2 Cloudflare-Nameserver eintragen. |
-| **Phase 3: Tunnel im Dashboard anlegen** | Du | ~3 Min. | Tunnel erstellen, Hostname `pipeline.openfiremap.org` vergeben, Token sichern. |
-| **Phase 4: Docker-Container auf VM 102 starten** | Du / Assistent | ~2 Min. | Token in `.env` eintragen, `cloudflared` via `docker-compose.yml` starten. |
-| **Phase 5: Frontend umstellen & verifizieren** | Assistent | ~3 Min. | `config.js` auf HTTPS schalten, testen, bauen und pushen. |
+| Phase | Zuständigkeit | Dauer | Status | Was wurde gemacht? |
+|---|---|---|---|---|
+| **Phase 1: Cloudflare einrichten** | Erledigt | ~5 Min. | ✅ Live | Kostenloser Account angelegt, Domain hinzugefügt, Mail- (MX/SPF) & GitHub-Records geprüft. |
+| **Phase 2: Nameserver umstellen** | Erledigt | ~3 Min. | ✅ Live | Bei United-Domains `autumn` & `morgan.ns.cloudflare.com` eingetragen. |
+| **Phase 3: Tunnel im Dashboard anlegen** | Erledigt | ~3 Min. | ✅ Live | Tunnel `ofm-pipeline` angelegt, Hostname `pipeline.openfiremap.org` vergeben. |
+| **Phase 4: Docker-Container auf VM 102 starten** | Erledigt | ~2 Min. | ✅ Live | Token in `.env` hinterlegt, `cloudflared` via `docker-compose.yml` gestartet (4x QUIC). |
+| **Phase 5: Frontend umstellen & verifizieren** | Erledigt | ~3 Min. | ✅ Live | `config.js` auf HTTPS umgestellt, Tests grün, gebaut und auf GitHub Pages live geschaltet. |
 
 ---
 

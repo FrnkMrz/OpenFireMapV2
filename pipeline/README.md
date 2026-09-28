@@ -33,41 +33,58 @@ Dieses Projekt stellt eine eigene, performante und ausfallsichere Datenquelle f�
 |   |                                                                           |
 |   +--> VM 102 (docker-lab-KW3) - 192.168.178.152                              |
 |          |                                                                    |
-|          +--> [Container: openfiremap-builder] (Python 3.12 + osmium-tool)    |
+|          +--> [Container: openfiremap-builder] (Python 3.12 + osmium + tippecanoe)
 |          |      1. Download PBF (curl mit Retry & Resume)                     |
-|          |      2. osmium tags-filter (Hydranten, Wachen, etc.)               |
-|          |      3. osmium export -> GeoJSON                                   |
-|          |      4. metadata.json schreiben                                    |
+|          |      2. osmium tags-filter (Hydranten, Wachen, Defis, Grenzen)     |
+|          |      3. tippecanoe: Vektorkacheln (Z12–Z16) -> openfiremap.pmtiles |
+|          |      4. osmium export -> GeoJSON-Dateien                           |
+|          |      5. Differenzanalyse & metadata.json schreiben                 |
 |          |                                                                    |
 |          |      Ablage: /srv/docker/data/openfiremap/publish/                 |
 |          |                                                                    |
-|          +--> [Container: openfiremap-web] (Nginx Alpine, Port 8080)          |
-|                 - Liefert GeoJSON & metadata.json statisch aus                |
-|                 - Gzip-Kompression aktiv (8,5 MB -> ~1,5 MB Transfer)         |
-|                 - Vollständige CORS-Header für Web-Clients                    |
+|          +--> [Container: openfiremap-web] (Nginx Alpine, interner Port 80)   |
+|          |      - Liefert PMTiles (HTTP 206 Range Requests, gzip off)         |
+|          |      - Liefert GeoJSON & metadata.json statisch aus (gzip on)      |
+|          |      - Vollständige CORS-Header für Web-Clients                    |
+|          |                                                                    |
+|          +--> [Container: openfiremap-tunnel] (Cloudflare cloudflared)        |
+|                 - Verschlüsselter Outbound-Tunnel (QUIC / UDP 443)            |
+|                 - Verbindet VM 102 direkt mit Cloudflare Edge in Frankfurt    |
+|                 - Keine Router-Ports / Portweiterleitungen an der FRITZ!Box   |
 +----------------------------------------+--------------------------------------+
+                                         | Outbound TLS (QUIC)
+                                         v
+                      +--------------------------------------+
+                      | Cloudflare Zero Trust Edge           |
+                      | https://pipeline.openfiremap.org     |
+                      | (TLS 1.3 Let's Encrypt Wildcard)     |
+                      +------------------+-------------------+
                                          |
                                          v
-                         +-------------------------------+
-                         | OpenFireMap Web-Client        |
-                         | (Desktop / Mobil / Tablet)    |
-                         +-------------------------------+
+                      +--------------------------------------+
+                      | OpenFireMap Web-Client (HTTPS)       |
+                      | https://openfiremap.org              |
+                      +--------------------------------------+
 ```
 
 ---
 
-### 📡 Bereitgestellte Endpunkte (Port 8080)
+### 📡 Bereitgestellte Endpunkte
 
-Alle Endpunkte unterstützen `CORS` (`Access-Control-Allow-Origin: *`) und `Gzip`:
+* **Öffentlich (HTTPS):** `https://pipeline.openfiremap.org`
+* **Lokal im LAN (HTTP):** `http://192.168.178.152:8080`
+
+Alle Endpunkte unterstützen `CORS` (`Access-Control-Allow-Origin: *`) und HTTP Byte-Range-Requests:
 
 | Endpunkt | Typ | Beschreibung | Typischer Umfang (Mittelfranken) |
 |---|---|---|---|
 | `/metadata.json` | JSON | Status, Build-Zeitstempel, Quell-URL, Objektstatistiken | Status-Info |
-| `/openfiremap.pmtiles` | PMTiles | **Vektor-Kacheln** (Z12–Z16) als kompaktes Archiv für Range-Requests | **~1,9 MB** |
-| `/hydrants.geojson` | GeoJSON | Über-/Unterflurhydranten, WSH, Wandhydranten | ~38.000 Objekte (8,5 MB) |
-| `/fire_stations.geojson` | GeoJSON | Feuerwehrhäuser, Berufs-/Freiwillige Feuerwehren | ~1.200 Objekte |
+| `/openfiremap.pmtiles` | PMTiles | **Vektor-Kacheln** (Z12–Z16, inkl. 1.538 Grenzen & aller Objekte) | **~11,5 MB** |
+| `/hydrants.geojson` | GeoJSON | Über-/Unterflurhydranten, WSH, Wandhydranten | ~38.157 Objekte (8,5 MB) |
+| `/fire_stations.geojson` | GeoJSON | Feuerwehrhäuser, Berufs-/Freiwillige Feuerwehren | ~1.220 Objekte |
 | `/water_points.geojson` | GeoJSON | Zisternen, Löschwasserteiche, Saugestellen | ~760 Objekte |
-| `/defibrillators.geojson` | GeoJSON | Öffentlich zugängliche AED-Geräte | ~950 Objekte |
+| `/defibrillators.geojson` | GeoJSON | Öffentlich zugängliche AED-Geräte | ~960 Objekte |
+| `/boundaries.geojson` | GeoJSON | Gemeindegrenzen zur Einsatzgebiets-Erkennung | ~1.538 Polygone |
 
 ---
 

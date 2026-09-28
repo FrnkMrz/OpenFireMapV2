@@ -46,14 +46,16 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
 ---
 
 ### Schritt 3: Sicherer externer Zugriff & HTTPS (Cloudflare Tunnel)
-- **Status:** 🟡 Vorbereitet & dokumentiert (26. September 2026).
-- **Ziel:** Zugriff auf die Pipeline von unterwegs (Smartphone im Mobilfunknetz) und von der HTTPS-Live-Webseite `https://openfiremap.org` (Mixed-Content-Blockade aufheben).
-- **Umsetzung & Vorbereitungen:**
-  1. `cloudflared`-Container in `docker-compose.yml` integriert und auf VM 102 eingespielt.
-  2. Nginx Healthcheck auf IPv4 (`127.0.0.1`) gehärtet (`healthy`).
-  3. Service Worker ([`public/sw.js`](file:///Users/frank/Library/Mobile%20Documents/com~apple~CloudDocs/GitHub/Play_Antigravtiy/OpenFireMap.org/public/sw.js)) leitet `pipeline.openfiremap.org` am SW vorbei (verhindert Safari WebKit Range Bug).
-  4. Content Security Policy ([`index.html`](file:///Users/frank/Library/Mobile%20Documents/com~apple~CloudDocs/GitHub/Play_Antigravtiy/OpenFireMap.org/index.html)) auf `https://pipeline.openfiremap.org` erweitert.
-  5. Vollständige Schritt-für-Schritt-Anleitung inklusive E-Mail-Schutz (MX/SPF) und GitHub Pages CNAME-Schutz: [`ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md`](file:///Users/frank/Library/Mobile%20Documents/com~apple~CloudDocs/GitHub/Play_Antigravtiy/OpenFireMap.org/pipeline/docs/ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md).
+- **Status:** ✅ Vollständig abgeschlossen & produktiv live (28. September 2026).
+- **Ziel:** Zugriff auf die Pipeline von unterwegs (Smartphone im Mobilfunknetz) und von der HTTPS-Live-Webseite `https://openfiremap.org` (Mixed-Content-Blockade aufgehoben).
+- **Erreichte Meilensteine:**
+  1. **Cloudflare Zero Trust Tunnel:** Container `openfiremap-tunnel` (`cloudflared`) läuft auf VM 102 mit 4 redundanten QUIC-Verbindungen zur Cloudflare Edge in Frankfurt.
+  2. **Vollwertiges HTTPS:** Gültiges Let's Encrypt Wildcard-Zertifikat (`*.openfiremap.org`, TLS 1.3) aktiv.
+  3. **PMTiles HTTP 206 Byte-Range-Requests:** Vollständig funktionsfähig über HTTPS weltweit mit Latenzen unter 30 ms.
+  4. **Unterbrechungsfreier Betrieb:** GitHub Pages (`https://openfiremap.org` und `www`) sowie United-Domains E-Mail-Empfang (`mx00/mx01.udag.de` + SPF) blieben zu 100 % stabil.
+  5. **Frontend-Umstellung:** `src/js/config.js` auf `https://pipeline.openfiremap.org` umgestellt, Service Worker Bypass gegen Safari WebKit Bug aktiv, Produktions-Build nach `main` deployed.
+  6. **Automatisierte Qualitätssicherung:** Alle 63 Vitest-Tests und 11 Playwright-E2E-Tests erfolgreich.
+- **Dokumentation:** [`pipeline/docs/ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md`](file:///Users/frank/Library/Mobile%20Documents/com~apple~CloudDocs/GitHub/Play_Antigravtiy/OpenFireMap.org/pipeline/docs/ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md) und [`pipeline/docs/DOKUMENTATION.md`](file:///Users/frank/Library/Mobile%20Documents/com~apple~CloudDocs/GitHub/Play_Antigravtiy/OpenFireMap.org/pipeline/docs/DOKUMENTATION.md).
 
 ---
 
