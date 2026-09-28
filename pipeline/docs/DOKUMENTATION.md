@@ -199,11 +199,18 @@ Mit einer **Cloudflare Cache Rule** werden Byte-Ranges der Vektorkacheln direkt 
 ### 7.3 Cache-Invalidierung bei nächtlichen Builds
 Wenn VM 102 jede Nacht um 03:30 Uhr `openfiremap.pmtiles` neu generiert:
 * Durch `ETag` und `must-revalidate` im Nginx-Header prüft Cloudflare veraltete Kacheln automatisch.
-* **Manueller / Automatisierter Purge via Cloudflare API:**
+* **Automatisierter URL-Purge via Cloudflare API in `update.sh`:**
+  In `pipeline/update.sh` ist ein gezielter Purge-Schritt integriert, der ausschließlich aktiv wird, wenn folgende Variablen in `/srv/docker/projects/openfiremap-pipeline/.env` gesetzt sind:
   ```bash
-  curl -X POST "https://api.cloudflare.com/client/v4/zones/<ZONE_ID>/purge_cache" \
-       -H "Authorization: Bearer <API_TOKEN>" \
-       -H "Content-Type: application/json" \
-       -d '{"files":["https://pipeline.openfiremap.org/openfiremap.pmtiles"]}'
+  CF_ZONE_ID="<zone_id>"
+  CF_API_TOKEN="<api_token>"
   ```
-  Dieser Aufruf kann optional am Ende von `update.sh` hinterlegt werden, sobald ein Cloudflare API-Token mit der Berechtigung `Zone:Cache Purge` existiert.
+  Sind diese Variablen nicht gesetzt, gibt das Skript einen Hinweis aus und läuft normal ohne Fehler weiter.
+* **Erforderliche Token-Berechtigungen bei Cloudflare:**
+  * Im Cloudflare Dashboard unter **My Profile** ➔ **API Tokens** ➔ **Create Custom Token**.
+  * **Permissions:** `Zone` ➔ `Cache Purge` ➔ `Purge`
+  * **Zone Resources:** `Include` ➔ `Specific zone` ➔ `openfiremap.org`
+  * Dieser Scope beschränkt den Token streng auf das Leeren des Caches für die definierte Zone (keine DNS- oder Kontoberechtigungen).
+* **Purge-Umfang:**
+  Es wird gezielt per URL-Liste gecleart (`openfiremap.pmtiles` und `metadata.json`), kein globaler „Purge Everything“, um andere gecachte Assets nicht zu beeinträchtigen.
+
