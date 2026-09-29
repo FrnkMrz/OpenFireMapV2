@@ -254,6 +254,40 @@ describe('pipeline.js', () => {
       expect(isPipelineEligible(makeViewport(47.728, 10.316), 15)).toBe(true);  // Kempten
       expect(isPipelineEligible(makeViewport(49.555, 11.350), 15)).toBe(true);  // Schnaittach
     });
+
+    it('sollte mit Multi-Polygonen und Regionenlisten korrekt funktionieren', () => {
+      const origPolygon = Config.pipeline.coveragePolygon;
+      try {
+        // Multi-Polygon mit 2 separaten Test-Rechtecken
+        Config.pipeline.coveragePolygon = [
+          // Polygon 1 (um 48.0, 11.0)
+          [
+            [47.9, 10.9],
+            [48.1, 10.9],
+            [48.1, 11.1],
+            [47.9, 11.1],
+            [47.9, 10.9]
+          ],
+          // Polygon 2 (um 49.0, 12.0)
+          [
+            [48.9, 11.9],
+            [49.1, 11.9],
+            [49.1, 12.1],
+            [48.9, 12.1],
+            [48.9, 11.9]
+          ]
+        ];
+
+        // Liegt komplett in Polygon 1
+        expect(isPipelineEligible({ south: 47.95, north: 48.05, west: 10.95, east: 11.05 }, 15)).toBe(true);
+        // Liegt komplett in Polygon 2
+        expect(isPipelineEligible({ south: 48.95, north: 49.05, west: 11.95, east: 12.05 }, 15)).toBe(true);
+        // Liegt zwischen den beiden Polygonen (Niemandsland)
+        expect(isPipelineEligible({ south: 48.4, north: 48.6, west: 11.4, east: 11.6 }, 15)).toBe(false);
+      } finally {
+        Config.pipeline.coveragePolygon = origPolygon;
+      }
+    });
   });
 
   describe('geoJsonFeatureToElement', () => {
