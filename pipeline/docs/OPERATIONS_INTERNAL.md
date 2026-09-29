@@ -79,7 +79,11 @@ rclone copyto --header-upload "Cache-Control: public, max-age=86400" <R2_REMOTE>
 # 2. Zuletzt Metadaten wiederherstellen (aktiviert die alte Version im Client):
 rclone copyto --header-upload "Cache-Control: no-cache, no-store, must-revalidate, max-age=0" <R2_REMOTE>:<R2_BUCKET>/backup/<TS>/metadata.json <R2_REMOTE>:<R2_BUCKET>/metadata.json
 
-# 3. Cloudflare Cache Purge ausführen (optional via update.sh purge_cf_cache)
+# 3. Cache-Control Header nach Rollback verifizieren:
+# Hinweis: rclone copyto (serverseitiger Kopiervorgang innerhalb von R2) aktualisiert Header via --header-upload
+# womöglich nicht zuverlässig. Nach dem Rollback die Header immer mit curl -I prüfen:
+curl -s -I "https://pipeline.openfiremap.org/metadata.json" | grep -i cache-control
+curl -s -I -H "Range: bytes=0-0" "https://pipeline.openfiremap.org/openfiremap.pmtiles" | grep -i cache-control
 ```
 
 ---
@@ -126,7 +130,7 @@ Seit dem 29.09.2026 zeigt der DNS-Eintrag von `pipeline.openfiremap.org` direkt 
 ### Schritt-für-Schritt-Anleitung
 1. **Public Hostname im Cloudflare Zero Trust Dashboard entfernen:**
    - Navigieren zu *Networks* → *Tunnels* → Tunnel auswählen → *Public Hostnames*.
-   - Prüfen, dass der Hostname `pipeline.openfiremap.org` nicht mehr aktiv auf `http://web:80` routet (DNS verweist bereits direkt auf den R2-Bucket bzw. Custom Domain).
+   - Prüfen, dass der Hostname `pipeline.openfiremap.org` nicht mehr aktiv auf `http://<PIPELINE_LAN_IP>:8080` routet (DNS verweist bereits direkt auf den R2-Bucket bzw. Custom Domain).
    - Eintrag für den öffentlichen Hostnamen im Tunnel-Menü entfernen.
 2. **Tunnel deaktivieren oder löschen:**
    - Im Zero Trust Dashboard den Tunnel auf *Inactive* stellen oder den Tunnel löschen (sofern keine anderen Dienste darüber laufen).
@@ -151,7 +155,7 @@ Seit dem 29.09.2026 zeigt der DNS-Eintrag von `pipeline.openfiremap.org` direkt 
 Sollte der Tunnel als Notfall-Kanal reaktiviert werden müssen:
 1. `TUNNEL_TOKEN` in `<PROJECT_DIR>/.env` wieder eintragen.
 2. `docker compose up -d tunnel` starten.
-3. Im Cloudflare Zero Trust Dashboard den Public Hostname (z. B. als Backup-Subdomain `backup-pipeline.openfiremap.org`) wieder auf `http://web:80` verlinken.
+3. Im Cloudflare Zero Trust Dashboard den Public Hostname (z. B. als Backup-Subdomain `backup-pipeline.openfiremap.org`) wieder auf `http://<PIPELINE_LAN_IP>:8080` verlinken.
 
 ---
 
