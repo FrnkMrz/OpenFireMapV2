@@ -23,12 +23,18 @@ const __dirname = path.dirname(__filename);
 const args = process.argv.slice(2);
 let BASE_URL = 'https://pipeline.openfiremap.org';
 let JSON_OUT = null;
+let FORCE_MAX_ZOOM = null;
+let COMPARE_JSON = null;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--url' && args[i + 1]) {
     BASE_URL = args[++i].replace(/\/+$/, '');
   } else if (args[i] === '--json' && args[i + 1]) {
     JSON_OUT = args[++i];
+  } else if ((args[i] === '--force-max-zoom' || args[i] === '--max-zoom') && args[i + 1]) {
+    FORCE_MAX_ZOOM = parseInt(args[++i], 10);
+  } else if (args[i] === '--compare' && args[i + 1]) {
+    COMPARE_JSON = args[++i];
   }
 }
 
@@ -227,7 +233,10 @@ async function runMeasurements() {
     const pmtiles = new PMTiles(source);
     const header = await pmtiles.getHeader();
     headerMinZoom = header.minZoom ?? 12;
-    headerMaxZoom = header.maxZoom ?? 16;
+    headerMaxZoom = FORCE_MAX_ZOOM != null ? FORCE_MAX_ZOOM : (header.maxZoom ?? 16);
+    if (FORCE_MAX_ZOOM != null) {
+      console.log(`  [Info] headerMaxZoom manuell überschrieben auf: ${headerMaxZoom}`);
+    }
     if (initialRequests[0]?.contentRange) {
       const match = initialRequests[0].contentRange.match(/\/(\d+)$/);
       if (match) {
@@ -333,6 +342,37 @@ async function runMeasurements() {
   }
 
   console.log('\nPMTiles-Dateigröße: ' + globalFileSizeMb + ' MB (Cloudflare Free Cache-Grenze: 512 MB -> Cache-Status: ' + results[0]?.cfCacheStatus + ')');
+
+  // 4. Falls Vergleich gewünscht (--compare)
+  if (COMPARE_JSON) {
+    const compPath = path.resolve(process.cwd(), COMPARE_JSON);
+    if (fs.existsSync(compPath)) {
+      const baseData = JSON.parse(fs.readFileSync(compPath, 'utf-8'));
+      const baseMap = new Map(baseData.results.map(r => [`${r.location}|${r.viewport}|${r.mapZoom}`, r]));
+
+      console.log('\n' + '='.repeat(100));
+      console.log('VORHER / NACHHER VERGLEICH (Baseline vs. Neuer Datenmodell-Abruf)');
+      console.log('='.repeat(100));
+      console.log('\n| Ort | Viewport | Kartenzoom | Baseline Req | Neu Req | Diff Req (%) | Baseline TTLT | Neu TTLT | Diff TTLT (%) |');
+      console.log('|---|---|---|---|---|---|---|---|---|');
+
+      for (const r of results) {
+        const key = `${r.location}|${r.viewport}|${r.mapZoom}`;
+        const base = baseMap.get(key);
+        if (!base) continue;
+
+        const reqDiff = r.httpRequests - base.httpRequests;
+        const reqPct = Math.round((reqDiff / base.httpRequests) * 100);
+        const reqStr = `${reqDiff > 0 ? '+' : ''}${reqDiff} (${reqPct > 0 ? '+' : ''}${reqPct}%)`;
+
+        const ttltDiff = r.ttltMs - base.ttltMs;
+        const ttltPct = Math.round((ttltDiff / base.ttltMs) * 100);
+        const ttltStr = `${ttltDiff > 0 ? '+' : ''}${ttltDiff}ms (${ttltPct > 0 ? '+' : ''}${ttltPct}%)`;
+
+        console.log(`| ${r.location} | ${r.viewport} | z${r.mapZoom} | ${base.httpRequests} | ${r.httpRequests} | ${reqStr} | ${base.ttltMs}ms | ${r.ttltMs}ms | ${ttltStr} |`);
+      }
+    }
+  }
 
   // Falls gewünscht als JSON speichern
   if (JSON_OUT) {
