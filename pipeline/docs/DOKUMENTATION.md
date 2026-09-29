@@ -41,11 +41,30 @@ Die Pipeline lässt sich über das vorgefertigte Home-Assistant-Package unter `p
      packages: !include_dir_named packages
    ```
 2. Datei `openfiremap.yaml` in den Home-Assistant-Ordner `/config/packages/` kopieren.
-3. Platzhalter konfigurieren (entweder direkt in der Datei oder in `/config/secrets.yaml`):
-   - `<PIPELINE_LAN_URL>`: z. B. `http://<PIPELINE_LAN_IP>:8080`
-   - `<NOTIFY_SERVICE>`: z. B. `notify.mobile_app_smartphone` oder `notify.persistent_notification`
-4. Konfigurationsprüfung in Home Assistant durchführen und YAML neu laden.
-5. Vor dem Einbinden die Entitätsreferenzen prüfen:
+3. Platzhalter konfigurieren:
+   - **Standardweg (Suchen & Ersetzen):**
+     - `<PIPELINE_PUBLIC_URL>`: Öffentliche URL, z. B. `https://pipeline.openfiremap.org`
+     - `<PIPELINE_LAN_URL>`: LAN-URL des Nginx-Servers, z. B. `http://<PIPELINE_LAN_IP>:8080` (Muster)
+     - `<NOTIFY_SERVICE>`: Benachrichtigungsdienst, z. B. `notify.persistent_notification` oder `notify.mobile_app_smartphone` (muss direkt als Dienstname im YAML stehen; Home Assistant unterstützt kein `!secret` für Service-Namen).
+   - **Alternative via `secrets.yaml`:**
+     Home Assistant erlaubt kein Ersetzen von Teil-Strings innerhalb von URLs via `!secret`. Daher müssen vollständige URLs in `secrets.yaml` hinterlegt und die `resource:`-Zeilen in `openfiremap.yaml` angepasst werden:
+     ```yaml
+     # in /config/secrets.yaml
+     openfiremap_public_metadata_url: "https://pipeline.openfiremap.org/metadata.json"
+     openfiremap_lan_metadata_url: "http://<PIPELINE_LAN_IP>:8080/metadata.json"
+     openfiremap_lan_system_stats_url: "http://<PIPELINE_LAN_IP>:8080/internal/system_stats.json"
+     openfiremap_lan_sync_status_url: "http://<PIPELINE_LAN_IP>:8080/internal/sync_status.json"
+
+     # in /config/packages/openfiremap.yaml
+     rest:
+       - resource: !secret openfiremap_public_metadata_url
+         ...
+     ```
+     Auch bei dieser Variante muss `<NOTIFY_SERVICE>` in den Automationen direkt ersetzt werden.
+4. **Hinweis zum Initialstatus:**
+   Die Entitäten aus `sync_status.json` (`sensor.openfiremap_sync_*`, `binary_sensor.openfiremap_upload_erfolgreich`, `binary_sensor.openfiremap_in_sync`) zeigen bis zum ersten erfolgreichen nächtlichen `update.sh`-Lauf den Status `unavailable`. Dies ist normales Verhalten, da die Statusdatei erst beim Build erzeugt wird.
+5. Konfigurationsprüfung in Home Assistant durchführen und YAML neu laden.
+6. Vor dem Einbinden die Entitätsreferenzen prüfen:
    ```bash
    python3 pipeline/tools/check_ha_entities.py pipeline/monitoring/homeassistant/openfiremap.yaml
    ```

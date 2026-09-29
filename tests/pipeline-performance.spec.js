@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Pipeline E2E Performance & Deduplication', () => {
+  test.beforeAll(async () => {
+    try {
+      const res = await fetch('https://pipeline.openfiremap.org/metadata.json', { signal: AbortSignal.timeout(2000) });
+      if (!res.ok) test.skip(true, 'Live pipeline endpoint not reachable');
+    } catch {
+      test.skip(true, 'No internet connectivity or pipeline endpoint not reachable');
+    }
+  });
+
   test('Pipeline Data & Boundaries load fast and deduplicated at Zoom 16', async ({ page }) => {
     const metadataRequests = [];
     const rangeRequests = [];

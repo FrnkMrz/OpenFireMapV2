@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.8.0] - 2026-09-29
+
+### Performance
+- **z14-Datenmodell & Cloudflare-Edge-Cache (HIT)**:
+  - Optimierung des Vektorkachel-Datenmodells auf Zoomstufen z12–14 (Hydranten, Wasserstellen und Defibrillatoren auf z14 beschränkt; Wachen und Grenzen auf z12–14) (`ad36beb`).
+  - Reduzierung der PMTiles-Dateigröße für DACHLiLu von 539.096.217 Bytes auf **201.892.499 Bytes (≈ 192,5 MiB)** (-62,5 %).
+  - Cloudflare Edge Cache liefert Kacheln nun zuverlässig mit `cf-cache-status: HIT` aus, da die Datei weit unter der 512-MiB-Grenze für Cloudflare Free liegt (zuvor Cache-Bypass) (`79f2f9d`).
+  - Live-Messungen (Desktop 1440×800, Kartenzoom 16): **2–6 statt zuvor 24–35 Kachel-Requests**, vollständige Datendichte ohne fehlende Hydranten (Nürnberg 241/241, Berlin 197/197, Zürich 392/392, Wien 299/298 mit ~0,6 m Randeffekt) (`51d8da1`, `6245958`).
+- **Preconnect, Warmup & Progressives Rendern**:
+  - Früher DNS-/TLS-Preconnect zu `pipeline.openfiremap.org` und Header-Warmup vor dem ersten Rendering (`777918c`).
+  - Progressives Rendern: Sichtbarer Kartenausschnitt wird sofort gezeichnet (`isPartial: true`), der Pufferring wird asynchron im Hintergrund nachgeladen (`777918c`).
+  - Dynamische Ermittlung der Kachel-Zoomstufe aus dem PMTiles-Header (`queryZoom`), voll abwärts- und aufwärtskompatibel mit z14- und z16-Dateien (`fdd696b`).
+
+### Stabilität & Fehlerbehebungen
+- **Zustandskonsistenz bei schnellen Kartenbewegungen (A → B → A)**:
+  - Streaming-Fortschritt vom globalen App-Zustand isoliert; Beseitigung von Status-Flackern (`LÄDT...` / `AKTUELL`) (`e336572`).
+  - Export-Konsistenz: Laufende Ladevorgänge für fremde Viewports verfälschen nicht mehr den Exportstatus (`e336572`).
+- **Export-Wartezeit & Pufferring-Optimierung**:
+  - `pendingBufferFetches` als `Set` implementiert; verhindert unendliche Export-Wartezeiten (5 s / 10 s Timeout) bei parallelen POI- und Grenz-Pufferringen (`f090800`).
+  - Unnötiges Neu-Rendern (mit Flackern durch `clearLayers`) bei Bewegungen innerhalb bereits vollständig geladener Bereiche eliminiert (`f090800`).
+  - Pufferringe brechen bei minimalen Kartenbewegungen innerhalb der aktiven Bounding-Box (`activeFetchBounds`) nicht mehr vorzeitig ab (`f090800`).
+- **Controller-Reset & Ladezustandsprüfung**:
+  - `AbortController` werden im `finally` auf `null` zurückgesetzt, sobald alle sichtbaren Abrufe und Pufferringe abgeschlossen sind (`1575b30`).
+  - `hasActiveRequest` prüft nun den realen Ladezustand (`isFetchingData || isFetchingBoundaries || pendingBufferFetches.size > 0`) (`1575b30`).
+
+### Pipeline & Betrieb
+- **Upload-Verifikation & Synchronisations-Status**:
+  - `pipeline/update.sh`: 3-fache automatisierte Verifikation gegen den öffentlichen R2-Endpunkt (`generated_at` und Byte-Größe via HTTP `Range: bytes=0-0`), Ergebnis wird nach `raw/sync_status.json` geschrieben (`1575b30`).
+  - `pipeline/builder/build_features.py`: `metadata.json` um `pmtiles.size_bytes` (exakte Bytes) ergänzt; `size_mb` als MiB dokumentiert (`1575b30`).
+- **Interner Nginx-Endpunkt `/internal/`**:
+  - Bereitstellung von `system_stats.json` und `sync_status.json` für das interne Monitoring auf VM 102 (`1575b30`).
+  - Strikter Zugriffsschutz: Nur RFC1918-Netzwerke und Localhost; sofortige HTTP 403-Sperre bei Anfragen über den Cloudflare-Tunnel via `CF-Connecting-IP` (`1575b30`).
+
+### Monitoring
+- **Home-Assistant-Paket (`openfiremap.yaml`)**:
+  - Vorlage mit 22 Entitäten zur lückenlosen Überwachung von öffentlichem R2-CDN, lokalem Build-Zustand auf VM 102, Festplattenbelegung und R2-Synchronisation (`1575b30`).
+  - Template-Sensoren auf moderne `template:`-Struktur migriert und mit Ausfall- und Verfügbarkeitslogik gehärtet (`9953ebf`).
+- **Validierungswerkzeug (`check_ha_entities.py`)**:
+  - Prüfskript zur Erkennung fehlender oder fehlerhafter Home-Assistant-Entitätsreferenzen mit HA-Slugifizierung (`1575b30`).
+
+### Tests
+- **Netzwerk-Sperre & Deterministische Tests**:
+  - Globale Netzwerk-Sperre in Unit-Tests zur Verhinderung von ungewollten externen Netzwerkaufrufen (`6162ddc`).
+  - Ausbau der Vitest-Testsuite auf 125 Tests und Hinzufügen von Playwright-E2E-Tests für progressives Rendern und Pipeline-Performance (`c05a3ff`, `f090800`, `1575b30`).
+
 ## [v0.7.2] - 2026-09-29
 
 ### Optimierung der Status- & Benachrichtigungsmeldungen

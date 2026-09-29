@@ -11,10 +11,36 @@
 #   2. Stelle sicher, dass in /config/configuration.yaml Packages aktiviert sind:
 #        homeassistant:
 #          packages: !include_dir_named packages
-#   3. Ersetze die Platzhalter oder trage sie in /config/secrets.yaml ein:
-#        openfiremap_lan_url: "http://<PIPELINE_LAN_IP>:8080"
-#        openfiremap_notify_service: "notify.mobile_app_dein_smartphone"
-#   4. Konfiguration prüfen und Home Assistant neu laden.
+#   3. Standardweg: Platzhalter per Suchen und Ersetzen austauschen:
+#        - <PIPELINE_PUBLIC_URL> -> z. B. "https://pipeline.openfiremap.org"
+#        - <PIPELINE_LAN_URL>    -> z. B. "http://<PIPELINE_LAN_IP>:8080"
+#        - <NOTIFY_SERVICE>      -> z. B. "notify.persistent_notification" oder
+#                                   "notify.mobile_app_dein_smartphone"
+#        WICHTIG: <NOTIFY_SERVICE> muss direkt als Dienstname eingetragen werden,
+#        da Home Assistant '!secret' für Service-Namen nicht unterstützt!
+#
+#   Alternative via /config/secrets.yaml (nur für vollständige URLs):
+#        Home Assistant unterstützt keine String-Interpolation mit !secret.
+#        Wenn secrets.yaml verwendet wird, müssen die URLs als Ganzes definiert
+#        und die 'resource:'-Einträge angepasst werden:
+#        secrets.yaml:
+#          openfiremap_public_metadata_url: "https://pipeline.openfiremap.org/metadata.json"
+#          openfiremap_lan_metadata_url: "http://<PIPELINE_LAN_IP>:8080/metadata.json"
+#          openfiremap_lan_system_stats_url: "http://<PIPELINE_LAN_IP>:8080/internal/system_stats.json"
+#          openfiremap_lan_sync_status_url: "http://<PIPELINE_LAN_IP>:8080/internal/sync_status.json"
+#        openfiremap.yaml:
+#          resource: !secret openfiremap_public_metadata_url
+#          ...
+#        Auch bei diesem Weg muss <NOTIFY_SERVICE> in den Automationen direkt
+#        ersetzt werden.
+#
+#   4. Hinweis zum Initialstatus:
+#        Die Sensoren basierend auf 'sync_status.json' (openfiremap_sync_*,
+#        openfiremap_upload_erfolgreich, openfiremap_in_sync) zeigen bis zum
+#        ersten erfolgreichen Lauf von 'update.sh' den Status 'unavailable'.
+#        Das ist erwartet, da die Datei erst beim ersten Build erzeugt wird.
+#
+#   5. Konfiguration prüfen und Home Assistant neu laden.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------

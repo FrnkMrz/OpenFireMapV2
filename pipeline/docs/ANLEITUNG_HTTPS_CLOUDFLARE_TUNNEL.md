@@ -1,5 +1,7 @@
 # HTTPS und Cloudflare R2 – öffentliche Hinweise
 
+> **Hinweis (historisch):** Die primäre öffentliche Auslieferung erfolgt seit dem 29.09.2026 vollständig und direkt über Cloudflare R2 unter `https://pipeline.openfiremap.org`. Der Cloudflare-Tunnel liefert keinen regulären Produktionsverkehr mehr aus.
+
 Die öffentliche Pipeline wird über `https://pipeline.openfiremap.org` bereitgestellt. Cloudflare R2 dient als Objektspeicher für die vorbereiteten PMTiles-Daten. Die Webanwendung greift per HTTPS, CORS und HTTP-Range-Requests darauf zu.
 
 ## Sicherheitsregeln

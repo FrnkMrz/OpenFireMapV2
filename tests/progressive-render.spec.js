@@ -147,7 +147,14 @@ test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
   });
 
   test('GPX-Download startet < 1 s nach Klick (bisher > 5 s Wartezeit)', async ({ page }) => {
-    // Route mocken
+    // Nominatim und Overpass mocken
+    await page.route('**/nominatim.openstreetmap.org/**', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ display_name: 'Paris Test' })
+      });
+    });
+
     await page.route('**/api/interpreter', async (route) => {
       await route.fulfill({
         contentType: 'application/json',
@@ -176,6 +183,7 @@ test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
 
     // Titel-Bestätigungsmodal erscheint
     await page.waitForSelector('#export-confirm-ok', { state: 'visible' });
+    await page.fill('#export-confirm-title', 'Paris Test');
 
     // Download-Startzeit messen
     const downloadPromise = page.waitForEvent('download');
