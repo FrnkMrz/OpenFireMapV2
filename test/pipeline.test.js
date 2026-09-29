@@ -30,23 +30,33 @@ vi.mock('@mapbox/vector-tile', () => {
   };
 });
 
+// Ausgangszustand der Pipeline-Konfiguration sichern
+const initialPipelineConfig = {
+  ...Config.pipeline,
+  bounds: { ...Config.pipeline.bounds },
+  coveragePolygon: Config.pipeline.coveragePolygon
+};
+
 describe('pipeline.js', () => {
   beforeEach(() => {
     mockVectorTileLayers = null;
     clearPipelineCache();
-    Config.pipeline.enabled = true;
-    Config.pipeline.url = 'https://pipeline.openfiremap.org';
-    Config.pipeline.bounds = {
-      south: 45.8,
-      west: 5.7,
-      north: 55.1,
-      east: 17.2
+    Config.pipeline = {
+      ...initialPipelineConfig,
+      bounds: { ...initialPipelineConfig.bounds },
+      coveragePolygon: initialPipelineConfig.coveragePolygon
     };
   });
 
   afterEach(() => {
     mockVectorTileLayers = null;
     vi.restoreAllMocks();
+    clearPipelineCache();
+    Config.pipeline = {
+      ...initialPipelineConfig,
+      bounds: { ...initialPipelineConfig.bounds },
+      coveragePolygon: initialPipelineConfig.coveragePolygon
+    };
   });
 
   describe('isPointInPolygon (Ray-Casting Jordan Curve)', () => {
@@ -517,7 +527,14 @@ describe('pipeline.js', () => {
       Config.pipeline.url = 'https://pipeline.example.com';
       Config.pipeline.pmtilesFile = 'test_error.pmtiles';
 
-      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      // fetch vollständig mocken: metadata.json scheitert -> URL bleibt garantiert ohne ?v=
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        const url = typeof input === 'string' ? input : (input?.url || input?.href || String(input));
+        if (url.includes('metadata.json')) {
+          throw new Error('offline');
+        }
+        throw new Error(`Unerwarteter fetch-Aufruf im Test: ${url}`);
+      });
 
       const bounds = {
         getSouth: () => 48.12,
@@ -534,10 +551,11 @@ describe('pipeline.js', () => {
         /PMTiles-Abruf fehlgeschlagen.*GeoJSON-Fallback ist deaktiviert/
       );
 
-      const geoJsonCalls = fetchSpy.mock.calls.filter(call => typeof call[0] === 'string' && call[0].endsWith('.geojson'));
+      const geoJsonCalls = fetchSpy.mock.calls.filter(call => {
+        const url = typeof call[0] === 'string' ? call[0] : (call[0]?.url || call[0]?.href || String(call[0]));
+        return url.includes('.geojson');
+      });
       expect(geoJsonCalls.length).toBe(0);
-
-      fetchSpy.mockRestore();
     });
 
     it('sollte bei Boundary-PMTiles-Fehler und geojsonFallback=false eine Exception werfen und KEIN boundaries.geojson fetchen', async () => {
@@ -547,7 +565,14 @@ describe('pipeline.js', () => {
       Config.pipeline.url = 'https://pipeline.example.com';
       Config.pipeline.pmtilesFile = 'boundary_error.pmtiles';
 
-      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      // fetch vollständig mocken: metadata.json scheitert -> URL bleibt garantiert ohne ?v=
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        const url = typeof input === 'string' ? input : (input?.url || input?.href || String(input));
+        if (url.includes('metadata.json')) {
+          throw new Error('offline');
+        }
+        throw new Error(`Unerwarteter fetch-Aufruf im Test: ${url}`);
+      });
 
       const bounds = {
         getSouth: () => 48.12,
@@ -564,10 +589,11 @@ describe('pipeline.js', () => {
         /PMTiles-Boundary-Abruf fehlgeschlagen.*GeoJSON-Fallback ist deaktiviert/
       );
 
-      const geoJsonCalls = fetchSpy.mock.calls.filter(call => typeof call[0] === 'string' && call[0].includes('boundaries.geojson'));
+      const geoJsonCalls = fetchSpy.mock.calls.filter(call => {
+        const url = typeof call[0] === 'string' ? call[0] : (call[0]?.url || call[0]?.href || String(call[0]));
+        return url.includes('boundaries.geojson');
+      });
       expect(geoJsonCalls.length).toBe(0);
-
-      fetchSpy.mockRestore();
     });
   });
 
