@@ -886,7 +886,7 @@ export async function fetchBoundaryData(onProgressData = null) {
       });
       ensureCurrentRequest();
 
-      if (Array.isArray(boundaryElements) && boundaryElements.length > 0) {
+      if (Array.isArray(boundaryElements)) {
         State.cachedBoundaryElements = boundaryElements;
         State.loadedBoundaryBounds = boundaryElements.loadedBounds || viewBounds;
         syncCombinedCachedElements();

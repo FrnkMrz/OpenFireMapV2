@@ -435,8 +435,9 @@ export function initMapLogic() {
         if (poiCoverageMatchesMode(mode) && boundaryCoverageMatchesView(zoom)) {
             const statusEl = document.getElementById('data-status');
             if (statusEl) {
-                statusEl.innerText = t('status_current');
-                statusEl.className = 'text-green-400';
+                const inPl = isPipelineEligible(State.map.getBounds(), zoom);
+                statusEl.innerText = inPl ? `${t('status_current')} (Lokal)` : t('status_current');
+                statusEl.className = 'text-green-400 font-bold';
             }
             window.dispatchEvent(new CustomEvent('ofm:overpass', {
                 detail: {
