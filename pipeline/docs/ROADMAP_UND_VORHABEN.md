@@ -1,22 +1,25 @@
 # 🗺️ Roadmap & Nächste Vorhaben
 
-Stand: 23. September 2026
+Stand: 29. September 2026
 
-Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte für die **OpenFireMap DACH Data Pipeline** und deren Integration in **OpenFireMap** fest.
+Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte für die **OpenFireMap DACHLiLu Data Pipeline** und deren Integration in **OpenFireMap** fest.
 
 ---
 
 ## 🏁 Bisher erreicht (Meilensteine 1 & 2)
 
 - [x] **Proxmox VM 102 (`docker-lab-KW3`):** Docker & Docker Compose Umgebung betriebsbereit.
-- [x] **High-Performance Filterung mit Osmium:** Über 41.000 feuerwehrrelevante Objekte aus Mittelfranken in ~18 Sekunden extrahiert.
+- [x] **High-Performance-Filterung mit Osmium:** Der Builder unterstützt Bayern sowie den DACHLiLu-Verbund aus Deutschland, Österreich, Schweiz, Luxemburg und Liechtenstein.
 - [x] **Vektor-Kacheln mit `tippecanoe` (Option A - PMTiles):**
-  - Alle Zoomstufen (Z12–Z16) in einer kompakten Einzeldatei `openfiremap.pmtiles` (**1,95 MB**).
+  - Alle Zoomstufen (Z12–Z16) in einer kompakten Einzeldatei `openfiremap.pmtiles` (Bayern: **88,62 MB**).
   - Nginx mit HTTP 206 Partial Content (Range Requests) und vollständigen CORS-Headern konfiguriert.
 - [x] **Automatischer nächtlicher Cronjob:** Tägliches Update um 03:30 Uhr nachts eingerichtet und verifiziert.
 - [x] **Erweiterte Metadaten für Home Assistant:**
-  - Automatische Berechnung von Differenzen zum Vortag (`diff: +2` Hydranten).
-  - Kompakte Statuszeile (`summary`), NVMe-Speicherplatzüberwachung (`system.disk_free_gb`) und Zeitmessung.
+  - Automatische Berechnung von Differenzen zum Vortag (`diff`/`diff_text`) und kompakte Statuszeile (`summary`).
+  - Build-Zeitmessungen und Objektstatistiken in `metadata.json`; Systemmetriken werden aus Sicherheitsgründen separat in `system_stats.json` unterhalb von `raw/` geschrieben.
+- [x] **Sicherheitsabtrennung:** Der öffentliche Metadaten-Endpunkt enthält keine Server-Systemmetriken mehr.
+- [x] **DACHLiLu-Builder im Repository:** Filter-then-Merge, intelligenter HEAD-Check, RAM-Disk-Fallback, Einzelregion-Modus und optionale Cloudflare-R2-Synchronisation implementiert.
+- [x] **Qualitätssicherung:** Builder-Tests sowie die DACHLiLu-Abdeckungs- und Multi-Polygon-Tests ergänzt.
 - [x] **Code & Dokumentation gesichert:** Eigenständiges GitHub-Repository `FrnkMrz/openfiremap-dach-pipeline` erstellt und gepflegt.
 
 ---
@@ -60,7 +63,7 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
 
 ---
 
-### Schritt 4: Skalierung auf Bayern (Abgeschlossen) & DACH
+### Schritt 4: Skalierung auf Bayern (Abgeschlossen) & DACHLiLu
 - **Status Bayern:** ✅ Erfolgreich umgesetzt & live (28. September 2026).
 - **Ergebnisse Bayern:**
   - **Download:** `bayern-latest.osm.pbf` (813,5 MB in 31,8 Sek.).
@@ -74,16 +77,15 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
   - **Gesamte Build-Dauer:** 280,11 Sekunden (~4,6 Minuten).
   - **Systemstabilität:** 4 GB NVMe-Swap auf VM 102 eingerichtet; Auslastung der NVMe liegt bei nur 5,8 % (113,3 GB frei).
   - **Frontend:** Präzise Grenzabdeckung via 1.296-Punkt-Innenpuffer-Polygon (500 m Innenpuffer aus OSM R2145268) mit vollständigem Kantenüberschneidungstest aller 4 Viewport-Kanten (`isRectInPolygon`) in `src/js/pipeline.js` implementiert. 40.000 simulierte Viewports auf 0 % fehlerhafte Zuweisungen verifiziert; verhindert leere Karten in Nachbarländern/Grenzgebieten wie Ulm oder Salzburg.
+  - **Sicherheitsänderung:** Die öffentliche `metadata.json` enthält keine Systemmetriken mehr. `disk_free_gb`, `disk_used_gb`, `disk_total_gb` und `disk_used_percent` werden intern in `raw/system_stats.json` geschrieben.
 
-- **Nächster Ausbauschritt: DACHLiLu & Cloudflare R2 (Umsetzung in den nächsten Tagen):**
+- **DACHLiLu im Repository implementiert; Deployment und vollständiger Live-Build stehen noch aus:**
   * Geltungsbereich: Deutschland (DE), Österreich (AT), Schweiz (CH), Liechtenstein (LI), Luxemburg (LU).
-  * Hosting über **Cloudflare R2** (10 GB Free Tier, 0 € Egress, 100 % unabhängig vom Heimnetz).
-  * **Direkt mit eingeplante Build-Optimierungen (Punkt 1):**
-    1. *Conditional Download:* Vor dem Download prüft ein `HEAD`-Request `If-Modified-Since` bei Geofabrik, um unnötigen Traffic zu vermeiden.
-    2. *RAM-Disk (`tmpfs` in `/dev/shm`):* Zwischenfilterung der 5 PBFs läuft im RAM (0 NVMe-Schreiblast, 30 % schneller).
-    3. *Automatischer Cache-Purge:* `update.sh` leert den Cloudflare R2 Edge Cache nach erfolgreichem Upload automatisch per API.
-    4. *Auto-Cleanup:* Bereinigung temporärer Zwischendateien älter als 24 Stunden.
-  * Siehe vollständiges Konzept: [`dachlilu_r2_masterplan.md`](file:///Users/frank/.gemini/antigravity/brain/7d91eb9c-1098-4005-a9d5-7161f0e16cf2/dachlilu_r2_masterplan.md)
+  * Standardmodus mit Filter-then-Merge; ein einzelner Bayern- oder anderer Geofabrik-Auszug kann über `OSM_EXTRACT_URL` gewählt werden.
+  * Intelligenter `HEAD`-Check mit `FORCE_DOWNLOAD=true` als explizitem Re-Download-Schalter.
+  * Zwischenfilterung bevorzugt auf der RAM-Disk `/dev/shm`, mit NVMe-Fallback.
+  * Optionaler Upload nach Cloudflare R2 über `rclone` und optionaler Cloudflare-Cache-Purge nach erfolgreichem Build.
+  * Builder- und Coverage-Tests dokumentieren die neue Länder- und Geometrie-Logik.
 
 ---
 
