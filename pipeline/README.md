@@ -19,11 +19,17 @@ OpenFireMap-Browserclient
 
 Cloudflare R2 ist die primäre öffentliche Quelle der vorbereiteten PMTiles-Daten. Der Browser lädt nur die benötigten Bytebereiche. Cache-Busting über `metadata.json` und die Prüfung der PMTiles-Abdeckung verhindern, dass ein veralteter Stand als passend ausgegeben wird.
 
+Der Upload überträgt PMTiles zuerst, GeoJSON danach und `metadata.json` zuletzt. PMTiles erhalten eine Cache-Dauer von 24 Stunden, GeoJSON eine Stunde und `metadata.json` wird ohne Cache veröffentlicht. Anschließend werden `generated_at` und die PMTiles-Größe per Range-Request gegen den öffentlichen R2-Stand geprüft. Ein optionaler Cache-Purge erfolgt nur nach erfolgreicher Synchronisation.
+
+Für den internen Betrieb steht außerdem ein Home-Assistant-Package zur Verfügung. Es überwacht den öffentlichen R2-Stand, Datenalter, Objektzahlen, PMTiles-Größe und MaxZoom sowie die Synchronisation zwischen lokaler Test-/Backup-Umgebung und R2. Die Monitoring-Vorlage verwendet Platzhalter und enthält keine privaten Zugangsdaten.
+
 ## Aktueller Stand
 
 - ungefähr **1,25 Millionen** feuerwehrrelevante Objekte
-- PMTiles-Datei von ungefähr **514 MB**
+- PMTiles-Datei von ungefähr **192,5 MiB** (**201.892.499 Bytes**) durch optimierten MaxZoom-14-Build
+- unter dem Cloudflare-Free-Cache-Limit von **512 MiB**
 - HTTP-Range-Requests und CORS
+- abgestufte Cache-Control-Header, ETags und Upload-Verifikation gegen den öffentlichen R2-Stand
 - automatische Pipeline-Versionsprüfung
 - Fallback auf Overpass im Frontend
 - lokale **VM 102** als Test- und Backup-Umgebung
