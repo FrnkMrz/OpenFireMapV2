@@ -235,6 +235,14 @@ export function isPipelineEligible(bounds, zoom) {
 
   // Stufe 2: Exakter Rechteck-in-Polygon Feinfilter
   const polygon = Config.pipeline.coveragePolygon;
+  if (!polygon || !Array.isArray(polygon) || polygon.length === 0) return false;
+
+  // Unterstützt sowohl Einzelpolygone ([ [lat, lon], ... ])
+  // als auch Multi-Polygone bzw. Regionenlisten ([ [ [lat, lon], ... ], ... ])
+  if (Array.isArray(polygon[0]) && Array.isArray(polygon[0][0])) {
+    return polygon.some(subPoly => isRectInPolygon(south, west, north, east, subPoly));
+  }
+
   return isRectInPolygon(south, west, north, east, polygon);
 }
 
