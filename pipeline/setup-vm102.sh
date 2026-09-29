@@ -68,7 +68,7 @@ cd "$PROJECT_DIR"
 docker compose build builder
 
 # 4. Ersten Daten-Build ausführen
-echo "⚡ [4/5] Führe Datenextraktion aus (Bayern-Auszug)..."
+echo "⚡ [4/5] Führe Datenextraktion aus (DACHLiLu / konfigurierte Region)..."
 docker compose run --rm builder
 
 # 5. Web-Server & Tunnel starten

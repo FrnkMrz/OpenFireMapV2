@@ -1,6 +1,6 @@
 # System- und Betriebsdokumentation: OpenFireMap DACH Data Pipeline
 
-Stand: September 2026
+Stand: 29. September 2026
 
 Diese Dokumentation beschreibt die technische Architektur, den Betrieb und die Wiederherstellung der **OpenFireMap DACH Data Pipeline** auf dem Proxmox-Heimserver (KW3).
 
@@ -46,12 +46,20 @@ Diese Dokumentation beschreibt die technische Architektur, den Betrieb und die W
 ### 3.1 `openfiremap-builder` (Docker)
 * **Basis:** Python 3.12-slim mit installiertem `osmium-tool`, `tippecanoe` (C++) und `curl`.
 * **Aufgabe:**
-  1. Download des aktuellen PBF von Geofabrik (mit Resume-Funktion und Retries).
+  1. Download der aktuellen Geofabrik-PBFs (mit Resume-Funktion, Retries und intelligentem `HEAD`-Check).
   2. Filterung nach OSM-Tags (Hydranten, Wachen, Löschwasserstellen, Defibrillatoren sowie Verwaltungsgrenzen `boundaries`).
   3. Export als GeoJSON nach `/srv/docker/data/openfiremap/publish/`.
   4. **PMTiles Vektorkachel-Erzeugung (`tippecanoe`):**  
      Bündelt alle Layer (`fire_stations`, `hydrants`, `water_points`, `defibrillators`, `boundaries`) in eine einzige kompakte Datei `openfiremap.pmtiles` (**88,6 MB** für den gesamten Freistaat Bayern inkl. aller 12.493 Gemeindegrenzen und 233.534 Hydranten, Zoom 12–16) in ca. 62 Sekunden.
-  5. Berechnung von Differenzen zum Vortag (`diff`), Speicherauslastung und Schreiben von `metadata.json`.
+  5. Berechnung von Differenzen zum Vortag (`diff`) und Schreiben von `metadata.json`.
+  6. Schreiben der Systemmetriken nach `/data/raw/system_stats.json`; diese Datei liegt außerhalb des öffentlichen `publish/`-Verzeichnisses.
+
+Der Standardmodus verarbeitet DACHLiLu (Deutschland, Österreich, Schweiz, Luxemburg
+und Liechtenstein) nach dem Filter-then-Merge-Verfahren. Für einen einzelnen
+Geofabrik-Auszug kann `OSM_EXTRACT_URL` gesetzt werden, beispielsweise für einen
+schnellen Bayern-Test. Mit `FORCE_DOWNLOAD=true` lässt sich der intelligente
+Download-Check bewusst umgehen. Für die temporäre Filterung wird bevorzugt
+`/dev/shm` verwendet; bei fehlendem Speicher erfolgt ein NVMe-Fallback.
 
 ### 3.2 `openfiremap-web` (Docker / Nginx Alpine)
 * **Port:** `8080` (vermeidet Kollisionen mit Standard-Port 80)
@@ -110,7 +118,10 @@ Auf VM 102 läuft in der Crontab von `frank`:
 * **Webserver neustarten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose restart web`
 * **Tunnel neustarten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose restart tunnel`
 * **Alle Dienste neu starten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose up -d`
-* **Manuellen Datenbuild starten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose run --rm builder`
+* **DACHLiLu-Datenbuild starten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose run --rm builder`
+* **Einzelregion testen:** `OSM_EXTRACT_URL=https://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf docker compose run --rm builder`
+* **Download erzwingen:** `FORCE_DOWNLOAD=true docker compose run --rm builder`
+* **Builder-Tests ausführen:** `python3 pipeline/tools/test_builder.py`
 
 #### Endpunkt-Verifikation von außen:
 ```bash
@@ -124,6 +135,9 @@ curl -4 -I -H "Range: bytes=0-100" https://pipeline.openfiremap.org/openfiremap.
 
 # 3. Metadaten-Status abrufen:
 curl -4 -s https://pipeline.openfiremap.org/metadata.json | jq .summary
+
+# 4. Interne Systemmetriken prüfen (nur lokal auf VM 102):
+jq . /srv/docker/data/openfiremap/raw/system_stats.json
 ```
 
 ### 4.3 Home-Assistant-Überwachung (KW3)
@@ -132,7 +146,10 @@ Home Assistant (`192.168.178.191`) fragt alle 5 Minuten `http://192.168.178.152:
 * **Systemstatus:** `ok` / `offline`
 * **Zusammenfassung:** z. B. `"233534 Hydranten (+195377), 8802 Wachen (+7582), 6180 Wasserstellen (+5419), 5785 Defis (+4824), 12493 Grenzen (+10955)"`
 * **Tägliche Differenz:** `diff_text` pro Objekttyp
-* **Speicherplatz:** `disk_free_gb`, `disk_used_percent` (gespeichert in der internen `/srv/docker/data/openfiremap/system_stats.json`; aus Sicherheitsgründen nicht in der öffentlichen `metadata.json`)
+* **Speicherplatz:** `disk_free_gb`, `disk_used_gb`, `disk_total_gb` und
+  `disk_used_percent` (gespeichert in der internen
+  `/srv/docker/data/openfiremap/raw/system_stats.json`; aus Sicherheitsgründen
+  nicht in der öffentlichen `metadata.json`)
 * **Build-Dauer:** `timings.total_sec`
 
 ---
@@ -168,6 +185,7 @@ Home Assistant (`192.168.178.191`) fragt alle 5 Minuten `http://192.168.178.152:
 
 * **Keine Portweiterleitung im Router nötig:** Eingehende Anfragen laufen gesichert über den Cloudflare Zero Trust Tunnel (`cloudflared`). Eingehende Ports an der FRITZ!Box bleiben vollständig geschlossen.
 * **Keine Verzeichnisauflistung:** `autoindex off;` in Nginx verhindert Directory-Browsing.
+* **Systemmetriken geschützt:** `metadata.json` enthält keine Server-Speicherwerte. Die Werte werden ausschließlich in `/srv/docker/data/openfiremap/raw/system_stats.json` abgelegt; das `raw/`-Verzeichnis wird nicht vom Webcontainer gemountet.
 * **Öffentliches HTTPS:** Veraltete lokale IP-Adressen wurden aus dem Content-Security-Policy-Header (`connect-src`) entfernt. Der obsolete Header `Access-Control-Allow-Private-Network` wurde bereinigt.
 * **Token-Sicherheit:** Das `TUNNEL_TOKEN` ist in `.env` gespeichert und wird niemals in Git versioniert (`.gitignore`).
 * **Sicherer Rollback:** Falls auf VM 102 Probleme auftreten, kann in Proxmox auf den Snapshot `docker-basis-20260921` zurückgerollt werden.
@@ -213,4 +231,3 @@ Wenn VM 102 jede Nacht um 03:30 Uhr `openfiremap.pmtiles` neu generiert:
   * Dieser Scope beschränkt den Token streng auf das Leeren des Caches für die definierte Zone (keine DNS- oder Kontoberechtigungen).
 * **Purge-Umfang:**
   Es wird gezielt per URL-Liste gecleart (`openfiremap.pmtiles` und `metadata.json`), kein globaler „Purge Everything“, um andere gecachte Assets nicht zu beeinträchtigen.
-

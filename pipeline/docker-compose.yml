@@ -24,12 +24,14 @@ services:
       context: ./builder
       dockerfile: Dockerfile
     container_name: openfiremap-builder
+    shm_size: "2gb"
     volumes:
       - ./builder/build_features.py:/app/build_features.py:ro
       - ${DATA_PATH:-/srv/docker/data/openfiremap}/raw:/data/raw
       - ${DATA_PATH:-/srv/docker/data/openfiremap}/publish:/data/publish
     environment:
-      - OSM_EXTRACT_URL=${OSM_EXTRACT_URL:-https://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf}
+      - PIPELINE_REGION=${PIPELINE_REGION:-dachlilu}
+      - OSM_EXTRACT_URL=${OSM_EXTRACT_URL:-}
       - FORCE_DOWNLOAD=${FORCE_DOWNLOAD:-false}
     logging:
       driver: "json-file"

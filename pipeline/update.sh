@@ -16,10 +16,17 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starte geplantes Daten-Update..." >> "$LOG_
 
 cd "$PROJECT_DIR"
 
-# FORCE_DOWNLOAD=true erzwingt den erneuten Download des aktuellen PBF von Geofabrik
-FORCE_DOWNLOAD=true docker compose run --rm builder >> "$LOG_FILE" 2>&1
+# Führe Datenbuild aus (nutzt intelligenten HEAD-Check zur Vermeidung unnötiger Downloads)
+FORCE_DOWNLOAD=${FORCE_DOWNLOAD:-false} docker compose run --rm builder >> "$LOG_FILE" 2>&1
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Daten-Update erfolgreich abgeschlossen." >> "$LOG_FILE"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Daten-Build erfolgreich abgeschlossen." >> "$LOG_FILE"
+
+# Optionaler R2-Upload (falls rclone installiert und Remote 'r2:' eingerichtet ist)
+if command -v rclone &> /dev/null && rclone listremotes 2>/dev/null | grep -q "^r2:"; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Synchronisiere Datenbestand nach Cloudflare R2 (openfiremap-pipeline)..." >> "$LOG_FILE"
+  rclone sync "${DATA_DIR}/publish/" r2:openfiremap-pipeline/ --fast-list >> "$LOG_FILE" 2>&1
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Cloudflare R2 Sync erfolgreich abgeschlossen." >> "$LOG_FILE"
+fi
 
 # Optionaler Cloudflare Cache-Purge für pmtiles und metadata.json
 if [ -f "${PROJECT_DIR}/.env" ]; then

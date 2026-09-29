@@ -17,8 +17,20 @@ echo "================================================================="
 
 mkdir -p "$TARGET_DIR"
 
-# Dateien synchronisieren (ohne temporäre Daten oder Caches)
-rsync -av --exclude="data" --exclude="*.log" --exclude="*.pbf*" "${SCRIPT_DIR}/" "${TARGET_DIR}/"
+# Dateien synchronisieren (ohne temporäre Daten, Caches, Secrets oder Git-Metadaten)
+rsync -av --delete \
+    --exclude=".git" \
+    --exclude=".DS_Store" \
+    --exclude="__pycache__" \
+    --exclude="*.pyc" \
+    --exclude="data" \
+    --exclude="raw" \
+    --exclude="publish" \
+    --exclude="*.log" \
+    --exclude="*.pbf*" \
+    --exclude=".env" \
+    --exclude="*cache*" \
+    "${SCRIPT_DIR}/" "${TARGET_DIR}/"
 
 cd "$TARGET_DIR"
 
