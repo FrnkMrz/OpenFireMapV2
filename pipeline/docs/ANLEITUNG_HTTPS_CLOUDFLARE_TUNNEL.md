@@ -163,7 +163,7 @@ docker ps
 # Soll-Ergebnis: openfiremap-tunnel läuft (Up)
 
 # 2. Direkter HTTPS-Aufruf von außen:
-curl -I https://pipeline.openfiremap.org/healthz
+curl -I https://pipeline.openfiremap.org/metadata.json
 # Soll-Ergebnis: HTTP/2 200 OK
 
 # 3. Range-Request Test auf PMTiles:

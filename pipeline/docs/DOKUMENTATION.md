@@ -127,8 +127,8 @@ Auf VM 102 läuft in der Crontab von `frank`:
 
 #### Endpunkt-Verifikation von außen:
 ```bash
-# 1. Healthcheck über HTTPS:
-curl -4 -I https://pipeline.openfiremap.org/healthz
+# 1. Status & Metadaten über HTTPS:
+curl -4 -I https://pipeline.openfiremap.org/metadata.json
 # ➔ HTTP/2 200 OK
 
 # 2. PMTiles Byte-Range-Request (Vektorkacheln):
@@ -195,41 +195,61 @@ Home Assistant (`192.168.178.191`) fragt alle 5 Minuten `http://192.168.178.152:
 
 ---
 
-## 7. Cloudflare Caching & PMTiles Edge-Beschleunigung
+## 7. Cloudflare Caching, R2 Edge & PMTiles Performance
 
-### 7.1 Hintergrund & Notwendigkeit einer Cache-Regel
-Standardmäßig cacht Cloudflare nur statische Dateien bekannter Endungen (`.css`, `.js`, `.png`, `.jpg` etc.). Die Dateiendung `.pmtiles` gehört nicht zur Cloudflare-Standardliste und wird ohne Regel standardmäßig mit `cf-cache-status: DYNAMIC` an VM 102 durchgereicht.
+### 7.1 Cloudflare Free Tier Cache-Limit (512 MB) & R2 Dynamic Range Requests
+Im Cloudflare Free Tier gilt ein striktes Limit für die maximale Dateigröße im Edge-Cache von **512 MB** pro Datei.
+* Die DACHLiLu-Vektorkacheldatei `openfiremap.pmtiles` hat eine Größe von ca. **539 MB** (bzw. 514–539 MB unkomprimiert) und überschreitet dieses Limit.
+* Cloudflare markiert Anfragen an Dateien über 512 MB automatisch mit `cf-cache-status: DYNAMIC` und leitet die HTTP-206-Range-Requests transparent und direkt an den **Cloudflare R2 Object Storage** weiter.
+* **Kosten & Kontingente bei R2:**
+  * Range-Requests an R2 zählen als **Class B Operations**.
+  * Im Cloudflare Free Tier sind **10 Millionen Class B Operations pro Monat kostenlos** (sowie 0 € Egress-Gebühren).
+  * Selbst bei intensiver Nutzung liegt OpenFireMap weit unterhalb dieser Grenze.
 
-Mit einer **Cloudflare Cache Rule** werden Byte-Ranges der Vektorkacheln direkt an den weltweiten Cloudflare-Edge-Knoten (z. B. Frankfurt, München, Berlin) zwischengespeichert. Beliebte Kacheln werden dadurch in **1–5 ms** ausgeliefert, während die Upstream-Bandbreite von VM 102 drastisch geschont wird.
+### 7.2 Stale-Cache-Schutz: Query-String Cache-Busting (`?v=<generated_at>`)
+Da Browser und Proxies HTTP-200- und 206-Responses anhand der Header (`max-age=86400`) bis zu 24 Stunden im lokalen Browser-Cache vorhalten können und die Client-Bibliothek `pmtiles` (v4.5.0) Header-ETags erst bei aktiven Kachelanfragen prüft (was bei Abdeckungswechseln außerhalb des alten Headers nie getriggert wird), implementiert `src/js/pipeline.js` ein zweistufiges Schutzkonzept:
+1. **Query-String Cache-Busting:** Vor dem Laden von PMTiles wird `metadata.json` abgefragt (3 s Timeout, `cache: 'no-cache'`). Die PMTiles-URL wird dynamisch mit `?v=<generated_at>` versehen (z. B. `openfiremap.pmtiles?v=2026-09-29T10%3A00%3A00Z`). Cloudflare und Browser behandeln unterschiedliche Query-Strings als eigenständige Cache-Keys.
+2. **Coverage-Mismatch-Erkennung (`PmtilesCoverageMismatch`):** Liegt der angeforderte Viewport außerhalb der im PMTiles-Header deklarierten Bounding-Box (`minLat`, `maxLat`, `minLon`, `maxLon`), wird der Header einmalig mit `forceRefresh` neu geladen. Passt die Abdeckung weiterhin nicht, wird `PmtilesCoverageMismatch` geworfen, was sofort den Overpass-Fallback aktiviert, anstatt fälschlicherweise eine leere Karte anzuzeigen.
 
-### 7.2 Konfiguration im Cloudflare Dashboard
-1. Öffne das [Cloudflare Dashboard](https://dash.cloudflare.com/) ➔ Zone `openfiremap.org`.
-2. Navigiere zu **Caching** ➔ **Cache Rules** ➔ **Create rule**.
-3. **Regel-Name:** `Cache PMTiles Vector Tiles`
-4. **Wenn eingehende Anfragen übereinstimmen (Matching criteria):**
-   * Feld: `Hostname` | Operator: `equals` | Wert: `pipeline.openfiremap.org`
-   * **AND**
-   * Feld: `URI Path` | Operator: `ends with` | Wert: `.pmtiles`
-5. **Aktion / Cache-Berechtigung:**
-   * **Cache eligibility:** `Eligible for cache` (Cache Everything)
-   * **Edge TTL:** `Respect origin` (nutzt Nginx-Vorgabe: `max-age=86400` / 1 Tag)
-   * **Browser TTL:** `Respect origin`
-6. Klicke auf **Deploy**.
+### 7.3 R2 CORS-Konfiguration für die lokale Entwicklung (`localhost:5173`)
+Standardmäßig erlaubt der Cloudflare R2 Bucket nur Zugriffe von `https://openfiremap.org` und `https://*.openfiremap.org`.
+Für lokale Entwickler- und Test-Sessions mit dem Vite-Dev-Server (`http://localhost:5173`) kann `localhost:5173` in der R2 CORS-Policy hinterlegt werden:
 
-### 7.3 Cache-Invalidierung bei nächtlichen Builds
-Wenn VM 102 jede Nacht um 03:30 Uhr `openfiremap.pmtiles` neu generiert:
-* Durch `ETag` und `must-revalidate` im Nginx-Header prüft Cloudflare veraltete Kacheln automatisch.
-* **Automatisierter URL-Purge via Cloudflare API in `update.sh`:**
-  In `pipeline/update.sh` ist ein gezielter Purge-Schritt integriert, der ausschließlich aktiv wird, wenn folgende Variablen in `/srv/docker/projects/openfiremap-pipeline/.env` gesetzt sind:
-  ```bash
-  CF_ZONE_ID="<zone_id>"
-  CF_API_TOKEN="<api_token>"
-  ```
-  Sind diese Variablen nicht gesetzt, gibt das Skript einen Hinweis aus und läuft normal ohne Fehler weiter.
-* **Erforderliche Token-Berechtigungen bei Cloudflare:**
-  * Im Cloudflare Dashboard unter **My Profile** ➔ **API Tokens** ➔ **Create Custom Token**.
-  * **Permissions:** `Zone` ➔ `Cache Purge` ➔ `Purge`
-  * **Zone Resources:** `Include` ➔ `Specific zone` ➔ `openfiremap.org`
-  * Dieser Scope beschränkt den Token streng auf das Leeren des Caches für die definierte Zone (keine DNS- oder Kontoberechtigungen).
-* **Purge-Umfang:**
-  Es wird gezielt per URL-Liste gecleart (`openfiremap.pmtiles` und `metadata.json`), kein globaler „Purge Everything“, um andere gecachte Assets nicht zu beeinträchtigen.
+1. Öffne das [Cloudflare Dashboard](https://dash.cloudflare.com/) ➔ **R2** ➔ Bucket `openfiremap-pipeline`.
+2. Navigiere zu **Settings** ➔ **CORS Policy** ➔ **Edit CORS Policy**.
+3. JSON-Konfiguration (reine Dokumentation, nicht automatisiert ausführen):
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://openfiremap.org",
+      "https://*.openfiremap.org",
+      "http://localhost:5173"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "AllowedHeaders": [
+      "Range",
+      "Content-Type",
+      "If-Match",
+      "If-None-Match"
+    ],
+    "ExposeHeaders": [
+      "Content-Range",
+      "Content-Length",
+      "ETag",
+      "Accept-Ranges"
+    ],
+    "MaxAgeSeconds": 86400
+  }
+]
+```
+4. Auf **Save** klicken. Damit können Vite-Entwicklungsinstanzen direkt auf die weltweiten R2-Vektorkacheln zugreifen.
+
+### 7.4 Gezielter Cache-Purge in `update.sh`
+In `pipeline/update.sh` werden Daten mit strikter Reihenfolge nach R2 übertragen:
+1. Zuerst `*.pmtiles` (`Cache-Control: public, max-age=86400`) und `*.geojson` (`Cache-Control: public, max-age=3600`).
+2. Zuletzt `metadata.json` (`Cache-Control: no-cache, no-store, must-revalidate, max-age=0`).
+3. Nur wenn alle Uploads fehlerfrei abgeschlossen wurden, wird der optionale Cloudflare Edge Purge für `openfiremap.pmtiles` und `metadata.json` ausgeführt.
