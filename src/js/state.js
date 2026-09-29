@@ -36,6 +36,7 @@ export const State = {
 
     // --- LADE-STATUS ---
     isFetchingData: false,  // Lädt die Map gerade im Hintergrund neue Daten?
+    pendingBufferFetch: null, // Promise des im Hintergrund laufenden Pufferrings
     queryBounds: null,      // Welche Query-Bounds für den nächsten/aktuellen Fetch berechnet wurden?
 
     // Welcher Hintergrund ist gerade an? (Startwert: 'voyager')

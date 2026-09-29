@@ -611,11 +611,12 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
     if (isPipelineEligible(viewBounds, zoom)) {
       try {
         console.log('[API] Verwende lokale Pipeline für DACHLiLu...');
-        const onPoiProgress = (progressElements, isPartial = true) => {
+        let hasReportedSuccess = false;
+        const onPoiProgress = (progressElements, isPartial = true, meta = {}) => {
           if (!isCurrentRequest()) return;
-          State.cachedPoiElements = progressElements;
-          syncCombinedCachedElements();
-          reportHydrantDownload(hydrantStatus, 'loading', progressElements);
+          if (meta?.phase !== 'buffer' && !hasReportedSuccess) {
+            reportHydrantDownload(hydrantStatus, 'loading', progressElements);
+          }
           if (typeof onProgressData === 'function') {
             try {
               onProgressData(progressElements, isPartial);
@@ -649,6 +650,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
         ensureCurrentRequest();
 
         if (Array.isArray(pipelineElements)) {
+          hasReportedSuccess = true;
           State.cachedPoiElements = pipelineElements;
           State.loadedPoiBounds = pipelineElements.loadedBounds || viewBounds;
           State.loadedPoiMode = requestedMode;
@@ -871,9 +873,20 @@ export async function fetchBoundaryData(onProgressData = null) {
         syncCombinedCachedElements();
         if (typeof onProgressData === 'function') {
           try {
-            onProgressData(bufferedElements);
+            onProgressData(bufferedElements, false);
           } catch (renderErr) {
             console.warn('[API] Fehler beim Rendern nach Boundary-Pufferabschluss:', renderErr);
+          }
+        }
+      };
+
+      const onBoundaryProgress = (progressElements, isPartial = true) => {
+        if (State.controllers.boundaryFetch !== controller) return;
+        if (typeof onProgressData === 'function') {
+          try {
+            onProgressData(progressElements, isPartial);
+          } catch (renderErr) {
+            console.warn('[API] Fehler bei progressiver Boundary-Meldung:', renderErr);
           }
         }
       };
@@ -881,7 +894,7 @@ export async function fetchBoundaryData(onProgressData = null) {
       const boundaryElements = await fetchPipelineBoundaries(viewBounds, {
         signal: controller.signal,
         zoom,
-        onProgressData,
+        onProgressData: onBoundaryProgress,
         onBufferComplete: onBoundaryBufferComplete
       });
       ensureCurrentRequest();
@@ -893,7 +906,7 @@ export async function fetchBoundaryData(onProgressData = null) {
 
         emit({ phase: 'boundary_pipeline_hit', reqId, zoom, dataset: 'boundary', elements: boundaryElements.length });
         if (typeof onProgressData === 'function') {
-          onProgressData(boundaryElements);
+          onProgressData(boundaryElements, false);
         }
         return boundaryElements;
       }

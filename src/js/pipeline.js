@@ -11,6 +11,7 @@ import { PMTiles } from 'pmtiles';
 import { VectorTile } from '@mapbox/vector-tile';
 import { PbfReader } from 'pbf';
 import { Config } from './config.js';
+import { State } from './state.js';
 
 let _pipelineCache = {
   stations: null,
@@ -788,7 +789,7 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   }
 
   // Kachelverarbeitung mit progressivem Rendern (Streaming)
-  const processTile = async (x, y) => {
+  const processTile = async (x, y, phase = 'visible') => {
     if (signal?.aborted) return 0;
     const vTile = await getVectorTile(pmtiles, queryZoom, x, y, signal);
     if (!vTile || !vTile.layers || signal?.aborted) return 0;
@@ -813,7 +814,7 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
 
     if (newCount > 0 && typeof onProgressData === 'function' && !signal?.aborted) {
       try {
-        onProgressData(Array.from(elementsMap.values()), true);
+        onProgressData(Array.from(elementsMap.values()), true, { phase });
       } catch (renderErr) {
         console.warn('[Pipeline] Fehler bei progressiver POI-Meldung:', renderErr);
       }
@@ -823,7 +824,7 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   };
 
   // Phase 1: Sichtbare Kacheln zuerst laden und sofort rendern
-  await processTilesWithPool(visibleTiles, processTile, 10, signal);
+  await processTilesWithPool(visibleTiles, (x, y) => processTile(x, y, 'visible'), 10, signal);
 
   // Grenzen der sichtbaren Kacheln
   const visSouth = tile2lat(visMaxY + 1, queryZoom);
@@ -838,9 +839,9 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
 
   // Phase 2: Pufferring im Hintergrund nachladen (verzögert Erst-Render nicht)
   if (bufferTiles.length > 0 && !signal?.aborted) {
-    (async () => {
+    const bufferPromise = (async () => {
       try {
-        await processTilesWithPool(bufferTiles, processTile, 10, signal);
+        await processTilesWithPool(bufferTiles, (x, y) => processTile(x, y, 'buffer'), 10, signal);
         if (signal?.aborted) return;
 
         const bufSouth = tile2lat(bufMaxY + 1, queryZoom);
@@ -863,6 +864,13 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
         }
       }
     })();
+
+    State.pendingBufferFetch = bufferPromise;
+    bufferPromise.finally(() => {
+      if (State.pendingBufferFetch === bufferPromise) {
+        State.pendingBufferFetch = null;
+      }
+    });
   }
 
   return elements;
@@ -1037,7 +1045,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         }
       }
 
-      const processBoundaryTile = async (x, y) => {
+      const processBoundaryTile = async (x, y, phase = 'visible') => {
         if (signal?.aborted) return 0;
         const vTile = await getVectorTile(pmtiles, queryZoom, x, y, signal);
         if (!vTile || !vTile.layers || signal?.aborted) return 0;
@@ -1069,7 +1077,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
 
         if (newCount > 0 && typeof onProgressData === 'function' && !signal?.aborted) {
           try {
-            onProgressData(Array.from(boundaryMap.values()), true);
+            onProgressData(Array.from(boundaryMap.values()), true, { phase });
           } catch (renderErr) {
             console.warn('[Pipeline] Fehler bei progressiver Boundary-Meldung:', renderErr);
           }
@@ -1079,7 +1087,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       };
 
       // Phase 1: Sichtbare Kacheln zuerst
-      await processTilesWithPool(visibleTiles, processBoundaryTile, 10, signal);
+      await processTilesWithPool(visibleTiles, (x, y) => processBoundaryTile(x, y, 'visible'), 10, signal);
 
       const visSouth = tile2lat(visMaxY + 1, queryZoom);
       const visNorth = tile2lat(visMinY, queryZoom);
@@ -1093,9 +1101,9 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
 
       // Phase 2: Pufferring im Hintergrund
       if (bufferTiles.length > 0 && !signal?.aborted) {
-        (async () => {
+        const boundaryBufferPromise = (async () => {
           try {
-            await processTilesWithPool(bufferTiles, processBoundaryTile, 10, signal);
+            await processTilesWithPool(bufferTiles, (x, y) => processBoundaryTile(x, y, 'buffer'), 10, signal);
             if (signal?.aborted) return;
 
             const bufSouth = tile2lat(bufMaxY + 1, queryZoom);
@@ -1118,6 +1126,17 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
             }
           }
         })();
+
+        if (State.pendingBufferFetch) {
+          State.pendingBufferFetch = Promise.allSettled([State.pendingBufferFetch, boundaryBufferPromise]);
+        } else {
+          State.pendingBufferFetch = boundaryBufferPromise;
+        }
+        boundaryBufferPromise.finally(() => {
+          if (State.pendingBufferFetch === boundaryBufferPromise) {
+            State.pendingBufferFetch = null;
+          }
+        });
       }
 
       return elements;
@@ -1179,4 +1198,5 @@ export function clearPipelineCache() {
   _lastMetadataFetchTime = 0;
   _pendingMetadataPromise = null;
   clearTileCache();
+  State.pendingBufferFetch = null;
 }

@@ -164,6 +164,7 @@ export function initMapLogic() {
     let lastFetchKey = null;
     let lastMotionAt = 0;
     let latestFetchIntent = 0;
+    let currentFetchIntent = 0;
     let lastRenderedFetchIntent = 0;
     let lastRenderedBoundaryIntent = 0;
     let idleRefreshTimer = null;
@@ -433,6 +434,38 @@ export function initMapLogic() {
         }
 
         if (poiCoverageMatchesMode(mode) && boundaryCoverageMatchesView(zoom)) {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+                debounceTimer = null;
+            }
+            if (idleRefreshTimer) {
+                clearTimeout(idleRefreshTimer);
+                idleRefreshTimer = null;
+            }
+
+            // Veraltete Anfragen invalidieren
+            latestFetchIntent += 1;
+            currentFetchIntent = latestFetchIntent;
+
+            // Laufende Anfragen für andere Ausschnitte (z. B. Pan A -> B -> A) sofort abbrechen!
+            if (State.controllers.fetch) {
+                State.controllers.fetch.abort();
+                State.controllers.fetch = null;
+            }
+            if (State.controllers.boundaryFetch) {
+                State.controllers.boundaryFetch.abort();
+                State.controllers.boundaryFetch = null;
+            }
+            State.isFetchingData = false;
+            State.pendingBufferFetch = null;
+
+            // Marker & Boundaries sauber aus State neu rendern (isPartial: false),
+            // um eventuelle Teildaten eines abgebrochenen Requests B aus dem DOM zu entfernen!
+            renderMarkers(State.cachedPoiElements || [], zoom, { isPartial: false });
+            if (zoom >= 14) {
+                renderBoundaries(State.cachedBoundaryElements || [], zoom);
+            }
+
             const statusEl = document.getElementById('data-status');
             if (statusEl) {
                 const inPl = isPipelineEligible(State.map.getBounds(), zoom);
@@ -480,6 +513,7 @@ export function initMapLogic() {
         debounceTimer = setTimeout(doFetch, debounceMs);
 
         async function doFetch() {
+            currentFetchIntent = fetchIntent;
             const statusEl = document.getElementById('data-status');
             const movingRecently = !inPipeline && (Date.now() - lastMotionAt) < RAPID_INTERACTION_MS;
             const hasStaleToKeep = (State.cachedPoiElements?.length || State.cachedBoundaryElements?.length);
@@ -533,15 +567,20 @@ export function initMapLogic() {
                 // SWR: Wir geben renderMarkers als Callback mit, 
                 // damit Cache-Daten sofort gezeichnet werden.
                 const poiPromise = fetchOSMData((cachedData, isPartial = false) => {
+                    if (fetchIntent !== currentFetchIntent) return;
                     renderMarkers(cachedData, zoom, { isPartial });
-                }, (status) => hydrantDownloadStatus.update(status));
+                }, (status) => {
+                    if (fetchIntent === currentFetchIntent) {
+                        hydrantDownloadStatus.update(status);
+                    }
+                });
                 // Gemeindegrenzen asynchron im Hintergrund laden – blockiert POIs nicht!
                 fetchBoundaryData((cachedBoundaryData) => {
-                    if (fetchIntent >= lastRenderedBoundaryIntent) {
+                    if (fetchIntent >= lastRenderedBoundaryIntent && fetchIntent === currentFetchIntent) {
                         renderBoundaries(cachedBoundaryData, zoom);
                     }
                 }).then((boundaryData) => {
-                    if (fetchIntent >= lastRenderedBoundaryIntent && boundaryData) {
+                    if (fetchIntent >= lastRenderedBoundaryIntent && fetchIntent === currentFetchIntent && boundaryData) {
                         lastRenderedBoundaryIntent = fetchIntent;
                         renderBoundaries(boundaryData, zoom);
                     }
@@ -556,7 +595,7 @@ export function initMapLogic() {
                 // Nur abbrechen, wenn bereits ein NEUERER Abruf fertig gerendert wurde.
                 // Ein reiner movestart durch kontinuierliche Safari-Gestensteuerung
                 // darf fertig geladene Kacheldaten NIEMALS verwerfen!
-                if (fetchIntent < lastRenderedFetchIntent) return;
+                if (fetchIntent < lastRenderedFetchIntent || fetchIntent !== currentFetchIntent) return;
                 lastRenderedFetchIntent = fetchIntent;
 
                 if (data) {
@@ -583,7 +622,7 @@ export function initMapLogic() {
                     return;
                 }
 
-                if (fetchIntent < lastRenderedFetchIntent) return;
+                if (fetchIntent < lastRenderedFetchIntent || fetchIntent !== currentFetchIntent) return;
 
                 // Fehlerbehandlung
                 if (statusEl) {
@@ -599,7 +638,7 @@ export function initMapLogic() {
                 if (retryTimer) clearTimeout(retryTimer);
                 retryTimer = setTimeout(() => {
                     retryTimer = null;
-                    if (fetchIntent === latestFetchIntent) doFetch();
+                    if (fetchIntent === latestFetchIntent && fetchIntent === currentFetchIntent) doFetch();
                 }, 8000);
             }
         } // end doFetch

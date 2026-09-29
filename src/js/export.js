@@ -367,6 +367,15 @@ function escapeXML(str) {
  */
 export async function exportAsGPX() {
   try {
+    let waitCycles = 0;
+    while ((State.isFetchingData || State.pendingBufferFetch) && waitCycles < 25) {
+      await new Promise(r => setTimeout(r, 200));
+      waitCycles++;
+    }
+    if (State.pendingBufferFetch) {
+      try { await State.pendingBufferFetch; } catch { /* Puffer-Fehler nicht kritisch für Export */ }
+    }
+
     const bounds = State.selection.finalBounds || State.map.getBounds();
     const elementsForExport = getPreparedCachedExportElements();
     const pointsToExport = elementsForExport.filter((el) => {
@@ -468,6 +477,15 @@ function escapeCSV(val) {
  */
 export async function exportAsCSV() {
   try {
+    let waitCycles = 0;
+    while ((State.isFetchingData || State.pendingBufferFetch) && waitCycles < 25) {
+      await new Promise(r => setTimeout(r, 200));
+      waitCycles++;
+    }
+    if (State.pendingBufferFetch) {
+      try { await State.pendingBufferFetch; } catch { /* Puffer-Fehler nicht kritisch für Export */ }
+    }
+
     const bounds = State.selection.finalBounds || State.map.getBounds();
     const elementsForExport = getPreparedCachedExportElements();
     const pointsToExport = elementsForExport.filter((el) => {
@@ -672,10 +690,10 @@ async function generateMapCanvas() {
 
   if (!needsStrictOnlineFetch) {
     // Falls die Karte gerade noch Daten im Hintergrund lädt (z. B. nach einem Pan), 
-    // warten wir mit Timeout (max. 10s), damit wir den finalen Cache haben.
+    // oder der Pufferring noch läuft, warten wir mit Timeout (max. 10s), damit wir den finalen Cache haben.
     let waitCycles = 0;
     const MAX_WAIT_CYCLES = 50; // 50 * 200ms = 10 Sekunden
-    while (State.isFetchingData && waitCycles < MAX_WAIT_CYCLES) {
+    while ((State.isFetchingData || State.pendingBufferFetch) && waitCycles < MAX_WAIT_CYCLES) {
       if (signal?.aborted) throw new DOMException('Export wurde abgebrochen.', 'AbortError');
       setStatus(`${t("loading_data") || "Lade Daten..."} (Warte auf Karte)`);
       await new Promise(r => setTimeout(r, 200));
@@ -683,6 +701,13 @@ async function generateMapCanvas() {
     }
     if (waitCycles >= MAX_WAIT_CYCLES) {
       console.warn("Export: Timeout beim Warten auf Hintergrund-Ladevorgang der Karte. Fahre mit verfügbaren Daten fort.");
+    }
+    if (State.pendingBufferFetch) {
+      try {
+        await State.pendingBufferFetch;
+      } catch {
+        /* Puffer-Fehler nicht kritisch für Export */
+      }
     }
 
     // Liegt der gewünschte Export-Ausschnitt VOLLSTÄNDIG innerhalb der BBox,
