@@ -18,9 +18,103 @@ let _pipelineCache = {
   timestamp: 0
 };
 
+/**
+ * Fehlerklasse für den Fall, dass der angeforderte Viewport außerhalb der
+ * Header-Abdeckung der geladenen PMTiles-Datei liegt (z. B. bei veraltetem Cache).
+ */
+export class PmtilesCoverageMismatch extends Error {
+  constructor(message, details = {}) {
+    super(message);
+    this.name = 'PmtilesCoverageMismatch';
+    this.details = details;
+  }
+}
+
 let _pmtilesInstance = null;
 let _pmtilesUrl = null;
 let _pmtilesHeader = null;
+let _pipelineVersion = null;
+let _lastMetadataFetchTime = 0;
+const METADATA_CACHE_TTL_MS = 10 * 60 * 1000; // 10 Minuten
+const METADATA_TIMEOUT_MS = 3000; // 3 Sekunden Timeout
+
+/**
+ * Lädt die aktuelle Pipeline-Version (generated_at) aus metadata.json.
+ * Wird in der Sitzung höchstens alle 10 Minuten neu angefragt, es sei denn forceRefresh=true ist gesetzt.
+ * Ändert sich generated_at, werden die PMTiles-Instanz und der Header verworfen.
+ * Bei Fehler/Timeout wird ohne Versionsparameter fortgefahren (kein Abbruch).
+ * @param {string} baseUrl
+ * @param {Object} [options]
+ * @returns {Promise<string|null>}
+ */
+export async function getPipelineVersion(baseUrl, { signal, forceRefresh = false } = {}) {
+  const now = Date.now();
+  if (!forceRefresh && _lastMetadataFetchTime > 0 && (now - _lastMetadataFetchTime < METADATA_CACHE_TTL_MS)) {
+    return _pipelineVersion;
+  }
+
+  const metaUrl = `${baseUrl.replace(/\/+$/, '')}/metadata.json`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS);
+
+  let abortListener = null;
+  if (signal) {
+    if (signal.aborted) {
+      clearTimeout(timeoutId);
+      controller.abort();
+    } else {
+      abortListener = () => controller.abort();
+      signal.addEventListener('abort', abortListener, { once: true });
+    }
+  }
+
+  try {
+    const res = await fetch(metaUrl, {
+      cache: 'no-cache',
+      signal: controller.signal
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const newVersion = data?.generated_at ? String(data.generated_at) : null;
+      if (newVersion && _pipelineVersion && newVersion !== _pipelineVersion) {
+        console.warn(`[Pipeline] Neue Pipeline-Version erkannt: ${newVersion} (vorher: ${_pipelineVersion}). Verwerfe PMTiles-Instanz und Header.`);
+        _pmtilesInstance = null;
+        _pmtilesUrl = null;
+        _pmtilesHeader = null;
+      }
+      _pipelineVersion = newVersion;
+      _lastMetadataFetchTime = now;
+      return _pipelineVersion;
+    }
+  } catch (err) {
+    console.warn('[Pipeline] metadata.json konnte nicht abgerufen werden (fahre ohne Version fort):', err?.message || err);
+  } finally {
+    clearTimeout(timeoutId);
+    if (signal && abortListener) {
+      signal.removeEventListener('abort', abortListener);
+    }
+  }
+
+  _lastMetadataFetchTime = now;
+  return _pipelineVersion;
+}
+
+/**
+ * Erzeugt die vollständige PMTiles-URL inklusive Cache-Busting-Parameter (?v=<generated_at>).
+ * @param {string} baseUrl
+ * @param {string} pmtilesFile
+ * @param {Object} [options]
+ * @returns {Promise<string>}
+ */
+export async function getPipelinePmtilesUrl(baseUrl, pmtilesFile, { signal, forceRefresh = false } = {}) {
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  const version = await getPipelineVersion(cleanBase, { signal, forceRefresh });
+  if (version) {
+    const sep = pmtilesFile.includes('?') ? '&' : '?';
+    return `${cleanBase}/${pmtilesFile}${sep}v=${encodeURIComponent(version)}`;
+  }
+  return `${cleanBase}/${pmtilesFile}`;
+}
 
 /**
  * Wandelt Längengrad in Tile-X um.
@@ -338,6 +432,98 @@ export function geoJsonFeatureToElement(feature, layerName) {
 }
 
 /**
+ * Extrahiert Koordinaten (south, north, west, east) aus Leaflet-Bounds oder Plain-Objects.
+ * @param {L.LatLngBounds|Object} bounds
+ * @returns {{south: number, north: number, west: number, east: number}}
+ */
+function extractBoundsCoords(bounds) {
+  const south = typeof bounds.getSouth === 'function' ? bounds.getSouth() : (bounds.south ?? bounds._southWest?.lat);
+  const north = typeof bounds.getNorth === 'function' ? bounds.getNorth() : (bounds.north ?? bounds._northEast?.lat);
+  const west = typeof bounds.getWest === 'function' ? bounds.getWest() : (bounds.west ?? bounds._southWest?.lng);
+  const east = typeof bounds.getEast === 'function' ? bounds.getEast() : (bounds.east ?? bounds._northEast?.lng);
+  return { south, north, west, east };
+}
+
+/**
+ * Prüft, ob ein gegebenes Rechteck (bounds) vollständig innerhalb der
+ * minLat/minLon/maxLat/maxLon-Grenzen eines PMTiles-Headers liegt.
+ * @param {L.LatLngBounds|Object} bounds
+ * @param {Object} header
+ * @returns {boolean}
+ */
+export function isViewportInHeader(bounds, header) {
+  if (!header || !bounds) return false;
+  const { south, north, west, east } = extractBoundsCoords(bounds);
+  if (south == null || north == null || west == null || east == null) return false;
+
+  const minLat = header.minLat ?? -90;
+  const maxLat = header.maxLat ?? 90;
+  const minLon = header.minLon ?? -180;
+  const maxLon = header.maxLon ?? 180;
+
+  const EPS = 1e-5; // ca. 1 Meter Toleranz für Rundungsungenauigkeiten
+  return (
+    south >= minLat - EPS &&
+    north <= maxLat + EPS &&
+    west >= minLon - EPS &&
+    east <= maxLon + EPS
+  );
+}
+
+/**
+ * Stellt sicher, dass ein gültiger PMTiles-Header vorhanden ist und der angefragte
+ * Viewport vollständig in den Header-Grenzen liegt.
+ * Weicht der Viewport ab, wird einmalig die Instanz verworfen, metadata.json mit
+ * forceRefresh neu geladen und ein zweiter Versuch unternommen.
+ * Bleibt der Viewport außerhalb, wird PmtilesCoverageMismatch geworfen.
+ * @param {PMTiles} pmtiles
+ * @param {string} baseUrl
+ * @param {string} pmtilesFile
+ * @param {L.LatLngBounds|Object} bounds
+ * @param {Object} [options]
+ * @returns {Promise<{ pmtiles: PMTiles, header: Object }>}
+ */
+export async function ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile, bounds, { signal } = {}) {
+  let header = _pmtilesHeader;
+  if (!header) {
+    header = await pmtiles.getHeader();
+    _pmtilesHeader = header;
+  }
+
+  if (isViewportInHeader(bounds, header)) {
+    return { pmtiles, header };
+  }
+
+  // Viewport liegt außerhalb der aktuellen Header-Grenzen -> Einmaliger Reload-Versuch
+  const oldBoundsStr = `[minLat=${header?.minLat}, minLon=${header?.minLon}, maxLat=${header?.maxLat}, maxLon=${header?.maxLon}]`;
+
+  // Instanz, Header und Versions-Cache verwerfen
+  _pmtilesHeader = null;
+  _pmtilesInstance = null;
+  _pipelineVersion = null;
+  _lastMetadataFetchTime = 0;
+
+  // Frische URL mit forceRefresh erzwingen
+  const freshUrl = await getPipelinePmtilesUrl(baseUrl, pmtilesFile, { signal, forceRefresh: true });
+  const freshPmtiles = getPMTilesInstance(freshUrl);
+  const freshHeader = await freshPmtiles.getHeader();
+  _pmtilesHeader = freshHeader;
+
+  const newBoundsStr = `[minLat=${freshHeader?.minLat}, minLon=${freshHeader?.minLon}, maxLat=${freshHeader?.maxLat}, maxLon=${freshHeader?.maxLon}]`;
+  console.warn(`[Pipeline] Viewport liegt außerhalb der PMTiles-Header-Grenzen. Header neu geladen: alt=${oldBoundsStr}, neu=${newBoundsStr}`);
+
+  if (!isViewportInHeader(bounds, freshHeader)) {
+    const { south, north, west, east } = extractBoundsCoords(bounds);
+    throw new PmtilesCoverageMismatch(
+      `Viewport [s=${south}, w=${west}, n=${north}, e=${east}] liegt außerhalb der PMTiles-Header-Abdeckung ${newBoundsStr}`,
+      { viewport: { south, west, north, east }, header: freshHeader }
+    );
+  }
+
+  return { pmtiles: freshPmtiles, header: freshHeader };
+}
+
+/**
  * Lädt Kacheln via PMTiles Range-Requests für den aktuellen Sichtbereich.
  * @param {L.LatLngBounds} bounds 
  * @param {string} mode 'stations' | 'all'
@@ -349,15 +535,15 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom } = {}) 
   const pmtilesFile = Config.pipeline?.pmtilesFile || 'openfiremap.pmtiles';
   if (!baseUrl) throw new Error('Pipeline-URL ist nicht konfiguriert.');
 
-  const url = `${baseUrl.replace(/\/+$/, '')}/${pmtilesFile}`;
-  const pmtiles = getPMTilesInstance(url);
+  const url = await getPipelinePmtilesUrl(baseUrl, pmtilesFile, { signal });
+  let pmtiles = getPMTilesInstance(url);
 
-  if (!_pmtilesHeader) {
-    _pmtilesHeader = await pmtiles.getHeader();
-  }
+  const coverage = await ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile, bounds, { signal });
+  pmtiles = coverage.pmtiles;
+  const header = coverage.header;
 
-  const maxZoom = _pmtilesHeader.maxZoom || 14;
-  const minZoom = _pmtilesHeader.minZoom || 12;
+  const maxZoom = header.maxZoom || 16;
+  const minZoom = header.minZoom || 12;
   const currentZoom = typeof zoom === 'number' ? zoom : 14;
   const queryZoom = Math.min(Math.max(currentZoom, minZoom), maxZoom);
 
@@ -551,15 +737,15 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom } = {}) {
   if (Config.pipeline?.usePmtiles) {
     try {
       const pmtilesFile = Config.pipeline?.pmtilesFile || 'openfiremap.pmtiles';
-      const url = `${baseUrl.replace(/\/+$/, '')}/${pmtilesFile}`;
-      const pmtiles = getPMTilesInstance(url);
+      const url = await getPipelinePmtilesUrl(baseUrl, pmtilesFile, { signal });
+      let pmtiles = getPMTilesInstance(url);
 
-      if (!_pmtilesHeader) {
-        _pmtilesHeader = await pmtiles.getHeader();
-      }
+      const coverage = await ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile, bounds, { signal });
+      pmtiles = coverage.pmtiles;
+      const header = coverage.header;
 
-      const maxZoom = _pmtilesHeader.maxZoom || 16;
-      const minZoom = _pmtilesHeader.minZoom || 12;
+      const maxZoom = header.maxZoom || 16;
+      const minZoom = header.minZoom || 12;
       const currentZoom = typeof zoom === 'number' ? zoom : 14;
       const queryZoom = Math.min(Math.max(currentZoom, minZoom), maxZoom);
 
@@ -675,4 +861,6 @@ export function clearPipelineCache() {
   _pmtilesInstance = null;
   _pmtilesUrl = null;
   _pmtilesHeader = null;
+  _pipelineVersion = null;
+  _lastMetadataFetchTime = 0;
 }

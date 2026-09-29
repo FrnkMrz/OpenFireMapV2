@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   isPipelineEligible,
   isPointInPolygon,
@@ -6,12 +6,33 @@ import {
   geoJsonFeatureToElement,
   clearPipelineCache,
   fetchPipelineData,
-  fetchPipelineBoundaries
+  fetchPipelineBoundaries,
+  fetchPipelinePmtiles,
+  getPipelineVersion,
+  getPipelinePmtilesUrl,
+  isViewportInHeader,
+  ensurePmtilesHeaderCoverage,
+  getPMTilesInstance,
+  PmtilesCoverageMismatch
 } from '../src/js/pipeline.js';
 import { Config } from '../src/js/config.js';
+import { PMTiles } from 'pmtiles';
+
+let mockVectorTileLayers = null;
+
+vi.mock('@mapbox/vector-tile', () => {
+  return {
+    VectorTile: class MockVectorTile {
+      constructor() {
+        this.layers = mockVectorTileLayers || {};
+      }
+    }
+  };
+});
 
 describe('pipeline.js', () => {
   beforeEach(() => {
+    mockVectorTileLayers = null;
     clearPipelineCache();
     Config.pipeline.enabled = true;
     Config.pipeline.url = 'https://pipeline.openfiremap.org';
@@ -21,6 +42,11 @@ describe('pipeline.js', () => {
       north: 55.1,
       east: 17.2
     };
+  });
+
+  afterEach(() => {
+    mockVectorTileLayers = null;
+    vi.restoreAllMocks();
   });
 
   describe('isPointInPolygon (Ray-Casting Jordan Curve)', () => {
@@ -542,6 +568,249 @@ describe('pipeline.js', () => {
       expect(geoJsonCalls.length).toBe(0);
 
       fetchSpy.mockRestore();
+    });
+  });
+
+  describe('isViewportInHeader', () => {
+    const bayernHeader = {
+      minLat: 47.24,
+      maxLat: 50.59,
+      minLon: 8.94,
+      maxLon: 13.94
+    };
+    const dachliluHeader = {
+      minLat: 45.8,
+      maxLat: 55.1,
+      minLon: 5.7,
+      maxLon: 17.2
+    };
+
+    it('sollte true zurückgeben, wenn der Viewport vollständig im Header liegt', () => {
+      // München im Bayern-Header
+      const muenchen = { south: 48.12, north: 48.15, west: 11.55, east: 11.60 };
+      expect(isViewportInHeader(muenchen, bayernHeader)).toBe(true);
+
+      // Berlin im DACHLiLu-Header
+      const berlin = { south: 52.50, north: 52.54, west: 13.38, east: 13.43 };
+      expect(isViewportInHeader(berlin, dachliluHeader)).toBe(true);
+    });
+
+    it('sollte false zurückgeben, wenn der Viewport nördlich außerhalb des Headers liegt (z. B. Berlin in Bayern-Header)', () => {
+      const berlin = { south: 52.50, north: 52.54, west: 13.38, east: 13.43 };
+      expect(isViewportInHeader(berlin, bayernHeader)).toBe(false);
+    });
+
+    it('sollte false zurückgeben, wenn der Viewport in eine andere Himmelsrichtung herausragt', () => {
+      expect(isViewportInHeader({ south: 45.0, north: 48.0, west: 10.0, east: 11.0 }, bayernHeader)).toBe(false);
+      expect(isViewportInHeader({ south: 48.0, north: 49.0, west: 7.0, east: 10.0 }, bayernHeader)).toBe(false);
+      expect(isViewportInHeader({ south: 48.0, north: 49.0, west: 10.0, east: 15.0 }, bayernHeader)).toBe(false);
+    });
+
+    it('sollte Rundungsungenauigkeiten an der Grenze tolerieren (Epsilon)', () => {
+      const borderBox = {
+        south: 47.24 - 0.000005,
+        north: 50.59 + 0.000005,
+        west: 8.94 - 0.000005,
+        east: 13.94 + 0.000005
+      };
+      expect(isViewportInHeader(borderBox, bayernHeader)).toBe(true);
+    });
+
+    it('sollte false zurückgeben bei ungültigen Eingaben', () => {
+      expect(isViewportInHeader(null, bayernHeader)).toBe(false);
+      expect(isViewportInHeader({ south: 48.0 }, null)).toBe(false);
+    });
+  });
+
+  describe('getPipelineVersion & getPipelinePmtilesUrl', () => {
+    it('sollte generated_at aus metadata.json als Query-String anhängen', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ generated_at: '2026-09-29T12:00:00Z' })
+      });
+
+      const url = await getPipelinePmtilesUrl('https://pipeline.example.com', 'openfiremap.pmtiles');
+      expect(url).toBe('https://pipeline.example.com/openfiremap.pmtiles?v=2026-09-29T12%3A00%3A00Z');
+      expect(fetchSpy).toHaveBeenCalledWith('https://pipeline.example.com/metadata.json', expect.objectContaining({ cache: 'no-cache' }));
+    });
+
+    it('sollte bei Netzwerkfehler ohne ?v= fortfahren und keine Exception werfen', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network offline'));
+
+      const url = await getPipelinePmtilesUrl('https://pipeline.example.com', 'openfiremap.pmtiles');
+      expect(url).toBe('https://pipeline.example.com/openfiremap.pmtiles');
+    });
+
+    it('sollte das Ergebnis cachen und metadata.json innerhalb der TTL nicht erneut abrufen', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({ generated_at: '2026-09-29T12:00:00Z' })
+      });
+
+      const v1 = await getPipelineVersion('https://pipeline.example.com');
+      const v2 = await getPipelineVersion('https://pipeline.example.com');
+      expect(v1).toBe('2026-09-29T12:00:00Z');
+      expect(v2).toBe('2026-09-29T12:00:00Z');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('PMTiles Cache-Busting & Coverage Mismatch Detection', () => {
+    it('Test 1: Header nur Bayern + Viewport Berlin -> wirft PmtilesCoverageMismatch und liefert KEIN leeres Array', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.geojsonFallback = false;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      Config.pipeline.pmtilesFile = 'openfiremap.pmtiles';
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return {
+            ok: true,
+            json: async () => ({ generated_at: '2026-09-28T08:00:00Z' })
+          };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      // Viewport Berlin Mitte (lat: 52.52, lon: 13.40)
+      const berlinBounds = {
+        getSouth: () => 52.50,
+        getNorth: () => 52.54,
+        getWest: () => 13.38,
+        getEast: () => 13.43
+      };
+
+      const bayernHeader = {
+        minLat: 47.24,
+        maxLat: 50.59,
+        minLon: 8.94,
+        maxLon: 13.94,
+        minZoom: 12,
+        maxZoom: 16
+      };
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue(bayernHeader);
+
+      let caughtError = null;
+      let result = null;
+      try {
+        result = await fetchPipelineData(berlinBounds, 'all', { zoom: 14 });
+      } catch (err) {
+        caughtError = err;
+      }
+
+      // Darf KEIN leeres Array [] liefern und muss fehlschlagen!
+      expect(result).toBeNull();
+      expect(caughtError).not.toBeNull();
+      expect(caughtError.message).toContain('liegt außerhalb der PMTiles-Header-Abdeckung');
+      // Überprüfe die zugrundeliegende Ursache
+      const mismatchErr = caughtError instanceof PmtilesCoverageMismatch ? caughtError : caughtError.cause;
+      expect(mismatchErr).toBeInstanceOf(PmtilesCoverageMismatch);
+      expect(mismatchErr.details.header.maxLat).toBe(50.59);
+      expect(mismatchErr.details.viewport.north).toBe(52.54);
+    });
+
+    it('Test 2: Header DACHLiLu + Viewport Berlin -> normaler Ablauf, liefert Elemente', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.geojsonFallback = false;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      Config.pipeline.pmtilesFile = 'openfiremap.pmtiles';
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return {
+            ok: true,
+            json: async () => ({ generated_at: '2026-09-29T10:00:00Z' })
+          };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      const berlinBounds = {
+        getSouth: () => 52.50,
+        getNorth: () => 52.54,
+        getWest: () => 13.38,
+        getEast: () => 13.43
+      };
+
+      const dachliluHeader = {
+        minLat: 45.8,
+        maxLat: 55.1,
+        minLon: 5.7,
+        maxLon: 17.2,
+        minZoom: 12,
+        maxZoom: 16
+      };
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue(dachliluHeader);
+      vi.spyOn(PMTiles.prototype, 'getZxy').mockResolvedValue({
+        data: new Uint8Array([1, 2, 3])
+      });
+
+      mockVectorTileLayers = {
+        fire_stations: {
+          length: 1,
+          feature: () => ({
+            toGeoJSON: () => ({
+              type: 'Feature',
+              id: 'berlin_mitte_112',
+              geometry: { type: 'Point', coordinates: [13.405, 52.520] },
+              properties: { amenity: 'fire_station', name: 'Feuerwache Berlin Mitte' }
+            })
+          })
+        }
+      };
+
+      const elements = await fetchPipelineData(berlinBounds, 'stations', { zoom: 14 });
+
+      expect(Array.isArray(elements)).toBe(true);
+      expect(elements.length).toBeGreaterThan(0);
+      const station = elements.find(el => el.id === 'berlin_mitte_112');
+      expect(station).toBeDefined();
+      expect(station.lat).toBe(52.520);
+      expect(station.lon).toBe(13.405);
+      expect(station.tags.name).toBe('Feuerwache Berlin Mitte');
+    });
+
+    it('Test 3: Versionswechsel in metadata.json -> verwirft Singleton-Instanz, holt Header neu', async () => {
+      let currentVersion = '2026-09-28T10:00:00Z';
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return {
+            ok: true,
+            json: async () => ({ generated_at: currentVersion })
+          };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      // 1. Initialer Abruf mit Version 1
+      const url1 = await getPipelinePmtilesUrl('https://pipeline.example.com', 'openfiremap.pmtiles');
+      expect(url1).toBe('https://pipeline.example.com/openfiremap.pmtiles?v=2026-09-28T10%3A00%3A00Z');
+
+      const inst1 = getPMTilesInstance(url1);
+
+      // 2. Neuer Rollout auf dem Server: Version wechselt auf Version 2
+      currentVersion = '2026-09-29T12:00:00Z';
+
+      // forceRefresh simuliert Ablauf des TTL oder erzwungenen Abruf
+      const v2 = await getPipelineVersion('https://pipeline.example.com', { forceRefresh: true });
+      expect(v2).toBe('2026-09-29T12:00:00Z');
+
+      const url2 = await getPipelinePmtilesUrl('https://pipeline.example.com', 'openfiremap.pmtiles');
+      expect(url2).toBe('https://pipeline.example.com/openfiremap.pmtiles?v=2026-09-29T12%3A00%3A00Z');
+
+      const inst2 = getPMTilesInstance(url2);
+      expect(inst2).not.toBe(inst1); // Neue Instanz erzeugt!
+
+      const headerSpy2 = vi.spyOn(inst2, 'getHeader').mockResolvedValue({
+        minLat: 45.8, maxLat: 55.1, minLon: 5.7, maxLon: 17.2, minZoom: 12, maxZoom: 16
+      });
+
+      const header = await inst2.getHeader();
+      expect(header.maxLat).toBe(55.1);
+      expect(headerSpy2).toHaveBeenCalledTimes(1);
     });
   });
 });
