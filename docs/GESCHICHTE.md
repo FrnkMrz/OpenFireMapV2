@@ -30,4 +30,4 @@ Die Pipeline erweitert nicht die geografische Abdeckung. OpenFireMap bleibt welt
 
 ## Aktueller Stand – v0.7.2
 
-OpenFireMapV2 steht aktuell bei **v0.7.2**. Die DACHLiLu-Pipeline versorgt rund **1,25 Millionen Objekte** aus einer etwa **514 MB** großen PMTiles-Datei. Die Anwendung umfasst mehr als 30 Sprachen, IndexedDB-Caching, Exporte als PNG/PDF/GPX/CSV und responsive Nutzung auf Desktop und Mobilgeräten.
+OpenFireMapV2 steht aktuell bei **v0.7.2**. Die DACHLiLu-Pipeline versorgt rund **1,25 Millionen Objekte** aus einer durch MaxZoom 14 optimierten, etwa **192,5 MiB** großen PMTiles-Datei. Die Anwendung umfasst mehr als 30 Sprachen, IndexedDB-Caching, Exporte als PNG/PDF/GPX/CSV und responsive Nutzung auf Desktop und Mobilgeräten.

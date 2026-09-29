@@ -4,7 +4,7 @@ Die ausführliche, gepflegte Kurzanleitung steht in [docs/ERSTE_SCHRITTE.md](doc
 
 ## Datenversorgung
 
-OpenFireMap ist weltweit nutzbar. In Deutschland, Österreich, der Schweiz, Luxemburg und Liechtenstein werden rund 1,25 Millionen vorberechnete Objekte bevorzugt aus PMTiles über Cloudflare R2 geladen. Der Browser verwendet HTTP-Range-Requests und lädt nur benötigte Kachelbereiche. Außerhalb dieser Gebiete sowie bei veralteten oder nicht erreichbaren Pipeline-Daten wird automatisch Overpass verwendet.
+OpenFireMap ist weltweit nutzbar. In Deutschland, Österreich, der Schweiz, Luxemburg und Liechtenstein werden rund 1,25 Millionen vorberechnete Objekte bevorzugt aus PMTiles über Cloudflare R2 geladen. Der auf MaxZoom 14 optimierte Build ist aktuell etwa 192,5 MiB groß und bleibt damit unter dem Cloudflare-Free-Cache-Limit von 512 MiB. Der Browser verwendet HTTP-Range-Requests und lädt nur benötigte Kachelbereiche. Außerhalb dieser Gebiete sowie bei veralteten oder nicht erreichbaren Pipeline-Daten wird automatisch Overpass verwendet.
 
 ## Wichtig für die Nutzung
 

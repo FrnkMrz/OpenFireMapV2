@@ -24,6 +24,10 @@ Korrigiere die Quelle direkt in [OpenStreetMap](https://www.openstreetmap.org/),
 
 Overpass ist ein öffentlicher Gemeinschaftsdienst und kann Abfragen bei hoher Last verzögern oder ablehnen. OpenFireMap bricht veraltete Abrufe ab, versucht bei Bedarf einen anderen Endpunkt und nutzt Backoff sowie Wiederholungen. Bei PMTiles kann zusätzlich die Verfügbarkeit oder Aktualisierung der Pipeline geprüft werden.
 
+## Was wurde an der R2-Auslieferung optimiert?
+
+Der DACHLiLu-Pipeline-Build verwendet MaxZoom 14 und ist aktuell etwa 192,5 MiB groß. PMTiles werden per HTTP-Range-Requests ohne Gzip-Transformation ausgeliefert; ETags, CORS und abgestimmte Cache-Zeiten unterstützen die Wiederverwendung bereits geladener Daten. Nach einem Upload wird der öffentliche Stand anhand von Build-Zeitstempel und Dateigröße verifiziert. So wird `metadata.json` erst dann als neue Version veröffentlicht, wenn die eigentlichen Daten vollständig in R2 angekommen sind.
+
 ## Sind die Daten für einen Feuerwehreinsatz verbindlich?
 
 Nein. OpenFireMap ist eine offene Informations- und Mapping-Anwendung. OSM-Daten können unvollständig, veraltet oder fehlerhaft sein und ersetzen keine lokalen Einsatzunterlagen, Leitstelleninformationen oder amtlichen Daten.

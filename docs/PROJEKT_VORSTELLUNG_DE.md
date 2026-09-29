@@ -17,7 +17,7 @@ Overpass ermöglicht weltweit gezielte Abfragen auf OSM-Daten. Große Kartenauss
 
 ## Die technische Lösung
 
-Für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein (DACHLiLu) werden relevante OSM-Objekte regelmäßig in PMTiles-Vektorkacheln vorbereitet. Cloudflare R2 liefert die etwa 514 MB große PMTiles-Datei aus. Der Browser lädt per HTTP-Range-Requests nur die Kachelbereiche, die im sichtbaren Ausschnitt benötigt werden.
+Für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein (DACHLiLu) werden relevante OSM-Objekte regelmäßig in PMTiles-Vektorkacheln vorbereitet. Ein auf MaxZoom 14 optimierter Build hält die aktuelle Datei bei etwa **192,5 MiB (201.892.499 Bytes)**. Cloudflare R2 liefert sie aus; der Browser lädt per HTTP-Range-Requests nur die Kachelbereiche, die im sichtbaren Ausschnitt benötigt werden.
 
 Die Pipeline ist eine Beschleunigung, keine neue geografische Abdeckung. OpenFireMap war von Anfang an weltweit nutzbar. Außerhalb DACHLiLu und bei fehlenden, veralteten oder nicht erreichbaren Pipeline-Daten greift die Anwendung auf Overpass zurück.
 
@@ -27,11 +27,13 @@ Browser → PMTiles / Cloudflare R2 → Overpass-Fallback
 
 Cache-Busting über die Pipeline-Metadaten und die Erkennung veralteter PMTiles-Abdeckung verhindern, dass ein alter Datenstand dauerhaft als aktuell verwendet wird.
 
+Die R2-Synchronisation überträgt PMTiles zuerst, GeoJSON mit kürzerer Cache-Dauer und `metadata.json` zuletzt ohne Cache. Danach wird der öffentliche Build über `generated_at` und `Content-Range` verifiziert. Ein optionaler Cache-Purge erfolgt nur nach erfolgreicher Prüfung. Der MaxZoom-14-Build bleibt damit unter dem 512-MiB-Free-Cache-Limit von Cloudflare.
+
 ## Aktuelle Messwerte und Funktionen
 
 - Version **v0.7.2**
 - rund **1,25 Millionen** feuerwehrrelevante Objekte in der DACHLiLu-Pipeline
-- PMTiles-Datei mit etwa **514 MB**
+- PMTiles-Datei mit etwa **192,5 MiB** (**201.892.499 Bytes**)
 - Cloudflare R2 als primäre öffentliche Pipeline-Quelle
 - 99 erfolgreiche Vitest-Tests sowie ein Playwright-Performance-Test
 - Exporte als PNG, PDF, GPX und CSV

@@ -30,11 +30,24 @@ Die geografische Nutzung bleibt weltweit möglich. Die PMTiles-Pipeline ist eine
 
 Die Pipeline stellt vorberechnete Vektorkacheln in einer PMTiles-Datei bereit. Der Browser lädt nicht die gesamte Datei, sondern fordert per HTTP-Range-Request nur die Bytebereiche an, die für die sichtbaren Kacheln benötigt werden. Das reduziert Datenmenge und Wartezeit besonders bei großen Gebieten.
 
-Die aktuelle DACHLiLu-Datei ist ungefähr **514 MB** groß und enthält Daten für rund **1,25 Millionen feuerwehrrelevante Objekte**. Die exakten Build-Zeitpunkte und Statistiken werden über `metadata.json` der Pipeline veröffentlicht.
+Die aktuelle DACHLiLu-Datei ist ungefähr **192,5 MiB** groß (**201.892.499 Bytes**) und enthält Daten für rund **1,25 Millionen feuerwehrrelevante Objekte**. Der Build verwendet für die relevanten Layer MaxZoom 14. Dadurch bleibt die Datei unter dem Cloudflare-Free-Cache-Limit von **512 MiB**, während der Browser weiterhin nur benötigte Bytebereiche abruft. Die exakten Build-Zeitpunkte, Dateigröße und Statistiken werden über `metadata.json` der Pipeline veröffentlicht.
 
 ## Cloudflare R2
 
 Cloudflare R2 ist die primäre öffentliche Quelle für die vorbereiteten PMTiles-Daten. Die Auslieferung erfolgt über `https://pipeline.openfiremap.org`. CORS und Range-Requests ermöglichen den direkten Zugriff aus dem Browser. Eine lokale VM (intern als **VM 102** bezeichnet) dient als Test- und Backup-Umgebung für den Pipeline-Betrieb; private Netzwerkadressen, Zugangsdaten und interne Pfade gehören nicht zur öffentlichen Dokumentation.
+
+### R2-Auslieferung und Synchronisation
+
+Die Veröffentlichung ist auf die unterschiedlichen Datenrollen abgestimmt:
+
+1. PMTiles werden zuerst mit einer Cache-Dauer von 24 Stunden übertragen.
+2. Optionale GeoJSON-Dateien erhalten eine kürzere Cache-Dauer von einer Stunde.
+3. `metadata.json` wird zuletzt und mit `no-cache` veröffentlicht. Dadurch markiert es erst dann eine neue Pipeline-Version, wenn die Datenartefakte bereits übertragen wurden.
+4. Anschließend prüft der Update-Lauf den öffentlichen `generated_at`-Wert und ermittelt die PMTiles-Gesamtgröße über einen HTTP-Range-Request. Bei Abweichungen wird der Lauf mit Fehler beendet; ein optionaler Cloudflare-Cache-Purge erfolgt nur nach erfolgreicher Synchronisation.
+
+Für PMTiles ist die Nginx-Kompression deaktiviert, damit HTTP-206-Range-Responses und `Content-Range` zuverlässig funktionieren. ETags, CORS und die exponierten Range-Header unterstützen Browser- und R2-Kompatibilität. Der aktuelle MaxZoom-14-Build bleibt mit rund 192,5 MiB unter dem 512-MiB-Free-Cache-Limit.
+
+Die lokale Umgebung stellt zusätzlich interne Statusdateien für Monitoring bereit. Sie sind nicht über den öffentlichen Cloudflare-Tunnel erreichbar; öffentliche Projektseiten dokumentieren nur den technischen Zweck, nicht private Netzwerkadressen oder Zugangsdaten.
 
 ## Cache und Cache-Busting
 

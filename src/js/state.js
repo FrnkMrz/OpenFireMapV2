@@ -35,7 +35,8 @@ export const State = {
     loadedPoiMode: null,
 
     // --- LADE-STATUS ---
-    isFetchingData: false,  // Lädt die Map gerade im Hintergrund neue Daten?
+    isFetchingData: false,        // Lädt die Map gerade im Hintergrund neue Hydranten/POIs?
+    isFetchingBoundaries: false,  // Lädt die Map gerade im Hintergrund neue Gemeindegrenzen?
     pendingBufferFetches: new Set(), // Set laufender Promises des Hintergrund-Pufferrings
     get pendingBufferFetch() {
         return this.pendingBufferFetches && this.pendingBufferFetches.size > 0 ? this.pendingBufferFetches : null;

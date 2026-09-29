@@ -8,6 +8,8 @@ services:
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ${DATA_PATH:-/srv/docker/data/openfiremap}/publish:/usr/share/nginx/html:ro
+      - ${DATA_PATH:-/srv/docker/data/openfiremap}/raw/system_stats.json:/usr/share/nginx/internal/system_stats.json:ro
+      - ${DATA_PATH:-/srv/docker/data/openfiremap}/raw/sync_status.json:/usr/share/nginx/internal/sync_status.json:ro
     logging:
       driver: "json-file"
       options:

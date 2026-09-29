@@ -414,8 +414,9 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None):
         run_cmd(cmd)
 
         pmtiles_duration = round(time.time() - t_pmtiles, 2)
-        pmtiles_mb = round(os.path.getsize(pmtiles_output) / (1024 * 1024), 2)
-        log(f"PMTiles erfolgreich erstellt: {pmtiles_mb} MB in {pmtiles_duration}s -> {pmtiles_output}")
+        pmtiles_size_bytes = os.path.getsize(pmtiles_output)
+        pmtiles_mb = round(pmtiles_size_bytes / (1024 * 1024), 2)  # Historisch size_mb, Wert in MiB (1024^2 Bytes)
+        log(f"PMTiles erfolgreich erstellt: {pmtiles_mb} MB ({pmtiles_size_bytes} Bytes) in {pmtiles_duration}s -> {pmtiles_output}")
 
     finally:
         # Arbeitsverzeichnis nach dem Durchlauf immer sauber aufräumen
@@ -476,7 +477,8 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None):
         "source_url": "https://download.geofabrik.de/europe/" if mode != "single" else targets[0]["url"],
         "pmtiles": {
             "file": "openfiremap.pmtiles",
-            "size_mb": pmtiles_mb,
+            "size_mb": pmtiles_mb,  # Angabe in MiB (1024^2 Bytes)
+            "size_bytes": pmtiles_size_bytes,
             "duration_sec": pmtiles_duration,
             "minzoom": 12,
             "maxzoom": 14

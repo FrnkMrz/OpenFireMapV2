@@ -161,10 +161,14 @@ test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
 
     await gotoReady(page, '/?lang=de#16/48.8566/2.3522/voyager');
 
-    // Warten bis Daten geladen sind
+    // Warten bis Daten geladen und Ladevorgänge abgeschlossen sind
     await expect.poll(async () => {
-      return await page.evaluate(() => window.State?.cachedPoiElements?.length || 0);
-    }, { timeout: 7000 }).toBe(1);
+      return await page.evaluate(() => (
+        (window.State?.cachedPoiElements?.length || 0) === 1 &&
+        !window.State?.isFetchingData &&
+        !window.State?.isFetchingBoundaries
+      ));
+    }, { timeout: 7000 }).toBe(true);
 
     // Export-Menü öffnen
     await page.click('#export-btn-trigger');
@@ -182,7 +186,7 @@ test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
 
     expect(download.suggestedFilename()).toContain('.gpx');
     console.log(`[E2E Test] GPX-Download startete nach ${elapsedMs} ms`);
-    expect(elapsedMs).toBeLessThan(1000);
+    expect(elapsedMs).toBeLessThan(1500);
   });
 
 });

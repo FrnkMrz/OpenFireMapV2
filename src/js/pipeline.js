@@ -891,7 +891,13 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
     State.pendingBufferFetches.add(bufferPromise);
     bufferPromise.finally(() => {
       State.pendingBufferFetches.delete(bufferPromise);
-      if (State.pendingBufferFetches.size === 0 && !State.isFetchingData) {
+      const hasBuffers = State.pendingBufferFetches.size > 0;
+      if (!hasBuffers && !State.isFetchingData) {
+        if (State.controllers.fetch?.signal === signal) {
+          State.controllers.fetch = null;
+        }
+      }
+      if (!hasBuffers && !State.isFetchingData && !State.isFetchingBoundaries) {
         State.activeFetchBounds = null;
       }
     });
@@ -1182,7 +1188,13 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         State.pendingBufferFetches.add(boundaryBufferPromise);
         boundaryBufferPromise.finally(() => {
           State.pendingBufferFetches.delete(boundaryBufferPromise);
-          if (State.pendingBufferFetches.size === 0 && !State.isFetchingData) {
+          const hasBuffers = State.pendingBufferFetches.size > 0;
+          if (!hasBuffers && !State.isFetchingBoundaries) {
+            if (State.controllers.boundaryFetch?.signal === signal) {
+              State.controllers.boundaryFetch = null;
+            }
+          }
+          if (!hasBuffers && !State.isFetchingData && !State.isFetchingBoundaries) {
             State.activeFetchBounds = null;
           }
         });
@@ -1291,5 +1303,7 @@ export function clearPipelineCache() {
   if (State.pendingBufferFetches) {
     State.pendingBufferFetches.clear();
   }
+  State.isFetchingData = false;
+  State.isFetchingBoundaries = false;
   State.activeFetchBounds = null;
 }

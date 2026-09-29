@@ -318,8 +318,11 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
     vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
 
     let bufferCompleteCb;
+    let resolveBuffer;
     vi.spyOn(pipelineModule, 'fetchPipelineData').mockImplementation(async (bounds, mode, options) => {
       bufferCompleteCb = options.onBufferComplete;
+      const bufferPromise = new Promise(r => { resolveBuffer = r; });
+      State.pendingBufferFetches.add(bufferPromise);
       const visible = [{ id: 'h1' }];
       visible.loadedBounds = { id: 'visBounds' };
       return visible;
@@ -680,6 +683,97 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       expect(controllerFetch.signal.aborted).toBe(false);
       expect(State.controllers.fetch).toBe(controllerFetch);
       expect(State.pendingBufferFetches.size).toBe(1);
+    });
+  });
+
+  // =========================================================================
+  // 11. Controller-Cleanup und Vermeidung unnötiger Abbrüche (Teil A)
+  // =========================================================================
+  describe('11. Controller-Cleanup & Grenzen-Schutz bei Bewegung', () => {
+    it('(a) Laden fertig -> erste kleine Bewegung -> kein Neu-Rendern (clearLayers wird nicht aufgerufen)', async () => {
+      const mapModule = await import('../src/js/map.js');
+      mapModule.initMapLogic();
+
+      const clearBoundariesSpy = vi.spyOn(State.boundaryLayer, 'clearLayers');
+
+      const bounds = State.map.getBounds();
+      State.cachedPoiElements = [{ id: 'h1', lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+      State.cachedBoundaryElements = [{ id: 'b1' }];
+      State.loadedPoiBounds = bounds;
+      State.loadedPoiMode = 'all';
+      State.loadedBoundaryBounds = bounds;
+
+      // Zustand nach regulärem Ladeabschluss:
+      // Flags sind false, Controller sind durch finally auf null
+      State.isFetchingData = false;
+      State.isFetchingBoundaries = false;
+      State.pendingBufferFetches.clear();
+      State.controllers.fetch = null;
+      State.controllers.boundaryFetch = null;
+      State.activeFetchBounds = null;
+
+      clearBoundariesSpy.mockClear();
+
+      // Erste Bewegung nach dem Laden
+      mapModule._testing.onViewChange();
+
+      // Kein Re-Render!
+      expect(clearBoundariesSpy).not.toHaveBeenCalled();
+
+      clearBoundariesSpy.mockRestore();
+    });
+
+    it('(b) POIs fertig, Grenzen laufen noch, kleine Bewegung im selben Bereich -> Grenzen-Anfrage wird NICHT abgebrochen', async () => {
+      const mapModule = await import('../src/js/map.js');
+      mapModule.initMapLogic();
+
+      const boundsA = State.map.getBounds();
+      State.cachedPoiElements = [{ id: 'h_A' }];
+      State.loadedPoiBounds = boundsA;
+      State.loadedPoiMode = 'all';
+
+      // POIs sind fertig, Grenzen laden noch
+      State.isFetchingData = false;
+      State.controllers.fetch = null;
+
+      const boundaryController = new AbortController();
+      State.controllers.boundaryFetch = boundaryController;
+      State.isFetchingBoundaries = true;
+
+      // activeFetchBounds umfasst aktuellen Viewport
+      State.activeFetchBounds = {
+        contains: () => true
+      };
+
+      // Kleine Bewegung im selben Bereich
+      mapModule._testing.onViewChange();
+
+      // Grenzen-Anfrage darf NICHT abgebrochen werden!
+      expect(boundaryController.signal.aborted).toBe(false);
+      expect(State.controllers.boundaryFetch).toBe(boundaryController);
+      expect(State.isFetchingBoundaries).toBe(true);
+    });
+
+    it('(c) Controller-Cleanup: fetchOSMData und fetchBoundaryData nullen ihre Controller im finally wenn kein Puffer läuft', async () => {
+      // Mock pipeline data
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+      vi.spyOn(pipelineModule, 'fetchPipelineData').mockResolvedValue([]);
+      vi.spyOn(pipelineModule, 'fetchPipelineBoundaries').mockResolvedValue([]);
+
+      State.map.getZoom = () => 16;
+      State.pendingBufferFetches.clear();
+
+      await fetchOSMData();
+      expect(State.controllers.fetch).toBeNull();
+      expect(State.isFetchingData).toBe(false);
+
+      await fetchBoundaryData();
+      expect(State.controllers.boundaryFetch).toBeNull();
+      expect(State.isFetchingBoundaries).toBe(false);
+
+      pipelineModule.isPipelineEligible.mockRestore();
+      pipelineModule.fetchPipelineData.mockRestore();
+      pipelineModule.fetchPipelineBoundaries.mockRestore();
     });
   });
 });

@@ -589,7 +589,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
   if (State.controllers.fetch) State.controllers.fetch.abort();
   const controller = new AbortController();
   State.controllers.fetch = controller;
-  const isCurrentRequest = () => State.controllers.fetch === controller;
+  const isCurrentRequest = () => !controller.signal.aborted && (State.controllers.fetch === controller || State.controllers.fetch === null);
   const ensureCurrentRequest = () => {
     if (!isCurrentRequest()) throw createAbortError();
   };
@@ -632,7 +632,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           State.cachedPoiElements = bufferedElements;
           State.loadedPoiBounds = fullBounds;
           syncCombinedCachedElements();
-          if (!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) {
+          if ((!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) && !State.isFetchingBoundaries) {
             State.activeFetchBounds = null;
           }
           reportHydrantDownload(hydrantStatus, 'success', bufferedElements);
@@ -830,7 +830,11 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
   } finally {
     if (isCurrentRequest()) {
       State.isFetchingData = false;
-      if (!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) {
+      const hasActiveBuffer = Boolean(State.pendingBufferFetches && State.pendingBufferFetches.size > 0);
+      if (!hasActiveBuffer && State.controllers.fetch === controller) {
+        State.controllers.fetch = null;
+      }
+      if (!hasActiveBuffer && !State.isFetchingBoundaries) {
         State.activeFetchBounds = null;
       }
     }
@@ -860,29 +864,32 @@ export async function fetchBoundaryData(onProgressData = null) {
   if (State.controllers.boundaryFetch) State.controllers.boundaryFetch.abort();
   const controller = new AbortController();
   State.controllers.boundaryFetch = controller;
+  State.isFetchingBoundaries = true;
+  const isCurrentBoundaryRequest = () => !controller.signal.aborted && (State.controllers.boundaryFetch === controller || State.controllers.boundaryFetch === null);
   const ensureCurrentRequest = () => {
-    if (State.controllers.boundaryFetch !== controller) throw createAbortError();
+    if (!isCurrentBoundaryRequest()) throw createAbortError();
   };
 
-  if (_bgBoundaryRefresh && _bgBoundaryRefresh.cacheKey !== cacheKey) {
-    _bgBoundaryRefresh.controller.abort();
-    ++_bgBoundaryGen;
-    _bgBoundaryRefresh = null;
-  }
+  try {
+    if (_bgBoundaryRefresh && _bgBoundaryRefresh.cacheKey !== cacheKey) {
+      _bgBoundaryRefresh.controller.abort();
+      ++_bgBoundaryGen;
+      _bgBoundaryRefresh = null;
+    }
 
-  const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
+    const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
 
-  if (isPipelineEligible(viewBounds, zoom)) {
-    try {
-      console.log('[API] Verwende lokale Pipeline für Gemeindegrenzen...');
-      const onBoundaryBufferComplete = (bufferedElements, fullBounds) => {
-        if (State.controllers.boundaryFetch !== controller) return;
-        State.cachedBoundaryElements = bufferedElements;
-        State.loadedBoundaryBounds = fullBounds;
-        syncCombinedCachedElements();
-        if (!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) {
-          State.activeFetchBounds = null;
-        }
+    if (isPipelineEligible(viewBounds, zoom)) {
+      try {
+        console.log('[API] Verwende lokale Pipeline für Gemeindegrenzen...');
+        const onBoundaryBufferComplete = (bufferedElements, fullBounds) => {
+          if (!isCurrentBoundaryRequest()) return;
+          State.cachedBoundaryElements = bufferedElements;
+          State.loadedBoundaryBounds = fullBounds;
+          syncCombinedCachedElements();
+          if ((!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) && !State.isFetchingData) {
+            State.activeFetchBounds = null;
+          }
         if (typeof onProgressData === 'function') {
           try {
             onProgressData(bufferedElements, false);
@@ -893,7 +900,7 @@ export async function fetchBoundaryData(onProgressData = null) {
       };
 
       const onBoundaryProgress = (progressElements, isPartial = true) => {
-        if (State.controllers.boundaryFetch !== controller) return;
+        if (!isCurrentBoundaryRequest()) return;
         if (typeof onProgressData === 'function') {
           try {
             onProgressData(progressElements, isPartial);
@@ -1020,6 +1027,18 @@ export async function fetchBoundaryData(onProgressData = null) {
       return State.cachedBoundaryElements;
     }
     throw err;
+  }
+  } finally {
+    if (isCurrentBoundaryRequest()) {
+      State.isFetchingBoundaries = false;
+      const hasActiveBuffer = Boolean(State.pendingBufferFetches && State.pendingBufferFetches.size > 0);
+      if (!hasActiveBuffer && State.controllers.boundaryFetch === controller) {
+        State.controllers.boundaryFetch = null;
+      }
+      if (!hasActiveBuffer && !State.isFetchingData) {
+        State.activeFetchBounds = null;
+      }
+    }
   }
 }
 

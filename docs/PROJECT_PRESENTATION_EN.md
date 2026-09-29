@@ -17,7 +17,7 @@ Overpass makes targeted OSM queries available worldwide. Large areas and many co
 
 ## The technical approach
 
-For Germany, Austria, Switzerland, Luxembourg and Liechtenstein (DACHLiLu), relevant OSM objects are prepared as PMTiles vector tiles. Cloudflare R2 serves the roughly 514 MB PMTiles archive. The browser uses HTTP Range Requests to fetch only the byte ranges needed for visible tiles.
+For Germany, Austria, Switzerland, Luxembourg and Liechtenstein (DACHLiLu), relevant OSM objects are prepared as PMTiles vector tiles. An optimized MaxZoom 14 build currently keeps the archive at about **192.5 MiB (201,892,499 bytes)**. Cloudflare R2 serves it, while the browser uses HTTP Range Requests to fetch only the byte ranges needed for visible tiles.
 
 This pipeline is an acceleration layer, not a geographic expansion. OpenFireMap was worldwide from the beginning. Outside DACHLiLu, and whenever pipeline data is missing, stale or unavailable, the application falls back to Overpass.
 
@@ -27,11 +27,13 @@ Browser → PMTiles / Cloudflare R2 → Overpass fallback
 
 Metadata-based cache busting and stale-coverage detection keep an old PMTiles version from being treated as current indefinitely.
 
+The R2 publication flow uploads PMTiles first, GeoJSON with a shorter cache lifetime, and `metadata.json` last with no-cache headers. The public build is then verified using its `generated_at` value and the PMTiles size reported by `Content-Range`; an optional cache purge runs only after successful verification. The MaxZoom 14 archive remains below Cloudflare's 512 MiB free-cache limit.
+
 ## Current facts and features
 
 - version **v0.7.2**
 - approximately **1.25 million** fire-service-related objects in the DACHLiLu pipeline
-- PMTiles archive of approximately **514 MB**
+- PMTiles archive of approximately **192.5 MiB** (**201,892,499 bytes**)
 - Cloudflare R2 as the primary public pipeline source
 - 99 successful Vitest tests and a Playwright performance test
 - PNG, PDF, GPX and CSV exports

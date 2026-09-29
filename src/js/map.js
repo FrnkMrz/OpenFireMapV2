@@ -434,7 +434,11 @@ export function initMapLogic() {
         }
 
         const currentViewBounds = State.map.getBounds();
-        const hasActiveRequest = Boolean(State.controllers.fetch || State.controllers.boundaryFetch);
+        const hasActiveRequest = Boolean(
+            State.isFetchingData ||
+            State.isFetchingBoundaries ||
+            (State.pendingBufferFetches && State.pendingBufferFetches.size > 0)
+        );
         const isCoveredByActiveFetch = Boolean(hasActiveRequest && State.activeFetchBounds && State.activeFetchBounds.contains(currentViewBounds));
         let abortedForeignRequest = false;
 
@@ -449,6 +453,7 @@ export function initMapLogic() {
                 State.controllers.boundaryFetch = null;
             }
             State.isFetchingData = false;
+            State.isFetchingBoundaries = false;
             State.pendingBufferFetches?.clear();
             State.activeFetchBounds = null;
             abortedForeignRequest = true;
