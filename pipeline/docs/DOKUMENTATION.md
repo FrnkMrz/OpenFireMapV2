@@ -45,10 +45,28 @@ Die Pipeline lässt sich über das vorgefertigte Home-Assistant-Package unter `p
    - `<PIPELINE_LAN_URL>`: z. B. `http://<PIPELINE_LAN_IP>:8080`
    - `<NOTIFY_SERVICE>`: z. B. `notify.mobile_app_smartphone` oder `notify.persistent_notification`
 4. Konfigurationsprüfung in Home Assistant durchführen und YAML neu laden.
+5. Vor dem Einbinden die Entitätsreferenzen prüfen:
+   ```bash
+   python3 pipeline/tools/check_ha_entities.py pipeline/monitoring/homeassistant/openfiremap.yaml
+   ```
+   Das Skript leitet die Entity-ID aus dem Anzeigenamen (nicht aus `unique_id`) ab,
+   berücksichtigt die Home-Assistant-Slugifizierung einschließlich Umlauten und `ß`
+   und meldet fehlende oder doppelte Referenzen. HA-Tags wie `!secret` und `!include`
+   müssen dafür nicht aufgelöst werden.
+
+### Ausfall- und Alarmverhalten
+
+- Ein fehlgeschlagener öffentlicher REST-Abruf ergibt `unavailable`; der öffentliche
+  Endpunkt-Alarm reagiert darauf nach 10 Minuten.
+- `OpenFireMap Datenalter Stunden` und `OpenFireMap Daten Synchron` werden bei
+  fehlenden Versionsdaten ebenfalls `unavailable`. Dadurch erzeugen sie während
+  eines Endpunktausfalls keinen zweiten Alarm.
+- Ein echter `upload_ok: false`-Status löst den Sync-Alarm nach 15 Minuten aus.
+- Ein Hydranten-REST-Ausfall wird nicht als Bestandseinbruch auf null interpretiert.
 
 ## Rolle des Cloudflare-Tunnels vs. Cloudflare R2
 
-- **Primäre Produktions-Auslieferung:** Läuft direkt über Cloudflare R2 unter `https://pipeline.openfiremap.org`. Der Browser bezieht Kacheln via HTTP Range Requests direkt aus dem R2 Object Storage.
+- **Primäre Produktions-Auslieferung:** Läuft direkt über Cloudflare R2 unter `<PIPELINE_PUBLIC_URL>`. Der Browser bezieht Kacheln via HTTP Range Requests direkt aus dem R2 Object Storage.
 - **Rolle des Nginx-Servers auf VM 102:** Dient als lokaler Build- und Backup-Server im Heimnetzwerk (Port 8080) für lokale Tests, Entwicklungszwecke und internes Monitoring (z. B. Home Assistant).
 - **Rolle des Cloudflare-Tunnels (`openfiremap-tunnel`):** Der Tunnel leitete vor der R2-Migration Anfragen an Nginx weiter. Da R2 die öffentliche Last vollständig übernimmt, wird der Tunnel im Regelbetrieb nicht mehr zwingend benötigt. Er verbleibt vorerst als Fallback-/Redundanz-Kanal aktiv, sollte jedoch perspektivisch entweder auf eine dedizierte Backup-Subdomain umgestellt oder abgeschaltet werden.
 - **Absicherung des Endpunkts `/internal/`:** Da der Tunnel-Container aus Nginx-Sicht aus dem internen Docker-Bridge-Netzwerk anfragt, sperrt Nginx `/internal/` sofort per HTTP 403, sobald der Cloudflare-Header `CF-Connecting-IP` erkannt wird.

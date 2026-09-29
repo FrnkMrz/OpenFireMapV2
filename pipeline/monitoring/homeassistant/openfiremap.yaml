@@ -22,7 +22,7 @@
 # ------------------------------------------------------------------------------
 rest:
   # 1.1 Öffentliche Metadaten (Cloudflare R2 CDN)
-  - resource: "https://pipeline.openfiremap.org/metadata.json"
+  - resource: "<PIPELINE_PUBLIC_URL>/metadata.json"
     scan_interval: 300
     headers:
       User-Agent: "Home-Assistant-OpenFireMap-Monitor"
@@ -161,19 +161,21 @@ template:
   - sensor:
       - name: "OpenFireMap Datenalter Stunden"
         unique_id: "openfiremap_data_age_hours"
+        availability: >-
+          {{ states('sensor.openfiremap_offentlich_version') not in
+             ['unknown', 'unavailable', 'none', ''] }}
         state: >-
-          {% set gen = states('sensor.openfiremap_public_version') %}
-          {% if gen not in ['unknown', 'unavailable', 'None', ''] %}
-            {{ ((now() - as_datetime(gen)).total_seconds() / 3600) | round(1) }}
-          {% else %}
-            999
-          {% endif %}
+          {{ ((as_timestamp(now()) -
+              as_timestamp(states('sensor.openfiremap_offentlich_version'))) / 3600) | round(1) }}
         unit_of_measurement: "h"
         state_class: "measurement"
         icon: "mdi:timer-sand"
 
       - name: "OpenFireMap PMTiles Größe MiB"
         unique_id: "openfiremap_pmtiles_size_mib"
+        availability: >-
+          {{ states('sensor.openfiremap_offentlich_pmtiles_bytes') not in
+             ['unknown', 'unavailable', 'none', ''] }}
         state: >-
           {% set b = states('sensor.openfiremap_offentlich_pmtiles_bytes') | float(0) %}
           {{ (b / 1048576) | round(2) }}
@@ -181,23 +183,24 @@ template:
         state_class: "measurement"
         icon: "mdi:file-chart"
 
-      - name: "OpenFireMap Hydranten Vorwert"
-        unique_id: "openfiremap_hydrants_previous"
-        state: >-
-          {{ states('sensor.openfiremap_offentlich_hydranten') }}
-        unit_of_measurement: "Stück"
-
   - binary_sensor:
       - name: "OpenFireMap Daten Synchron"
         unique_id: "openfiremap_versions_in_sync"
+        availability: >-
+          {{ states('sensor.openfiremap_offentlich_version') not in
+             ['unknown', 'unavailable', 'none', ''] and
+             states('sensor.openfiremap_lokal_version') not in
+             ['unknown', 'unavailable', 'none', ''] }}
         state: >-
-          {% set pub = states('sensor.openfiremap_public_version') %}
-          {% set loc = states('sensor.openfiremap_local_version') %}
-          {{ pub == loc and pub not in ['unknown', 'unavailable', 'None', ''] }}
+          {{ states('sensor.openfiremap_offentlich_version') ==
+             states('sensor.openfiremap_lokal_version') }}
         device_class: "connectivity"
 
       - name: "OpenFireMap Über Cloudflare Cache Limit"
         unique_id: "openfiremap_over_cf_cache_limit"
+        availability: >-
+          {{ states('sensor.openfiremap_offentlich_pmtiles_bytes') not in
+             ['unknown', 'unavailable', 'none', ''] }}
         state: >-
           {% set b = states('sensor.openfiremap_offentlich_pmtiles_bytes') | int(0) %}
           {{ b > 536870912 }}
@@ -214,13 +217,16 @@ automation:
     trigger:
       - platform: state
         entity_id: binary_sensor.openfiremap_offentlich_erreichbar
-        to: "off"
+        # Ein fehlgeschlagener REST-Abruf ergibt "unavailable", nicht "off".
+        to:
+          - "off"
+          - "unavailable"
         for: "00:10:00"
     action:
       - service: <NOTIFY_SERVICE>
         data:
           title: "🚨 OpenFireMap Ausfall"
-          message: "Die öffentliche Pipeline https://pipeline.openfiremap.org/metadata.json ist seit über 10 Minuten nicht erreichbar!"
+          message: "Die öffentliche Pipeline <PIPELINE_PUBLIC_URL>/metadata.json ist seit über 10 Minuten nicht erreichbar!"
 
   # 3.2 Daten veraltet (> 36 Stunden alt, Cron läuft täglich um 03:30)
   - id: "openfiremap_data_outdated"
@@ -230,6 +236,8 @@ automation:
       - platform: numeric_state
         entity_id: sensor.openfiremap_datenalter_stunden
         above: 36
+        # "unavailable" wird wegen availability nicht numerisch ausgewertet;
+        # den Endpunkt-Ausfall meldet ausschließlich Automation 3.1.
     action:
       - service: <NOTIFY_SERVICE>
         data:
@@ -245,13 +253,21 @@ automation:
         entity_id: binary_sensor.openfiremap_daten_synchron
         to: "off"
         for: "02:00:00"
+        # "unavailable" bedeutet fehlende Vergleichsdaten und wird bewusst
+        # nicht als Sync-Fehler gewertet.
       - platform: state
         entity_id: binary_sensor.openfiremap_upload_erfolgreich
         to: "off"
         for: "00:15:00"
+        # Nur explizit gemeldetes upload_ok: false ist ein Fehler; "unavailable"
+        # des internen Endpunkts bleibt unbekannt und wird nicht fehlinterpretiert.
     condition:
       - condition: template
-        value_template: "{{ states('sensor.openfiremap_lokal_version') not in ['unknown', 'unavailable', ''] }}"
+        value_template: >-
+          {{ states('sensor.openfiremap_offentlich_version') not in
+             ['unknown', 'unavailable', 'none', ''] and
+             states('sensor.openfiremap_lokal_version') not in
+             ['unknown', 'unavailable', 'none', ''] }}
     action:
       - service: <NOTIFY_SERVICE>
         data:
@@ -259,7 +275,7 @@ automation:
           message: >-
             VM 102 und R2 sind seit über 2 Stunden nicht synchron oder der Upload schlug fehl!
             Lokal: {{ states('sensor.openfiremap_lokal_version') }}
-            Öffentlich: {{ states('sensor.openfiremap_public_version') }}
+            Öffentlich: {{ states('sensor.openfiremap_offentlich_version') }}
             Fehler: {{ states('sensor.openfiremap_sync_letzter_fehler') }}
 
   # 3.4 Festplattenbelegung auf VM 102 > 85 %
@@ -270,6 +286,7 @@ automation:
       - platform: numeric_state
         entity_id: sensor.openfiremap_festplatte_belegt
         above: 85
+        # Numeric-State-Trigger ignoriert "unavailable" bewusst.
     action:
       - service: <NOTIFY_SERVICE>
         data:
@@ -286,9 +303,12 @@ automation:
     condition:
       - condition: template
         value_template: >-
-          {% set alt = trigger.from_state.state | float(0) %}
-          {% set neu = trigger.to_state.state | float(0) %}
-          {{ alt > 100000 and neu < (alt * 0.95) }}
+          {% set alt = trigger.from_state.state if trigger.from_state else 'unknown' %}
+          {% set neu = trigger.to_state.state if trigger.to_state else 'unknown' %}
+          {{ alt not in ['unknown', 'unavailable', 'none', ''] and
+             neu not in ['unknown', 'unavailable', 'none', ''] and
+             alt | float(0) > 100000 and neu | float(0) < (alt | float(0) * 0.95) }}
+        # Ein REST-Ausfall darf nicht als Rückgang auf null gelten.
     action:
       - service: <NOTIFY_SERVICE>
         data:
@@ -304,6 +324,8 @@ automation:
       - platform: state
         entity_id: binary_sensor.openfiremap_uber_cloudflare_cache_limit
         to: "on"
+        # Bei fehlenden PMTiles-Metadaten ist der Sensor "unavailable";
+        # ein Cache-Hinweis wird dann bewusst nicht ausgelöst.
     action:
       - service: <NOTIFY_SERVICE>
         data:
@@ -323,6 +345,7 @@ automation:
       - platform: numeric_state
         entity_id: sensor.openfiremap_offentlich_pmtiles_maxzoom
         below: 14
+        # Numeric-State-Trigger ignoriert "unavailable" bewusst.
     condition:
       - condition: template
         value_template: "{{ states('sensor.openfiremap_offentlich_pmtiles_maxzoom') not in ['0', 'unknown', 'unavailable'] }}"
