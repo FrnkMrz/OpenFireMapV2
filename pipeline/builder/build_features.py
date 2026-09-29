@@ -394,18 +394,18 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None):
         t_pmtiles = time.time()
 
         layer_args = [
-            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "fire_stations.geojson"), "layer": "fire_stations", "minzoom": 12, "maxzoom": 16}),
-            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "hydrants.geojson"), "layer": "hydrants", "minzoom": 15, "maxzoom": 16}),
-            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "water_points.geojson"), "layer": "water_points", "minzoom": 15, "maxzoom": 16}),
-            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "defibrillators.geojson"), "layer": "defibrillators", "minzoom": 15, "maxzoom": 16}),
-            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "boundaries.geojson"), "layer": "boundaries", "minzoom": 12, "maxzoom": 16}),
+            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "fire_stations.geojson"), "layer": "fire_stations", "minzoom": 12, "maxzoom": 14}),
+            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "hydrants.geojson"), "layer": "hydrants", "minzoom": 14, "maxzoom": 14}),
+            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "water_points.geojson"), "layer": "water_points", "minzoom": 14, "maxzoom": 14}),
+            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "defibrillators.geojson"), "layer": "defibrillators", "minzoom": 14, "maxzoom": 14}),
+            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "boundaries.geojson"), "layer": "boundaries", "minzoom": 12, "maxzoom": 14}),
         ]
 
         cmd = [
             "tippecanoe",
             "-o", pmtiles_output,
             "--force",
-            "-z", "16",
+            "-z", "14",
             "--generate-ids",
             "--no-feature-limit",
             "--no-tile-size-limit",
@@ -479,7 +479,7 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None):
             "size_mb": pmtiles_mb,
             "duration_sec": pmtiles_duration,
             "minzoom": 12,
-            "maxzoom": 16
+            "maxzoom": 14
         },
         "timings": {
             "download_sec": round(download_duration, 2),
