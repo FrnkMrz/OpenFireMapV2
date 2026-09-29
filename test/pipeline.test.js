@@ -15,7 +15,9 @@ import {
   getPMTilesInstance,
   getVectorTile,
   clearTileCache,
-  PmtilesCoverageMismatch
+  PmtilesCoverageMismatch,
+  warmupPipeline,
+  computeQueryZoom
 } from '../src/js/pipeline.js';
 import { Config } from '../src/js/config.js';
 import { PMTiles } from 'pmtiles';
@@ -919,6 +921,430 @@ describe('pipeline.js', () => {
       // Nach dem Cache-Clear muss getZxy erneut aufgerufen werden
       await getVectorTile(dummyPmtiles, 14, 100, 200);
       expect(dummyPmtiles.getZxy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Teil B: warmupPipeline, Progressives Streaming & Pufferring im Hintergrund', () => {
+    it('warmupPipeline sollte metadata.json und Header vorab laden, wenn Viewport in DACHLiLu liegt', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      Config.defaultCenter = [49.555, 11.35];
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return {
+            ok: true,
+            json: async () => ({ generated_at: '2026-09-29T16:00:00Z' })
+          };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      const getHeaderSpy = vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minZoom: 12,
+        maxZoom: 16,
+        minLat: 45.8,
+        maxLat: 55.1,
+        minLon: 5.7,
+        maxLon: 17.2
+      });
+
+      await warmupPipeline();
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://pipeline.example.com/metadata.json',
+        expect.objectContaining({ cache: 'no-cache' })
+      );
+      expect(getHeaderSpy).toHaveBeenCalled();
+    });
+
+    it('warmupPipeline sollte bei Netzwerkfehler nicht werfen und Start nicht blockieren', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network offline'));
+
+      await expect(warmupPipeline()).resolves.not.toThrow();
+    });
+
+    it('fetchPipelinePmtiles sollte Kacheln streamen (onProgressData) und Puffer im Hintergrund laden', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return {
+            ok: true,
+            json: async () => ({ generated_at: '2026-09-29T16:00:00Z' })
+          };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minZoom: 12,
+        maxZoom: 16,
+        minLat: 45.8,
+        maxLat: 55.1,
+        minLon: 5.7,
+        maxLon: 17.2
+      });
+
+      vi.spyOn(PMTiles.prototype, 'getZxy').mockResolvedValue({
+        data: new Uint8Array([1, 2, 3])
+      });
+
+      let featureCounter = 0;
+      mockVectorTileLayers = {
+        hydrants: {
+          length: 1,
+          feature: () => ({
+            toGeoJSON: (x, y) => ({
+              type: 'Feature',
+              id: `hydrant_${x}_${y}_${++featureCounter}`,
+              geometry: { type: 'Point', coordinates: [11.35, 49.55] },
+              properties: { emergency: 'fire_hydrant' }
+            })
+          })
+        }
+      };
+
+      const smallBounds = {
+        getSouth: () => 49.554,
+        getNorth: () => 49.556,
+        getWest: () => 11.349,
+        getEast: () => 11.351
+      };
+
+      const progressCalls = [];
+      const onProgressData = vi.fn((elements, isPartial) => {
+        progressCalls.push({ count: elements.length, isPartial });
+      });
+
+      let bufferCompleted = false;
+      const onBufferComplete = vi.fn(() => {
+        bufferCompleted = true;
+      });
+
+      const result = await fetchPipelinePmtiles(smallBounds, 'all', {
+        zoom: 16,
+        onProgressData,
+        onBufferComplete
+      });
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
+      expect(onProgressData).toHaveBeenCalled();
+      // Erstes Rendern liefert Ergebnis sofort zurück
+      expect(progressCalls.some(c => c.isPartial === true)).toBe(true);
+
+      // Kurze Pause, damit der un-awaited Hintergrundpuffer fertig werden kann
+      await new Promise(r => setTimeout(r, 50));
+      expect(onBufferComplete).toHaveBeenCalled();
+    });
+  });
+
+  describe('Teil D: Dynamische Kachel-Zoomstufe aus Header & RAM-Wiederverwendung', () => {
+    it('computeQueryZoom sollte z16-Header auf Zoom 16 und z14-Header auf Zoom 14 deckeln', () => {
+      const headerZ16 = { minZoom: 12, maxZoom: 16 };
+      const headerZ14 = { minZoom: 12, maxZoom: 14 };
+
+      // Bei z16 Header: Kartenzoom 16 -> Kachelzoom 16
+      expect(computeQueryZoom(16, headerZ16)).toBe(16);
+      expect(computeQueryZoom(15, headerZ16)).toBe(15);
+      expect(computeQueryZoom(12, headerZ16)).toBe(12);
+      expect(computeQueryZoom(10, headerZ16)).toBe(12); // clamp auf minZoom
+
+      // Bei z14 Header: Kartenzoom 16 -> Kachelzoom 14!
+      expect(computeQueryZoom(16, headerZ14)).toBe(14);
+      expect(computeQueryZoom(15, headerZ14)).toBe(14);
+      expect(computeQueryZoom(14, headerZ14)).toBe(14);
+      expect(computeQueryZoom(12, headerZ14)).toBe(12);
+    });
+
+    it('Test 1: mit gemocktem z16-Header -> Lädt Kacheln auf Zoom 16', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return { ok: true, json: async () => ({ generated_at: '2026-09-29T16:00:00Z' }) };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minZoom: 12,
+        maxZoom: 16,
+        minLat: 45.8,
+        maxLat: 55.1,
+        minLon: 5.7,
+        maxLon: 17.2
+      });
+
+      const getZxySpy = vi.spyOn(PMTiles.prototype, 'getZxy').mockResolvedValue({
+        data: new Uint8Array([1, 2, 3])
+      });
+
+      mockVectorTileLayers = {
+        fire_stations: {
+          length: 1,
+          feature: () => ({
+            toGeoJSON: () => ({
+              type: 'Feature',
+              id: 'station_1',
+              geometry: { type: 'Point', coordinates: [11.35, 49.55] },
+              properties: { amenity: 'fire_station' }
+            })
+          })
+        }
+      };
+
+      const smallBounds = {
+        getSouth: () => 49.554,
+        getNorth: () => 49.556,
+        getWest: () => 11.349,
+        getEast: () => 11.351
+      };
+
+      await fetchPipelinePmtiles(smallBounds, 'stations', { zoom: 16 });
+
+      expect(getZxySpy).toHaveBeenCalled();
+      const requestedZoomLevels = getZxySpy.mock.calls.map(call => call[0]);
+      expect(requestedZoomLevels.every(z => z === 16)).toBe(true);
+    });
+
+    it('Test 2: mit gemocktem z14-Header -> Lädt Kacheln auf Zoom 14, wenn Karte auf Zoom 16 ist', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return { ok: true, json: async () => ({ generated_at: '2026-09-29T16:00:00Z' }) };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minZoom: 12,
+        maxZoom: 14,
+        minLat: 45.8,
+        maxLat: 55.1,
+        minLon: 5.7,
+        maxLon: 17.2
+      });
+
+      const getZxySpy = vi.spyOn(PMTiles.prototype, 'getZxy').mockResolvedValue({
+        data: new Uint8Array([1, 2, 3])
+      });
+
+      mockVectorTileLayers = {
+        fire_stations: {
+          length: 1,
+          feature: () => ({
+            toGeoJSON: () => ({
+              type: 'Feature',
+              id: 'station_1',
+              geometry: { type: 'Point', coordinates: [11.35, 49.55] },
+              properties: { amenity: 'fire_station' }
+            })
+          })
+        }
+      };
+
+      const smallBounds = {
+        getSouth: () => 49.554,
+        getNorth: () => 49.556,
+        getWest: () => 11.349,
+        getEast: () => 11.351
+      };
+
+      // Karte ist auf Zoom 16, aber Header hat maxZoom 14
+      await fetchPipelinePmtiles(smallBounds, 'stations', { zoom: 16 });
+
+      expect(getZxySpy).toHaveBeenCalled();
+      const requestedZoomLevels = getZxySpy.mock.calls.map(call => call[0]);
+      expect(requestedZoomLevels.every(z => z === 14)).toBe(true);
+    });
+
+    it('Test 3: Zoom 15 -> 16 mit z14-Header macht 0 neue PMTiles-Requests', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return { ok: true, json: async () => ({ generated_at: '2026-09-29T16:00:00Z' }) };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minZoom: 12,
+        maxZoom: 14,
+        minLat: 45.8,
+        maxLat: 55.1,
+        minLon: 5.7,
+        maxLon: 17.2
+      });
+
+      const getZxySpy = vi.spyOn(PMTiles.prototype, 'getZxy').mockResolvedValue({
+        data: new Uint8Array([1, 2, 3])
+      });
+
+      mockVectorTileLayers = {
+        hydrants: {
+          length: 1,
+          feature: () => ({
+            toGeoJSON: () => ({
+              type: 'Feature',
+              id: 'hydrant_1',
+              geometry: { type: 'Point', coordinates: [11.35, 49.55] },
+              properties: { emergency: 'fire_hydrant' }
+            })
+          })
+        }
+      };
+
+      const smallBounds = {
+        getSouth: () => 49.554,
+        getNorth: () => 49.556,
+        getWest: () => 11.349,
+        getEast: () => 11.351
+      };
+
+      // Schritt 1: Nutzer betrachtet Bereich auf Zoom 15 (lädt Kacheln auf z14)
+      await fetchPipelinePmtiles(smallBounds, 'all', { zoom: 15 });
+      const initialCalls = getZxySpy.mock.calls.length;
+      expect(initialCalls).toBeGreaterThan(0);
+
+      // Schritt 2: Nutzer zoomt hinein auf Zoom 16 (gleicher Ausschnitt)
+      // Bei z14 Header ist queryZoom weiterhin 14 -> alle Kacheln liegen im RAM-Cache
+      await fetchPipelinePmtiles(smallBounds, 'all', { zoom: 16 });
+      const callsAfterZoomIn = getZxySpy.mock.calls.length;
+
+      // EXAKT 0 neue Netzwerkaufrufe!
+      expect(callsAfterZoomIn).toBe(initialCalls);
+    });
+
+    it('Test 4: Hydranten bleiben bei Zoom 14 unsichtbar, auch wenn die Kachel sie enthält', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return { ok: true, json: async () => ({ generated_at: '2026-09-29T16:00:00Z' }) };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minZoom: 12,
+        maxZoom: 14,
+        minLat: 45.8,
+        maxLat: 55.1,
+        minLon: 5.7,
+        maxLon: 17.2
+      });
+
+      vi.spyOn(PMTiles.prototype, 'getZxy').mockResolvedValue({
+        data: new Uint8Array([1, 2, 3])
+      });
+
+      // Vektorkachel enthält sowohl Wachen als auch Hydranten
+      mockVectorTileLayers = {
+        fire_stations: {
+          length: 1,
+          feature: () => ({
+            toGeoJSON: () => ({
+              type: 'Feature',
+              id: 'station_1',
+              geometry: { type: 'Point', coordinates: [11.35, 49.55] },
+              properties: { amenity: 'fire_station' }
+            })
+          })
+        },
+        hydrants: {
+          length: 1,
+          feature: () => ({
+            toGeoJSON: () => ({
+              type: 'Feature',
+              id: 'hydrant_1',
+              geometry: { type: 'Point', coordinates: [11.35, 49.55] },
+              properties: { emergency: 'fire_hydrant' }
+            })
+          })
+        }
+      };
+
+      const smallBounds = {
+        getSouth: () => 49.554,
+        getNorth: () => 49.556,
+        getWest: () => 11.349,
+        getEast: () => 11.351
+      };
+
+      // Auf Zoom 14 wählt die Map 'stations'-Modus
+      const elementsAtZ14 = await fetchPipelinePmtiles(smallBounds, 'stations', { zoom: 14 });
+
+      // Station ist enthalten
+      expect(elementsAtZ14.some(el => el.tags?.amenity === 'fire_station')).toBe(true);
+      // Hydrant ist NICHT enthalten (obwohl in Kachel vorhanden!)
+      expect(elementsAtZ14.some(el => el.tags?.emergency === 'fire_hydrant')).toBe(false);
+
+      // Auf Zoom 15 wählt die Map 'all'-Modus -> Hydranten jetzt enthalten
+      const elementsAtZ15 = await fetchPipelinePmtiles(smallBounds, 'all', { zoom: 15 });
+      expect(elementsAtZ15.some(el => el.tags?.emergency === 'fire_hydrant')).toBe(true);
+    });
+
+    it('Test 5: Tile-RAM-Cache verwendet Versions-Namespace aus metadata.json', async () => {
+      const dummyPmtiles = {
+        getZxy: vi.fn(async () => ({ data: new Uint8Array([1, 2, 3]) }))
+      };
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return {
+            ok: true,
+            json: async () => ({ generated_at: '2026-09-29T10:00:00Z' })
+          };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      // Version initialisieren
+      await getPipelineVersion('https://pipeline.example.com');
+
+      // Kachel laden
+      const t1 = await getVectorTile(dummyPmtiles, 14, 100, 200);
+      expect(dummyPmtiles.getZxy).toHaveBeenCalledTimes(1);
+
+      // Zweiter Abruf: aus Cache (0 neue Requests)
+      const t2 = await getVectorTile(dummyPmtiles, 14, 100, 200);
+      expect(t2).toBe(t1);
+      expect(dummyPmtiles.getZxy).toHaveBeenCalledTimes(1);
+
+      // Versionswechsel simulieren
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return {
+            ok: true,
+            json: async () => ({ generated_at: '2026-09-29T18:00:00Z' })
+          };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      // Frische Version erzwingen
+      await getPipelineVersion('https://pipeline.example.com', { forceRefresh: true });
+
+      // Jetzt muss die Kachel für die neue Version neu geladen werden
+      const t3 = await getVectorTile(dummyPmtiles, 14, 100, 200);
+      expect(dummyPmtiles.getZxy).toHaveBeenCalledTimes(2);
+      expect(t3).toBeDefined();
     });
   });
 });

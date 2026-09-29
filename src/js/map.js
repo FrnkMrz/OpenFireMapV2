@@ -9,7 +9,7 @@ import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
 import { fetchBoundaryData, fetchOSMData } from './api.js';
-import { isPipelineEligible, lon2tile, lat2tile } from './pipeline.js';
+import { isPipelineEligible, lon2tile, lat2tile, computeQueryZoom } from './pipeline.js';
 import { showNotification, hideNotification } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
 
@@ -355,7 +355,7 @@ export function initMapLogic() {
     const getTileBBoxKey = (zoom) => {
         if (!State.map) return '';
         const b = State.map.getBounds();
-        const qZoom = Math.min(Math.max(zoom, 12), 14);
+        const qZoom = computeQueryZoom(zoom);
         const minX = lon2tile(b.getWest(), qZoom);
         const maxX = lon2tile(b.getEast(), qZoom);
         const minY = lat2tile(b.getNorth(), qZoom);
@@ -435,8 +435,9 @@ export function initMapLogic() {
         if (poiCoverageMatchesMode(mode) && boundaryCoverageMatchesView(zoom)) {
             const statusEl = document.getElementById('data-status');
             if (statusEl) {
-                statusEl.innerText = t('status_current');
-                statusEl.className = 'text-green-400';
+                const inPl = isPipelineEligible(State.map.getBounds(), zoom);
+                statusEl.innerText = inPl ? `${t('status_current')} (Lokal)` : t('status_current');
+                statusEl.className = 'text-green-400 font-bold';
             }
             window.dispatchEvent(new CustomEvent('ofm:overpass', {
                 detail: {
@@ -531,8 +532,8 @@ export function initMapLogic() {
 
                 // SWR: Wir geben renderMarkers als Callback mit, 
                 // damit Cache-Daten sofort gezeichnet werden.
-                const poiPromise = fetchOSMData((cachedData) => {
-                    renderMarkers(cachedData, zoom);
+                const poiPromise = fetchOSMData((cachedData, isPartial = false) => {
+                    renderMarkers(cachedData, zoom, { isPartial });
                 }, (status) => hydrantDownloadStatus.update(status));
                 // Gemeindegrenzen asynchron im Hintergrund laden – blockiert POIs nicht!
                 fetchBoundaryData((cachedBoundaryData) => {
@@ -1141,7 +1142,7 @@ export function drawLineToNearest() {
  * OPTIMIERUNG: Nutzt "Diffing", um Flackern zu verhindern.
  * Es werden nur Marker entfernt/hinzugefügt, die sich tatsächlich geändert haben.
  */
-export function renderMarkers(elements, zoom) {
+export function renderMarkers(elements, zoom, { isPartial = false } = {}) {
     // ------------------------------------------------------------
     // Pre-Processing: intelligentes Clustering NUR für Feuerwehrwachen
     // ------------------------------------------------------------
@@ -1253,10 +1254,13 @@ export function renderMarkers(elements, zoom) {
 
     // --- H. AUFRÄUMEN (Garbage Collection) ---
     // Wir entfernen alle Marker von der Karte, die im aktuellen Datensatz NICHT mehr vorkommen.
-    for (const [id, entry] of State.markerCache) {
-        if (!markersToKeep.has(id)) {
-            State.markerLayer.removeLayer(entry.marker);
-            State.markerCache.delete(id);
+    // Bei partiellen Zwischen-Renderings wird das Aufräumen übersprungen, um Flackern zu verhindern.
+    if (!isPartial) {
+        for (const [id, entry] of State.markerCache) {
+            if (!markersToKeep.has(id)) {
+                State.markerLayer.removeLayer(entry.marker);
+                State.markerCache.delete(id);
+            }
         }
     }
 }
