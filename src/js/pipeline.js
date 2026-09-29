@@ -140,7 +140,8 @@ export function clearTileCache() {
  * @returns {Promise<VectorTile|null>}
  */
 export async function getVectorTile(pmtiles, z, x, y, signal) {
-  const cacheKey = `${z}/${x}/${y}`;
+  const versionPrefix = _pipelineVersion ? `${_pipelineVersion}|` : '';
+  const cacheKey = `${versionPrefix}${z}/${x}/${y}`;
 
   if (_tileCache.has(cacheKey)) {
     return _tileCache.get(cacheKey);
@@ -320,6 +321,20 @@ export function tile2lon(x, z) {
 export function tile2lat(y, z) {
   const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
   return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+}
+
+/**
+ * Berechnet die Kachel-Zoomstufe für den aktuellen Kartenzoom basierend auf dem PMTiles-Header.
+ * Entkoppelt den Kartenzoom vom Kachel-Detail (z. B. z14 Kacheln für Kartenzoom 16).
+ * @param {number} currentZoom Aktueller Kartenzoom
+ * @param {Object} [header] PMTiles-Header (optional, nutzt sonst gecachten Header)
+ * @returns {number}
+ */
+export function computeQueryZoom(currentZoom, header = _pmtilesHeader) {
+  const minZoom = Number.isFinite(header?.minZoom) ? header.minZoom : 12;
+  const maxZoom = Number.isFinite(header?.maxZoom) ? header.maxZoom : 14;
+  const z = typeof currentZoom === 'number' ? currentZoom : 14;
+  return Math.min(Math.max(z, minZoom), maxZoom);
 }
 
 /**
@@ -719,10 +734,8 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   pmtiles = coverage.pmtiles;
   const header = coverage.header;
 
-  const maxZoom = header.maxZoom || 16;
-  const minZoom = header.minZoom || 12;
   const currentZoom = typeof zoom === 'number' ? zoom : 14;
-  const queryZoom = Math.min(Math.max(currentZoom, minZoom), maxZoom);
+  const queryZoom = computeQueryZoom(currentZoom, header);
 
   const south = typeof bounds.getSouth === 'function' ? bounds.getSouth() : bounds.south;
   const north = typeof bounds.getNorth === 'function' ? bounds.getNorth() : bounds.north;
@@ -978,10 +991,8 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       pmtiles = coverage.pmtiles;
       const header = coverage.header;
 
-      const maxZoom = header.maxZoom || 16;
-      const minZoom = header.minZoom || 12;
       const currentZoom = typeof zoom === 'number' ? zoom : 14;
-      const queryZoom = Math.min(Math.max(currentZoom, minZoom), maxZoom);
+      const queryZoom = computeQueryZoom(currentZoom, header);
 
       const south = typeof bounds.getSouth === 'function' ? bounds.getSouth() : bounds.south;
       const north = typeof bounds.getNorth === 'function' ? bounds.getNorth() : bounds.north;

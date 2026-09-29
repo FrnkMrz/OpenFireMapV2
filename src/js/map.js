@@ -9,7 +9,7 @@ import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
 import { fetchBoundaryData, fetchOSMData } from './api.js';
-import { isPipelineEligible, lon2tile, lat2tile } from './pipeline.js';
+import { isPipelineEligible, lon2tile, lat2tile, computeQueryZoom } from './pipeline.js';
 import { showNotification, hideNotification } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
 
@@ -355,7 +355,7 @@ export function initMapLogic() {
     const getTileBBoxKey = (zoom) => {
         if (!State.map) return '';
         const b = State.map.getBounds();
-        const qZoom = Math.min(Math.max(zoom, 12), 14);
+        const qZoom = computeQueryZoom(zoom);
         const minX = lon2tile(b.getWest(), qZoom);
         const maxX = lon2tile(b.getEast(), qZoom);
         const minY = lat2tile(b.getNorth(), qZoom);
