@@ -35,13 +35,102 @@ let _pmtilesUrl = null;
 let _pmtilesHeader = null;
 let _pipelineVersion = null;
 let _lastMetadataFetchTime = 0;
+let _pendingMetadataPromise = null;
 const METADATA_CACHE_TTL_MS = 10 * 60 * 1000; // 10 Minuten
 const METADATA_TIMEOUT_MS = 3000; // 3 Sekunden Timeout
+
+// In-Memory-Cache für dekodierte Vektorkacheln (FIFO/LRU, max. 256 Kacheln)
+const _tileCache = new Map();
+const MAX_CACHED_TILES = 256;
+
+// In-Flight Tile Promises (verhindert doppelte parallele Downloads derselben Kachel)
+const _inFlightTileRequests = new Map();
+
+/**
+ * Leert den internen Kachel-Cache und verwirft laufende Anfragen.
+ */
+export function clearTileCache() {
+  _tileCache.clear();
+  _inFlightTileRequests.clear();
+}
+
+/**
+ * Holt eine VectorTile-Instanz für (z, x, y) via PMTiles getZxy.
+ * Parallele Anfragen für dieselbe Kachelkoordinate werden dedupliziert (Promise Sharing).
+ * Bereits abgerufene Kacheln werden im Arbeitsspeicher vorgehalten.
+ * @param {PMTiles} pmtiles
+ * @param {number} z
+ * @param {number} x
+ * @param {number} y
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<VectorTile|null>}
+ */
+export async function getVectorTile(pmtiles, z, x, y, signal) {
+  const cacheKey = `${z}/${x}/${y}`;
+
+  if (_tileCache.has(cacheKey)) {
+    return _tileCache.get(cacheKey);
+  }
+
+  if (_inFlightTileRequests.has(cacheKey)) {
+    return _inFlightTileRequests.get(cacheKey);
+  }
+
+  const fetchPromise = (async () => {
+    if (signal?.aborted) return null;
+    const resp = await pmtiles.getZxy(z, x, y, signal);
+    if (!resp || !resp.data) return null;
+
+    const pbf = new PbfReader(new Uint8Array(resp.data));
+    const vTile = new VectorTile(pbf);
+
+    if (_tileCache.size >= MAX_CACHED_TILES) {
+      const oldestKey = _tileCache.keys().next().value;
+      _tileCache.delete(oldestKey);
+    }
+    _tileCache.set(cacheKey, vTile);
+    return vTile;
+  })().finally(() => {
+    _inFlightTileRequests.delete(cacheKey);
+  });
+
+  _inFlightTileRequests.set(cacheKey, fetchPromise);
+  return fetchPromise;
+}
+
+/**
+ * Führt Kachelabrufe über einen Worker-Pool mit begrenzter Parallelität aus.
+ * Verhindert Socket-Erschöpfung und HTTP/2-Stream-Staus im Browser.
+ * @param {Array<{x: number, y: number}>} tiles
+ * @param {Function} workerFn async (x, y) => void
+ * @param {number} [concurrency=10]
+ * @param {AbortSignal} [signal]
+ */
+async function processTilesWithPool(tiles, workerFn, concurrency = 10, signal = null) {
+  if (!Array.isArray(tiles) || tiles.length === 0) return;
+  let idx = 0;
+  const numWorkers = Math.min(concurrency, tiles.length);
+
+  const workers = Array.from({ length: numWorkers }, async () => {
+    while (idx < tiles.length) {
+      if (signal?.aborted) return;
+      const tile = tiles[idx++];
+      try {
+        await workerFn(tile.x, tile.y);
+      } catch (err) {
+        if (err?.name === 'AbortError' || signal?.aborted) return;
+        console.warn(`[Pipeline] Fehler bei Kachel ${tile.x}/${tile.y}:`, err?.message || err);
+      }
+    }
+  });
+
+  await Promise.all(workers);
+}
 
 /**
  * Lädt die aktuelle Pipeline-Version (generated_at) aus metadata.json.
  * Wird in der Sitzung höchstens alle 10 Minuten neu angefragt, es sei denn forceRefresh=true ist gesetzt.
- * Ändert sich generated_at, werden die PMTiles-Instanz und der Header verworfen.
+ * Ändert sich generated_at, werden die PMTiles-Instanz, der Header und der Kachel-Cache verworfen.
  * Bei Fehler/Timeout wird ohne Versionsparameter fortgefahren (kein Abbruch).
  * @param {string} baseUrl
  * @param {Object} [options]
@@ -53,50 +142,63 @@ export async function getPipelineVersion(baseUrl, { signal, forceRefresh = false
     return _pipelineVersion;
   }
 
-  const metaUrl = `${baseUrl.replace(/\/+$/, '')}/metadata.json`;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS);
-
-  let abortListener = null;
-  if (signal) {
-    if (signal.aborted) {
-      clearTimeout(timeoutId);
-      controller.abort();
-    } else {
-      abortListener = () => controller.abort();
-      signal.addEventListener('abort', abortListener, { once: true });
-    }
+  if (!forceRefresh && _pendingMetadataPromise) {
+    return _pendingMetadataPromise;
   }
 
-  try {
-    const res = await fetch(metaUrl, {
-      cache: 'no-cache',
-      signal: controller.signal
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const newVersion = data?.generated_at ? String(data.generated_at) : null;
-      if (newVersion && _pipelineVersion && newVersion !== _pipelineVersion) {
-        console.warn(`[Pipeline] Neue Pipeline-Version erkannt: ${newVersion} (vorher: ${_pipelineVersion}). Verwerfe PMTiles-Instanz und Header.`);
-        _pmtilesInstance = null;
-        _pmtilesUrl = null;
-        _pmtilesHeader = null;
+  const fetchVersion = async () => {
+    const metaUrl = `${baseUrl.replace(/\/+$/, '')}/metadata.json`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS);
+
+    let abortListener = null;
+    if (signal) {
+      if (signal.aborted) {
+        clearTimeout(timeoutId);
+        controller.abort();
+      } else {
+        abortListener = () => controller.abort();
+        signal.addEventListener('abort', abortListener, { once: true });
       }
-      _pipelineVersion = newVersion;
-      _lastMetadataFetchTime = now;
-      return _pipelineVersion;
     }
-  } catch (err) {
-    console.warn('[Pipeline] metadata.json konnte nicht abgerufen werden (fahre ohne Version fort):', err?.message || err);
-  } finally {
-    clearTimeout(timeoutId);
-    if (signal && abortListener) {
-      signal.removeEventListener('abort', abortListener);
-    }
-  }
 
-  _lastMetadataFetchTime = now;
-  return _pipelineVersion;
+    try {
+      const res = await fetch(metaUrl, {
+        cache: 'no-cache',
+        signal: controller.signal
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const newVersion = data?.generated_at ? String(data.generated_at) : null;
+        if (newVersion && _pipelineVersion && newVersion !== _pipelineVersion) {
+          console.warn(`[Pipeline] Neue Pipeline-Version erkannt: ${newVersion} (vorher: ${_pipelineVersion}). Verwerfe PMTiles-Instanz und Header.`);
+          _pmtilesInstance = null;
+          _pmtilesUrl = null;
+          _pmtilesHeader = null;
+          clearTileCache();
+        }
+        _pipelineVersion = newVersion;
+        _lastMetadataFetchTime = Date.now();
+        return _pipelineVersion;
+      }
+    } catch (err) {
+      console.warn('[Pipeline] metadata.json konnte nicht abgerufen werden (fahre ohne Version fort):', err?.message || err);
+    } finally {
+      clearTimeout(timeoutId);
+      if (signal && abortListener) {
+        signal.removeEventListener('abort', abortListener);
+      }
+    }
+
+    _lastMetadataFetchTime = Date.now();
+    return _pipelineVersion;
+  };
+
+  _pendingMetadataPromise = fetchVersion().finally(() => {
+    _pendingMetadataPromise = null;
+  });
+
+  return _pendingMetadataPromise;
 }
 
 /**
@@ -502,6 +604,7 @@ export async function ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile,
   _pmtilesInstance = null;
   _pipelineVersion = null;
   _lastMetadataFetchTime = 0;
+  clearTileCache();
 
   // Frische URL mit forceRefresh erzwingen
   const freshUrl = await getPipelinePmtilesUrl(baseUrl, pmtilesFile, { signal, forceRefresh: true });
@@ -557,9 +660,12 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom } = {}) 
   let minY = lat2tile(north, queryZoom);
   let maxY = lat2tile(south, queryZoom);
 
-  // 1 Kachel Puffer in alle Richtungen für flüssiges Panning und vollständige Bildschirmabdeckung,
-  // solange die Kachelanforderung im performanten Rahmen bleibt (<= 150 Kacheln).
-  if ((maxX - minX + 3) * (maxY - minY + 3) <= 150) {
+  // Puffer nur bei kleinen Kachelausschnitten (<= 20 Kacheln) anwenden,
+  // um auf mobilen Geräten oder starkem Zoom weiches Panning zu ermöglichen.
+  // Auf Desktop-Bildschirmen deckt das ungebildete Raster das Sichtfeld bereits
+  // vollständig ab; ein zusätzlicher Pufferring würde die Anfragen fast verdoppeln.
+  const rawTileCount = (maxX - minX + 1) * (maxY - minY + 1);
+  if (rawTileCount <= 20) {
     minX -= 1;
     maxX += 1;
     minY -= 1;
@@ -576,37 +682,33 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom } = {}) 
     : ['fire_stations', 'hydrants', 'water_points', 'defibrillators'];
 
   const elementsMap = new Map();
-  const promises = [];
-
+  const tiles = [];
   for (let x = minX; x <= maxX; x++) {
     for (let y = minY; y <= maxY; y++) {
-      promises.push(
-        pmtiles.getZxy(queryZoom, x, y, signal).then((resp) => {
-          if (!resp || !resp.data) return;
-          const pbf = new PbfReader(new Uint8Array(resp.data));
-          const vTile = new VectorTile(pbf);
-
-          for (const layerName of targetLayers) {
-            const layer = vTile.layers[layerName];
-            if (!layer) continue;
-            for (let i = 0; i < layer.length; i++) {
-              const feat = layer.feature(i);
-              const gj = feat.toGeoJSON(x, y, queryZoom);
-              const el = geoJsonFeatureToElement(gj, layerName);
-              if (!el) continue;
-
-              const idKey = String(el.id);
-              if (!elementsMap.has(idKey)) {
-                elementsMap.set(idKey, el);
-              }
-            }
-          }
-        })
-      );
+      tiles.push({ x, y });
     }
   }
 
-  await Promise.all(promises);
+  await processTilesWithPool(tiles, async (x, y) => {
+    const vTile = await getVectorTile(pmtiles, queryZoom, x, y, signal);
+    if (!vTile || !vTile.layers) return;
+
+    for (const layerName of targetLayers) {
+      const layer = vTile.layers[layerName];
+      if (!layer) continue;
+      for (let i = 0; i < layer.length; i++) {
+        const feat = layer.feature(i);
+        const gj = feat.toGeoJSON(x, y, queryZoom);
+        const el = geoJsonFeatureToElement(gj, layerName);
+        if (!el) continue;
+
+        const idKey = String(el.id);
+        if (!elementsMap.has(idKey)) {
+          elementsMap.set(idKey, el);
+        }
+      }
+    }
+  }, 10, signal);
 
   const loadedSouth = tile2lat(maxY + 1, queryZoom);
   const loadedNorth = tile2lat(minY, queryZoom);
@@ -759,7 +861,8 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom } = {}) {
       let minY = lat2tile(north, queryZoom);
       let maxY = lat2tile(south, queryZoom);
 
-      if ((maxX - minX + 3) * (maxY - minY + 3) <= 150) {
+      const rawTileCount = (maxX - minX + 1) * (maxY - minY + 1);
+      if (rawTileCount <= 20) {
         minX -= 1;
         maxX += 1;
         minY -= 1;
@@ -767,45 +870,51 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom } = {}) {
       }
 
       const boundaryMap = new Map();
-      const promises = [];
-
+      const tiles = [];
       for (let x = minX; x <= maxX; x++) {
         for (let y = minY; y <= maxY; y++) {
-          promises.push(
-            pmtiles.getZxy(queryZoom, x, y, signal).then((resp) => {
-              if (!resp || !resp.data) return;
-              const pbf = new PbfReader(new Uint8Array(resp.data));
-              const vTile = new VectorTile(pbf);
-              const layer = vTile.layers['boundaries'];
-              if (!layer) return;
-
-              for (let i = 0; i < layer.length; i++) {
-                const feat = layer.feature(i);
-                const gj = feat.toGeoJSON(x, y, queryZoom);
-                const coords = gj.geometry?.coordinates;
-                if (!Array.isArray(coords) || coords.length === 0) continue;
-
-                // Stabiler ID-Schlüssel
-                const firstPt = coords[0];
-                const lastPt = coords[coords.length - 1];
-                const key = feat.id ?? `${Math.round(firstPt[1] * 1e5)}_${Math.round(firstPt[0] * 1e5)}_${Math.round(lastPt[1] * 1e5)}_${Math.round(lastPt[0] * 1e5)}`;
-
-                if (!boundaryMap.has(key)) {
-                  boundaryMap.set(key, {
-                    id: key,
-                    type: 'way',
-                    tags: { boundary: 'administrative', ...(gj.properties || {}) },
-                    geometry: coords.map((pt) => ({ lat: pt[1], lon: pt[0] }))
-                  });
-                }
-              }
-            })
-          );
+          tiles.push({ x, y });
         }
       }
 
-      await Promise.all(promises);
+      await processTilesWithPool(tiles, async (x, y) => {
+        const vTile = await getVectorTile(pmtiles, queryZoom, x, y, signal);
+        if (!vTile || !vTile.layers) return;
+        const layer = vTile.layers['boundaries'];
+        if (!layer) return;
+
+        for (let i = 0; i < layer.length; i++) {
+          const feat = layer.feature(i);
+          const gj = feat.toGeoJSON(x, y, queryZoom);
+          const coords = gj.geometry?.coordinates;
+          if (!Array.isArray(coords) || coords.length === 0) continue;
+
+          // Stabiler ID-Schlüssel
+          const firstPt = coords[0];
+          const lastPt = coords[coords.length - 1];
+          const key = feat.id ?? `${Math.round(firstPt[1] * 1e5)}_${Math.round(firstPt[0] * 1e5)}_${Math.round(lastPt[1] * 1e5)}_${Math.round(lastPt[0] * 1e5)}`;
+
+          if (!boundaryMap.has(key)) {
+            boundaryMap.set(key, {
+              id: key,
+              type: 'way',
+              tags: { boundary: 'administrative', ...(gj.properties || {}) },
+              geometry: coords.map((pt) => ({ lat: pt[1], lon: pt[0] }))
+            });
+          }
+        }
+      }, 10, signal);
+
+      const loadedSouth = tile2lat(maxY + 1, queryZoom);
+      const loadedNorth = tile2lat(minY, queryZoom);
+      const loadedWest = tile2lon(minX, queryZoom);
+      const loadedEast = tile2lon(maxX + 1, queryZoom);
+
       const elements = Array.from(boundaryMap.values());
+      elements.loadedBounds = (typeof L !== 'undefined' && L.latLngBounds)
+        ? L.latLngBounds([loadedSouth, loadedWest], [loadedNorth, loadedEast])
+        : { south: loadedSouth, north: loadedNorth, west: loadedWest, east: loadedEast };
+
       return elements;
     } catch (pmErr) {
       if (pmErr?.name === 'AbortError') throw pmErr;
@@ -863,4 +972,6 @@ export function clearPipelineCache() {
   _pmtilesHeader = null;
   _pipelineVersion = null;
   _lastMetadataFetchTime = 0;
+  _pendingMetadataPromise = null;
+  clearTileCache();
 }

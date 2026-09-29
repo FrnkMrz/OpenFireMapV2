@@ -59,7 +59,7 @@
     <main>
         <div id="map" aria-label="Karte" role="application"></div>
 
-        <div id="notification-box" role="alert" aria-live="polite"></div>
+        <div id="notification-box" role="status" aria-live="polite"></div>
 
         <div id="desktop-controls" class="absolute top-5 left-5 z-[1000] flex gap-3">
 
@@ -214,7 +214,7 @@
             <div class="flex justify-between gap-4"><span data-i18n="zoom_info">ZOOM</span><span id="zoom-val"
                     class="text-white font-bold">14.0</span></div>
             <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status"
-                    class="text-green-400">AKTUELL</span></div>
+                    class="text-green-400 transition-colors duration-200">AKTUELL</span></div>
         </div>
 
         <div id="hydrant-download-status" class="absolute bottom-28 right-10 z-[1000] max-w-[min(22rem,calc(100vw-2.5rem))]"></div>

@@ -14,7 +14,7 @@
 import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
-import { showNotification } from './ui.js';
+import { showNotification, hideNotification } from './ui.js';
 
 import { fetchJson, HttpError } from './net.js';
 import { isPipelineEligible, fetchPipelineData, fetchPipelineBoundaries } from './pipeline.js';
@@ -88,7 +88,7 @@ async function maybeGlobalBackoff(reqId, signal = null) {
 
     // Visuelles Feedback: Zeige dem User, dass wir aufgrund Überlastung warten
     const waitSec = Math.ceil(waitMs / 1000);
-    showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000));
+    showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000), 'warning');
 
     await sleep(waitMs, signal);
   }
@@ -404,7 +404,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
 
       // Zeige nur wenn es der letzte Endpoint ist (sonst zu viele Notifications)
       if (!silent && attemptNum === endpoints.length - 1) {
-        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, 3000);
+        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, 3000, 'warning');
       }
       continue;
     }
@@ -416,7 +416,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
           endpoint.includes('z.overpass-api.de') ? 'Server 2' :
             endpoint.includes('lz4.overpass-api.de') ? 'Server 3' : 'Alternativ-Server';
 
-        showNotification(`${t('trying_server')} ${serverName}...`, 60000);
+        showNotification(`${t('trying_server')} ${serverName}...`, 60000, 'info');
       }
 
       emit({ phase: 'try', reqId, endpoint, attemptNum });
@@ -450,9 +450,10 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       const elements = Array.isArray(json?.elements) ? json.elements.length : null;
       emit({ phase: 'net_ok', reqId, endpoint, ms, elements });
 
-      // Erfolg -> globalen Backoff resetten
+      // Erfolg -> globalen Backoff resetten und temporäre Server-Meldungen schließen
       GLOBAL_BACKOFF_MS = 0;
       GLOBAL_BACKOFF_UNTIL = 0;
+      hideNotification();
 
       return json;
 
@@ -473,9 +474,9 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
           // Visuelles Feedback: Rate Limit
           if (!silent) {
             if (attemptNum < endpoints.length - 1) {
-              showNotification(t('server_ratelimit_retry'), 4000);
+              showNotification(t('server_ratelimit_retry'), 4000, 'warning');
             } else {
-              showNotification(t('all_servers_busy'), 6000);
+              showNotification(t('all_servers_busy'), 6000, 'warning');
             }
           }
 
@@ -488,7 +489,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
 
           // Visuelles Feedback: Server Error
           if (!silent && attemptNum < endpoints.length - 1) {
-            showNotification(t('server_error_retry'), 4000);
+            showNotification(t('server_error_retry'), 4000, 'warning');
           }
 
           await sleep(400, signal);
@@ -521,7 +522,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       const waitSec = Math.ceil(minCooldown / 1000);
       emit({ phase: 'wait_for_cooldown', reqId, waitMs: minCooldown });
       if (!silent) {
-        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown);
+        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown, 'warning');
       }
 
       await sleep(minCooldown + 500, signal); // +500ms Puffer
@@ -609,7 +610,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
     const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
     if (isPipelineEligible(viewBounds, zoom)) {
       try {
-        console.log('[API] Verwende lokale Pipeline für Bayern...');
+        console.log('[API] Verwende lokale Pipeline für DACHLiLu...');
         const pipelineElements = await fetchPipelineData(viewBounds, requestedMode, { signal: controller.signal, zoom });
         ensureCurrentRequest();
 
@@ -764,7 +765,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
         // Visuelles Feedback: Nutzer weiß, dass alte Daten angezeigt werden
         const errType = (err instanceof HttpError && err.status === 429) ? t('server_error_type_overload') :
           (err instanceof HttpError && err.status >= 500) ? t('server_error_type_server') : t('server_error_type_connection');
-        showNotification(`${errType} - ${t('showing_cached')}`, 4000);
+        showNotification(`${errType} - ${t('showing_cached')}`, 4000, 'warning');
 
         // WICHTIG: NICHT werfen! Wir haben ja erfolgreiche Daten (aus Cache).
         // Der User sieht Marker, also ist das KEIN Fehler-Zustand.
@@ -781,7 +782,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           message: String(err?.message || err)
         });
 
-        showNotification(t(msgKey), 5000);
+        showNotification(t(msgKey), 5000, 'error');
         reportHydrantDownload(hydrantStatus, 'error');
         throw err;
       }
@@ -834,7 +835,7 @@ export async function fetchBoundaryData(onProgressData = null) {
 
       if (Array.isArray(boundaryElements) && boundaryElements.length > 0) {
         State.cachedBoundaryElements = boundaryElements;
-        State.loadedBoundaryBounds = viewBounds;
+        State.loadedBoundaryBounds = boundaryElements.loadedBounds || viewBounds;
         syncCombinedCachedElements();
 
         emit({ phase: 'boundary_pipeline_hit', reqId, zoom, dataset: 'boundary', elements: boundaryElements.length });

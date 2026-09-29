@@ -32,7 +32,7 @@ let pendingExportAction = null;
 function openTitleConfirmation(exportFnName) {
     // 0. Daten-Check: Haben wir überhaupt Hydranten?
     if (!State.cachedElements || State.cachedElements.length === 0) {
-        showNotification(t('no_objects'), 3000);
+        showNotification(t('no_objects'), 3000, 'warning');
         return;
     }
 
@@ -129,29 +129,99 @@ function setupCacheDurationSelects() {
             const nextValue = select.value || '168';
             localStorage.setItem('ofm_cache_hours', nextValue);
             syncValue(nextValue);
-            showNotification(t('cache_saved'), 2500);
+            showNotification(t('cache_saved'), 2500, 'success');
         });
     });
 }
 
+const NOTIFICATION_ICONS = {
+    success: `<svg class="w-4 h-4 shrink-0 text-emerald-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>`,
+    error: `<svg class="w-4 h-4 shrink-0 text-rose-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" /></svg>`,
+    warning: `<svg class="w-4 h-4 shrink-0 text-amber-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>`,
+    info: `<svg class="w-4 h-4 shrink-0 text-blue-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.247.25v3.25a.75.75 0 001.5 0v-3.5A1.75 1.75 0 009.25 9H9z" clip-rule="evenodd" /></svg>`
+};
+
+/**
+ * Blendet die Benachrichtigungs-Box sofort oder sanft aus.
+ */
+export function hideNotification() {
+    const box = document.getElementById('notification-box');
+    if (!box) return;
+    if (box.hideTimeout) {
+        clearTimeout(box.hideTimeout);
+        box.hideTimeout = null;
+    }
+    box.classList.remove('is-visible');
+    setTimeout(() => {
+        if (!box.classList.contains('is-visible')) {
+            box.style.display = 'none';
+        }
+    }, 250);
+}
+
 /**
  * HAUPTFUNKTION: showNotification
- * Zeigt die kleinen Meldungen oben rechts an (z.B. "GPS gefunden").
- * * WICHTIG: Das Wort "export" muss hier stehen, damit api.js die Funktion nutzen kann!
+ * Zeigt Benachrichtigungen (Toasts) für Benutzer-Aktionen oder wichtige System-Events.
+ * Unterstützt Typen ('info', 'success', 'warning', 'error') und variable Anzeigedauer.
+ *
+ * Signaturen:
+ *   showNotification(msg)
+ *   showNotification(msg, duration)
+ *   showNotification(msg, type)
+ *   showNotification(msg, duration, type)
+ *   showNotification(msg, type, duration)
  */
-export function showNotification(msg, duration = 3000) {
+export function showNotification(msg, durationOrType = 3000, explicitTypeOrDuration = null) {
     const box = document.getElementById('notification-box');
     if (!box) return;
 
-    box.innerText = msg;
-    box.style.display = 'block'; // Sichtbar machen
+    let duration = 3000;
+    let type = 'info';
 
-    // Alten Timer löschen, falls gerade einer läuft
+    if (typeof durationOrType === 'string') {
+        type = durationOrType;
+        if (typeof explicitTypeOrDuration === 'number') {
+            duration = explicitTypeOrDuration;
+        }
+    } else if (typeof durationOrType === 'number') {
+        duration = durationOrType;
+        if (typeof explicitTypeOrDuration === 'string') {
+            type = explicitTypeOrDuration;
+        }
+    }
+
+    if (!['info', 'success', 'warning', 'error'].includes(type)) {
+        type = 'info';
+    }
+
+    // ARIA für Screenreader passend konfigurieren
+    box.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    box.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+    box.dataset.type = type;
+
+    // Icon + Text sicher zusammenbauen (XSS-sicher via textContent)
+    box.replaceChildren();
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'notification-icon flex items-center shrink-0';
+    iconSpan.setAttribute('aria-hidden', 'true');
+    iconSpan.innerHTML = NOTIFICATION_ICONS[type] || NOTIFICATION_ICONS.info;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'notification-text';
+    textSpan.textContent = msg;
+
+    box.append(iconSpan, textSpan);
+    box.style.display = 'flex';
+
+    // Reflow erzwingen für sanfte Transition
+    void box.offsetWidth;
+    box.classList.add('is-visible');
+
     if (box.hideTimeout) clearTimeout(box.hideTimeout);
 
-    // Neuen Timer starten: Nach 3 Sekunden (duration) wieder ausblenden
     box.hideTimeout = setTimeout(() => {
-        box.style.display = 'none';
+        hideNotification();
     }, duration);
 }
 
@@ -277,12 +347,12 @@ export function searchLocation() {
 
                 input.blur(); // Tastatur am Handy einklappen
             } else {
-                showNotification(t('no_results'));
+                showNotification(t('no_results'), 3000, 'warning');
             }
         })
         .catch(err => {
             console.error("Suchfehler:", err);
-            showNotification("Suche fehlgeschlagen");
+            showNotification("Suche fehlgeschlagen", 3000, 'error');
         });
 }
 let isLocating = false;
@@ -292,7 +362,7 @@ let isLocating = false;
  */
 export function locateUser(highAccuracy = true) {
     if (!navigator.geolocation) {
-        showNotification("GPS nicht unterstützt");
+        showNotification("GPS nicht unterstützt", 4000, 'warning');
         return;
     }
 
@@ -367,7 +437,7 @@ export function locateUser(highAccuracy = true) {
             }, 25000);
 
             if (icon) icon.classList.remove('animate-spin');
-            showNotification(t('geo_found') || "Standort gefunden!");
+            showNotification(t('geo_found') || "Standort gefunden!", 3000, 'success');
             isLocating = false;
         },
         (err) => {
@@ -387,7 +457,7 @@ export function locateUser(highAccuracy = true) {
             const errMsg = t('gps_error') || "Standort konnte nicht ermittelt werden.";
             // Safari liefert bei Code 2 oft eine leere (tote) message mit.
             const desc = err.message ? `: ${err.message}` : '';
-            showNotification(`${errMsg} (${err.code}${desc})`, 5000);
+            showNotification(`${errMsg} (${err.code}${desc})`, 5000, 'error');
 
             isLocating = false;
         },

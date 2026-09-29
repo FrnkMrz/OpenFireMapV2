@@ -13,6 +13,8 @@ import {
   isViewportInHeader,
   ensurePmtilesHeaderCoverage,
   getPMTilesInstance,
+  getVectorTile,
+  clearTileCache,
   PmtilesCoverageMismatch
 } from '../src/js/pipeline.js';
 import { Config } from '../src/js/config.js';
@@ -837,6 +839,86 @@ describe('pipeline.js', () => {
       const header = await inst2.getHeader();
       expect(header.maxLat).toBe(55.1);
       expect(headerSpy2).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Kachel-Cache & Deduplizierung (Performance-Optimierung)', () => {
+    it('sollte parallele Anfragen für dieselbe Kachel deduplizieren (Promise Sharing)', async () => {
+      let getZxyCalls = 0;
+      const dummyPmtiles = {
+        getZxy: vi.fn(async () => {
+          getZxyCalls++;
+          // Künstliche Verzögerung simulieren
+          await new Promise((r) => setTimeout(r, 10));
+          return { data: new Uint8Array([1, 2, 3]) };
+        })
+      };
+
+      // Zwei parallele Abrufe für dieselbe Kachel 14/8705/5586
+      const [res1, res2] = await Promise.all([
+        getVectorTile(dummyPmtiles, 14, 8705, 5586),
+        getVectorTile(dummyPmtiles, 14, 8705, 5586)
+      ]);
+
+      expect(res1).toBeDefined();
+      expect(res2).toBeDefined();
+      expect(res1).toBe(res2); // Exakt dieselbe Instanz geteilt!
+      expect(getZxyCalls).toBe(1); // Nur EIN Netzwerkaufruf!
+    });
+
+    it('sollte bereits abgerufene Kacheln aus dem In-Memory-Cache liefern (0 Netzwerkaufrufe)', async () => {
+      const dummyPmtiles = {
+        getZxy: vi.fn(async () => ({ data: new Uint8Array([1, 2, 3]) }))
+      };
+
+      // 1. Abruf: Netzwerk
+      const res1 = await getVectorTile(dummyPmtiles, 14, 8705, 5586);
+      expect(dummyPmtiles.getZxy).toHaveBeenCalledTimes(1);
+
+      // 2. Abruf: Aus Memory-Cache
+      const res2 = await getVectorTile(dummyPmtiles, 14, 8705, 5586);
+      expect(dummyPmtiles.getZxy).toHaveBeenCalledTimes(1); // Keine zweite Anfrage!
+      expect(res2).toBe(res1);
+    });
+
+    it('sollte parallele metadata.json-Abrufe deduplizieren (Promise Sharing)', async () => {
+      let fetchCount = 0;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          fetchCount++;
+          await new Promise((r) => setTimeout(r, 10));
+          return {
+            ok: true,
+            json: async () => ({ generated_at: '2026-09-29T15:00:00Z' })
+          };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      // Zwei gleichzeitige Aufrufe von getPipelineVersion
+      const [v1, v2] = await Promise.all([
+        getPipelineVersion('https://pipeline.example.com'),
+        getPipelineVersion('https://pipeline.example.com')
+      ]);
+
+      expect(v1).toBe('2026-09-29T15:00:00Z');
+      expect(v2).toBe('2026-09-29T15:00:00Z');
+      expect(fetchCount).toBe(1); // Nur EIN HTTP-Request!
+    });
+
+    it('clearPipelineCache sollte auch den Kachel-Cache leeren', async () => {
+      const dummyPmtiles = {
+        getZxy: vi.fn(async () => ({ data: new Uint8Array([1, 2, 3]) }))
+      };
+
+      await getVectorTile(dummyPmtiles, 14, 100, 200);
+      expect(dummyPmtiles.getZxy).toHaveBeenCalledTimes(1);
+
+      clearPipelineCache();
+
+      // Nach dem Cache-Clear muss getZxy erneut aufgerufen werden
+      await getVectorTile(dummyPmtiles, 14, 100, 200);
+      expect(dummyPmtiles.getZxy).toHaveBeenCalledTimes(2);
     });
   });
 });

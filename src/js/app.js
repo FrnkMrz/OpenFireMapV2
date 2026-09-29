@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const msg =
         'Leaflet wurde nicht geladen. Prüfe index.html (leaflet.js) und den Pfad unter assets/vendor/leaflet/.';
       console.error('[OpenFireMapV2]', msg);
-      showNotification(msg, 8000);
+      showNotification(msg, 8000, 'error');
       return;
     }
 
@@ -69,11 +69,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       const msg = 'Karte wurde nicht initialisiert (State.map ist leer).';
       console.error('[OpenFireMapV2]', msg);
-      showNotification(msg, 8000);
+      showNotification(msg, 8000, 'error');
     }
   } catch (err) {
     console.error('[OpenFireMapV2] Fataler Fehler beim Start:', err);
-    showNotification(`Startfehler: ${err?.message ?? String(err)}`, 8000);
+    showNotification(`Startfehler: ${err?.message ?? String(err)}`, 8000, 'error');
   }
 
   // PWA Service Worker Registration

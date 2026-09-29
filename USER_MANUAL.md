@@ -28,6 +28,18 @@ Die Karte lädt Daten intelligent nach Zoomstufe, um die Übersichtlichkeit zu w
 ### ⚡ High-Speed Vektorkacheln (DACHLiLu)
 In den 5 Ländern **Deutschland, Österreich, Schweiz, Luxemburg und Liechtenstein** werden über **1,25 Millionen Objekte** über unsere Vektorkachel-Pipeline (Cloudflare R2 Edge) in Sekundenbruchteilen (20–30 ms) geladen. Außerhalb dieses Bereichs schaltet die Karte automatisch und nahtlos auf die weltweite OpenStreetMap Overpass API um.
 
+### 📊 Statusanzeigen & Benachrichtigungen
+Die Anwendung informiert dich übersichtlich und ohne störende Popups über den aktuellen Systemzustand:
+- **Status-Box (Desktop unten rechts / Smartphone oben rechts):**
+  - `ZOOM`: Aktuelle Zoomstufe (z. B. `15.0`).
+  - `DATEN`: Aktueller Stand der Kartendaten (`AKTUELL`, `AKTUELL (Lokal)` für High-Speed-Pipeline, `LÄDT...` oder `STANDBY`).
+- **Hydranten-Ladeanzeige (über der Status-Box):**
+  - Informiert bei asynchronen Datenabrufen über den Fortschritt (Objektanzahl, Spinner).
+  - Sollte eine Abfrage einmal fehlschlagen, bietet sie direkt einen Wiederholen-Knopf (`↻`).
+- **Benachrichtigungen (Toasts, oben mittig):**
+  - Erscheinen nur bei gezielten Nutzeraktionen (z. B. *„Standort gefunden!“*, *„Link kopiert!“*, Dateidownload) oder Systemhinweisen.
+  - Farbkodiert für schnelle Erfassung: **Grün** (Erfolg), **Blau** (Info), **Gelb** (Warnung) und **Rot** (Fehler).
+
 ---
 
 ## 🔍 Suche & Standort

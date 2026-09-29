@@ -10,7 +10,7 @@ import { Config } from './config.js';
 import { t } from './i18n.js';
 import { fetchBoundaryData, fetchOSMData } from './api.js';
 import { isPipelineEligible, lon2tile, lat2tile } from './pipeline.js';
-import { showNotification } from './ui.js';
+import { showNotification, hideNotification } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
 
 // ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ export async function shareMap() {
     // Fallback: Zwischenablage
     try {
         await navigator.clipboard.writeText(url);
-        showNotification(t('link_copied') || 'Link kopiert!', 3000);
+        showNotification(t('link_copied') || 'Link kopiert!', 3000, 'success');
     } catch {
         // Letzter Fallback: prompt
         window.prompt(t('link_copied') || 'Link kopiert!', url);
@@ -263,34 +263,6 @@ export function initMapLogic() {
         if (zoom < 17) return 'z15-16';
         if (zoom < 18) return 'z17';
         return 'z18+';
-    };
-
-    const stableObjectEntries = (obj) => {
-        if (!obj || typeof obj !== 'object') return [];
-        return Object.entries(obj).sort(([a], [b]) => a.localeCompare(b));
-    };
-
-    const elementFingerprint = (el) => {
-        if (!el || typeof el !== 'object') return '';
-        const tags = stableObjectEntries(el.tags).map(([k, v]) => `${k}:${String(v)}`).join('|');
-        const centerLat = Number(el.center?.lat ?? el.lat ?? 0).toFixed(5);
-        const centerLon = Number(el.center?.lon ?? el.lon ?? 0).toFixed(5);
-        const geometry = Array.isArray(el.geometry)
-            ? el.geometry.map((p) => `${Number(p.lat).toFixed(5)},${Number(p.lon).toFixed(5)}`).join(';')
-            : '';
-        return [
-            el.type || 'node',
-            el.id ?? '',
-            centerLat,
-            centerLon,
-            tags,
-            geometry
-        ].join('#');
-    };
-
-    const elementsFingerprint = (elements) => {
-        if (!Array.isArray(elements) || elements.length === 0) return 'empty';
-        return elements.map(elementFingerprint).sort().join('||');
     };
 
     const poiCoverageMatchesMode = (mode) => {
@@ -557,22 +529,9 @@ export function initMapLogic() {
                     statusEl.className = 'text-blue-400';
                 }
 
-                // Detaillierte Lade-Info anzeigen (wird bei Cache-Hit überschrieben)
-                showNotification(t('loading_data'), 30000);
-
-                // Track if we rendered cached data
-                let cachedCount = 0;
-                let cachedFingerprint = 'empty';
-
                 // SWR: Wir geben renderMarkers als Callback mit, 
                 // damit Cache-Daten sofort gezeichnet werden.
                 const poiPromise = fetchOSMData((cachedData) => {
-                    cachedCount = cachedData?.length || 0;
-                    cachedFingerprint = elementsFingerprint(cachedData);
-                    if (cachedCount > 0) {
-                        // Cache-Hit: Zeige Daten + Hinweis auf Aktualisierung
-                        showNotification(`${cachedCount} ${t('cached_objects')} – ${t('refreshing')}`, 30000);
-                    }
                     renderMarkers(cachedData, zoom);
                 }, (status) => hydrantDownloadStatus.update(status));
                 // Gemeindegrenzen asynchron im Hintergrund laden – blockiert POIs nicht!
@@ -600,12 +559,7 @@ export function initMapLogic() {
                 lastRenderedFetchIntent = fetchIntent;
 
                 if (data) {
-                    // Nur erneut rendern, wenn sich die Datenmenge geändert hat
-                    const networkCount = data.length || 0;
-                    const networkChanged = elementsFingerprint(data) !== cachedFingerprint;
-                    if (networkChanged) {
-                        renderMarkers(data, zoom);
-                    }
+                    renderMarkers(data, zoom);
 
                     const inPipelineArea = isPipelineEligible(State.map?.getBounds?.(), zoom);
                     if (statusEl) {
@@ -613,18 +567,8 @@ export function initMapLogic() {
                         statusEl.className = 'text-green-400 font-bold';
                     }
 
-                    // Erfolgs-Nachricht: Cache-Info erhalten, wenn Cache aktuell war
-                    if (cachedCount > 0 && !networkChanged) {
-                        // Cache war aktuell - zeige das deutlich
-                        showNotification(`${t('from_cache')} (${cachedCount} ${t('objects')})`, 3000);
-                    } else if (cachedCount > 0) {
-                        // Cache + Aktualisierung
-                        showNotification(`${t('data_updated')} (${cachedCount} → ${networkCount})`, 2500);
-                    } else {
-                        // Frische Daten
-                        const suffix = inPipelineArea ? ' – Lokal' : '';
-                        showNotification(`${t('data_complete')} (${networkCount} ${t('objects')}${suffix})`, 2000);
-                    }
+                    // Falls vorher eine Server-Warnung (z.B. Wartezeit) angezeigt wurde, diese schließen
+                    hideNotification();
                 } else if (data === null) {
                     // Kein Fehler, aber leere Query (z.B. Zoom zu klein)
                     if (statusEl) {

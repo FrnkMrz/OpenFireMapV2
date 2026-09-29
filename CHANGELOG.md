@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.7.2] - 2026-09-29
+
+### Optimierung der Status- & Benachrichtigungsmeldungen
+- **Klare Aufgabentrennung**:
+  - Permanente Status-Box (`#status-box`): Zeigt dezent und dauerhaft die Zoomstufe und den Datenzustand (`AKTUELL`, `AKTUELL (Lokal)`, `LÄDT...`, `STANDBY`) mit weichen Farbübergängen (`transition-colors`).
+  - Hydranten-Ladeanzeige (`#hydrant-download-status`): Übernimmt exklusiv detailliertes Feedback zum Ladevorgang von Hydrantendaten (Objektanzahl, Spinner, SWR-Refresh, Langläufer und Fehler mit Retry `↻`).
+  - Toasts (`#notification-box` via `showNotification`): Ausschließlich für Nutzeraktionen (GPS-Ortung, Link teilen, Kartenexport) und Systemwarnungen/Fehler. Redundante Lade-Meldungen bei jeder Kartenbewegung wurden vollständig entfernt.
+- **Typisierte Toasts mit Icons & Farben**:
+  - Unterstützung für `success` (Grün mit Häkchen-Icon), `info` (Blau mit Info-Icon), `warning` (Gelb mit Warn-Icon) und `error` (Rot mit Ausrufezeichen-Icon).
+  - Screenreader-optimierte ARIA-Rollen (`role="status"` vs `role="alert"`, dynamisches `aria-live`).
+  - XSS-sicher über native DOM-Knoten (`textContent`).
+  - Sanfte Ein- und Ausblendanimationen (`opacity` + `translateY`).
+  - Neues `hideNotification()` zum vorzeitigen Schließen, sobald Netzwerk-Retries erfolgreich beendet sind.
+- **Kollisionsfreies Mobile-Layout**:
+  - Toasts auf Smartphones unterhalb der Top-Leiste zentriert (`top: 76px;`), sodass Burger-Menü und Status-Box nicht überdeckt werden.
+  - Hydranten-Ladeanzeige auf `bottom: 92px; right: 16px;` gelegt, kollisionsfrei mit dem zentrierten Ortungs-Dock (`bottom: 32px`).
+- **Pipeline-Performance**:
+  - In-Memory Tile-Cache (`_tileCache`, FIFO/LRU bis 256 Kacheln) und In-Flight Request Deduplication (`_inFlightTileRequests`) in `src/js/pipeline.js`.
+  - Paralleler Worker-Pool für Kachelabrufe zur Vermeidung von Socket- und Stream-Staus.
+- **Tests & Qualität**:
+  - Neue Vitest-Testsuite `test/notification.test.js` (6 Tests für Typen, Timer, Dismissal, Accessibility und XSS-Schutz).
+
 ## [v0.7.1] - 2026-09-29
 
 ### Stale-Cache-Schutz & Pipeline-Härtung

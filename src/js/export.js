@@ -279,7 +279,7 @@ export function startSelection() {
   State.selection.active = true;
   State.map.dragging.disable();
   State.map.getContainer().classList.add("selection-mode");
-  showNotification(t("drag_area"));
+  showNotification(t("drag_area"), 3000, 'info');
 }
 
 function clearSelection() {
@@ -377,7 +377,7 @@ export async function exportAsGPX() {
     });
 
     if (pointsToExport.length === 0) {
-      showNotification(t("no_objects"));
+      showNotification(t("no_objects"), 3000, 'warning');
       return;
     }
 
@@ -448,11 +448,11 @@ export async function exportAsGPX() {
     link.click();
     URL.revokeObjectURL(url);
 
-    showNotification(`${pointsToExport.length} ${t("gpx_success")}`);
+    showNotification(`${pointsToExport.length} ${t("gpx_success")}`, 3000, 'success');
     toggleExportMenu();
   } catch (e) {
     console.error("GPX Fehler:", e);
-    showNotification("GPX Fehler: " + e.message, 5000);
+    showNotification("GPX Fehler: " + e.message, 5000, 'error');
   }
 }
 
@@ -478,7 +478,7 @@ export async function exportAsCSV() {
     });
 
     if (pointsToExport.length === 0) {
-      showNotification(t("no_objects"));
+      showNotification(t("no_objects"), 3000, 'warning');
       return;
     }
 
@@ -588,11 +588,11 @@ export async function exportAsCSV() {
     link.click();
     URL.revokeObjectURL(url);
 
-    showNotification(`${pointsToExport.length} ${t("csv_success") || t("gpx_success")}`);
+    showNotification(`${pointsToExport.length} ${t("csv_success") || t("gpx_success")}`, 3000, 'success');
     toggleExportMenu();
   } catch (e) {
     console.error("CSV Fehler:", e);
-    showNotification("CSV Fehler: " + e.message, 5000);
+    showNotification("CSV Fehler: " + e.message, 5000, 'error');
   }
 }
 
@@ -713,16 +713,16 @@ async function generateMapCanvas() {
         elementsForExport = preprocessElementsForExport(fallbackCachedElements);
       }
 
-      showNotification(`Export: ${elementsForExport.length} Objekte (Online geladen).`, 3000);
+      showNotification(`Export: ${elementsForExport.length} Objekte (Online geladen).`, 3000, 'info');
     } catch (e) {
       if (e?.name === 'AbortError') throw e;
       console.warn("Export-Fetch fehlgeschlagen, nutze Cache als Fallback", e);
       const fallbackCachedElements = getCachedExportElements();
       elementsForExport = preprocessElementsForExport(fallbackCachedElements);
-      showNotification(`Export Warnung: Ladefehler, nutze Cache (${elementsForExport.length} Objekte).`, 5000);
+      showNotification(`Export Warnung: Ladefehler, nutze Cache (${elementsForExport.length} Objekte).`, 5000, 'warning');
     }
   } else {
-    showNotification(`Export: ${elementsForExport.length} Objekte (aus Cache).`, 2000);
+    showNotification(`Export: ${elementsForExport.length} Objekte (aus Cache).`, 2000, 'info');
   }
   console.log("Final export elements count:", elementsForExport.length);
 
@@ -1087,7 +1087,7 @@ export async function exportAsPNG() {
     document.body.removeChild(link);
 
     toggleExportMenu();
-    showNotification("Download gestartet (PNG)!", 3000);
+    showNotification("Download gestartet (PNG)!", 3000, 'success');
 
   } catch (e) {
     handleExportError(e);
@@ -1146,7 +1146,7 @@ export async function exportAsPDF() {
     pdf.save(`${filename}.pdf`);
 
     toggleExportMenu();
-    showNotification("Download gestartet (PDF)!", 3000);
+    showNotification("Download gestartet (PDF)!", 3000, 'success');
 
   } catch (e) {
     handleExportError(e);
@@ -1155,7 +1155,7 @@ export async function exportAsPDF() {
 
 function handleExportError(e) {
   console.error("EXPORT FEHLER:", e);
-  showNotification("FEHLER: " + e.message, 10000);
+  showNotification("FEHLER: " + e.message, 8000, 'error');
   setTimeout(() => {
     document.getElementById("export-progress").classList.add("hidden");
     document.getElementById("export-setup").classList.remove("hidden");
