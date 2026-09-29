@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.7.0] - 2026-09-29
+
+### Neue Features: DACHLiLu-Erweiterung & Cloudflare R2
+- **Länderübergreifende Pipeline-Abdeckung (DACHLiLu)**: Erweiterung der Vektorkachel-Pipeline von Bayern auf 5 Länder: Deutschland (DE), Österreich (AT), Schweiz (CH), Luxemburg (LU) und Liechtenstein (LI).
+  - Über **1,25 Millionen POIs**: 1.019.158 Hydranten (+336 %), 47.379 Feuerwachen (+438 %), 25.610 Löschwasserstellen (+314 %), 40.347 Defibrillatoren (+597 %) sowie 123.618 Gemeindegrenzen.
+  - Kompakte PMTiles-Datei `openfiremap.pmtiles` mit 514,12 MB (Zoom 12–16).
+- **Cloudflare R2 Object Storage Integration**:
+  - Weltweite Auslieferung der Vektorkacheln über Cloudflare R2 Edge unter `https://pipeline.openfiremap.org/openfiremap.pmtiles`.
+  - Vollständige Entlastung des Heimnetzwerks/DSL-Uploads bei **0 € Egress-Kosten**.
+  - HTTP Range Requests (HTTP 206 Partial Content) und CORS für `https://openfiremap.org` nahtlos aktiv.
+- **Filter-then-Merge Builder-Architektur**:
+  - `pipeline/builder/build_features.py`: Parallele/sequentielle Tag-Filterung einzelner Länder-Auszüge mit anschließender Osmium-Verschmelzung.
+  - Intelligenter `HEAD`-Check: Überspringt unveränderte Geofabrik-PBFs in < 1 Sekunde; `FORCE_DOWNLOAD=true` für erzwungenes Neuladen.
+  - RAM-Disk-Nutzung (`/dev/shm`) für performante I/O-Filterung mit automatischem Disk-Fallback.
+- **MultiPolygon-Grenzabdeckung im Frontend**:
+  - Neues hochpräzises Abdeckungspolygon `DACHLILU_COVERAGE` (`src/js/coverage/dachlilu.js`) mit 2.128 Stützpunkten und 500 m Innenpuffer.
+  - `isPointInPolygon` und `isRectInPolygon` um native MultiPolygon-Unterstützung erweitert.
+- **Automatischer R2-Sync**: Nächtlicher Cronjob auf VM 102 (`update.sh`) synchronisiert neue Builds automatisch per `rclone` zu Cloudflare R2.
+
+### Qualitätssicherung & Tests
+- **Vitest Unit-Tests**: 78/78 Tests erfolgreich (inklusive aller Städte in DE, AT, CH, LU, LI und Grenzprüfungen).
+- **Playwright E2E-Tests**: 11/11 Tests erfolgreich (Koordinaten für Overpass-Fallback-Tests auf Paris außerhalb der DACHLiLu-Pipeline angepasst).
+
 ## [v0.6.13] - 2026-09-28
 
 ### Neue Features & Pipeline-Verbesserungen

@@ -23,8 +23,8 @@ Dieses Projekt stellt eine eigene, performante und ausfallsichere Datenquelle f�
 
 ```
                    +--------------------------------------------+
-                   |            Geofabrik Download              |
-                   |      (z. B. bayern-latest.osm.pbf)         |
+                   |       Geofabrik DACHLiLu Downloads         |
+                   |   (DE, AT, CH, LU, LI osm.pbf ~6 GB)       |
                    +---------------------+----------------------+
                                          |
                                          v
@@ -34,30 +34,26 @@ Dieses Projekt stellt eine eigene, performante und ausfallsichere Datenquelle f�
 |   +--> VM 102 (docker-lab-KW3) - 192.168.178.152                              |
 |          |                                                                    |
 |          +--> [Container: openfiremap-builder] (Python 3.12 + osmium + tippecanoe)
-|          |      1. Download PBF (curl mit Retry & Resume)                     |
-|          |      2. osmium tags-filter (Hydranten, Wachen, Defis, Grenzen)     |
+|          |      1. Smart Download PBF (HTTP HEAD Check & mtime Skip)          |
+|          |      2. Filter-then-Merge via RAM-Disk (/dev/shm)                  |
 |          |      3. tippecanoe: Vektorkacheln (Z12–Z16) -> openfiremap.pmtiles |
-|          |      4. osmium export -> GeoJSON-Dateien                           |
+|          |      4. osmium export -> GeoJSON-Dateien (1,25M POIs)              |
 |          |      5. Differenzanalyse & metadata.json schreiben                 |
 |          |                                                                    |
 |          |      Ablage: /srv/docker/data/openfiremap/publish/                 |
 |          |                                                                    |
-|          +--> [Container: openfiremap-web] (Nginx Alpine, interner Port 80)   |
-|          |      - Liefert PMTiles (HTTP 206 Range Requests, gzip off)         |
-|          |      - Liefert GeoJSON & metadata.json statisch aus (gzip on)      |
-|          |      - Vollständige CORS-Header für Web-Clients                    |
-|          |                                                                    |
-|          +--> [Container: openfiremap-tunnel] (Cloudflare cloudflared)        |
-|                 - Verschlüsselter Outbound-Tunnel (QUIC / UDP 443)            |
-|                 - Verbindet VM 102 direkt mit Cloudflare Edge in Frankfurt    |
-|                 - Keine Router-Ports / Portweiterleitungen an der FRITZ!Box   |
+|          +--> [Automatischer Sync: rclone]                                    |
+|                 - Synchronisiert nächtlich nach Cloudflare R2                 |
+|                 - 0 € Egress, weltweites CDN, entlastet Heimnetzleitung       |
 +----------------------------------------+--------------------------------------+
-                                         | Outbound TLS (QUIC)
+                                         | S3 API Sync
                                          v
                       +--------------------------------------+
-                      | Cloudflare Zero Trust Edge           |
+                      | Cloudflare R2 Object Storage         |
+                      | Bucket: openfiremap-pipeline         |
+                      | Custom Domain:                       |
                       | https://pipeline.openfiremap.org     |
-                      | (TLS 1.3 Let's Encrypt Wildcard)     |
+                      | (HTTP 206 Range Requests, CORS)      |
                       +------------------+-------------------+
                                          |
                                          v
@@ -76,15 +72,15 @@ Dieses Projekt stellt eine eigene, performante und ausfallsichere Datenquelle f�
 
 Alle Endpunkte unterstützen `CORS` (`Access-Control-Allow-Origin: *`) und HTTP Byte-Range-Requests:
 
-| Endpunkt | Typ | Beschreibung | Typischer Umfang (Freistaat Bayern) |
+| Endpunkt | Typ | Beschreibung | Typischer Umfang (DACHLiLu) |
 |---|---|---|---|
-| `/metadata.json` | JSON | Status, Build-Zeitstempel, Quell-URL, Objektstatistiken | Status-Info |
-| `/openfiremap.pmtiles` | PMTiles | **Vektor-Kacheln** (Z12–Z16, inkl. 12.493 Grenzen & aller Objekte) | **~88,6 MB** |
-| `/hydrants.geojson` | GeoJSON | Über-/Unterflurhydranten, WSH, Wandhydranten | ~233.534 Objekte (~65 MB) |
-| `/fire_stations.geojson` | GeoJSON | Feuerwehrhäuser, Berufs-/Freiwillige Feuerwehren | ~8.802 Objekte |
-| `/water_points.geojson` | GeoJSON | Zisternen, Löschwasserteiche, Saugestellen | ~6.180 Objekte |
-| `/defibrillators.geojson` | GeoJSON | Öffentlich zugängliche AED-Geräte | ~5.785 Objekte |
-| `/boundaries.geojson` | GeoJSON | Gemeindegrenzen zur Einsatzgebiets-Erkennung | ~12.493 Polygone |
+| `/metadata.json` | JSON | Status, Build-Zeitstempel, Quell-URL, Objektstatistiken | Status-Info (DE, AT, CH, LU, LI) |
+| `/openfiremap.pmtiles` | PMTiles | **Vektor-Kacheln** (Z12–Z16, inkl. 123.618 Grenzen & aller Objekte) | **~514,1 MB** |
+| `/hydrants.geojson` | GeoJSON | Über-/Unterflurhydranten, WSH, Wandhydranten | ~1.019.158 Objekte (~255 MB) |
+| `/fire_stations.geojson` | GeoJSON | Feuerwehrhäuser, Berufs-/Freiwillige Feuerwehren | ~47.379 Objekte (~19 MB) |
+| `/water_points.geojson` | GeoJSON | Zisternen, Löschwasserteiche, Saugestellen | ~25.610 Objekte (~6 MB) |
+| `/defibrillators.geojson` | GeoJSON | Öffentlich zugängliche AED-Geräte | ~40.347 Objekte (~13 MB) |
+| `/boundaries.geojson` | GeoJSON | Gemeindegrenzen zur Einsatzgebiets-Erkennung | ~123.618 Polygone (~192 MB) |
 
 ---
 

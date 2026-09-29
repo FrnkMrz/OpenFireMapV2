@@ -50,7 +50,7 @@ Diese Dokumentation beschreibt die technische Architektur, den Betrieb und die W
   2. Filterung nach OSM-Tags (Hydranten, Wachen, Löschwasserstellen, Defibrillatoren sowie Verwaltungsgrenzen `boundaries`).
   3. Export als GeoJSON nach `/srv/docker/data/openfiremap/publish/`.
   4. **PMTiles Vektorkachel-Erzeugung (`tippecanoe`):**  
-     Bündelt alle Layer (`fire_stations`, `hydrants`, `water_points`, `defibrillators`, `boundaries`) in eine einzige kompakte Datei `openfiremap.pmtiles` (**88,6 MB** für den gesamten Freistaat Bayern inkl. aller 12.493 Gemeindegrenzen und 233.534 Hydranten, Zoom 12–16) in ca. 62 Sekunden.
+     Bündelt alle Layer (`fire_stations`, `hydrants`, `water_points`, `defibrillators`, `boundaries`) in eine einzige kompakte Datei `openfiremap.pmtiles` (**514,12 MB** für den gesamten DACHLiLu-Raum inkl. aller 123.618 Gemeindegrenzen und 1.019.158 Hydranten, Zoom 12–16) in ca. 370 Sekunden (6,1 Minuten).
   5. Berechnung von Differenzen zum Vortag (`diff`) und Schreiben von `metadata.json`.
   6. Schreiben der Systemmetriken nach `/data/raw/system_stats.json`; diese Datei liegt außerhalb des öffentlichen `publish/`-Verzeichnisses.
 
@@ -59,7 +59,9 @@ und Liechtenstein) nach dem Filter-then-Merge-Verfahren. Für einen einzelnen
 Geofabrik-Auszug kann `OSM_EXTRACT_URL` gesetzt werden, beispielsweise für einen
 schnellen Bayern-Test. Mit `FORCE_DOWNLOAD=true` lässt sich der intelligente
 Download-Check bewusst umgehen. Für die temporäre Filterung wird bevorzugt
-`/dev/shm` verwendet; bei fehlendem Speicher erfolgt ein NVMe-Fallback.
+`/dev/shm` (RAM-Disk) verwendet; bei fehlendem Speicher erfolgt ein NVMe-Fallback.
+Nach Abschluss des Builds synchronisiert `rclone` alle Ausgabedateien automatisch
+in den Cloudflare R2 Bucket `openfiremap-pipeline`.
 
 ### 3.2 `openfiremap-web` (Docker / Nginx Alpine)
 * **Port:** `8080` (vermeidet Kollisionen mit Standard-Port 80)

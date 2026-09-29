@@ -79,13 +79,28 @@ Dieses Dokument hält den aktuellen Stand sowie die geplanten nächsten Schritte
   - **Frontend:** Präzise Grenzabdeckung via 1.296-Punkt-Innenpuffer-Polygon (500 m Innenpuffer aus OSM R2145268) mit vollständigem Kantenüberschneidungstest aller 4 Viewport-Kanten (`isRectInPolygon`) in `src/js/pipeline.js` implementiert. 40.000 simulierte Viewports auf 0 % fehlerhafte Zuweisungen verifiziert; verhindert leere Karten in Nachbarländern/Grenzgebieten wie Ulm oder Salzburg.
   - **Sicherheitsänderung:** Die öffentliche `metadata.json` enthält keine Systemmetriken mehr. `disk_free_gb`, `disk_used_gb`, `disk_total_gb` und `disk_used_percent` werden intern in `raw/system_stats.json` geschrieben.
 
-- **DACHLiLu im Repository implementiert; Deployment und vollständiger Live-Build stehen noch aus:**
-  * Geltungsbereich: Deutschland (DE), Österreich (AT), Schweiz (CH), Liechtenstein (LI), Luxemburg (LU).
-  * Standardmodus mit Filter-then-Merge; ein einzelner Bayern- oder anderer Geofabrik-Auszug kann über `OSM_EXTRACT_URL` gewählt werden.
-  * Intelligenter `HEAD`-Check mit `FORCE_DOWNLOAD=true` als explizitem Re-Download-Schalter.
-  * Zwischenfilterung bevorzugt auf der RAM-Disk `/dev/shm`, mit NVMe-Fallback.
-  * Optionaler Upload nach Cloudflare R2 über `rclone` und optionaler Cloudflare-Cache-Purge nach erfolgreichem Build.
-  * Builder- und Coverage-Tests dokumentieren die neue Länder- und Geometrie-Logik.
+- **Status DACHLiLu & Cloudflare R2:** ✅ Vollständig abgeschlossen & live in Produktion (29. September 2026).
+- **Ergebnisse DACHLiLu (5 Länder):**
+  - **Länder:** Deutschland (DE), Österreich (AT), Schweiz (CH), Luxemburg (LU), Liechtenstein (LI).
+  - **Rohdaten:** ~5,97 GB OSM PBF (Download in 118 Sek.).
+  - **Objektzahlen:**
+    - **1.019.158 Hydranten** (+785.624 gegenüber Bayern)
+    - **47.379 Feuerwachen** (+38.577)
+    - **25.610 Löschwasserstellen** (+19.430)
+    - **40.347 Defibrillatoren** (+34.562)
+    - **123.618 Gemeindegrenzen** (+111.125)
+    - **Gesamt:** Über **1,25 Millionen POIs**!
+  - **PMTiles-Generierung:** `openfiremap.pmtiles` ist **514,12 MB** groß (in 370 Sek. / 6,1 Min. gebaut).
+  - **Gesamte Build-Dauer:** 1.856 Sekunden (~30,9 Minuten).
+  - **Cloudflare R2 Integration:**
+    * Vektorkacheln werden unter `https://pipeline.openfiremap.org/openfiremap.pmtiles` weltweit aus dem R2-Bucket ausgeliefert.
+    * 0 € Egress-Kosten, 0 kbit/s Belastung des Heimnetz-Uploads.
+    * HTTP Range Requests (HTTP 206) und CORS für `https://openfiremap.org` aktiv.
+    * Automatischer nächtlicher Upload via `rclone sync` im Cronjob um 03:30 Uhr.
+  - **Frontend:**
+    * MultiPolygon-Grenzabdeckung `DACHLILU_COVERAGE` mit 2.128 Stützpunkten und 500 m Innenpuffer.
+    * `isPointInPolygon` und `isRectInPolygon` mit MultiPolygon-Unterstützung.
+    * 78/78 Vitest-Unit-Tests und 11/11 Playwright-E2E-Tests erfolgreich.
 
 ---
 

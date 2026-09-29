@@ -25,6 +25,9 @@ Die Karte lädt Daten intelligent nach Zoomstufe, um die Übersichtlichkeit zu w
   - ⚡ **Defibrillatoren** (Grünes Herz-Symbol)
   - 🌊 **Löschwasserstellen** (Saugstellen, Teiche)
 
+### ⚡ High-Speed Vektorkacheln (DACHLiLu)
+In den 5 Ländern **Deutschland, Österreich, Schweiz, Luxemburg und Liechtenstein** werden über **1,25 Millionen Objekte** über unsere Vektorkachel-Pipeline (Cloudflare R2 Edge) in Sekundenbruchteilen (20–30 ms) geladen. Außerhalb dieses Bereichs schaltet die Karte automatisch und nahtlos auf die weltweite OpenStreetMap Overpass API um.
+
 ---
 
 ## 🔍 Suche & Standort
