@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.7.1] - 2026-09-29
+
+### Stale-Cache-Schutz & Pipeline-Härtung
+- **Automatisches Cache-Busting (`?v=<generated_at>`)**:
+  - `src/js/pipeline.js` fragt vor dem Laden der PMTiles-Vektorkacheln `metadata.json` ab (3 s Timeout, `cache: 'no-cache'`).
+  - Hängt den `generated_at`-Zeitstempel als Versionsparameter (`?v=...`) an die Kachel-URL an. Verhindert, dass Edge-Caches oder Browser nach einem Rollout veraltete Kacheln oder veraltete Header ausliefern.
+  - Erkennt Versionsänderungen zur Laufzeit automatisch und invalidiert gecachte PMTiles-Instanzen und Header.
+- **Coverage-Mismatch-Erkennung (`PmtilesCoverageMismatch`)**:
+  - `src/js/pipeline.js` prüft die Header-Bounding-Box (`minLat`, `maxLat`, `minLon`, `maxLon`) vor dem Abruf gegen den angeforderten Viewport.
+  - Liegt der Viewport außerhalb des Headers (z. B. wenn noch ein veralteter regionaler Header im Cache liegt), wird der Header einmalig mit `forceRefresh` neu geladen.
+  - Passt die Abdeckung weiterhin nicht, wird `PmtilesCoverageMismatch` geworfen und der Overpass-Fallback aktiviert, anstatt leere Flächen anzuzeigen.
+- **Gehärtetes Pipeline-Update (`pipeline/update.sh`)**:
+  - Upload-Reihenfolge nach Cloudflare R2 abgesichert: Zuerst Daten (`*.pmtiles` und `*.geojson`), zuletzt `metadata.json` (erst nach vollständigem, fehlerfreiem Daten-Upload).
+  - Spezifische `Cache-Control`-Header beim R2-Upload via rclone gesetzt (`*.pmtiles`: 86400 s / 24 h, `*.geojson`: 3600 s / 1 h, `metadata.json`: `no-cache, no-store, must-revalidate, max-age=0`).
+  - Cloudflare Edge Cache Purge wird nur bei erfolgreichem Sync ausgeführt; Abbruch bei Sync-Fehlern (`exit 1`).
+- **Dokumentation & Endpunktbereinigung**:
+  - Obsoleszenter interner Endpunkt `/healthz` in allen externen Dokumenten und Setup-Skripten durch `https://pipeline.openfiremap.org/metadata.json` ersetzt.
+  - Dokumentation des 512-MB-Cloudflare-Free-Limits (539 MB PMTiles geht als dynamischer Range-Request direkt an R2 mit 0 € Egress und 10 Mio. kostenlosen Class B Operations).
+  - Anleitung zur Freigabe von `http://localhost:5173` in der R2 CORS-Policy für die lokale Entwicklung.
+  - `CLAUDE.md` und `AGENTS.md` aktualisiert: R2 ist primäre Edge-Quelle; VM 102 dient als lokale Test- und Backup-Umgebung.
+
+### Tests
+- **Vitest Unit-Tests**: 89/89 Tests erfolgreich (+11 neue Tests für `isViewportInHeader`, `getPipelineVersion`, `getPipelinePmtilesUrl` und PMTiles Mock Coverage Mismatch / Version Switch).
+
 ## [v0.7.0] - 2026-09-29
 
 ### Neue Features: DACHLiLu-Erweiterung & Cloudflare R2
