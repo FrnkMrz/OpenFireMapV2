@@ -15,7 +15,8 @@ import {
   getPMTilesInstance,
   getVectorTile,
   clearTileCache,
-  PmtilesCoverageMismatch
+  PmtilesCoverageMismatch,
+  warmupPipeline
 } from '../src/js/pipeline.js';
 import { Config } from '../src/js/config.js';
 import { PMTiles } from 'pmtiles';
@@ -919,6 +920,126 @@ describe('pipeline.js', () => {
       // Nach dem Cache-Clear muss getZxy erneut aufgerufen werden
       await getVectorTile(dummyPmtiles, 14, 100, 200);
       expect(dummyPmtiles.getZxy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Teil B: warmupPipeline, Progressives Streaming & Pufferring im Hintergrund', () => {
+    it('warmupPipeline sollte metadata.json und Header vorab laden, wenn Viewport in DACHLiLu liegt', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      Config.defaultCenter = [49.555, 11.35];
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return {
+            ok: true,
+            json: async () => ({ generated_at: '2026-09-29T16:00:00Z' })
+          };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      const getHeaderSpy = vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minZoom: 12,
+        maxZoom: 16,
+        minLat: 45.8,
+        maxLat: 55.1,
+        minLon: 5.7,
+        maxLon: 17.2
+      });
+
+      await warmupPipeline();
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://pipeline.example.com/metadata.json',
+        expect.objectContaining({ cache: 'no-cache' })
+      );
+      expect(getHeaderSpy).toHaveBeenCalled();
+    });
+
+    it('warmupPipeline sollte bei Netzwerkfehler nicht werfen und Start nicht blockieren', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network offline'));
+
+      await expect(warmupPipeline()).resolves.not.toThrow();
+    });
+
+    it('fetchPipelinePmtiles sollte Kacheln streamen (onProgressData) und Puffer im Hintergrund laden', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return {
+            ok: true,
+            json: async () => ({ generated_at: '2026-09-29T16:00:00Z' })
+          };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minZoom: 12,
+        maxZoom: 16,
+        minLat: 45.8,
+        maxLat: 55.1,
+        minLon: 5.7,
+        maxLon: 17.2
+      });
+
+      vi.spyOn(PMTiles.prototype, 'getZxy').mockResolvedValue({
+        data: new Uint8Array([1, 2, 3])
+      });
+
+      let featureCounter = 0;
+      mockVectorTileLayers = {
+        hydrants: {
+          length: 1,
+          feature: () => ({
+            toGeoJSON: (x, y) => ({
+              type: 'Feature',
+              id: `hydrant_${x}_${y}_${++featureCounter}`,
+              geometry: { type: 'Point', coordinates: [11.35, 49.55] },
+              properties: { emergency: 'fire_hydrant' }
+            })
+          })
+        }
+      };
+
+      const smallBounds = {
+        getSouth: () => 49.554,
+        getNorth: () => 49.556,
+        getWest: () => 11.349,
+        getEast: () => 11.351
+      };
+
+      const progressCalls = [];
+      const onProgressData = vi.fn((elements, isPartial) => {
+        progressCalls.push({ count: elements.length, isPartial });
+      });
+
+      let bufferCompleted = false;
+      const onBufferComplete = vi.fn(() => {
+        bufferCompleted = true;
+      });
+
+      const result = await fetchPipelinePmtiles(smallBounds, 'all', {
+        zoom: 16,
+        onProgressData,
+        onBufferComplete
+      });
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
+      expect(onProgressData).toHaveBeenCalled();
+      // Erstes Rendern liefert Ergebnis sofort zurück
+      expect(progressCalls.some(c => c.isPartial === true)).toBe(true);
+
+      // Kurze Pause, damit der un-awaited Hintergrundpuffer fertig werden kann
+      await new Promise(r => setTimeout(r, 50));
+      expect(onBufferComplete).toHaveBeenCalled();
     });
   });
 });

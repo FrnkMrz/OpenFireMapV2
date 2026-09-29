@@ -17,6 +17,7 @@ import { initMapLogic } from './map.js';
 import { initI18n, updatePageLanguage } from './i18n.js';
 import { setupUI, showNotification } from './ui.js';
 import { State } from './state.js';
+import { warmupPipeline } from './pipeline.js';
 
 // Expose State globally for tests and debugging
 if (typeof window !== 'undefined') {
@@ -41,6 +42,9 @@ async function waitForLeaflet({ timeoutMs = 8000, intervalMs = 50 } = {}) {
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     console.log('[OpenFireMapV2] App startet...');
+
+    // 0) Pipeline frühzeitig aufwärmen (parallel zu Leaflet/i18n/UI, nicht blockierend)
+    warmupPipeline();
 
     // 1) i18n (Default: de, Fallback: en)
     await initI18n();

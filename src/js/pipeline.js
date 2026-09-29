@@ -47,6 +47,80 @@ const MAX_CACHED_TILES = 256;
 const _inFlightTileRequests = new Map();
 
 /**
+ * Wärmt die Pipeline-Verbindung frühzeitig auf:
+ * Lädt metadata.json und den PMTiles-Header parallel zum Bootstrapping,
+ * damit Header und Root-Directory im Speicher und Verbindungscache liegen.
+ * Fehler werden ignoriert/geloggt; blockiert niemals.
+ */
+export async function warmupPipeline() {
+  try {
+    if (!Config.pipeline?.enabled || !Config.pipeline?.url) return;
+
+    // Start-Koordinaten ermitteln (Permalink > localStorage > Config)
+    let lat = null;
+    let lon = null;
+
+    if (typeof window !== 'undefined') {
+      const hash = window.location?.hash?.replace(/^#/, '');
+      if (hash) {
+        const parts = hash.split('/');
+        if (parts.length >= 3) {
+          const lt = Number(parts[1]);
+          const ln = Number(parts[2]);
+          if (Number.isFinite(lt) && Number.isFinite(ln)) {
+            lat = lt;
+            lon = ln;
+          }
+        }
+      }
+
+      if (lat == null) {
+        try {
+          const saved = localStorage.getItem('ofm_last_view');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed.center) && parsed.center.length === 2) {
+              lat = parsed.center[0];
+              lon = parsed.center[1];
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    if (lat == null || lon == null) {
+      lat = Config.defaultCenter?.[0] ?? 49.555;
+      lon = Config.defaultCenter?.[1] ?? 11.35;
+    }
+
+    // Bounding-Box Grobfilter
+    const pb = Config.pipeline.bounds;
+    if (pb) {
+      if (lat < pb.south || lat > pb.north || lon < pb.west || lon > pb.east) {
+        return; // Startansicht liegt außerhalb DACHLiLu
+      }
+    }
+
+    const baseUrl = Config.pipeline.url;
+    const pmtilesFile = Config.pipeline.pmtilesFile || 'openfiremap.pmtiles';
+
+    // 1. metadata.json vorab holen (Deduplizierung via _pendingMetadataPromise)
+    const url = await getPipelinePmtilesUrl(baseUrl, pmtilesFile);
+
+    // 2. PMTiles-Header vorab laden
+    const pmtiles = getPMTilesInstance(url);
+    if (!_pmtilesHeader) {
+      _pmtilesHeader = await pmtiles.getHeader();
+    }
+    console.log('[Pipeline] Warmup erfolgreich: Header geladen.');
+  } catch (err) {
+    console.warn('[Pipeline] Warmup fehlgeschlagen (nicht kritisch):', err?.message || err);
+  }
+}
+
+/**
  * Leert den internen Kachel-Cache und verwirft laufende Anfragen.
  */
 export function clearTileCache() {
@@ -633,7 +707,7 @@ export async function ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile,
  * @param {Object} options 
  * @returns {Promise<Array<Object>>}
  */
-export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom } = {}) {
+export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgressData, onBufferComplete } = {}) {
   const baseUrl = Config.pipeline?.url;
   const pmtilesFile = Config.pipeline?.pmtilesFile || 'openfiremap.pmtiles';
   if (!baseUrl) throw new Error('Pipeline-URL ist nicht konfiguriert.');
@@ -655,26 +729,14 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom } = {}) 
   const west = typeof bounds.getWest === 'function' ? bounds.getWest() : bounds.west;
   const east = typeof bounds.getEast === 'function' ? bounds.getEast() : bounds.east;
 
-  let minX = lon2tile(west, queryZoom);
-  let maxX = lon2tile(east, queryZoom);
-  let minY = lat2tile(north, queryZoom);
-  let maxY = lat2tile(south, queryZoom);
+  const visMinX = lon2tile(west, queryZoom);
+  const visMaxX = lon2tile(east, queryZoom);
+  const visMinY = lat2tile(north, queryZoom);
+  const visMaxY = lat2tile(south, queryZoom);
 
-  // Puffer nur bei kleinen Kachelausschnitten (<= 20 Kacheln) anwenden,
-  // um auf mobilen Geräten oder starkem Zoom weiches Panning zu ermöglichen.
-  // Auf Desktop-Bildschirmen deckt das ungebildete Raster das Sichtfeld bereits
-  // vollständig ab; ein zusätzlicher Pufferring würde die Anfragen fast verdoppeln.
-  const rawTileCount = (maxX - minX + 1) * (maxY - minY + 1);
-  if (rawTileCount <= 20) {
-    minX -= 1;
-    maxX += 1;
-    minY -= 1;
-    maxY += 1;
-  }
-
-  const tileCount = (maxX - minX + 1) * (maxY - minY + 1);
-  if (tileCount > 300) {
-    throw new Error(`Tile-Ausschnitt zu groß (${tileCount} Kacheln), wechsle auf Fallback.`);
+  const rawTileCount = (visMaxX - visMinX + 1) * (visMaxY - visMinY + 1);
+  if (rawTileCount > 300) {
+    throw new Error(`Tile-Ausschnitt zu groß (${rawTileCount} Kacheln), wechsle auf Fallback.`);
   }
 
   const targetLayers = mode === 'stations'
@@ -682,17 +744,43 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom } = {}) 
     : ['fire_stations', 'hydrants', 'water_points', 'defibrillators'];
 
   const elementsMap = new Map();
-  const tiles = [];
-  for (let x = minX; x <= maxX; x++) {
-    for (let y = minY; y <= maxY; y++) {
-      tiles.push({ x, y });
+
+  // 1. Unmittelbar sichtbare Kacheln
+  const visibleTiles = [];
+  for (let x = visMinX; x <= visMaxX; x++) {
+    for (let y = visMinY; y <= visMaxY; y++) {
+      visibleTiles.push({ x, y });
     }
   }
 
-  await processTilesWithPool(tiles, async (x, y) => {
-    const vTile = await getVectorTile(pmtiles, queryZoom, x, y, signal);
-    if (!vTile || !vTile.layers) return;
+  // 2. Pufferring (nur wenn Kachelausschnitt <= 20)
+  const bufferTiles = [];
+  let bufMinX = visMinX;
+  let bufMaxX = visMaxX;
+  let bufMinY = visMinY;
+  let bufMaxY = visMaxY;
 
+  if (rawTileCount <= 20) {
+    bufMinX = visMinX - 1;
+    bufMaxX = visMaxX + 1;
+    bufMinY = visMinY - 1;
+    bufMaxY = visMaxY + 1;
+    for (let x = bufMinX; x <= bufMaxX; x++) {
+      for (let y = bufMinY; y <= bufMaxY; y++) {
+        if (x < visMinX || x > visMaxX || y < visMinY || y > visMaxY) {
+          bufferTiles.push({ x, y });
+        }
+      }
+    }
+  }
+
+  // Kachelverarbeitung mit progressivem Rendern (Streaming)
+  const processTile = async (x, y) => {
+    if (signal?.aborted) return 0;
+    const vTile = await getVectorTile(pmtiles, queryZoom, x, y, signal);
+    if (!vTile || !vTile.layers || signal?.aborted) return 0;
+
+    let newCount = 0;
     for (const layerName of targetLayers) {
       const layer = vTile.layers[layerName];
       if (!layer) continue;
@@ -705,20 +793,64 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom } = {}) 
         const idKey = String(el.id);
         if (!elementsMap.has(idKey)) {
           elementsMap.set(idKey, el);
+          newCount++;
         }
       }
     }
-  }, 10, signal);
 
-  const loadedSouth = tile2lat(maxY + 1, queryZoom);
-  const loadedNorth = tile2lat(minY, queryZoom);
-  const loadedWest = tile2lon(minX, queryZoom);
-  const loadedEast = tile2lon(maxX + 1, queryZoom);
+    if (newCount > 0 && typeof onProgressData === 'function' && !signal?.aborted) {
+      try {
+        onProgressData(Array.from(elementsMap.values()), true);
+      } catch (renderErr) {
+        console.warn('[Pipeline] Fehler bei progressiver POI-Meldung:', renderErr);
+      }
+    }
+
+    return newCount;
+  };
+
+  // Phase 1: Sichtbare Kacheln zuerst laden und sofort rendern
+  await processTilesWithPool(visibleTiles, processTile, 10, signal);
+
+  // Grenzen der sichtbaren Kacheln
+  const visSouth = tile2lat(visMaxY + 1, queryZoom);
+  const visNorth = tile2lat(visMinY, queryZoom);
+  const visWest = tile2lon(visMinX, queryZoom);
+  const visEast = tile2lon(visMaxX + 1, queryZoom);
 
   const elements = Array.from(elementsMap.values());
   elements.loadedBounds = (typeof L !== 'undefined' && L.latLngBounds)
-    ? L.latLngBounds([loadedSouth, loadedWest], [loadedNorth, loadedEast])
-    : { south: loadedSouth, north: loadedNorth, west: loadedWest, east: loadedEast };
+    ? L.latLngBounds([visSouth, visWest], [visNorth, visEast])
+    : { south: visSouth, north: visNorth, west: visWest, east: visEast };
+
+  // Phase 2: Pufferring im Hintergrund nachladen (verzögert Erst-Render nicht)
+  if (bufferTiles.length > 0 && !signal?.aborted) {
+    (async () => {
+      try {
+        await processTilesWithPool(bufferTiles, processTile, 10, signal);
+        if (signal?.aborted) return;
+
+        const bufSouth = tile2lat(bufMaxY + 1, queryZoom);
+        const bufNorth = tile2lat(bufMinY, queryZoom);
+        const bufWest = tile2lon(bufMinX, queryZoom);
+        const bufEast = tile2lon(bufMaxX + 1, queryZoom);
+
+        const fullBounds = (typeof L !== 'undefined' && L.latLngBounds)
+          ? L.latLngBounds([bufSouth, bufWest], [bufNorth, bufEast])
+          : { south: bufSouth, north: bufNorth, west: bufWest, east: bufEast };
+
+        elements.loadedBounds = fullBounds;
+
+        if (typeof onBufferComplete === 'function' && !signal?.aborted) {
+          onBufferComplete(Array.from(elementsMap.values()), fullBounds);
+        }
+      } catch (bufErr) {
+        if (bufErr?.name !== 'AbortError' && !signal?.aborted) {
+          console.warn('[Pipeline] Fehler beim Laden des Pufferrings:', bufErr);
+        }
+      }
+    })();
+  }
 
   return elements;
 }
@@ -771,14 +903,14 @@ async function loadPipelineDataset(baseUrl, mode, { signal } = {}) {
  * @param {Object} options 
  * @returns {Promise<Array<Object>>}
  */
-export async function fetchPipelineData(bounds, mode, { signal, zoom } = {}) {
+export async function fetchPipelineData(bounds, mode, { signal, zoom, onProgressData, onBufferComplete } = {}) {
   const baseUrl = Config.pipeline?.url;
   if (!baseUrl) throw new Error('Pipeline-URL ist nicht konfiguriert.');
 
   // 1. Bevorzugt: PMTiles Vektorkacheln per Range-Request
   if (Config.pipeline?.usePmtiles) {
     try {
-      const pmtilesElements = await fetchPipelinePmtiles(bounds, mode, { signal, zoom });
+      const pmtilesElements = await fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgressData, onBufferComplete });
       if (Array.isArray(pmtilesElements)) {
         return pmtilesElements;
       }
@@ -831,7 +963,7 @@ export async function fetchPipelineData(bounds, mode, { signal, zoom } = {}) {
  * @param {Object} options 
  * @returns {Promise<Array<Object>>}
  */
-export async function fetchPipelineBoundaries(bounds, { signal, zoom } = {}) {
+export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgressData, onBufferComplete } = {}) {
   const baseUrl = Config.pipeline?.url;
   if (!baseUrl) throw new Error('Pipeline-URL ist nicht konfiguriert.');
 
@@ -856,33 +988,52 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom } = {}) {
       const west = typeof bounds.getWest === 'function' ? bounds.getWest() : bounds.west;
       const east = typeof bounds.getEast === 'function' ? bounds.getEast() : bounds.east;
 
-      let minX = lon2tile(west, queryZoom);
-      let maxX = lon2tile(east, queryZoom);
-      let minY = lat2tile(north, queryZoom);
-      let maxY = lat2tile(south, queryZoom);
+      const visMinX = lon2tile(west, queryZoom);
+      const visMaxX = lon2tile(east, queryZoom);
+      const visMinY = lat2tile(north, queryZoom);
+      const visMaxY = lat2tile(south, queryZoom);
 
-      const rawTileCount = (maxX - minX + 1) * (maxY - minY + 1);
-      if (rawTileCount <= 20) {
-        minX -= 1;
-        maxX += 1;
-        minY -= 1;
-        maxY += 1;
-      }
+      const rawTileCount = (visMaxX - visMinX + 1) * (visMaxY - visMinY + 1);
 
       const boundaryMap = new Map();
-      const tiles = [];
-      for (let x = minX; x <= maxX; x++) {
-        for (let y = minY; y <= maxY; y++) {
-          tiles.push({ x, y });
+
+      // 1. Unmittelbar sichtbare Kacheln
+      const visibleTiles = [];
+      for (let x = visMinX; x <= visMaxX; x++) {
+        for (let y = visMinY; y <= visMaxY; y++) {
+          visibleTiles.push({ x, y });
         }
       }
 
-      await processTilesWithPool(tiles, async (x, y) => {
-        const vTile = await getVectorTile(pmtiles, queryZoom, x, y, signal);
-        if (!vTile || !vTile.layers) return;
-        const layer = vTile.layers['boundaries'];
-        if (!layer) return;
+      // 2. Pufferring (nur wenn Kachelausschnitt <= 20)
+      const bufferTiles = [];
+      let bufMinX = visMinX;
+      let bufMaxX = visMaxX;
+      let bufMinY = visMinY;
+      let bufMaxY = visMaxY;
 
+      if (rawTileCount <= 20) {
+        bufMinX -= 1;
+        bufMaxX += 1;
+        bufMinY -= 1;
+        bufMaxY += 1;
+        for (let x = bufMinX; x <= bufMaxX; x++) {
+          for (let y = bufMinY; y <= bufMaxY; y++) {
+            if (x < visMinX || x > visMaxX || y < visMinY || y > visMaxY) {
+              bufferTiles.push({ x, y });
+            }
+          }
+        }
+      }
+
+      const processBoundaryTile = async (x, y) => {
+        if (signal?.aborted) return 0;
+        const vTile = await getVectorTile(pmtiles, queryZoom, x, y, signal);
+        if (!vTile || !vTile.layers || signal?.aborted) return 0;
+        const layer = vTile.layers['boundaries'];
+        if (!layer) return 0;
+
+        let newCount = 0;
         for (let i = 0; i < layer.length; i++) {
           const feat = layer.feature(i);
           const gj = feat.toGeoJSON(x, y, queryZoom);
@@ -901,19 +1052,62 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom } = {}) {
               tags: { boundary: 'administrative', ...(gj.properties || {}) },
               geometry: coords.map((pt) => ({ lat: pt[1], lon: pt[0] }))
             });
+            newCount++;
           }
         }
-      }, 10, signal);
 
-      const loadedSouth = tile2lat(maxY + 1, queryZoom);
-      const loadedNorth = tile2lat(minY, queryZoom);
-      const loadedWest = tile2lon(minX, queryZoom);
-      const loadedEast = tile2lon(maxX + 1, queryZoom);
+        if (newCount > 0 && typeof onProgressData === 'function' && !signal?.aborted) {
+          try {
+            onProgressData(Array.from(boundaryMap.values()), true);
+          } catch (renderErr) {
+            console.warn('[Pipeline] Fehler bei progressiver Boundary-Meldung:', renderErr);
+          }
+        }
+
+        return newCount;
+      };
+
+      // Phase 1: Sichtbare Kacheln zuerst
+      await processTilesWithPool(visibleTiles, processBoundaryTile, 10, signal);
+
+      const visSouth = tile2lat(visMaxY + 1, queryZoom);
+      const visNorth = tile2lat(visMinY, queryZoom);
+      const visWest = tile2lon(visMinX, queryZoom);
+      const visEast = tile2lon(visMaxX + 1, queryZoom);
 
       const elements = Array.from(boundaryMap.values());
       elements.loadedBounds = (typeof L !== 'undefined' && L.latLngBounds)
-        ? L.latLngBounds([loadedSouth, loadedWest], [loadedNorth, loadedEast])
-        : { south: loadedSouth, north: loadedNorth, west: loadedWest, east: loadedEast };
+        ? L.latLngBounds([visSouth, visWest], [visNorth, visEast])
+        : { south: visSouth, north: visNorth, west: visWest, east: visEast };
+
+      // Phase 2: Pufferring im Hintergrund
+      if (bufferTiles.length > 0 && !signal?.aborted) {
+        (async () => {
+          try {
+            await processTilesWithPool(bufferTiles, processBoundaryTile, 10, signal);
+            if (signal?.aborted) return;
+
+            const bufSouth = tile2lat(bufMaxY + 1, queryZoom);
+            const bufNorth = tile2lat(bufMinY, queryZoom);
+            const bufWest = tile2lon(bufMinX, queryZoom);
+            const bufEast = tile2lon(bufMaxX + 1, queryZoom);
+
+            const fullBounds = (typeof L !== 'undefined' && L.latLngBounds)
+              ? L.latLngBounds([bufSouth, bufWest], [bufNorth, bufEast])
+              : { south: bufSouth, north: bufNorth, west: bufWest, east: bufEast };
+
+            elements.loadedBounds = fullBounds;
+
+            if (typeof onBufferComplete === 'function' && !signal?.aborted) {
+              onBufferComplete(Array.from(boundaryMap.values()), fullBounds);
+            }
+          } catch (bufErr) {
+            if (bufErr?.name !== 'AbortError' && !signal?.aborted) {
+              console.warn('[Pipeline] Fehler beim Laden des Boundary-Puffers:', bufErr);
+            }
+          }
+        })();
+      }
 
       return elements;
     } catch (pmErr) {

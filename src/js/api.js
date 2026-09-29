@@ -611,7 +611,41 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
     if (isPipelineEligible(viewBounds, zoom)) {
       try {
         console.log('[API] Verwende lokale Pipeline für DACHLiLu...');
-        const pipelineElements = await fetchPipelineData(viewBounds, requestedMode, { signal: controller.signal, zoom });
+        const onPoiProgress = (progressElements, isPartial = true) => {
+          if (!isCurrentRequest()) return;
+          State.cachedPoiElements = progressElements;
+          syncCombinedCachedElements();
+          reportHydrantDownload(hydrantStatus, 'loading', progressElements);
+          if (typeof onProgressData === 'function') {
+            try {
+              onProgressData(progressElements, isPartial);
+            } catch (renderErr) {
+              console.warn('[API] Fehler beim progressiven Rendern der Pipeline-POIs:', renderErr);
+            }
+          }
+        };
+
+        const onBufferComplete = (bufferedElements, fullBounds) => {
+          if (!isCurrentRequest()) return;
+          State.cachedPoiElements = bufferedElements;
+          State.loadedPoiBounds = fullBounds;
+          syncCombinedCachedElements();
+          reportHydrantDownload(hydrantStatus, 'success', bufferedElements);
+          if (typeof onProgressData === 'function') {
+            try {
+              onProgressData(bufferedElements, false);
+            } catch (renderErr) {
+              console.warn('[API] Fehler beim Rendern nach Pufferabschluss:', renderErr);
+            }
+          }
+        };
+
+        const pipelineElements = await fetchPipelineData(viewBounds, requestedMode, {
+          signal: controller.signal,
+          zoom,
+          onProgressData: onPoiProgress,
+          onBufferComplete
+        });
         ensureCurrentRequest();
 
         if (Array.isArray(pipelineElements)) {
@@ -625,7 +659,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
           if (typeof onProgressData === 'function') {
             try {
-              onProgressData(pipelineElements);
+              onProgressData(pipelineElements, false);
             } catch (renderErr) {
               console.warn('[API] Fehler beim Rendern der Pipeline-POIs:', renderErr);
             }
@@ -830,7 +864,26 @@ export async function fetchBoundaryData(onProgressData = null) {
   if (isPipelineEligible(viewBounds, zoom)) {
     try {
       console.log('[API] Verwende lokale Pipeline für Gemeindegrenzen...');
-      const boundaryElements = await fetchPipelineBoundaries(viewBounds, { signal: controller.signal, zoom });
+      const onBoundaryBufferComplete = (bufferedElements, fullBounds) => {
+        if (State.controllers.boundaryFetch !== controller) return;
+        State.cachedBoundaryElements = bufferedElements;
+        State.loadedBoundaryBounds = fullBounds;
+        syncCombinedCachedElements();
+        if (typeof onProgressData === 'function') {
+          try {
+            onProgressData(bufferedElements);
+          } catch (renderErr) {
+            console.warn('[API] Fehler beim Rendern nach Boundary-Pufferabschluss:', renderErr);
+          }
+        }
+      };
+
+      const boundaryElements = await fetchPipelineBoundaries(viewBounds, {
+        signal: controller.signal,
+        zoom,
+        onProgressData,
+        onBufferComplete: onBoundaryBufferComplete
+      });
       ensureCurrentRequest();
 
       if (Array.isArray(boundaryElements) && boundaryElements.length > 0) {

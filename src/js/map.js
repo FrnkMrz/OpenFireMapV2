@@ -531,8 +531,8 @@ export function initMapLogic() {
 
                 // SWR: Wir geben renderMarkers als Callback mit, 
                 // damit Cache-Daten sofort gezeichnet werden.
-                const poiPromise = fetchOSMData((cachedData) => {
-                    renderMarkers(cachedData, zoom);
+                const poiPromise = fetchOSMData((cachedData, isPartial = false) => {
+                    renderMarkers(cachedData, zoom, { isPartial });
                 }, (status) => hydrantDownloadStatus.update(status));
                 // Gemeindegrenzen asynchron im Hintergrund laden – blockiert POIs nicht!
                 fetchBoundaryData((cachedBoundaryData) => {
@@ -1141,7 +1141,7 @@ export function drawLineToNearest() {
  * OPTIMIERUNG: Nutzt "Diffing", um Flackern zu verhindern.
  * Es werden nur Marker entfernt/hinzugefügt, die sich tatsächlich geändert haben.
  */
-export function renderMarkers(elements, zoom) {
+export function renderMarkers(elements, zoom, { isPartial = false } = {}) {
     // ------------------------------------------------------------
     // Pre-Processing: intelligentes Clustering NUR für Feuerwehrwachen
     // ------------------------------------------------------------
@@ -1253,10 +1253,13 @@ export function renderMarkers(elements, zoom) {
 
     // --- H. AUFRÄUMEN (Garbage Collection) ---
     // Wir entfernen alle Marker von der Karte, die im aktuellen Datensatz NICHT mehr vorkommen.
-    for (const [id, entry] of State.markerCache) {
-        if (!markersToKeep.has(id)) {
-            State.markerLayer.removeLayer(entry.marker);
-            State.markerCache.delete(id);
+    // Bei partiellen Zwischen-Renderings wird das Aufräumen übersprungen, um Flackern zu verhindern.
+    if (!isPartial) {
+        for (const [id, entry] of State.markerCache) {
+            if (!markersToKeep.has(id)) {
+                State.markerLayer.removeLayer(entry.marker);
+                State.markerCache.delete(id);
+            }
         }
     }
 }
