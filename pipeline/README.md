@@ -123,12 +123,15 @@ Um die Daten jede Nacht um **03:30 Uhr** automatisch zu aktualisieren:
 docker ps
 curl http://localhost:8080/metadata.json
 
-# Manueller Datenbuild
+# Standard-Datenbuild (DACHLiLu: DE, AT, CH, LU, LI mit Filter-then-Merge)
 cd /srv/docker/projects/openfiremap-pipeline
 docker compose run --rm builder
 
-# Andere Region verarbeiten (z. B. ganz Bayern)
+# Einzel-Region verarbeiten (z. B. nur Bayern zum schnellen Testen)
 OSM_EXTRACT_URL="https://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf" docker compose run --rm builder
+
+# Re-Download erzwingen (ignoriert intelligenten HEAD-Check)
+FORCE_DOWNLOAD=true docker compose run --rm builder
 
 # Webserver-Logs ansehen
 docker logs -f openfiremap-web
@@ -169,6 +172,10 @@ Zur Qualitätssicherung stehen zwei komplementäre Werkzeuge zur Verfügung:
    * **Aufruf (Python-Simulation Alt vs. Neu):** `python3 pipeline/tools/verify_coverage.py [--samples 4000] [--seed 42]`
    * **Abhängigkeiten:** Python 3 mit `shapely`, `pyproj`, `requests`.
    * **Funktion:** Berechnet per Shapely & PyProj in `EPSG:25832` den exakten Flächenüberhang zur amtlichen Landesgrenze (OSM `R2145268`). Abnahmekriterium: 0 Viewports mit > 0,1 % Fläche außerhalb Bayerns.
+
+3. **`pipeline/tools/test_builder.py` (Unit-Tests für Feature-Builder):**
+   * **Aufruf:** `python3 pipeline/tools/test_builder.py`
+   * **Funktion:** Prüft Layer-Konfigurationen, DACHLiLu-Länderdefinitionen, Modus-Erkennung (Single vs. Multi) und temporäre Arbeitsverzeichnisse.
 
 ---
 
@@ -242,12 +249,15 @@ To automatically update data every night at **03:30 AM**:
 docker ps
 curl http://localhost:8080/metadata.json
 
-# Trigger manual data build
+# Default data build (DACHLiLu: DE, AT, CH, LU, LI via Filter-then-Merge)
 cd /srv/docker/projects/openfiremap-pipeline
 docker compose run --rm builder
 
-# Process a different region (e.g. all of Bavaria)
+# Process single extract (e.g. Bavaria only for quick testing)
 OSM_EXTRACT_URL="https://download.geofabrik.de/europe/germany/bayern-latest.osm.pbf" docker compose run --rm builder
+
+# Force re-download (bypasses smart HEAD If-Modified-Since check)
+FORCE_DOWNLOAD=true docker compose run --rm builder
 
 # View web server logs
 docker logs -f openfiremap-web
@@ -283,6 +293,10 @@ Two tools ensure zero false-positive viewports outside Bavaria:
    * **Run (Python simulation old vs new):** `python3 pipeline/tools/verify_coverage.py [--samples 4000] [--seed 42]`
    * **Dependencies:** Python 3 with `shapely`, `pyproj`, `requests`.
    * **Purpose:** Computes geometric overlap with OSM relation `R2145268` in EPSG:25832. Acceptance criterion: 0 viewports with > 0.1% area outside Bavaria.
+
+3. **`pipeline/tools/test_builder.py` (Unit Tests for Feature Builder):**
+   * **Run:** `python3 pipeline/tools/test_builder.py`
+   * **Purpose:** Validates layer configs, DACHLiLu country extract definitions, target mode resolution, and temporary workspace handling.
 
 ---
 
