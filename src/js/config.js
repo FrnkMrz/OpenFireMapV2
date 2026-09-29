@@ -13,7 +13,7 @@
  * ==========================================================================================
  */
 
-import { BAYERN_COVERAGE } from './coverage/bayern.js';
+import { DACHLILU_COVERAGE } from './coverage/dachlilu.js';
 
 export const Config = {
   // ----------------------------------------------------------------------------------------
@@ -69,19 +69,19 @@ export const Config = {
     pmtilesFile: "openfiremap.pmtiles",
     // GeoJSON-Fallback für POIs und Grenzen (Default: false, um MB-Downloads auf Mobilgeräten zu verhindern)
     geojsonFallback: false,
-    // Abdeckungsbereich Bayern (von Lindau/Oberstdorf bis Aschaffenburg/Hof/Wegscheid)
+    // Abdeckungsbereich DACHLiLu (Deutschland, Österreich, Schweiz, Luxemburg, Liechtenstein)
     // Äußere Bounding-Box für schnelle Vorfilterung (O(1))
     bounds: {
-      south: 47.2,
-      west: 8.9,
-      north: 50.6,
-      east: 13.9
+      south: 45.8, // Südspitze Schweiz (Chiasso/Tessin)
+      west: 5.7,   // Westrand Luxemburg
+      north: 55.1, // Nordschwelle Sylt / Flensburg
+      east: 17.2   // Ostrand Burgenland (Österreich)
     },
-    // Exaktes Grenzpolygon des Freistaates Bayern (nach innen gepuffert, WGS84 [lat, lon]).
-    // Verhindert zuverlässig, dass Grenzstädte in Nachbarländern/-bundesländern
-    // (z. B. Ulm in BW, Salzburg/Kufstein in AT, Sonneberg in TH) fälschlicherweise
-    // über die Bayern-Pipeline angefragt werden und leer bleiben.
-    coveragePolygon: BAYERN_COVERAGE
+    // Exaktes Grenzpolygon der DACHLiLu-Region (nach innen gepuffert, WGS84 [lat, lon]).
+    // Verhindert zuverlässig, dass Grenzstädte in Nachbarländern außerhalb von DACHLiLu
+    // (z. B. Frankreich, Italien, Tschechien, Polen, Dänemark) fälschlicherweise
+    // über die Pipeline angefragt werden und leer bleiben.
+    coveragePolygon: DACHLILU_COVERAGE
   },
 
   // ----------------------------------------------------------------------------------------

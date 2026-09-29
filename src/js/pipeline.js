@@ -73,7 +73,14 @@ export function getPMTilesInstance(url) {
  * @returns {boolean}
  */
 export function isPointInPolygon(lat, lon, polygon) {
-  if (!Array.isArray(polygon) || polygon.length < 3 || lat == null || lon == null) {
+  if (!Array.isArray(polygon) || polygon.length === 0 || lat == null || lon == null) {
+    return false;
+  }
+  // Unterstützt Multi-Polygone / Listen von Polygonen
+  if (Array.isArray(polygon[0]) && Array.isArray(polygon[0][0])) {
+    return polygon.some(subPoly => isPointInPolygon(lat, lon, subPoly));
+  }
+  if (polygon.length < 3) {
     return false;
   }
   let inside = false;
@@ -154,9 +161,15 @@ function segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
  * @returns {boolean} true, wenn das gesamte Rechteck im Polygon liegt
  */
 export function isRectInPolygon(south, west, north, east, polygon) {
-  if (!Array.isArray(polygon) || polygon.length < 3) return false;
+  if (!Array.isArray(polygon) || polygon.length === 0) return false;
   if (south == null || west == null || north == null || east == null) return false;
   if (south > north || west > east) return false;
+
+  // Unterstützt Multi-Polygone / Listen von Polygonen
+  if (Array.isArray(polygon[0]) && Array.isArray(polygon[0][0])) {
+    return polygon.some(subPoly => isRectInPolygon(south, west, north, east, subPoly));
+  }
+  if (polygon.length < 3) return false;
 
   // Bedingung 1: Alle 4 Ecken des Rechtecks müssen im Polygon liegen
   if (!isPointInPolygon(south, west, polygon)) return false; // Süd-West

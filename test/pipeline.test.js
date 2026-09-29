@@ -16,56 +16,70 @@ describe('pipeline.js', () => {
     Config.pipeline.enabled = true;
     Config.pipeline.url = 'https://pipeline.openfiremap.org';
     Config.pipeline.bounds = {
-      south: 47.2,
-      west: 8.9,
-      north: 50.6,
-      east: 13.9
+      south: 45.8,
+      west: 5.7,
+      north: 55.1,
+      east: 17.2
     };
   });
 
   describe('isPointInPolygon (Ray-Casting Jordan Curve)', () => {
     const polygon = Config.pipeline.coveragePolygon;
 
-    it('sollte bayerische Städte als innerhalb (true) erkennen', () => {
-      // München
+    it('sollte DACHLiLu-Städte als innerhalb (true) erkennen', () => {
+      // München (BY)
       expect(isPointInPolygon(48.137, 11.576, polygon)).toBe(true);
-      // Nürnberg
+      // Nürnberg (BY)
       expect(isPointInPolygon(49.452, 11.077, polygon)).toBe(true);
-      // Augsburg
+      // Augsburg (BY)
       expect(isPointInPolygon(48.366, 10.894, polygon)).toBe(true);
-      // Würzburg
+      // Würzburg (BY)
       expect(isPointInPolygon(49.793, 9.953, polygon)).toBe(true);
-      // Regensburg
+      // Regensburg (BY)
       expect(isPointInPolygon(49.013, 12.101, polygon)).toBe(true);
       // Passau (Zentrum)
       expect(isPointInPolygon(48.566, 13.431, polygon)).toBe(true);
-      // Kempten (Allgäu)
-      expect(isPointInPolygon(47.728, 10.316, polygon)).toBe(true);
-      // Hof (Oberfranken)
-      expect(isPointInPolygon(50.319, 11.916, polygon)).toBe(true);
-      // Aschaffenburg (Unterfranken)
-      expect(isPointInPolygon(49.974, 9.155, polygon)).toBe(true);
-      // Neu-Ulm (bayerische Seite, südöstlich des 500m-Grenzstreifens)
-      expect(isPointInPolygon(48.38, 10.01, polygon)).toBe(true);
+      // Berlin (DE)
+      expect(isPointInPolygon(52.520, 13.405, polygon)).toBe(true);
+      // Hamburg (DE)
+      expect(isPointInPolygon(53.551, 9.993, polygon)).toBe(true);
+      // Köln (DE)
+      expect(isPointInPolygon(50.937, 6.960, polygon)).toBe(true);
+      // Stuttgart (BW)
+      expect(isPointInPolygon(48.775, 9.182, polygon)).toBe(true);
+      // Ulm (BW)
+      expect(isPointInPolygon(48.401, 9.987, polygon)).toBe(true);
+      // Wien (AT)
+      expect(isPointInPolygon(48.208, 16.373, polygon)).toBe(true);
+      // Salzburg (AT)
+      expect(isPointInPolygon(47.809, 13.055, polygon)).toBe(true);
+      // Innsbruck (AT)
+      expect(isPointInPolygon(47.269, 11.404, polygon)).toBe(true);
+      // Zürich (CH)
+      expect(isPointInPolygon(47.376, 8.541, polygon)).toBe(true);
+      // Bern (CH)
+      expect(isPointInPolygon(46.948, 7.447, polygon)).toBe(true);
+      // Vaduz (LI)
+      expect(isPointInPolygon(47.141, 9.521, polygon)).toBe(true);
+      // Luxemburg-Stadt (LU)
+      expect(isPointInPolygon(49.611, 6.131, polygon)).toBe(true);
     });
 
-    it('sollte Städte außerhalb Bayerns (auch innerhalb der Bounding-Box) als außerhalb (false) erkennen', () => {
-      // Salzburg (Österreich - lag früher in der BBox!)
-      expect(isPointInPolygon(47.809, 13.055, polygon)).toBe(false);
-      // Ulm (Baden-Württemberg - direkt gegenüber von Neu-Ulm an der Donau)
-      expect(isPointInPolygon(48.401, 9.987, polygon)).toBe(false);
-      // Innsbruck (Österreich)
-      expect(isPointInPolygon(47.269, 11.404, polygon)).toBe(false);
-      // Stuttgart (Baden-Württemberg)
-      expect(isPointInPolygon(48.775, 9.182, polygon)).toBe(false);
-      // Fulda (Hessen)
-      expect(isPointInPolygon(50.553, 9.675, polygon)).toBe(false);
-      // Sonneberg (Thüringen)
-      expect(isPointInPolygon(50.360, 11.176, polygon)).toBe(false);
-      // Plauen (Sachsen)
-      expect(isPointInPolygon(50.495, 12.138, polygon)).toBe(false);
-      // Hamburg (weit außerhalb)
-      expect(isPointInPolygon(53.551, 9.993, polygon)).toBe(false);
+    it('sollte Städte außerhalb von DACHLiLu als außerhalb (false) erkennen', () => {
+      // Paris (Frankreich)
+      expect(isPointInPolygon(48.856, 2.352, polygon)).toBe(false);
+      // Straßburg (Frankreich)
+      expect(isPointInPolygon(48.573, 7.752, polygon)).toBe(false);
+      // Prag (Tschechien)
+      expect(isPointInPolygon(50.075, 14.437, polygon)).toBe(false);
+      // Mailand (Italien)
+      expect(isPointInPolygon(45.464, 9.190, polygon)).toBe(false);
+      // Warschau (Polen)
+      expect(isPointInPolygon(52.229, 21.012, polygon)).toBe(false);
+      // Brüssel (Belgien)
+      expect(isPointInPolygon(50.850, 4.352, polygon)).toBe(false);
+      // Amsterdam (Niederlande)
+      expect(isPointInPolygon(52.367, 4.904, polygon)).toBe(false);
     });
 
     it('sollte bei ungültigen Eingaben sicher false zurückgeben', () => {
@@ -128,7 +142,7 @@ describe('pipeline.js', () => {
   });
 
   describe('isPipelineEligible', () => {
-    it('sollte true zurückgeben, wenn der Ausschnitt in Bayern liegt (z. B. Schnaittach, München, Würzburg)', () => {
+    it('sollte true zurückgeben, wenn der Ausschnitt in DACHLiLu liegt (z. B. Schnaittach, München, Wien, Zürich)', () => {
       const schnaittachBounds = {
         getCenter: () => ({ lat: 49.555, lng: 11.35 }),
         getSouth: () => 49.54,
@@ -143,44 +157,57 @@ describe('pipeline.js', () => {
         getWest: () => 11.55,
         getEast: () => 11.60
       };
+      const wienBounds = {
+        getCenter: () => ({ lat: 48.208, lng: 16.373 }),
+        getSouth: () => 48.19,
+        getNorth: () => 48.22,
+        getWest: () => 16.35,
+        getEast: () => 16.39
+      };
+      const zuerichBounds = {
+        getCenter: () => ({ lat: 47.376, lng: 8.541 }),
+        getSouth: () => 47.36,
+        getNorth: () => 47.39,
+        getWest: () => 8.52,
+        getEast: () => 8.56
+      };
       expect(isPipelineEligible(schnaittachBounds, 15)).toBe(true);
       expect(isPipelineEligible(schnaittachBounds, 12)).toBe(true);
       expect(isPipelineEligible(muenchenBounds, 15)).toBe(true);
+      expect(isPipelineEligible(wienBounds, 15)).toBe(true);
+      expect(isPipelineEligible(zuerichBounds, 15)).toBe(true);
     });
 
-    it('sollte false zurückgeben für Salzburg (AT), obwohl es in der alten Bounding-Box lag', () => {
-      const salzburgBounds = {
-        getCenter: () => ({ lat: 47.809, lng: 13.055 }),
-        getSouth: () => 47.78,
-        getNorth: () => 47.83,
-        getWest: () => 13.02,
-        getEast: () => 13.08
+    it('sollte false zurückgeben für Städte außerhalb DACHLiLu (z. B. Paris, Prag)', () => {
+      const parisBounds = {
+        getCenter: () => ({ lat: 48.856, lng: 2.352 }),
+        getSouth: () => 48.84,
+        getNorth: () => 48.87,
+        getWest: () => 2.33,
+        getEast: () => 2.37
       };
-      expect(isPipelineEligible(salzburgBounds, 15)).toBe(false);
-    });
-
-    it('sollte false zurückgeben für Ulm (BW), obwohl es in der alten Bounding-Box lag', () => {
-      const ulmBounds = {
-        getCenter: () => ({ lat: 48.401, lng: 9.987 }),
-        getSouth: () => 48.38,
-        getNorth: () => 48.42,
-        getWest: () => 9.96,
-        getEast: () => 10.01
+      const pragBounds = {
+        getCenter: () => ({ lat: 50.075, lng: 14.437 }),
+        getSouth: () => 50.06,
+        getNorth: () => 50.09,
+        getWest: () => 14.41,
+        getEast: () => 14.46
       };
-      expect(isPipelineEligible(ulmBounds, 15)).toBe(false);
+      expect(isPipelineEligible(parisBounds, 15)).toBe(false);
+      expect(isPipelineEligible(pragBounds, 15)).toBe(false);
     });
 
-    it('sollte false zurückgeben bei Grenzüberschreitung (z. B. Zentrum in Neu-Ulm/BY, aber Westkante in Ulm/BW)', () => {
-      // Zentrum ist in Neu-Ulm (BY), aber der Viewport reicht über die Donau nach Ulm (BW)
+    it('sollte false zurückgeben bei Grenzüberschreitung an der DACHLiLu-Außengrenze (z. B. Kehl DE / Straßburg FR)', () => {
+      // Zentrum in Kehl (Deutschland), aber Viewport reicht über den Rhein nach Straßburg (Frankreich)
       const borderCrossingBounds = {
-        getCenter: () => ({ lat: 48.395, lng: 10.005 }), // Neu-Ulm (in Bayern)
-        getSouth: () => 48.38,
-        getNorth: () => 48.41,
-        getWest: () => 9.97, // Liegt in Ulm (Baden-Württemberg)!
-        getEast: () => 10.02
+        getCenter: () => ({ lat: 48.571, lng: 7.809 }),
+        getSouth: () => 48.56,
+        getNorth: () => 48.59,
+        getWest: () => 7.74, // Liegt in Straßburg (Frankreich)!
+        getEast: () => 7.82
       };
-      // Da die Westecke außerhalb von Bayern liegt, MUSS isPipelineEligible false liefern,
-      // damit Overpass anspringt und Ulm nicht als leere Fläche gerendert wird!
+      // Da die Westecke außerhalb von DACHLiLu liegt, MUSS isPipelineEligible false liefern,
+      // damit Overpass anspringt und Straßburg nicht als leere Fläche gerendert wird!
       expect(isPipelineEligible(borderCrossingBounds, 15)).toBe(false);
     });
 
@@ -202,9 +229,9 @@ describe('pipeline.js', () => {
       expect(isPipelineEligible(mockBounds, 8)).toBe(false);
     });
 
-    it('sollte false zurückgeben, wenn der Ausschnitt außerhalb liegt (z. B. Hamburg)', () => {
+    it('sollte false zurückgeben, wenn der Ausschnitt außerhalb von DACHLiLu liegt (z. B. Paris oder London)', () => {
       const mockBounds = {
-        getCenter: () => ({ lat: 53.55, lng: 9.99 })
+        getCenter: () => ({ lat: 48.856, lng: 2.352 })
       };
       expect(isPipelineEligible(mockBounds, 15)).toBe(false);
     });
@@ -215,9 +242,10 @@ describe('pipeline.js', () => {
         getCenter: () => ({ lat: 49.555, lng: 11.35 })
       };
       expect(isPipelineEligible(mockBounds, 15)).toBe(false);
+      Config.pipeline.enabled = true;
     });
 
-    it('sollte false liefern für Grenz- und Auslandspositionen (Braunau, CZ, Salzburg, Ulm, Neu-Ulm mit Westkante 9.97)', () => {
+    it('sollte false liefern für Positionen außerhalb von DACHLiLu (Paris, Prag, Mailand, Warschau, Straßburg)', () => {
       const makeViewport = (lat, lon) => ({
         south: lat - 0.015,
         north: lat + 0.015,
@@ -225,20 +253,19 @@ describe('pipeline.js', () => {
         east: lon + 0.01
       });
 
-      // Braunau am Inn (AT): 48.2512, 13.0693
-      expect(isPipelineEligible(makeViewport(48.2512, 13.0693), 15)).toBe(false);
-      // CZ bei Asch/Eger: 50.1247, 12.2107
-      expect(isPipelineEligible(makeViewport(50.1247, 12.2107), 15)).toBe(false);
-      // Salzburg (AT): 47.809, 13.055
-      expect(isPipelineEligible(makeViewport(47.809, 13.055), 15)).toBe(false);
-      // Ulm (BW): 48.401, 9.987
-      expect(isPipelineEligible(makeViewport(48.401, 9.987), 15)).toBe(false);
-      // Neu-Ulm-Viewport mit Westkante 9.97 (reicht über die Donau nach Ulm)
-      const borderCrossing = { south: 48.38, north: 48.41, west: 9.97, east: 10.02 };
-      expect(isPipelineEligible(borderCrossing, 15)).toBe(false);
+      // Paris (Frankreich): 48.856, 2.352
+      expect(isPipelineEligible(makeViewport(48.856, 2.352), 15)).toBe(false);
+      // Prag (Tschechien): 50.075, 14.437
+      expect(isPipelineEligible(makeViewport(50.075, 14.437), 15)).toBe(false);
+      // Mailand (Italien): 45.464, 9.190
+      expect(isPipelineEligible(makeViewport(45.464, 9.190), 15)).toBe(false);
+      // Warschau (Polen): 52.229, 21.012
+      expect(isPipelineEligible(makeViewport(52.229, 21.012), 15)).toBe(false);
+      // Straßburg (Frankreich, westlich des Rheins): 48.573, 7.752
+      expect(isPipelineEligible(makeViewport(48.573, 7.752), 15)).toBe(false);
     });
 
-    it('sollte true liefern für bayerische Städte (München, Nürnberg, Würzburg, Regensburg, Hof, Kempten, Schnaittach)', () => {
+    it('sollte true liefern für Städte in allen 5 DACHLiLu-Ländern (DE, AT, CH, LU, LI)', () => {
       const makeViewport = (lat, lon) => ({
         south: lat - 0.015,
         north: lat + 0.015,
@@ -246,13 +273,32 @@ describe('pipeline.js', () => {
         east: lon + 0.01
       });
 
+      // Deutschland (DE)
+      expect(isPipelineEligible(makeViewport(52.520, 13.405), 15)).toBe(true);  // Berlin
+      expect(isPipelineEligible(makeViewport(53.551, 9.993), 15)).toBe(true);   // Hamburg
+      expect(isPipelineEligible(makeViewport(50.937, 6.960), 15)).toBe(true);   // Köln
       expect(isPipelineEligible(makeViewport(48.137, 11.576), 15)).toBe(true);  // München
       expect(isPipelineEligible(makeViewport(49.452, 11.077), 15)).toBe(true);  // Nürnberg
-      expect(isPipelineEligible(makeViewport(49.793, 9.953), 15)).toBe(true);   // Würzburg
-      expect(isPipelineEligible(makeViewport(49.013, 12.101), 15)).toBe(true);  // Regensburg
-      expect(isPipelineEligible(makeViewport(50.319, 11.916), 15)).toBe(true);  // Hof
-      expect(isPipelineEligible(makeViewport(47.728, 10.316), 15)).toBe(true);  // Kempten
+      expect(isPipelineEligible(makeViewport(48.401, 9.987), 15)).toBe(true);   // Ulm (BW)
       expect(isPipelineEligible(makeViewport(49.555, 11.350), 15)).toBe(true);  // Schnaittach
+
+      // Österreich (AT)
+      expect(isPipelineEligible(makeViewport(48.208, 16.373), 15)).toBe(true);  // Wien
+      expect(isPipelineEligible(makeViewport(47.809, 13.055), 15)).toBe(true);  // Salzburg
+      expect(isPipelineEligible(makeViewport(47.269, 11.404), 15)).toBe(true);  // Innsbruck
+      expect(isPipelineEligible(makeViewport(47.070, 15.439), 15)).toBe(true);  // Graz
+
+      // Schweiz (CH)
+      expect(isPipelineEligible(makeViewport(47.376, 8.541), 15)).toBe(true);   // Zürich
+      expect(isPipelineEligible(makeViewport(46.948, 7.447), 15)).toBe(true);   // Bern
+      expect(isPipelineEligible(makeViewport(47.050, 8.309), 15)).toBe(true);   // Luzern
+      expect(isPipelineEligible(makeViewport(47.424, 9.376), 15)).toBe(true);   // St. Gallen
+
+      // Luxemburg (LU)
+      expect(isPipelineEligible(makeViewport(49.611, 6.131), 15)).toBe(true);   // Luxemburg-Stadt
+
+      // Liechtenstein (LI)
+      expect(isPipelineEligible(makeViewport(47.141, 9.521), 15)).toBe(true);   // Vaduz
     });
 
     it('sollte mit Multi-Polygonen und Regionenlisten korrekt funktionieren', () => {
