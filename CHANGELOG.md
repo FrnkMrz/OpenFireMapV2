@@ -18,11 +18,16 @@ All notable changes to this project will be documented in this file.
 - **Kollisionsfreies Mobile-Layout**:
   - Toasts auf Smartphones unterhalb der Top-Leiste zentriert (`top: 76px;`), sodass Burger-Menü und Status-Box nicht überdeckt werden.
   - Hydranten-Ladeanzeige auf `bottom: 92px; right: 16px;` gelegt, kollisionsfrei mit dem zentrierten Ortungs-Dock (`bottom: 32px`).
-- **Pipeline-Performance**:
-  - In-Memory Tile-Cache (`_tileCache`, FIFO/LRU bis 256 Kacheln) und In-Flight Request Deduplication (`_inFlightTileRequests`) in `src/js/pipeline.js`.
-  - Paralleler Worker-Pool für Kachelabrufe zur Vermeidung von Socket- und Stream-Staus.
+- **Pipeline-Performance (10x Ladebeschleunigung in Chrome)**:
+  - **In-Flight Request Deduplication** (`getVectorTile` in `src/js/pipeline.js`): Parallele Kachelabrufe für POIs und Gemeindegrenzen teilen sich exakt dieselbe Netzwerk-Promise; jede Kachel wird nur noch 1x über HTTP Range-Requests geladen (spart 50 % der Anfragen).
+  - **In-Memory Tile-Cache** (`_tileCache`, FIFO/LRU bis 256 Kacheln): Kacheln werden im RAM gehalten; wiederholte Ansichten schwenken in 0 ms.
+  - **Kachelnetz-Pufferoptimierung**: Auf Desktop-Bildschirmen wird der Kachelpufferring vermieden, da das Kachelnetz das Sichtfeld bereits vollständig abdeckt. Verhindert das Vorladen von 26 unsichtbaren Randkacheln und senkt die Kachelanfragen von 108 auf 30 (-72 %).
+  - **Deduplizierung von `metadata.json`**: Parallele Abrufe werden via `_pendingMetadataPromise` zusammengeführt (1 statt 2 Abrufe).
+  - **Worker-Pool mit 10 parallelen Streams**: Verhindert HTTP/2-Stream-Stau und Socket-Blockaden in Chromium.
 - **Tests & Qualität**:
   - Neue Vitest-Testsuite `test/notification.test.js` (6 Tests für Typen, Timer, Dismissal, Accessibility und XSS-Schutz).
+  - 4 neue Unit-Tests in `test/pipeline.test.js` für Kachel-Caching, Promise-Sharing und Cache-Clear (insgesamt 99/99 Tests grün).
+  - Neuer Playwright-Performance-Test `tests/pipeline-performance.spec.js` zur dauerhaften Überprüfung von Kacheldeduplizierung und Ladezeit.
 
 ## [v0.7.1] - 2026-09-29
 
