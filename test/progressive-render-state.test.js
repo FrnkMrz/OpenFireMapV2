@@ -24,6 +24,14 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
     titleInput.value = 'Test Export';
     document.body.appendChild(titleInput);
 
+    const hydrantStatusEl = document.createElement('div');
+    hydrantStatusEl.id = 'hydrant-download-status';
+    document.body.appendChild(hydrantStatusEl);
+
+    const dataStatusEl = document.createElement('div');
+    dataStatusEl.id = 'data-status';
+    document.body.appendChild(dataStatusEl);
+
     // Reset State
     State.cachedPoiElements = [];
     State.cachedBoundaryElements = [];
@@ -52,6 +60,45 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       getCenter: () => ({ lat: (s + n) / 2, lng: (w + e) / 2 })
     });
 
+    const mapEl = document.createElement('div');
+    mapEl.id = 'map';
+    document.body.appendChild(mapEl);
+
+    const makeLayerGroup = () => ({
+      addTo: () => {},
+      clearLayers: () => {},
+      addLayer: () => {},
+      removeLayer: () => {},
+      eachLayer: () => {}
+    });
+
+    // Mock Map in State (Nürnberg, DACHLiLu Bereich)
+    const boundsObj = makeBounds(49.44, 11.06, 49.46, 11.08);
+    const listeners = {};
+    const mapObj = {
+      getZoom: () => 16,
+      getBounds: () => boundsObj,
+      getCenter: () => boundsObj.getCenter(),
+      hasLayer: () => true,
+      eachLayer: (fn) => {},
+      removeLayer: (layer) => {},
+      on: (ev, fn) => {
+        ev.split(' ').forEach(e => {
+          listeners[e] = listeners[e] || [];
+          listeners[e].push(fn);
+        });
+        return mapObj;
+      },
+      fire: (ev) => {
+        (listeners[ev] || []).forEach(fn => fn());
+        return mapObj;
+      }
+    };
+
+    class MockTileLayer {
+      addTo() { return this; }
+    }
+
     // Mock Leaflet L
     globalThis.L = {
       latLngBounds: (sw, ne) => {
@@ -65,18 +112,27 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
         lat,
         lon,
         lng: lon
-      })
+      }),
+      layerGroup: makeLayerGroup,
+      tileLayer: () => new MockTileLayer(),
+      TileLayer: MockTileLayer,
+      Polyline: class {},
+      marker: () => ({
+        addTo: () => ({ on: () => {} }),
+        bindTooltip: () => {},
+        unbindTooltip: () => {},
+        openTooltip: () => {},
+        closeTooltip: () => {}
+      }),
+      divIcon: () => ({}),
+      map: () => mapObj
     };
 
-    // Mock Map in State (Nürnberg, DACHLiLu Bereich)
-    const boundsObj = makeBounds(49.44, 11.06, 49.46, 11.08);
-
-    State.map = {
-      getZoom: () => 16,
-      getBounds: () => boundsObj,
-      getCenter: () => boundsObj.getCenter(),
-      hasLayer: () => true
-    };
+    State.map = mapObj;
+    State.markerLayer = makeLayerGroup();
+    State.boundaryLayer = makeLayerGroup();
+    State.rangeLayerGroup = makeLayerGroup();
+    State.distanceLayerGroup = makeLayerGroup();
 
     State.selection = {
       active: false,
@@ -372,5 +428,258 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
 
     // Der Export hat sauber auf den Puffer gewartet und den vollständigen Datensatz genutzt!
     expect(State.pendingBufferFetch).toBeNull();
+  });
+
+  // =========================================================================
+  // 7. pendingBufferFetches: Set-Verwaltung bei konkurrierenden Ringen
+  // =========================================================================
+  describe('7. pendingBufferFetches Set-Verwaltung', () => {
+    it('POI-Ring läuft, Grenzen-Ring startet danach, POI wird zuerst fertig: Set behält Grenzen, danach leer', async () => {
+      let resolvePoi;
+      let resolveBoundary;
+      const poiPromise = new Promise(r => { resolvePoi = r; });
+      const boundaryPromise = new Promise(r => { resolveBoundary = r; });
+
+      State.pendingBufferFetches.add(poiPromise);
+      poiPromise.finally(() => {
+        State.pendingBufferFetches.delete(poiPromise);
+      });
+
+      expect(State.pendingBufferFetches.size).toBe(1);
+      expect(State.pendingBufferFetches.has(poiPromise)).toBe(true);
+
+      // Grenzen-Ring startet danach
+      State.pendingBufferFetches.add(boundaryPromise);
+      boundaryPromise.finally(() => {
+        State.pendingBufferFetches.delete(boundaryPromise);
+      });
+
+      expect(State.pendingBufferFetches.size).toBe(2);
+
+      // POI-Ring wird zuerst fertig
+      resolvePoi();
+      await Promise.resolve(); // microtask
+
+      expect(State.pendingBufferFetches.size).toBe(1);
+      expect(State.pendingBufferFetches.has(boundaryPromise)).toBe(true);
+      expect(State.pendingBufferFetches.has(poiPromise)).toBe(false);
+
+      // Grenzen-Ring wird fertig
+      resolveBoundary();
+      await Promise.resolve(); // microtask
+
+      expect(State.pendingBufferFetches.size).toBe(0);
+      expect(State.pendingBufferFetch).toBeNull();
+    });
+
+    it('Grenzen-Ring wird zuerst fertig: Set behält POI, danach leer', async () => {
+      let resolvePoi;
+      let resolveBoundary;
+      const poiPromise = new Promise(r => { resolvePoi = r; });
+      const boundaryPromise = new Promise(r => { resolveBoundary = r; });
+
+      State.pendingBufferFetches.add(poiPromise);
+      poiPromise.finally(() => {
+        State.pendingBufferFetches.delete(poiPromise);
+      });
+
+      State.pendingBufferFetches.add(boundaryPromise);
+      boundaryPromise.finally(() => {
+        State.pendingBufferFetches.delete(boundaryPromise);
+      });
+
+      expect(State.pendingBufferFetches.size).toBe(2);
+
+      // Grenzen zuerst fertig
+      resolveBoundary();
+      await Promise.resolve();
+
+      expect(State.pendingBufferFetches.size).toBe(1);
+      expect(State.pendingBufferFetches.has(poiPromise)).toBe(true);
+
+      // POI fertig
+      resolvePoi();
+      await Promise.resolve();
+
+      expect(State.pendingBufferFetches.size).toBe(0);
+      expect(State.pendingBufferFetch).toBeNull();
+    });
+
+    it('Nur ein Ring läuft: Nach Fertigstellung ist Set leer', async () => {
+      let resolveSingle;
+      const singlePromise = new Promise(r => { resolveSingle = r; });
+
+      State.pendingBufferFetches.add(singlePromise);
+      singlePromise.finally(() => {
+        State.pendingBufferFetches.delete(singlePromise);
+      });
+
+      expect(State.pendingBufferFetches.size).toBe(1);
+      resolveSingle();
+      await Promise.resolve();
+
+      expect(State.pendingBufferFetches.size).toBe(0);
+      expect(State.pendingBufferFetch).toBeNull();
+    });
+
+    it('Abbruch (clear): Set wird sofort geleert', () => {
+      const p1 = new Promise(() => {});
+      const p2 = new Promise(() => {});
+      State.pendingBufferFetches.add(p1);
+      State.pendingBufferFetches.add(p2);
+
+      expect(State.pendingBufferFetches.size).toBe(2);
+
+      pipelineModule.clearPipelineCache();
+
+      expect(State.pendingBufferFetches.size).toBe(0);
+      expect(State.pendingBufferFetch).toBeNull();
+      expect(State.activeFetchBounds).toBeNull();
+    });
+  });
+
+  // =========================================================================
+  // 8. Export-Wartezeit: Ohne Puffer sofort (< 300 ms)
+  // =========================================================================
+  describe('8. Export-Laufzeit', () => {
+    it('Export ohne laufende Puffer startet sofort (< 300 ms)', async () => {
+      State.cachedPoiElements = [{ id: 'h1', lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+      State.isFetchingData = false;
+      State.pendingBufferFetches.clear();
+
+      const t0 = performance.now();
+      await exportAsGPX();
+      const elapsed = performance.now() - t0;
+
+      expect(elapsed).toBeLessThan(300);
+    });
+
+    it('waitForPendingBuffers kehrt bei leerem Set sofort (0 ms) zurück', async () => {
+      State.pendingBufferFetches.clear();
+      const t0 = performance.now();
+      await pipelineModule.waitForPendingBuffers({ timeoutMs: 5000 });
+      const elapsed = performance.now() - t0;
+
+      expect(elapsed).toBeLessThan(50);
+    });
+  });
+
+  // =========================================================================
+  // 9. Neu-Rendern bei Bewegung im geladenen Bereich vermeiden
+  // =========================================================================
+  describe('9. Vermeidung von DOM-Thrashing / Neu-Rendern bei Bewegung', () => {
+    it('Bewegung im geladenen Bereich ohne laufenden Request ruft renderMarkers & renderBoundaries NICHT auf', async () => {
+      const mapModule = await import('../src/js/map.js');
+      mapModule.initMapLogic();
+
+      const clearBoundariesSpy = vi.spyOn(State.boundaryLayer, 'clearLayers');
+
+      // Geladener Bereich umfasst Nürnberg
+      const bounds = State.map.getBounds();
+      State.cachedPoiElements = [{ id: 'h1', lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+      State.cachedBoundaryElements = [{ id: 'b1' }];
+      State.loadedPoiBounds = bounds;
+      State.loadedPoiMode = 'all';
+      State.loadedBoundaryBounds = bounds;
+      State.isFetchingData = false;
+      State.controllers.fetch = null;
+      State.controllers.boundaryFetch = null;
+
+      clearBoundariesSpy.mockClear();
+
+      // Bewegung im geladenen Bereich ausführen
+      mapModule._testing.onViewChange();
+
+      // ES DARF KEIN RE-RENDER STATTFINDEN!
+      expect(clearBoundariesSpy).not.toHaveBeenCalled();
+
+      clearBoundariesSpy.mockRestore();
+    });
+
+    it('Bewegung zurück in geladenen Bereich (Pan A -> B -> A) bei laufendem Request B bricht B ab und rendert sauber neu', async () => {
+      const mapModule = await import('../src/js/map.js');
+      mapModule.initMapLogic();
+
+      const clearBoundariesSpy = vi.spyOn(State.boundaryLayer, 'clearLayers');
+
+      const boundsA = State.map.getBounds();
+      State.cachedPoiElements = [{ id: 'h_A', lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+      State.cachedBoundaryElements = [{ id: 'b_A' }];
+      State.loadedPoiBounds = boundsA;
+      State.loadedPoiMode = 'all';
+      State.loadedBoundaryBounds = boundsA;
+
+      // Fremden Teildaten-Marker aus Request B im Cache simulieren
+      State.markerCache.set('node:stale_B', { marker: { addTo: () => {} }, mode: 'all' });
+
+      // Request B läuft gerade für ein ANDERES Gebiet
+      const controllerB = new AbortController();
+      State.controllers.fetch = controllerB;
+      // activeFetchBounds deckt anderes Gebiet ab, NICHT boundsA
+      State.activeFetchBounds = {
+        contains: (b) => false // deckt boundsA nicht ab!
+      };
+
+      clearBoundariesSpy.mockClear();
+
+      // Nutzer pannt zurück nach A (boundsA)
+      mapModule._testing.onViewChange();
+
+      // Request B MUSS abgebrochen worden sein!
+      expect(controllerB.signal.aborted).toBe(true);
+      expect(State.controllers.fetch).toBeNull();
+
+      // Und Marker & Boundaries MÜSSEN sauber aus State neu gerendert worden sein!
+      // 1. Boundary-Layer wurde geleert und neu gezeichnet
+      expect(clearBoundariesSpy).toHaveBeenCalled();
+      // 2. Der fremde Teildaten-Marker aus Request B wurde aus markerCache entfernt
+      expect(State.markerCache.has('node:stale_B')).toBe(false);
+      // 3. Der Marker von A ist im markerCache vorhanden
+      expect(State.markerCache.has('node:h_A')).toBe(true);
+
+      clearBoundariesSpy.mockRestore();
+    });
+  });
+
+  // =========================================================================
+  // 10. Pufferring wird bei kleiner Bewegung innerhalb activeFetchBounds NICHT abgebrochen
+  // =========================================================================
+  describe('10. Pufferring bei kleiner Bewegung', () => {
+    it('Bewegung innerhalb activeFetchBounds bricht laufenden Puffer-Request NICHT ab', async () => {
+      const mapModule = await import('../src/js/map.js');
+
+      const boundsA = State.map.getBounds();
+      State.cachedPoiElements = [{ id: 'h_A' }];
+      State.loadedPoiBounds = boundsA;
+      State.loadedPoiMode = 'all';
+      State.loadedBoundaryBounds = boundsA;
+
+      // Pufferring läuft im Hintergrund
+      const controllerFetch = new AbortController();
+      State.controllers.fetch = controllerFetch;
+      let bufferResolved = false;
+      const bufferPromise = new Promise(r => {
+        setTimeout(() => {
+          bufferResolved = true;
+          r();
+        }, 50);
+      });
+      State.pendingBufferFetches.add(bufferPromise);
+
+      // activeFetchBounds deckt Nürnberg + Puffer ab (inkl. der neuen Position!)
+      State.activeFetchBounds = {
+        contains: (b) => true // deckt die neue Position voll ab!
+      };
+
+      mapModule.initMapLogic();
+
+      // Nutzer bewegt sich leicht innerhalb des Pufferbereichs
+      mapModule._testing.onViewChange();
+
+      // Der Controller darf NICHT abgebrochen werden!
+      expect(controllerFetch.signal.aborted).toBe(false);
+      expect(State.controllers.fetch).toBe(controllerFetch);
+      expect(State.pendingBufferFetches.size).toBe(1);
+    });
   });
 });

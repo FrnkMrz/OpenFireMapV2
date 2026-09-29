@@ -365,7 +365,7 @@ export function initMapLogic() {
     };
 
 
-    State.map.on('moveend zoomend', () => {
+    function onViewChange() {
         // Permalink-Hash aktualisieren
         updatePermalink();
 
@@ -433,21 +433,13 @@ export function initMapLogic() {
             return;
         }
 
-        if (poiCoverageMatchesMode(mode) && boundaryCoverageMatchesView(zoom)) {
-            if (debounceTimer) {
-                clearTimeout(debounceTimer);
-                debounceTimer = null;
-            }
-            if (idleRefreshTimer) {
-                clearTimeout(idleRefreshTimer);
-                idleRefreshTimer = null;
-            }
+        const currentViewBounds = State.map.getBounds();
+        const hasActiveRequest = Boolean(State.controllers.fetch || State.controllers.boundaryFetch);
+        const isCoveredByActiveFetch = Boolean(hasActiveRequest && State.activeFetchBounds && State.activeFetchBounds.contains(currentViewBounds));
+        let abortedForeignRequest = false;
 
-            // Veraltete Anfragen invalidieren
-            latestFetchIntent += 1;
-            currentFetchIntent = latestFetchIntent;
-
-            // Laufende Anfragen für andere Ausschnitte (z. B. Pan A -> B -> A) sofort abbrechen!
+        // Wenn der Nutzer den Bereich einer laufenden Anfrage verlassen hat: sofort abbrechen!
+        if (hasActiveRequest && !isCoveredByActiveFetch) {
             if (State.controllers.fetch) {
                 State.controllers.fetch.abort();
                 State.controllers.fetch = null;
@@ -457,13 +449,35 @@ export function initMapLogic() {
                 State.controllers.boundaryFetch = null;
             }
             State.isFetchingData = false;
-            State.pendingBufferFetch = null;
+            State.pendingBufferFetches?.clear();
+            State.activeFetchBounds = null;
+            abortedForeignRequest = true;
+        }
 
+        const isCoveredByLoaded = poiCoverageMatchesMode(mode) && boundaryCoverageMatchesView(zoom);
+
+        if (isCoveredByLoaded || isCoveredByActiveFetch) {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+                debounceTimer = null;
+            }
+            if (idleRefreshTimer) {
+                clearTimeout(idleRefreshTimer);
+                idleRefreshTimer = null;
+            }
+
+            // Nur wenn tatsächlich eine laufende Anfrage für einen anderen Ausschnitt
+            // abgebrochen wurde, müssen wir veraltete Intents invalidieren und
             // Marker & Boundaries sauber aus State neu rendern (isPartial: false),
             // um eventuelle Teildaten eines abgebrochenen Requests B aus dem DOM zu entfernen!
-            renderMarkers(State.cachedPoiElements || [], zoom, { isPartial: false });
-            if (zoom >= 14) {
-                renderBoundaries(State.cachedBoundaryElements || [], zoom);
+            if (abortedForeignRequest) {
+                latestFetchIntent += 1;
+                currentFetchIntent = latestFetchIntent;
+
+                renderMarkers(State.cachedPoiElements || [], zoom, { isPartial: false });
+                if (zoom >= 14) {
+                    renderBoundaries(State.cachedBoundaryElements || [], zoom);
+                }
             }
 
             const statusEl = document.getElementById('data-status');
@@ -642,7 +656,9 @@ export function initMapLogic() {
                 }, 8000);
             }
         } // end doFetch
-    });
+    }
+    _testing.onViewChange = onViewChange;
+    State.map.on('moveend zoomend', onViewChange);
 
     State.map.on('click', () => {
         if (!State.selection.active) {
@@ -1568,5 +1584,6 @@ export const _testing = {
     distanceMeters,
     countTags,
     clusterPOIs,
-    clusterFireStations
+    clusterFireStations,
+    onViewChange: null
 };

@@ -837,6 +837,29 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
     ? L.latLngBounds([visSouth, visWest], [visNorth, visEast])
     : { south: visSouth, north: visNorth, west: visWest, east: visEast };
 
+  // Grenzen der aktiven Anfrage inklusive Pufferring merken (verhindert vorzeitigen Abbruch bei kleinen Bewegungen)
+  const activeSouth = tile2lat(bufMaxY + 1, queryZoom);
+  const activeNorth = tile2lat(bufMinY, queryZoom);
+  const activeWest = tile2lon(bufMinX, queryZoom);
+  const activeEast = tile2lon(bufMaxX + 1, queryZoom);
+  State.activeFetchBounds = (typeof L !== 'undefined' && L.latLngBounds)
+    ? L.latLngBounds([activeSouth, activeWest], [activeNorth, activeEast])
+    : {
+        getSouth: () => activeSouth,
+        getNorth: () => activeNorth,
+        getWest: () => activeWest,
+        getEast: () => activeEast,
+        getSouthWest: () => ({ lat: activeSouth, lng: activeWest }),
+        getNorthEast: () => ({ lat: activeNorth, lng: activeEast }),
+        contains: (b) => {
+          const s = b?.getSouth?.() ?? b?.south;
+          const n = b?.getNorth?.() ?? b?.north;
+          const w = b?.getWest?.() ?? b?.west;
+          const e = b?.getEast?.() ?? b?.east;
+          return s >= activeSouth && n <= activeNorth && w >= activeWest && e <= activeEast;
+        }
+      };
+
   // Phase 2: Pufferring im Hintergrund nachladen (verzögert Erst-Render nicht)
   if (bufferTiles.length > 0 && !signal?.aborted) {
     const bufferPromise = (async () => {
@@ -865,10 +888,11 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
       }
     })();
 
-    State.pendingBufferFetch = bufferPromise;
+    State.pendingBufferFetches.add(bufferPromise);
     bufferPromise.finally(() => {
-      if (State.pendingBufferFetch === bufferPromise) {
-        State.pendingBufferFetch = null;
+      State.pendingBufferFetches.delete(bufferPromise);
+      if (State.pendingBufferFetches.size === 0 && !State.isFetchingData) {
+        State.activeFetchBounds = null;
       }
     });
   }
@@ -1099,6 +1123,34 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         ? L.latLngBounds([visSouth, visWest], [visNorth, visEast])
         : { south: visSouth, north: visNorth, west: visWest, east: visEast };
 
+      // Grenzen der aktiven Anfrage inklusive Pufferring merken (oder erweitern)
+      const activeBufSouth = tile2lat(bufMaxY + 1, queryZoom);
+      const activeBufNorth = tile2lat(bufMinY, queryZoom);
+      const activeBufWest = tile2lon(bufMinX, queryZoom);
+      const activeBufEast = tile2lon(bufMaxX + 1, queryZoom);
+      const boundaryTotalBounds = (typeof L !== 'undefined' && L.latLngBounds)
+        ? L.latLngBounds([activeBufSouth, activeBufWest], [activeBufNorth, activeBufEast])
+        : {
+            getSouth: () => activeBufSouth,
+            getNorth: () => activeBufNorth,
+            getWest: () => activeBufWest,
+            getEast: () => activeBufEast,
+            getSouthWest: () => ({ lat: activeBufSouth, lng: activeBufWest }),
+            getNorthEast: () => ({ lat: activeBufNorth, lng: activeBufEast }),
+            contains: (b) => {
+              const s = b?.getSouth?.() ?? b?.south;
+              const n = b?.getNorth?.() ?? b?.north;
+              const w = b?.getWest?.() ?? b?.west;
+              const e = b?.getEast?.() ?? b?.east;
+              return s >= activeBufSouth && n <= activeBufNorth && w >= activeBufWest && e <= activeBufEast;
+            }
+          };
+      if (State.activeFetchBounds?.extend && typeof boundaryTotalBounds?.getSouthWest === 'function') {
+        State.activeFetchBounds.extend(boundaryTotalBounds);
+      } else if (!State.activeFetchBounds) {
+        State.activeFetchBounds = boundaryTotalBounds;
+      }
+
       // Phase 2: Pufferring im Hintergrund
       if (bufferTiles.length > 0 && !signal?.aborted) {
         const boundaryBufferPromise = (async () => {
@@ -1127,14 +1179,11 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
           }
         })();
 
-        if (State.pendingBufferFetch) {
-          State.pendingBufferFetch = Promise.allSettled([State.pendingBufferFetch, boundaryBufferPromise]);
-        } else {
-          State.pendingBufferFetch = boundaryBufferPromise;
-        }
+        State.pendingBufferFetches.add(boundaryBufferPromise);
         boundaryBufferPromise.finally(() => {
-          if (State.pendingBufferFetch === boundaryBufferPromise) {
-            State.pendingBufferFetch = null;
+          State.pendingBufferFetches.delete(boundaryBufferPromise);
+          if (State.pendingBufferFetches.size === 0 && !State.isFetchingData) {
+            State.activeFetchBounds = null;
           }
         });
       }
@@ -1183,6 +1232,47 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
 }
 
 /**
+ * Wartet auf alle aktuell im Hintergrund laufenden Pufferring-Ladevorgänge.
+ * Beendet sich sofort, wenn keine Puffer laufen.
+ * Unterstützt Timeout und AbortSignal.
+ * @param {Object} [options]
+ * @param {AbortSignal} [options.signal]
+ * @param {number} [options.timeoutMs=5000]
+ * @returns {Promise<void>}
+ */
+export async function waitForPendingBuffers({ signal, timeoutMs = 5000 } = {}) {
+  if (!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) {
+    return;
+  }
+  if (signal?.aborted) return;
+
+  const currentPromises = Array.from(State.pendingBufferFetches);
+  if (currentPromises.length === 0) return;
+
+  let timeoutId;
+  const timeoutPromise = new Promise((resolve) => {
+    timeoutId = setTimeout(resolve, timeoutMs);
+  });
+
+  const abortPromise = new Promise((resolve) => {
+    if (signal) {
+      if (signal.aborted) resolve();
+      else signal.addEventListener('abort', resolve, { once: true });
+    }
+  });
+
+  try {
+    await Promise.race([
+      Promise.allSettled(currentPromises),
+      timeoutPromise,
+      abortPromise
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
  * Setzt den Pipeline-Cache zurück (z. B. für Tests oder nach Aktualisierungen).
  */
 export function clearPipelineCache() {
@@ -1198,5 +1288,8 @@ export function clearPipelineCache() {
   _lastMetadataFetchTime = 0;
   _pendingMetadataPromise = null;
   clearTileCache();
-  State.pendingBufferFetch = null;
+  if (State.pendingBufferFetches) {
+    State.pendingBufferFetches.clear();
+  }
+  State.activeFetchBounds = null;
 }

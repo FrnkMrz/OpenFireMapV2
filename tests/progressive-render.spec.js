@@ -146,4 +146,43 @@ test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
     }
   });
 
+  test('GPX-Download startet < 1 s nach Klick (bisher > 5 s Wartezeit)', async ({ page }) => {
+    // Route mocken
+    await page.route('**/api/interpreter', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          elements: [
+            { type: 'node', id: 401, lat: 48.8566, lon: 2.3522, tags: { emergency: 'fire_hydrant' } }
+          ]
+        })
+      });
+    });
+
+    await gotoReady(page, '/?lang=de#16/48.8566/2.3522/voyager');
+
+    // Warten bis Daten geladen sind
+    await expect.poll(async () => {
+      return await page.evaluate(() => window.State?.cachedPoiElements?.length || 0);
+    }, { timeout: 7000 }).toBe(1);
+
+    // Export-Menü öffnen
+    await page.click('#export-btn-trigger');
+    await page.click('#gpx-btn');
+
+    // Titel-Bestätigungsmodal erscheint
+    await page.waitForSelector('#export-confirm-ok', { state: 'visible' });
+
+    // Download-Startzeit messen
+    const downloadPromise = page.waitForEvent('download');
+    const t0 = Date.now();
+    await page.click('#export-confirm-ok');
+    const download = await downloadPromise;
+    const elapsedMs = Date.now() - t0;
+
+    expect(download.suggestedFilename()).toContain('.gpx');
+    console.log(`[E2E Test] GPX-Download startete nach ${elapsedMs} ms`);
+    expect(elapsedMs).toBeLessThan(1000);
+  });
+
 });

@@ -581,6 +581,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
   // loading state...
   State.isFetchingData = true;
+  State.activeFetchBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
   emit({ phase: 'load_start', reqId, zoom, bboxKey, dataset: 'poi', dataClass });
   reportHydrantDownload(hydrantStatus, 'loading');
 
@@ -631,6 +632,9 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           State.cachedPoiElements = bufferedElements;
           State.loadedPoiBounds = fullBounds;
           syncCombinedCachedElements();
+          if (!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) {
+            State.activeFetchBounds = null;
+          }
           reportHydrantDownload(hydrantStatus, 'success', bufferedElements);
           if (typeof onProgressData === 'function') {
             try {
@@ -824,7 +828,12 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
       }
     }
   } finally {
-    if (isCurrentRequest()) State.isFetchingData = false;
+    if (isCurrentRequest()) {
+      State.isFetchingData = false;
+      if (!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) {
+        State.activeFetchBounds = null;
+      }
+    }
   }
 }
 
@@ -871,6 +880,9 @@ export async function fetchBoundaryData(onProgressData = null) {
         State.cachedBoundaryElements = bufferedElements;
         State.loadedBoundaryBounds = fullBounds;
         syncCombinedCachedElements();
+        if (!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) {
+          State.activeFetchBounds = null;
+        }
         if (typeof onProgressData === 'function') {
           try {
             onProgressData(bufferedElements, false);
