@@ -5,26 +5,31 @@
 
 set -euo pipefail
 
-PROJECT_DIR="/srv/docker/projects/openfiremap-pipeline"
-DATA_DIR="/srv/docker/data/openfiremap"
-PUBLISH_DIR="${DATA_DIR}/publish"
-RAW_DIR="${DATA_DIR}/raw"
-LOG_FILE="${DATA_DIR}/update.log"
-LOCK_FILE="${DATA_DIR}/update.lock"
-SYNC_STATUS_FILE="${RAW_DIR}/sync_status.json"
-BUILD_WARNINGS_FILE="${RAW_DIR}/build_warnings.json"
-PUBLIC_BASE_URL="https://pipeline.openfiremap.org"
-CF_CACHE_LIMIT_BYTES=536870912 # 512 MiB
+PROJECT_DIR="${PROJECT_DIR:-/srv/docker/projects/openfiremap-pipeline}"
+DATA_DIR="${DATA_DIR:-/srv/docker/data/openfiremap}"
+PUBLISH_DIR="${PUBLISH_DIR:-${DATA_DIR}/publish}"
+RAW_DIR="${RAW_DIR:-${DATA_DIR}/raw}"
+LOG_FILE="${LOG_FILE:-${DATA_DIR}/update.log}"
+LOCK_FILE="${LOCK_FILE:-${DATA_DIR}/update.lock}"
+SYNC_STATUS_FILE="${SYNC_STATUS_FILE:-${RAW_DIR}/sync_status.json}"
+BUILD_WARNINGS_FILE="${BUILD_WARNINGS_FILE:-${RAW_DIR}/build_warnings.json}"
+PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-https://pipeline.openfiremap.org}"
+CF_CACHE_LIMIT_BYTES="${CF_CACHE_LIMIT_BYTES:-536870912}" # 512 MiB
 
 mkdir -p "$DATA_DIR" "$PUBLISH_DIR" "$RAW_DIR"
 
 # Verriegelung: flock verhindert parallele Ausführung von Cronjob und manuellem Start
 exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] FEHLER: Ein anderer update.sh-Lauf ist bereits aktiv (Lockfile: ${LOCK_FILE}). Breche ab." >> "$LOG_FILE"
-  echo "FEHLER: Ein anderer update.sh-Lauf ist bereits aktiv (Lock: ${LOCK_FILE})." >&2
-  exit 3
+if command -v flock >/dev/null 2>&1; then
+  if ! flock -n 9; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] FEHLER: Ein anderer update.sh-Lauf ist bereits aktiv (Lockfile: ${LOCK_FILE}). Breche ab." >> "$LOG_FILE"
+    echo "FEHLER: Ein anderer update.sh-Lauf ist bereits aktiv (Lock: ${LOCK_FILE})." >&2
+    exit 3
+  fi
 fi
+
+# Vor dem Lauf: Veraltete Warnungen aus vorherigen Läufen löschen
+rm -f "${BUILD_WARNINGS_FILE}"
 
 # Hilfsfunktion zum sicheren Schreiben von sync_status.json
 write_sync_status() {

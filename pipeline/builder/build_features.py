@@ -13,6 +13,7 @@ import json
 import shutil
 import subprocess
 import urllib.request
+import urllib.parse
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
@@ -229,28 +230,64 @@ def resolve_targets():
     return "dachlilu", DACHLILU_COUNTRIES
 
 
-def check_remote_extract(url):
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Verhindert automatische Weiterleitungen in urllib, damit HEAD-Anfragen nicht zu GET werden."""
+    def http_error_301(self, req, fp, code, msg, headers):
+        return fp
+
+    def http_error_302(self, req, fp, code, msg, headers):
+        return fp
+
+    def http_error_303(self, req, fp, code, msg, headers):
+        return fp
+
+    def http_error_307(self, req, fp, code, msg, headers):
+        return fp
+
+    def http_error_308(self, req, fp, code, msg, headers):
+        return fp
+
+
+def check_remote_extract(url, max_redirects=5, timeout=15):
     """
     Prüft per HEAD-Request, ob und wann eine Datei auf dem Geofabrik-Server aktualisiert wurde.
-    Nutzt urllib.request aus der Standardbibliothek.
+    Folgt HTTP-Weiterleitungen (z. B. 302 von -latest.osm.pbf auf datierte Dateien) manuell strikt
+    als HEAD, um zu verhindern, dass Standard-Redirect-Handler auf GET wechseln und Multi-Gigabyte-Dateien laden.
+    Verwendet Last-Modified und Content-Length der finalen Datei.
     """
-    try:
-        req = urllib.request.Request(
-            url,
-            method="HEAD",
-            headers={"User-Agent": "OpenFireMap-Pipeline-Builder/2.0"}
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            if resp.status == 200:
-                last_modified = resp.headers.get("Last-Modified")
-                content_length = resp.headers.get("Content-Length")
-                return {
-                    "last_modified": last_modified,
-                    "content_length": int(content_length) if content_length else None,
-                    "status": 200
-                }
-    except Exception as e:
-        log(f"Hinweis: HEAD-Anfrage für {url} nicht verfügbar ({e}).")
+    current_url = url
+    headers = {"User-Agent": "OpenFireMap-Pipeline-Builder/2.0"}
+    opener = urllib.request.build_opener(_NoRedirectHandler)
+
+    for _ in range(max_redirects + 1):
+        try:
+            req = urllib.request.Request(current_url, method="HEAD", headers=headers)
+            with opener.open(req, timeout=timeout) as resp:
+                status = getattr(resp, "status", getattr(resp, "code", None))
+                if status in (301, 302, 303, 307, 308):
+                    location = resp.headers.get("Location")
+                    if not location:
+                        log(f"Hinweis: Weiterleitung {status} ohne Location-Header für {current_url}")
+                        return None
+                    current_url = urllib.parse.urljoin(current_url, location)
+                    continue
+                elif status == 200:
+                    last_modified = resp.headers.get("Last-Modified")
+                    content_length = resp.headers.get("Content-Length")
+                    return {
+                        "last_modified": last_modified,
+                        "content_length": int(content_length) if content_length else None,
+                        "status": 200,
+                        "url": current_url
+                    }
+                else:
+                    log(f"Hinweis: Unerwarteter HTTP-Status {status} für {current_url}")
+                    return None
+        except Exception as e:
+            log(f"Hinweis: HEAD-Anfrage für {current_url} nicht verfügbar ({e}).")
+            return None
+
+    log(f"Hinweis: Maximale Weiterleitungen ({max_redirects}) überschritten für {url}")
     return None
 
 

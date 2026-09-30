@@ -14,8 +14,12 @@ All notable changes to this project will be documented in this file.
   - Hinzufügen von `--retry-all-errors` zur automatischen Wiederholung bei Server- und Proxy-Aussetzern (z. B. 429/5xx oder Verbindungsresets).
 - **Integritätsprüfung vor Verschieben**:
   - Heruntergeladene PBF-Dateien werden vor dem atomaren Verschieben (`os.replace`) auf Mindestgröße (> 100 KB) und strukturelle Validität (`osmium fileinfo`) geprüft, um abgerissene oder unvollständige Downloads abzufangen.
-- **Prozessverriegelung**:
+- **Prozessverriegelung & Warnungs-Bereinigung**:
   - `pipeline/update.sh`: Absicherung gegen parallele Ausführung von Cronjob und manuellen Aufrufen mittels `flock` (`/srv/docker/data/openfiremap/update.lock`) mit Fehlercode `exit 3`.
+  - Entfernung veralteter `build_warnings.json` direkt nach Lockfile-Übernahme vor dem Start des Builds.
+  - Unterstützung für Pfad-Überschreibungen über Umgebungsvariablen (`DATA_DIR`, `PROJECT_DIR` etc.) für flexibleres Testen.
+- **HEAD-Prüfung ohne GET-Umschaltung**:
+  - `pipeline/builder/build_features.py`: Manuelles Verfolgen von HTTP-Redirects strikt mit `HEAD` (max. 5 Sprünge), um zu verhindern, dass Standard-Redirect-Handler bei 302-Weiterleitungen auf `GET` umschalten und Multi-Gigabyte-Dateien herunterladen.
 
 ### Transparenz & Monitoring
 - **Metadaten-Erweiterung (`metadata.json`)**:
@@ -31,9 +35,10 @@ All notable changes to this project will be documented in this file.
 
 ### Betrieb & Dokumentation
 - **Verschiebung des nächtlichen Cronjobs**:
-  - Verlegung der Startzeit von `03:30` auf `06:00 UTC` (08:00 CEST / 07:00 CET) auf VM 102 mit ausreichend zeitlichem Abstand zum täglichen Geofabrik-Generierungsfenster.
-- **Betriebsdokumentation**:
-  - `pipeline/docs/OPERATIONS_INTERNAL.md` um ein Runbook zur Behebung von Geofabrik-Downloadstörungen und ein detailliertes Post-Mortem zum Vorfall vom 30.09.2026 ergänzt.
+  - Verlegung der Startzeit von `03:30 UTC` (05:30 MESZ) auf `06:00 UTC` (08:00 MESZ / 07:00 MEZ) auf VM 102 mit ausreichend zeitlichem Sicherheitsabstand zum täglichen Geofabrik-Generierungsfenster (ca. 01:00–04:15 UTC).
+  - Klarstellung in der Betriebsdokumentation: Die VM läuft auf UTC; Zeitstempel im Log und in der Crontab sind UTC.
+- **Betriebsdokumentation & Post-Mortem**:
+  - `pipeline/docs/OPERATIONS_INTERNAL.md` um ein Runbook zur Behebung von Geofabrik-Downloadstörungen und ein detailliertes Post-Mortem zu den Vorfällen vom 30.09.2026 (Nachtlauf-Ausfall um 03:30 UTC und paralleler Lauf um 06:00 UTC) ergänzt.
 
 ## [v0.8.0] - 2026-09-29
 

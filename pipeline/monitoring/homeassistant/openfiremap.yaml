@@ -273,7 +273,7 @@ automation:
           title: "🚨 OpenFireMap Ausfall"
           message: "Die öffentliche Pipeline <PIPELINE_PUBLIC_URL>/metadata.json ist seit über 10 Minuten nicht erreichbar!"
 
-  # 3.2 Daten veraltet (> 36 Stunden alt, Cron läuft täglich um 06:00)
+  # 3.2 Daten veraltet (> 36 Stunden alt, Cron läuft täglich um 06:00 UTC)
   - id: "openfiremap_data_outdated"
     alias: "OpenFireMap: Datenbestand veraltet (>36h)"
     mode: single

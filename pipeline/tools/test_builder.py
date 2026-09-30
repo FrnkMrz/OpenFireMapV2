@@ -20,6 +20,23 @@ import build_features
 class TestBuildFeatures(unittest.TestCase):
     def setUp(self):
         build_features.BUILD_WARNINGS.clear()
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.orig_base = build_features.BASE_DATA_DIR
+        self.orig_raw = build_features.RAW_DIR
+        self.orig_publish = build_features.PUBLISH_DIR
+        self.orig_tmp = build_features.TMP_DIR
+
+        build_features.BASE_DATA_DIR = self.test_dir.name
+        build_features.RAW_DIR = os.path.join(self.test_dir.name, "raw")
+        build_features.PUBLISH_DIR = os.path.join(self.test_dir.name, "publish")
+        build_features.TMP_DIR = os.path.join(self.test_dir.name, "raw", "tmp")
+
+    def tearDown(self):
+        build_features.BASE_DATA_DIR = self.orig_base
+        build_features.RAW_DIR = self.orig_raw
+        build_features.PUBLISH_DIR = self.orig_publish
+        build_features.TMP_DIR = self.orig_tmp
+        self.test_dir.cleanup()
 
     def test_feature_configs_complete(self):
         """Prüft, ob alle 5 Ebenen konfiguriert sind."""
@@ -239,6 +256,137 @@ class TestBuildFeatures(unittest.TestCase):
             # Ohne osmium (oder wenn osmium gemockt wird) besteht die Größenprüfung
             with patch("shutil.which", return_value=None):
                 build_features.validate_pbf_file(valid_size_file)
+
+    def test_check_remote_extract_follows_redirects_strictly_as_head(self):
+        """302-Weiterleitung muss manuell per HEAD verfolgt werden (kein GET-Download)."""
+        methods_called = []
+
+        class MockResponse:
+            def __init__(self, status, headers):
+                self.status = status
+                self.code = status
+                self.headers = headers
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+
+        class MockOpener:
+            def open(self, req, timeout=15):
+                methods_called.append((req.get_method(), req.full_url))
+                if len(methods_called) == 1:
+                    return MockResponse(302, {"Location": "/europe/liechtenstein-260930.osm.pbf"})
+                return MockResponse(200, {
+                    "Last-Modified": "Wed, 30 Sep 2026 05:00:00 GMT",
+                    "Content-Length": "456789"
+                })
+
+        with patch("urllib.request.build_opener", return_value=MockOpener()):
+            info = build_features.check_remote_extract("https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf")
+            self.assertIsNotNone(info)
+            self.assertEqual(info["status"], 200)
+            self.assertEqual(info["content_length"], 456789)
+            self.assertEqual(info["last_modified"], "Wed, 30 Sep 2026 05:00:00 GMT")
+            self.assertEqual(info["url"], "https://download.geofabrik.de/europe/liechtenstein-260930.osm.pbf")
+            self.assertEqual(len(methods_called), 2)
+            # Beide Aufrufe müssen strikt HEAD sein
+            self.assertEqual(methods_called[0][0], "HEAD")
+            self.assertEqual(methods_called[1][0], "HEAD")
+
+    def test_check_remote_extract_redirect_loop_returns_none(self):
+        """Weiterleitungsschleife (> 5 Sprünge) wird nach max_redirects abgebrochen und gibt None zurück."""
+        class MockResponse:
+            def __init__(self, status, headers):
+                self.status = status
+                self.code = status
+                self.headers = headers
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+
+        class MockOpener:
+            def open(self, req, timeout=15):
+                return MockResponse(302, {"Location": "https://download.geofabrik.de/europe/loop.osm.pbf"})
+
+        with patch("urllib.request.build_opener", return_value=MockOpener()):
+            info = build_features.check_remote_extract("https://download.geofabrik.de/europe/loop.osm.pbf", max_redirects=5)
+            self.assertIsNone(info)
+
+
+class TestUpdateScript(unittest.TestCase):
+    def setUp(self):
+        import shutil
+        self.tmp_bin_dir = tempfile.TemporaryDirectory()
+        if not shutil.which("flock"):
+            flock_shim = os.path.join(self.tmp_bin_dir.name, "flock")
+            with open(flock_shim, "w") as f:
+                f.write(
+                    "#!/usr/bin/env python3\n"
+                    "import sys, fcntl\n"
+                    "if len(sys.argv) >= 3 and sys.argv[1] == '-n':\n"
+                    "    fd = int(sys.argv[2])\n"
+                    "    try:\n"
+                    "        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)\n"
+                    "        sys.exit(0)\n"
+                    "    except (IOError, OSError):\n"
+                    "        sys.exit(1)\n"
+                    "sys.exit(0)\n"
+                )
+            os.chmod(flock_shim, 0o755)
+
+    def tearDown(self):
+        self.tmp_bin_dir.cleanup()
+
+    def test_flock_concurrency_exit_3(self):
+        """update.sh bricht mit Exit-Code 3 ab, wenn ein anderer Prozess bereits das Lockfile hält."""
+        import subprocess
+        import fcntl
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock_file = os.path.join(tmpdir, "update.lock")
+            with open(lock_file, "w") as lf:
+                fcntl.flock(lf.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                env = os.environ.copy()
+                env["DATA_DIR"] = tmpdir
+                env["PROJECT_DIR"] = tmpdir
+                env["PATH"] = f"{self.tmp_bin_dir.name}:{os.environ.get('PATH', '')}"
+                script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "update.sh"))
+                res = subprocess.run(["bash", script_path], env=env, capture_output=True, text=True)
+                self.assertEqual(res.returncode, 3)
+                self.assertIn("bereits aktiv", res.stderr)
+
+    def test_stale_build_warnings_cleared_on_start(self):
+        """update.sh löscht veraltete build_warnings.json direkt nach dem Erwerb des Locks vor dem Build."""
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_dir = os.path.join(tmpdir, "raw")
+            os.makedirs(raw_dir, exist_ok=True)
+            warnings_file = os.path.join(raw_dir, "build_warnings.json")
+            with open(warnings_file, "w") as f:
+                f.write('["stale_warning_from_yesterday"]')
+
+            env = os.environ.copy()
+            env["DATA_DIR"] = tmpdir
+            env["PROJECT_DIR"] = tmpdir
+            env["PATH"] = f"{self.tmp_bin_dir.name}:{os.environ.get('PATH', '')}"
+            script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "update.sh"))
+
+            # Führe update.sh aus. Da Docker in tmpdir nicht läuft, bricht es erst beim docker compose Befehl ab.
+            # Bereinigung und Initialisierung von sync_status.json finden davor statt.
+            subprocess.run(["bash", script_path], env=env, capture_output=True, text=True)
+
+            self.assertFalse(os.path.exists(warnings_file), "Veraltete build_warnings.json muss gelöscht worden sein")
+            sync_status_file = os.path.join(raw_dir, "sync_status.json")
+            self.assertTrue(os.path.exists(sync_status_file))
+            with open(sync_status_file, "r") as sf:
+                data = json.load(sf)
+                self.assertEqual(data.get("build_warnings"), [], "build_warnings in sync_status.json muss initial leer sein")
 
 
 if __name__ == "__main__":
