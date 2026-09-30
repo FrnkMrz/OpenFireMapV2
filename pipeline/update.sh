@@ -10,11 +10,21 @@ DATA_DIR="/srv/docker/data/openfiremap"
 PUBLISH_DIR="${DATA_DIR}/publish"
 RAW_DIR="${DATA_DIR}/raw"
 LOG_FILE="${DATA_DIR}/update.log"
+LOCK_FILE="${DATA_DIR}/update.lock"
 SYNC_STATUS_FILE="${RAW_DIR}/sync_status.json"
+BUILD_WARNINGS_FILE="${RAW_DIR}/build_warnings.json"
 PUBLIC_BASE_URL="https://pipeline.openfiremap.org"
 CF_CACHE_LIMIT_BYTES=536870912 # 512 MiB
 
 mkdir -p "$DATA_DIR" "$PUBLISH_DIR" "$RAW_DIR"
+
+# Verriegelung: flock verhindert parallele Ausführung von Cronjob und manuellem Start
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] FEHLER: Ein anderer update.sh-Lauf ist bereits aktiv (Lockfile: ${LOCK_FILE}). Breche ab." >> "$LOG_FILE"
+  echo "FEHLER: Ein anderer update.sh-Lauf ist bereits aktiv (Lock: ${LOCK_FILE})." >&2
+  exit 3
+fi
 
 # Hilfsfunktion zum sicheren Schreiben von sync_status.json
 write_sync_status() {
@@ -45,6 +55,15 @@ write_sync_status() {
     j_last_err="\"$clean_err\""
   fi
 
+  local j_build_warnings="[]"
+  if [ -f "${BUILD_WARNINGS_FILE}" ]; then
+    local content
+    content=$(cat "${BUILD_WARNINGS_FILE}" 2>/dev/null || echo "")
+    if [[ "$content" =~ ^\[.*\]$ ]]; then
+      j_build_warnings="$content"
+    fi
+  fi
+
   cat <<EOF > "${SYNC_STATUS_FILE}"
 {
   "checked_at": ${j_checked_at},
@@ -56,6 +75,7 @@ write_sync_status() {
   "cf_cache_limit_bytes": ${CF_CACHE_LIMIT_BYTES},
   "pmtiles_over_cf_cache_limit": ${over_limit},
   "upload_ok": ${upload_ok},
+  "build_warnings": ${j_build_warnings},
   "last_error": ${j_last_err}
 }
 EOF

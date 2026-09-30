@@ -35,6 +35,9 @@ TMP_DIR = os.path.join(RAW_DIR, "tmp")
 PIPELINE_REGION = os.getenv("PIPELINE_REGION", "dachlilu").lower()
 OSM_EXTRACT_URL = os.getenv("OSM_EXTRACT_URL", "").strip()
 FORCE_DOWNLOAD = os.getenv("FORCE_DOWNLOAD", "false").lower() in ("true", "1", "yes")
+MAX_FALLBACK_AGE_HOURS = int(os.getenv("MAX_FALLBACK_AGE_HOURS", "72"))
+
+BUILD_WARNINGS = []
 
 # DACHLiLu Länder-Auszüge von Geofabrik
 DACHLILU_COUNTRIES = [
@@ -112,6 +115,53 @@ FEATURE_CONFIGS = [
 def log(msg):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{now}] {msg}", flush=True)
+
+
+def record_warning(msg):
+    """Protokolliert eine Warnung und speichert sie für sync_status.json."""
+    log(f"WARNUNG: {msg}")
+    BUILD_WARNINGS.append(msg)
+
+
+def save_build_warnings(raw_dir=None):
+    """Schreibt gesammelte Warnungen nach raw/build_warnings.json."""
+    target_dir = raw_dir or RAW_DIR
+    warnings_file = os.path.join(target_dir, "build_warnings.json")
+    try:
+        with open(warnings_file, "w", encoding="utf-8") as f:
+            json.dump(BUILD_WARNINGS, f, indent=2, ensure_ascii=False)
+        log(f"Build-Warnungen geschrieben: {warnings_file} ({len(BUILD_WARNINGS)} Einträge)")
+    except Exception as err:
+        log(f"Hinweis: Konnte {warnings_file} nicht schreiben: {err}")
+
+
+def validate_pbf_file(file_path, min_size_bytes=100 * 1024):
+    """
+    Prüft, ob eine heruntergeladene PBF-Datei vollständig und strukturell intakt ist:
+    - Mindestgröße (standardmäßig 100 KB) gegen leere/abgebrochene HTTP-Responses
+    - osmium fileinfo (falls osmium im System vorhanden ist)
+    """
+    if not os.path.exists(file_path):
+        raise RuntimeError(f"Datei existiert nicht zur Validierung: {file_path}")
+
+    actual_size = os.path.getsize(file_path)
+    if actual_size < min_size_bytes:
+        raise RuntimeError(
+            f"Heruntergeladene PBF-Datei ist unvollständig oder zu klein ({actual_size} Bytes < {min_size_bytes} Bytes): {file_path}"
+        )
+
+    osmium_bin = shutil.which("osmium")
+    if osmium_bin:
+        res = subprocess.run(
+            [osmium_bin, "fileinfo", file_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        if res.returncode != 0:
+            raise RuntimeError(
+                f"osmium fileinfo Validierung fehlgeschlagen für {file_path}: {res.stderr.strip()}"
+            )
 
 
 def ensure_dirs():
@@ -206,54 +256,109 @@ def check_remote_extract(url):
 
 def download_extract(url, target_path):
     """
-    Lädt einen PBF-Auszug herunter. Prüft vorab per HEAD-Request das Server-Änderungsdatum
-    sowie die Dateigröße, um unnötige Downloads unveränderter Auszüge zu vermeiden.
+    Lädt einen PBF-Auszug herunter mit Ausfallsicherheit:
+    - Prüft vorab per HEAD-Request das Server-Änderungsdatum und die Dateigröße.
+    - curl mit -sS, --max-redirs 5, --retry-all-errors gegen Geofabrik-Weiterleitungsschleifen.
+    - Validiert die Datei vor dem atomaren Verschieben (os.replace).
+    - Fällt bei Download-Fehlern robust auf eine vorhandene lokale Datei zurück
+      (sofern <= MAX_FALLBACK_AGE_HOURS).
+    Gibt (target_path, duration, was_downloaded, status) zurück.
     """
     log(f"Prüfe OSM-Auszug: {target_path}")
     remote_info = check_remote_extract(url)
+    head_ok = (remote_info is not None and remote_info.get("status") == 200)
 
     if os.path.exists(target_path) and not FORCE_DOWNLOAD:
         local_size = os.path.getsize(target_path)
         local_size_mb = local_size / (1024 * 1024)
+        local_mtime = os.path.getmtime(target_path)
+        local_age_hours = (time.time() - local_mtime) / 3600
 
-        if remote_info and remote_info.get("last_modified"):
+        if head_ok and remote_info.get("last_modified"):
             try:
                 remote_dt = parsedate_to_datetime(remote_info["last_modified"])
                 remote_ts = remote_dt.timestamp()
-                local_mtime = os.path.getmtime(target_path)
                 expected_size = remote_info.get("content_length")
 
                 size_matches = (expected_size is None or local_size == expected_size)
                 if local_mtime >= (remote_ts - 5) and size_matches:
                     log(f"Auszug ist aktuell (Server: {remote_info['last_modified']}, {local_size_mb:.1f} MB). Überspringe Download.")
-                    return target_path, 0.0, False
+                    return target_path, 0.0, False, "cached_head_ok"
             except Exception as ex:
                 log(f"Hinweis beim Timestamp-Vergleich ({target_path}): {ex}")
-        else:
-            log(f"Auszug bereits vorhanden ({local_size_mb:.1f} MB). Überspringe Download.")
-            return target_path, 0.0, False
+        elif not head_ok:
+            # HEAD-Anfrage nicht verfügbar (z. B. Timeout bei Geofabrik)
+            if local_age_hours <= MAX_FALLBACK_AGE_HOURS:
+                warn_msg = (
+                    f"HEAD-Prüfung für {url} nicht verfügbar. Verwende vorhandene lokale Datei "
+                    f"{os.path.basename(target_path)} (Alter: {local_age_hours:.1f}h, {local_size_mb:.1f} MB)."
+                )
+                record_warning(warn_msg)
+                return target_path, 0.0, False, "cached_head_failed"
+            else:
+                log(
+                    f"HEAD-Prüfung fehlgeschlagen und lokale Datei ist älter als {MAX_FALLBACK_AGE_HOURS}h "
+                    f"({local_age_hours:.1f}h). Versuche Download trotz fehlendem HEAD."
+                )
 
     log(f"Starte Download mit curl: {url}")
     tmp_download = target_path + ".download"
     start_time = time.time()
 
     curl_cmd = [
-        "curl", "-f", "-L", "-C", "-",
+        "curl", "-sS", "-f", "-L", "-C", "-",
         "-R",  # Übernimmt den Last-Modified-Zeitstempel des Servers auf die lokale Datei
+        "--max-redirs", "5",  # Verhindert Weiterleitungsschleifen (z. B. Geofabrik Fehler 47)
         "--retry", "5",
         "--retry-delay", "3",
+        "--retry-all-errors",  # Wiederholt auch bei Verbindungsproblemen und Proxy-Fehlern
         "--connect-timeout", "30",
         "--max-time", "1800",  # Bis zu 30 Minuten für große Extrakte (z. B. Deutschland 4,6 GB)
         "-o", tmp_download,
         url
     ]
-    run_cmd(curl_cmd)
 
-    shutil.move(tmp_download, target_path)
-    duration = time.time() - start_time
-    total_mb = os.path.getsize(target_path) / (1024 * 1024)
-    log(f"Download abgeschlossen: {total_mb:.1f} MB in {duration:.1f}s.")
-    return target_path, duration, True
+    try:
+        run_cmd(curl_cmd)
+        validate_pbf_file(tmp_download)
+        os.replace(tmp_download, target_path)
+        duration = time.time() - start_time
+        total_mb = os.path.getsize(target_path) / (1024 * 1024)
+        log(f"Download abgeschlossen: {total_mb:.1f} MB in {duration:.1f}s.")
+        return target_path, duration, True, "fresh_download"
+    except Exception as e:
+        # 1. Angefangene/korrupte .download-Datei verwerfen
+        if os.path.exists(tmp_download):
+            try:
+                os.remove(tmp_download)
+            except Exception:
+                pass
+
+        # 2. Prüfen, ob eine lokale Datei als Fallback verwendet werden kann
+        if os.path.exists(target_path):
+            local_mtime = os.path.getmtime(target_path)
+            age_hours = (time.time() - local_mtime) / 3600
+            local_mb = os.path.getsize(target_path) / (1024 * 1024)
+
+            if age_hours <= MAX_FALLBACK_AGE_HOURS:
+                warn_msg = (
+                    f"Download von {url} fehlgeschlagen ({e}). "
+                    f"Verwende vorhandene lokale Datei {os.path.basename(target_path)} als Fallback "
+                    f"(Alter: {age_hours:.1f}h, {local_mb:.1f} MB)."
+                )
+                record_warning(warn_msg)
+                return target_path, 0.0, False, "fallback_after_error"
+            else:
+                err_msg = (
+                    f"Download von {url} fehlgeschlagen ({e}) und vorhandene lokale Datei "
+                    f"{os.path.basename(target_path)} ist zu alt ({age_hours:.1f}h > {MAX_FALLBACK_AGE_HOURS}h)."
+                )
+                log(f"FEHLER: {err_msg}")
+                raise RuntimeError(err_msg) from e
+        else:
+            err_msg = f"Download von {url} fehlgeschlagen ({e}) und keine lokale Datei vorhanden."
+            log(f"FEHLER: {err_msg}")
+            raise RuntimeError(err_msg) from e
 
 
 def run_cmd(cmd):
@@ -275,7 +380,7 @@ def count_geojson_features(file_path):
         return -1
 
 
-def process_features(mode, targets, download_duration=0, raw_sizes=None):
+def process_features(mode, targets, download_duration=0, raw_sizes=None, extracts_meta=None):
     """
     Verarbeitet alle Ziel-Auszüge nach dem „Filter-then-Merge“-Verfahren:
     1. Jedes Land wird einzeln in temporäre PBF-Dateien je Feature vorgefiltert (geringe Größe im RAM).
@@ -464,6 +569,29 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None):
     except Exception as err:
         log(f"Hinweis: Konnte interne system_stats.json nicht schreiben: {err}")
 
+    # Auszüge-Metadaten für Transparenz aufbereiten
+    if extracts_meta is None:
+        extracts_meta = {}
+        for c in targets:
+            c_pbf = os.path.join(RAW_DIR, c["filename"])
+            if os.path.exists(c_pbf):
+                c_mtime = os.path.getmtime(c_pbf)
+                c_age = round((time.time() - c_mtime) / 3600, 1)
+                extracts_meta[c["id"]] = {
+                    "name": c["name"],
+                    "filename": c["filename"],
+                    "size_bytes": os.path.getsize(c_pbf),
+                    "size_mb": round(os.path.getsize(c_pbf) / (1024 * 1024), 2),
+                    "mtime": datetime.fromtimestamp(c_mtime, timezone.utc).isoformat(),
+                    "age_hours": c_age,
+                    "status": "cached_head_ok"
+                }
+
+    oldest_extract_age_hours = round(
+        max((e.get("age_hours", 0.0) for e in extracts_meta.values()), default=0.0),
+        1
+    )
+
     # Öffentliche metadata.json
     country_names = [c["name"] for c in targets]
     metadata = {
@@ -472,6 +600,8 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None):
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": summary_text,
         "countries": country_names,
+        "extracts_oldest_age_hours": oldest_extract_age_hours,
+        "extracts": extracts_meta,
         "source_extract": f"{mode} ({', '.join(country_names)})" if mode != "single" else targets[0]["filename"],
         "source_extract_size_mb": total_raw_mb,
         "source_url": "https://download.geofabrik.de/europe/" if mode != "single" else targets[0]["url"],
@@ -508,13 +638,26 @@ def main():
     total_dl_start = time.time()
     raw_sizes = {}
     download_times = []
+    extracts_meta = {}
 
     for target in targets:
         local_pbf = os.path.join(RAW_DIR, target["filename"])
-        _, dl_duration, was_dl = download_extract(target["url"], local_pbf)
+        _, dl_duration, was_dl, status = download_extract(target["url"], local_pbf)
         download_times.append(dl_duration)
         if os.path.exists(local_pbf):
-            raw_sizes[target["id"]] = os.path.getsize(local_pbf) / (1024 * 1024)
+            pbf_size_b = os.path.getsize(local_pbf)
+            pbf_mtime = os.path.getmtime(local_pbf)
+            raw_sizes[target["id"]] = pbf_size_b / (1024 * 1024)
+            pbf_age_h = round((time.time() - pbf_mtime) / 3600, 1)
+            extracts_meta[target["id"]] = {
+                "name": target["name"],
+                "filename": target["filename"],
+                "size_bytes": pbf_size_b,
+                "size_mb": round(pbf_size_b / (1024 * 1024), 2),
+                "mtime": datetime.fromtimestamp(pbf_mtime, timezone.utc).isoformat(),
+                "age_hours": pbf_age_h,
+                "status": status
+            }
 
     total_download_duration = sum(download_times)
 
@@ -524,8 +667,10 @@ def main():
             mode=mode,
             targets=targets,
             download_duration=total_download_duration,
-            raw_sizes=raw_sizes
+            raw_sizes=raw_sizes,
+            extracts_meta=extracts_meta
         )
+        save_build_warnings()
         print("\n" + "=" * 60)
         print(f" Region: {metadata['region'].upper()} ({', '.join(metadata['countries'])})")
         print(f" Status: {metadata['summary']}")
@@ -535,6 +680,7 @@ def main():
         print(f" Dauer: {metadata['timings']['total_sec']}s (Download: {metadata['timings']['download_sec']}s, Bau: {metadata['timings']['extraction_sec']}s)")
         print("=" * 60 + "\n")
     except Exception as e:
+        save_build_warnings()
         log(f"ABBRUCH MIT FEHLER: {e}")
         sys.exit(1)
 

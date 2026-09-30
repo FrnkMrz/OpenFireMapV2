@@ -4,13 +4,14 @@
 
 Die DACHLiLu-Pipeline bereitet OpenStreetMap-Daten für eine schnelle Darstellung in OpenFireMapV2 vor. Sie erzeugt statische Vektorkacheln und Metadaten; der Browser lädt davon nur die für den sichtbaren Ausschnitt benötigten Bereiche.
 
-## Datenfluss
+## Datenfluss & Zeitplan
 
-1. Regionale PBF-Extrakte werden aus der Geofabrik-Quelle bezogen.
-2. Der Builder filtert feuerwehrrelevante Objekte und erzeugt PMTiles.
-3. `metadata.json` beschreibt Version, Build-Zeit und Statistiken.
-4. Cloudflare R2 stellt die Artefakte über HTTPS bereit.
-5. Das Frontend prüft Version und Abdeckung und greift bei Problemen auf Overpass zurück.
+1. Der nächtliche Update-Lauf (`update.sh`) startet täglich um **06:00 UTC** (08:00 CEST / 07:00 CET) per Cronjob auf VM 102 (nach dem nächtlichen Veröffentlichungsfenster von Geofabrik).
+2. Regionale PBF-Extrakte werden aus der Geofabrik-Quelle bezogen (mit intelligentem HEAD-Check, atomarer Validierung und robustem Fallback auf vorhandene lokale Extrakte bei Download-Ausfällen).
+3. Der Builder filtert feuerwehrrelevante Objekte und erzeugt PMTiles.
+4. `metadata.json` beschreibt Version, Build-Zeit, Statistiken und Zustand/Alter der verwendeten Extrakte.
+5. Cloudflare R2 stellt die Artefakte über HTTPS bereit.
+6. Das Frontend prüft Version und Abdeckung und greift bei Problemen auf Overpass zurück.
 
 ## Öffentliche Qualitätsmerkmale
 
@@ -30,9 +31,9 @@ Die DACHLiLu-Ausgabe umfasst rund 1,25 Millionen feuerwehrrelevante Objekte. Das
 Die Pipeline lässt sich über das vorgefertigte Home-Assistant-Package unter `pipeline/monitoring/homeassistant/openfiremap.yaml` überwachen.
 
 ### Überwachte Metriken:
-- **Öffentlicher CDN-Status (R2):** Erreichbarkeit, Datenalter in Stunden, Versions-Zeitstempel (`generated_at`), Objektzahlen (Hydranten, Wachen, Wasserstellen, Defis, Grenzen), PMTiles-Größe und MaxZoom.
+- **Öffentlicher CDN-Status (R2):** Erreichbarkeit, Datenalter in Stunden, Versions-Zeitstempel (`generated_at`), Extrakt-Alter in Stunden (`extracts_oldest_age_hours`), Objektzahlen (Hydranten, Wachen, Wasserstellen, Defis, Grenzen), PMTiles-Größe und MaxZoom.
 - **Lokaler VM-Status:** Lokale Version auf VM 102, Festplattenbelegung (`/internal/system_stats.json`).
-- **Synchronisations-Status:** Automatische Erkennung von Diskrepanzen zwischen lokalem Build und öffentlichem R2-Stand (`/internal/sync_status.json`).
+- **Synchronisations-Status:** Automatische Erkennung von Diskrepanzen zwischen lokalem Build und öffentlichem R2-Stand (`/internal/sync_status.json`) sowie Build-Warnungen.
 
 ### Einbindung der Vorlage:
 1. In Home Assistant Packages aktivieren (in `/config/configuration.yaml`):

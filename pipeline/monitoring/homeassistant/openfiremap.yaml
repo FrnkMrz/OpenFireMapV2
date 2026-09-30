@@ -122,6 +122,13 @@ rest:
         value_template: "{{ value_json.pmtiles.maxzoom | default(0) }}"
         icon: "mdi:magnify-plus-outline"
 
+      - name: "OpenFireMap Extrakt-Alter Stunden"
+        unique_id: "openfiremap_extracts_oldest_age_hours"
+        value_template: "{{ value_json.extracts_oldest_age_hours | default(0) }}"
+        unit_of_measurement: "h"
+        state_class: "measurement"
+        icon: "mdi:timer-sand"
+
     binary_sensor:
       - name: "OpenFireMap Öffentlich Erreichbar"
         unique_id: "openfiremap_public_reachable"
@@ -168,6 +175,18 @@ rest:
         unique_id: "openfiremap_sync_checked_at"
         value_template: "{{ value_json.checked_at | default('unknown') }}"
         icon: "mdi:calendar-clock"
+
+      - name: "OpenFireMap Build Warnungen"
+        unique_id: "openfiremap_sync_build_warnings"
+        value_template: >-
+          {% if value_json.build_warnings is defined and value_json.build_warnings is iterable %}
+            {{ value_json.build_warnings | length }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "Warnungen"
+        state_class: "measurement"
+        icon: "mdi:alert-outline"
 
     binary_sensor:
       - name: "OpenFireMap Upload Erfolgreich"
@@ -254,7 +273,7 @@ automation:
           title: "🚨 OpenFireMap Ausfall"
           message: "Die öffentliche Pipeline <PIPELINE_PUBLIC_URL>/metadata.json ist seit über 10 Minuten nicht erreichbar!"
 
-  # 3.2 Daten veraltet (> 36 Stunden alt, Cron läuft täglich um 03:30)
+  # 3.2 Daten veraltet (> 36 Stunden alt, Cron läuft täglich um 06:00)
   - id: "openfiremap_data_outdated"
     alias: "OpenFireMap: Datenbestand veraltet (>36h)"
     mode: single
@@ -380,6 +399,22 @@ automation:
         data:
           title: "ℹ️ OpenFireMap Zoom-Hinweis"
           message: "Der PMTiles MaxZoom beträgt aktuell {{ states('sensor.openfiremap_offentlich_pmtiles_maxzoom') }} (erwartet: 14)."
+
+  # 3.8 Geofabrik-Extrakte veraltet (> 48 Stunden)
+  - id: "openfiremap_extracts_outdated"
+    alias: "OpenFireMap: OSM-Extrakte veraltet (>48h)"
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.openfiremap_extrakt_alter_stunden
+        above: 48
+    action:
+      - service: <NOTIFY_SERVICE>
+        data:
+          title: "⚠️ OpenFireMap Extrakt-Warnung"
+          message: >-
+            Der älteste OSM-Auszug von Geofabrik ist {{ states('sensor.openfiremap_extrakt_alter_stunden') }} Stunden alt!
+            Bitte Downloads oder Geofabrik-Erreichbarkeit auf VM 102 prüfen.
 
 # ==============================================================================
 # 4. Lovelace Dashboard-Beispiel (Entities-Card)

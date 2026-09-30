@@ -159,4 +159,73 @@ Sollte der Tunnel als Notfall-Kanal reaktiviert werden müssen:
 
 ---
 
+## Störung: Geofabrik-Download (Weiterleitungsschleife / Timeout)
+
+### Symptome
+- Fehler im Log `<DATA_DIR>/update.log`: `curl: (47) Maximum (50) redirects followed` oder `Operation timed out after 15000 milliseconds with 0 out of 0 bytes received`.
+- Builder bricht ab mit `FEHLER: Daten-Build (builder) fehlgeschlagen!`.
+- In `sync_status.json`: `upload_ok: false`, `in_sync: false`, `last_error` enthält Fehlermeldung zum Builder.
+- Home Assistant meldet Sync-Diskrepanz oder veraltete Extrakte.
+
+### Ursachen
+1. **Veröffentlichungsfenster von Geofabrik (01:00–03:00 UTC):**
+   Geofabrik generiert die nationalen Extrakte nachts neu (Deutschland wird meist zwischen 01:30 und 02:30 UTC fertiggestellt). Während eine Datei auf dem Geofabrik-Server noch geschrieben oder indiziert wird, kann die HTTP-Weiterleitung von `-latest.osm.pbf` auf die datierte Datei in eine zirkuläre 302-Schleife geraten oder der Server antwortet verzögert (HEAD-Timeout).
+2. **Server-Last / Squid-Proxy-Fluktuation bei Geofabrik:**
+   Kurzzeitige Aussetzer, 502/503-Meldungen oder Verbindungsabbrüche beim Herunterladen von Multi-Gigabyte-Dateien.
+
+### Diagnose-Befehle
+```bash
+# 1. Geofabrik HTTP-Status und Weiterleitung manuell prüfen:
+curl -sI "https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf"
+curl -sI "https://download.geofabrik.de/europe/germany-latest.osm.pbf"
+
+# 2. Prüfen, ob eine Weiterleitungsschleife vorliegt:
+curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}\n" "https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf"
+
+# 3. Log-Auszug des letzten Laufs analysieren:
+tail -n 50 <DATA_DIR>/update.log | grep -E -i "FEHLER|curl|redirect|timeout"
+
+# 4. Status der lokalen Extrakte und deren Alter prüfen:
+ls -lh <DATA_DIR>/raw/*-latest.osm.pbf
+```
+
+### Sofortmaßnahmen
+1. **Prüfen, ob Geofabrik wieder erreichbar ist:**
+   Wenn der manuelle HEAD-Request wieder einen regulären 302-Redirect auf eine existierende datierte Datei (mit HTTP 200) liefert, kann ein Update manuell angestoßen werden:
+   ```bash
+   nohup <PROJECT_DIR>/update.sh > /dev/null 2>&1 &
+   ```
+2. **Resilienz & lokaler Fallback (ab v0.8.1):**
+   Der Builder bricht bei einzelnen Download-Fehlern nicht mehr ab, sofern eine lokale Kopie vorliegt, die nicht älter als 72 Stunden ist (`MAX_FALLBACK_AGE_HOURS=72`). Der Build läuft mit der vorhandenen Datei weiter, protokolliert eine Warnung und aktualisiert die Metadaten transparent (`status: "fallback_after_error"`).
+3. **Download manuell erzwingen (Cache ignorieren):**
+   ```bash
+   FORCE_DOWNLOAD=true <PROJECT_DIR>/update.sh
+   ```
+
+---
+
+## Post-Mortem: Vorfall vom 30.09.2026 (Nachtlauf-Ausfall Geofabrik)
+
+- **Datum & Uhrzeit:** 30.09.2026, 03:30 Europe/Berlin (01:30 UTC)
+- **Schweregrad:** Niedrig (kein Ausfall des Live-Betriebs; bestehender Datenstand auf R2 blieb aktiv)
+- **Betroffene Komponenten:** Nächtlicher Cronjob auf VM 102 (`update.sh`), Builder (`build_features.py`)
+
+### Was ist passiert?
+Beim planmäßigen Nachtlauf um 03:30 (01:30 UTC) liefen die HEAD-Prüfungen für DE, AT, CH und LU bei Geofabrik in einen 15s-Timeout, woraufhin der Builder planmäßig die lokalen Vorlagen behielt. Beim anschließenden Versuch, `liechtenstein-latest.osm.pbf` herunterzuladen, geriet curl in eine Weiterleitungsschleife (`curl: (47) Maximum (50) redirects followed`).
+Der Builder warf eine `RuntimeError`-Exception und brach den gesamten Build ab. Folglich fand kein Daten- und Metadaten-Upload statt. `sync_status.json` meldete korrekterweise `upload_ok: false`.
+
+### Warum ist es passiert?
+Der Cronjob-Start um 01:30 UTC lag mitten im täglichen Veröffentlichungsfenster von Geofabrik. Zu diesem Zeitpunkt erzeugte Geofabrik gerade die neuen Tages-Extrakte (Deutschland war z. B. erst um 02:26 UTC fertig). Während dieser Erstellung führte der symbolische Link bzw. die 302-Weiterleitung von `liechtenstein-latest.osm.pbf` temporär im Kreis. Um 05:17 UTC antwortete Geofabrik wieder völlig normal. Da der Builder zuvor keinen Fallback auf die lokal vorhandene Datei des Vortags hatte, führte ein einziger fehlgeschlagener Extrakt-Download zum Abbruch des gesamten Prozesses.
+
+### Was wurde geändert?
+1. **Cronjob verschoben:** Startzeit von `03:30` auf `06:00` (Europe/Berlin = 06:00 UTC auf der VM, da Systemuhr auf UTC läuft). Dies liegt mit mindestens 3,5 Stunden Sicherheitsabstand weit nach Abschluss der Geofabrik-Tagesläufe.
+2. **Download-Fallback auf lokale PBFs:** Schlägt ein Download fehl, greift der Builder auf die lokale PBF-Datei zurück (sofern maximal 72 h alt), setzt den Build fort und markiert den Zustand transparent in den Metadaten (`fallback_after_error`).
+3. **curl-Härtung:** Ergänzung von `--max-redirs 5` (verhindert Endlosschleifen), `-sS` (kein Log-Spamming, Fehlerausgabe bleibt erhalten), `--retry 5`, `--retry-delay 3` und `--retry-all-errors` (wiederholt auch bei Proxy- und Verbindungsaussetzern).
+4. **PBF-Integritätsprüfung:** Validierung der Mindestgröße (> 100 KB) und Struktur (`osmium fileinfo`) vor dem atomaren Verschieben via `os.replace`.
+5. **Verriegelung:** Absicherung von `update.sh` mit `flock` (`/srv/docker/data/openfiremap/update.lock`), um Überschneidungen zwischen manuellem Lauf und Cronjob mit `exit 3` zu verhindern.
+6. **Monitoring:** Neuer Home Assistant Sensor `sensor.openfiremap_extrakt_alter_stunden` mit Automation bei Alter > 48 h sowie Übernahme von `build_warnings` in `sync_status.json`.
+
+---
+
 Diese Datei ist eine interne Vorlage und kein Ersatz für ein sicheres Secret- oder Infrastrukturmanagement.
+

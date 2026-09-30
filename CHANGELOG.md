@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.8.1] - 2026-09-30
+
+### Resilienz & Ausfallsicherheit
+- **Automatischer Download-Fallback bei Geofabrik-Störungen**:
+  - `pipeline/builder/build_features.py`: Schlägt ein PBF-Download fehl (z. B. durch Weiterleitungsschleifen oder Verbindungsabbrüche im nächtlichen Veröffentlichungsfenster von Geofabrik), greift der Builder automatisch auf die vorhandene lokale PBF-Datei zurück, sofern diese nicht älter als 72 Stunden ist (`MAX_FALLBACK_AGE_HOURS=72`).
+  - Der Build läuft unterbrechungsfrei durch und vermeidet unnötige Komplettabbrüche; der Zustand wird transparent als Warnung protokolliert (`fallback_after_error`).
+- **curl-Härtung**:
+  - Ergänzung von `--max-redirs 5` zur Verhinderung von zirkulären HTTP-302-Weiterleitungsschleifen (wie Geofabrik-Fehler 47).
+  - Stille Fehlerausgabe (`-sS`) eliminiert Hunderte unnötiger Fortschrittszeilen im Build-Log (`update.log`), während echte Fehlermeldungen sichtbar bleiben.
+  - Hinzufügen von `--retry-all-errors` zur automatischen Wiederholung bei Server- und Proxy-Aussetzern (z. B. 429/5xx oder Verbindungsresets).
+- **Integritätsprüfung vor Verschieben**:
+  - Heruntergeladene PBF-Dateien werden vor dem atomaren Verschieben (`os.replace`) auf Mindestgröße (> 100 KB) und strukturelle Validität (`osmium fileinfo`) geprüft, um abgerissene oder unvollständige Downloads abzufangen.
+- **Prozessverriegelung**:
+  - `pipeline/update.sh`: Absicherung gegen parallele Ausführung von Cronjob und manuellen Aufrufen mittels `flock` (`/srv/docker/data/openfiremap/update.lock`) mit Fehlercode `exit 3`.
+
+### Transparenz & Monitoring
+- **Metadaten-Erweiterung (`metadata.json`)**:
+  - Neues Top-Level-Feld `extracts_oldest_age_hours` zur schnellen Erkennung veralteter Quelldaten.
+  - Neues Objekt `extracts` mit Details zu jedem verwendeten Landes-Extrakt (Name, relative Dateinamen, Dateigröße in Bytes/MiB, Zeitstempel, Alter in Stunden und Status: `fresh_download`, `cached_head_ok`, `cached_head_failed`, `fallback_after_error`).
+  - Strikte Datensicherheit: Keine internen Dateipfade oder lokalen IP-Adressen in den Metadaten.
+- **Synchronisations-Status (`sync_status.json`)**:
+  - Übernahme von `build_warnings` aus dem Builder in die Statusdatei für das interne Monitoring.
+- **Home Assistant Integration (`openfiremap.yaml`)**:
+  - Neuer Sensor `sensor.openfiremap_extrakt_alter_stunden` und neuer Sensor `sensor.openfiremap_build_warnungen`.
+  - Neue Automation: Alarmierung, falls der älteste OSM-Auszug älter als 48 Stunden wird (`openfiremap_extracts_outdated`).
+  - Validiert mit `check_ha_entities.py` (24 Entitätsdefinitionen, 0 fehlende Verweise).
+
+### Betrieb & Dokumentation
+- **Verschiebung des nächtlichen Cronjobs**:
+  - Verlegung der Startzeit von `03:30` auf `06:00 UTC` (08:00 CEST / 07:00 CET) auf VM 102 mit ausreichend zeitlichem Abstand zum täglichen Geofabrik-Generierungsfenster.
+- **Betriebsdokumentation**:
+  - `pipeline/docs/OPERATIONS_INTERNAL.md` um ein Runbook zur Behebung von Geofabrik-Downloadstörungen und ein detailliertes Post-Mortem zum Vorfall vom 30.09.2026 ergänzt.
+
 ## [v0.8.0] - 2026-09-29
 
 ### Performance
