@@ -270,9 +270,9 @@ Der Cronjob-Start um 03:30 UTC lag mitten im täglichen Veröffentlichungsfenste
 - **Auswirkung:** Keine. Beide Builds lieferten identische Zahlen (1.019.274 Hydranten) und identische PMTiles-Größe (201.909.999 Bytes). Live-Kacheln wurden stichprobenartig geprüft. Das Ergebnis ohne Datenbeschädigung war jedoch reines Glück.
 
 ### Getroffene Maßnahmen
-1. **Cronjob verschoben:** Startzeit von `03:30 UTC` auf `06:00 UTC (VM läuft auf UTC) = 08:00 MESZ` verlegt. Dies liegt mit ca. 1 Stunde 45 Minuten Sicherheitsabstand weit nach Abschluss der Geofabrik-Tagesläufe (ca. 04:15 UTC).
+1. **Cronjob verschoben:** Startzeit von `03:30 UTC` auf `05:43 UTC (VM läuft auf UTC) = 07:43 MESZ / 06:43 MEZ` verlegt (`43 5 * * *`). Dies liegt mit ca. 1,5 Stunden Sicherheitsabstand weit nach Abschluss der Geofabrik-Tagesläufe (ca. 04:15 UTC) und vermeidet Lastspitzen zur vollen Stunde auf den Download-Servern.
 2. **Prozess-Verriegelung:** Absicherung von `update.sh` mit `flock` (`<DATA_DIR>/update.lock`), um Überschneidungen zwischen manuellem Lauf und Cronjob mit `exit 3` zu verhindern.
-3. **Betriebshinweis bis zum VM-Deploy:** Bis zum Einspielen des Updates auf VM 102 dürfen **keine manuellen Läufe zwischen 05:30 und 07:00 UTC** gestartet werden.
+3. **Betriebshinweis:** Keine manuellen Läufe zwischen 05:15 und 06:45 UTC starten (bzw. `flock` blockiert parallele Läufe automatisch).
 4. **Download-Fallback auf lokale PBFs:** Schlägt ein Download fehl, greift der Builder auf die lokale PBF-Datei zurück (sofern maximal 72 h alt), setzt den Build fort und markiert den Zustand transparent in den Metadaten (`fallback_after_error`).
 5. **curl-Härtung:** Ergänzung von `--max-redirs 5` (verhindert Endlosschleifen), `-sS` (kein Log-Spamming, Fehlerausgabe bleibt erhalten), `--retry 5`, `--retry-delay 3` und `--retry-all-errors` (wiederholt auch bei Proxy- und Verbindungsaussetzern).
 6. **HEAD-Prüfung ohne GET-Umschaltung:** Manuelles Verfolgen von HTTP-Redirects strikt mit `HEAD` (max. 5 Sprünge), um ungeplante Gigabyte-Downloads beim Header-Check zu verhindern.

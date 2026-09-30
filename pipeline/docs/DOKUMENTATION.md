@@ -6,7 +6,7 @@ Die DACHLiLu-Pipeline bereitet OpenStreetMap-Daten für eine schnelle Darstellun
 
 ## Datenfluss & Zeitplan
 
-1. Der nächtliche Update-Lauf (`update.sh`) startet täglich um **06:00 UTC** (08:00 MESZ / 07:00 MEZ) per Cronjob auf VM 102 (nach dem nächtlichen Veröffentlichungsfenster von Geofabrik).
+1. Der nächtliche Update-Lauf (`update.sh`) startet täglich um **05:43 UTC** (07:43 MESZ / 06:43 MEZ) per Cronjob auf VM 102 (nach dem nächtlichen Veröffentlichungsfenster von Geofabrik, krumme Minute zur Vermeidung von Spitzenlasten).
 2. Regionale PBF-Extrakte werden aus der Geofabrik-Quelle bezogen (mit intelligentem HEAD-Check, atomarer Validierung und robustem Fallback auf vorhandene lokale Extrakte bei Download-Ausfällen).
 3. Der Builder filtert feuerwehrrelevante Objekte und erzeugt PMTiles.
 4. `metadata.json` beschreibt Version, Build-Zeit, Statistiken und Zustand/Alter der verwendeten Extrakte.

@@ -66,7 +66,7 @@ All notable changes to this project will be documented in this file.
 
 ### Betrieb & Dokumentation
 - **Verschiebung des nächtlichen Cronjobs**:
-  - Verlegung der Startzeit von `03:30 UTC` (05:30 MESZ) auf `06:00 UTC` (08:00 MESZ / 07:00 MEZ) auf VM 102 mit ausreichend zeitlichem Sicherheitsabstand zum täglichen Geofabrik-Generierungsfenster (ca. 01:00–04:15 UTC).
+  - Verlegung der Startzeit von `03:30 UTC` (05:30 MESZ) auf `05:43 UTC` (07:43 MESZ / 06:43 MEZ) auf VM 102 mit ausreichend zeitlichem Sicherheitsabstand zum täglichen Geofabrik-Generierungsfenster (ca. 01:00–04:15 UTC) und Vermeidung von Spitzenlasten zur vollen Stunde.
   - Klarstellung in der Betriebsdokumentation: Die VM läuft auf UTC; Zeitstempel im Log und in der Crontab sind UTC.
 - **Betriebsdokumentation & Post-Mortem**:
   - `pipeline/docs/OPERATIONS_INTERNAL.md` um ein Runbook zur Behebung von Geofabrik-Downloadstörungen und ein detailliertes Post-Mortem zu den Vorfällen vom 30.09.2026 (Nachtlauf-Ausfall um 03:30 UTC und paralleler Lauf um 06:00 UTC) ergänzt.

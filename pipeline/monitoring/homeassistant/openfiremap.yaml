@@ -290,7 +290,7 @@ automation:
           title: "🚨 OpenFireMap Ausfall"
           message: "Die öffentliche Pipeline <PIPELINE_PUBLIC_URL>/metadata.json ist seit über 10 Minuten nicht erreichbar!"
 
-  # 3.2 Pipeline-Heartbeat: Kein Update-Lauf seit > 30 Stunden (Cron läuft täglich um 06:00 UTC)
+  # 3.2 Pipeline-Heartbeat: Kein Update-Lauf seit > 30 Stunden (Cron läuft täglich um 05:43 UTC)
   - id: "openfiremap_heartbeat_missing"
     alias: "OpenFireMap: Pipeline Heartbeat fehlt (>30h)"
     mode: single
