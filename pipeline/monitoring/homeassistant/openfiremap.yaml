@@ -176,6 +176,11 @@ rest:
         value_template: "{{ value_json.checked_at | default('unknown') }}"
         icon: "mdi:calendar-clock"
 
+      - name: "OpenFireMap Sync Ergebnis"
+        unique_id: "openfiremap_sync_result"
+        value_template: "{{ value_json.result | default('unknown') }}"
+        icon: "mdi:check-decagram"
+
       - name: "OpenFireMap Build Warnungen"
         unique_id: "openfiremap_sync_build_warnings"
         value_template: >-
@@ -228,6 +233,18 @@ template:
         state_class: "measurement"
         icon: "mdi:file-chart"
 
+      - name: "OpenFireMap Sync Alter Stunden"
+        unique_id: "openfiremap_sync_age_hours"
+        availability: >-
+          {{ states('sensor.openfiremap_sync_letzte_prufung') not in
+             ['unknown', 'unavailable', 'none', ''] }}
+        state: >-
+          {{ ((as_timestamp(now()) -
+              as_timestamp(states('sensor.openfiremap_sync_letzte_prufung'))) / 3600) | round(1) }}
+        unit_of_measurement: "h"
+        state_class: "measurement"
+        icon: "mdi:heart-pulse"
+
   - binary_sensor:
       - name: "OpenFireMap Daten Synchron"
         unique_id: "openfiremap_versions_in_sync"
@@ -273,21 +290,22 @@ automation:
           title: "🚨 OpenFireMap Ausfall"
           message: "Die öffentliche Pipeline <PIPELINE_PUBLIC_URL>/metadata.json ist seit über 10 Minuten nicht erreichbar!"
 
-  # 3.2 Daten veraltet (> 36 Stunden alt, Cron läuft täglich um 06:00 UTC)
-  - id: "openfiremap_data_outdated"
-    alias: "OpenFireMap: Datenbestand veraltet (>36h)"
+  # 3.2 Pipeline-Heartbeat: Kein Update-Lauf seit > 30 Stunden (Cron läuft täglich um 06:00 UTC)
+  - id: "openfiremap_heartbeat_missing"
+    alias: "OpenFireMap: Pipeline Heartbeat fehlt (>30h)"
     mode: single
     trigger:
       - platform: numeric_state
-        entity_id: sensor.openfiremap_datenalter_stunden
-        above: 36
-        # "unavailable" wird wegen availability nicht numerisch ausgewertet;
-        # den Endpunkt-Ausfall meldet ausschließlich Automation 3.1.
+        entity_id: sensor.openfiremap_sync_alter_stunden
+        above: 30
+        # "unavailable" wird wegen availability nicht numerisch ausgewertet.
     action:
       - service: <NOTIFY_SERVICE>
         data:
-          title: "⚠️ OpenFireMap Daten veraltet"
-          message: "Der öffentliche Datenbestand ist {{ states('sensor.openfiremap_datenalter_stunden') }} Stunden alt. Bitte Cronjob auf VM 102 prüfen."
+          title: "🚨 OpenFireMap Pipeline Heartbeat fehlt"
+          message: >-
+            Auf VM 102 wurde seit über 30 Stunden kein Update-Lauf ausgeführt (Alter: {{ states('sensor.openfiremap_sync_alter_stunden') }} h)!
+            Letzte Prüfung: {{ states('sensor.openfiremap_sync_letzte_prufung') }}. Bitte Cronjob auf VM 102 prüfen.
 
   # 3.3 Lokal ≠ Öffentlich länger als 2 Stunden oder Upload fehlgeschlagen
   - id: "openfiremap_sync_mismatch"

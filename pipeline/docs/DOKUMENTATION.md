@@ -22,6 +22,25 @@ Die DACHLiLu-Pipeline bereitet OpenStreetMap-Daten für eine schnelle Darstellun
 - Overpass-Fallback außerhalb DACHLiLu und bei Pipeline-Fehlern
 - keine Veröffentlichung von Systemmetriken, Zugangsdaten oder internen Netzwerkdaten
 
+## Build nur bei Änderungen („Skip if unchanged“)
+
+Um unnötige CPU-Last (25–30 min Buildzeit), Bandbreite und vor allem Kachel-Invalidierungen im Cloudflare Edge-Cache zu vermeiden, baut der Builder nur neu, wenn sich die Quelldaten oder der Build-Code tatsächlich geändert haben:
+
+| Ergebnis (`sync_status.result`) | Bedingung | Aktion |
+|---|---|---|
+| `built` | Mindestens ein OSM-Extrakt neu/geändert, **oder** Builder-Fingerprint geändert, **oder** `FORCE_BUILD=true`, **oder** kein gültiger Fingerprint vorhanden (erster Lauf) | Build + R2-Upload + Verifikation + Published-Fingerprint |
+| `upload_only` | Quelldaten und Builder unverändert, aber der **lokale** Stand ist noch nicht auf R2 veröffentlicht (z. B. nach Upload-Fehler) | Kein Build, nur R2-Upload + Verifikation + Published-Fingerprint |
+| `skipped_no_changes` | Quelldaten unverändert **und** R2 ist bereits synchron zum lokalen Stand | Kein Build, kein Upload, Verifikation läuft als Heartbeat |
+
+### Fingerprints & Erkennung
+
+1. **Extrakt-Fingerprint**: Pro Land wird `{ id, size_bytes, mtime }` erfasst. Die `mtime` entspricht dank `curl -R` dem exakten `Last-Modified`-Header von Geofabrik.
+2. **Builder-Fingerprint**: Ein deterministischer SHA-256-Hash über den Python-Quellcode von `build_features.py` und alle ergebnisrelevanten Parameter (`PIPELINE_REGION`, `OSM_EXTRACT_URL`, Zielländer, `TIPPECANOE_CONFIG`, Layer-Definitionen).
+3. **Speicherorte (intern unter `raw/`, nicht öffentlich)**:
+   - `raw/build_fingerprint.json`: Fingerprint des letzten erfolgreichen lokalen Builds.
+   - `raw/published_fingerprint.json`: Fingerprint des erfolgreich auf Cloudflare R2 veröffentlichten Stands.
+4. **Cache-Vorteile**: Da bei `skipped_no_changes` kein Upload und kein Cache-Purge stattfindet, bleibt `generated_at` in `metadata.json` und damit der Parameter `?v=` für Web-Clients stabil. Der Cloudflare Edge Cache liefert Kacheln dauerhaft mit `HIT` aus.
+
 ## Aktuelle Größenordnung
 
 Die DACHLiLu-Ausgabe umfasst rund 1,25 Millionen feuerwehrrelevante Objekte. Das PMTiles-Archiv ist dank optimiertem Zoom-Level 14 etwa **192,5 MB** groß (201.892.499 Bytes) und liegt damit weit unter dem Cloudflare Free-Cache-Limit von 512 MiB. Diese Werte sind Momentaufnahmen; der aktuelle Build-Zeitstempel und detaillierte Statistiken stehen in `metadata.json`.
