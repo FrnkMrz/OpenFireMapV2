@@ -47,7 +47,7 @@ Die Veröffentlichung ist auf die unterschiedlichen Datenrollen abgestimmt:
 
 Für PMTiles ist die Nginx-Kompression deaktiviert, damit HTTP-206-Range-Responses und `Content-Range` zuverlässig funktionieren. ETags, CORS und die exponierten Range-Header unterstützen Browser- und R2-Kompatibilität. Der aktuelle MaxZoom-14-Build bleibt mit rund 192,5 MiB unter dem 512-MiB-Free-Cache-Limit.
 
-Die lokale Umgebung stellt zusätzlich interne Statusdateien für Monitoring bereit. Sie sind nicht über den öffentlichen Cloudflare-Tunnel erreichbar; öffentliche Projektseiten dokumentieren nur den technischen Zweck, nicht private Netzwerkadressen oder Zugangsdaten.
+Die lokale Umgebung stellt zusätzlich interne Statusdateien für Monitoring bereit. Sie sind nicht öffentlich erreichbar (nur Heimnetz); öffentliche Projektseiten dokumentieren nur den technischen Zweck, nicht private Netzwerkadressen oder Zugangsdaten.
 
 ## Cache und Cache-Busting
 

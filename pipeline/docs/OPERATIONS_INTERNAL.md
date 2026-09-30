@@ -126,39 +126,51 @@ curl -s -I -H "Range: bytes=0-0" "https://pipeline.openfiremap.org/openfiremap.p
 
 ---
 
-## Vorbereitung: Cloudflare-Tunnel-Abbau
+## Cloudflare-Tunnel (abgebaut)
 
-Seit dem 29.09.2026 zeigt der DNS-Eintrag von `pipeline.openfiremap.org` direkt auf Cloudflare R2. Der auf VM 102 laufende Tunnel-Container (`openfiremap-tunnel`) überträgt keinen produktiven Datenverkehr mehr. Folgender Ablauf beschreibt den sauberen, rückbaubaren Abbau:
+Seit dem 29.09.2026 zeigt der DNS-Eintrag von `pipeline.openfiremap.org` direkt auf Cloudflare R2. Der Tunnel überträgt keinen produktiven Datenverkehr mehr und der Service `tunnel` wurde am 30.09.2026 aus `docker-compose.yml` entfernt.
 
-### Schritt-für-Schritt-Anleitung
-1. **Public Hostname im Cloudflare Zero Trust Dashboard entfernen:**
-   - Navigieren zu *Networks* → *Tunnels* → Tunnel auswählen → *Public Hostnames*.
-   - Prüfen, dass der Hostname `pipeline.openfiremap.org` nicht mehr aktiv auf `http://<PIPELINE_LAN_IP>:8080` routet (DNS verweist bereits direkt auf den R2-Bucket bzw. Custom Domain).
-   - Eintrag für den öffentlichen Hostnamen im Tunnel-Menü entfernen.
-2. **Tunnel deaktivieren oder löschen:**
-   - Im Zero Trust Dashboard den Tunnel auf *Inactive* stellen oder den Tunnel löschen (sofern keine anderen Dienste darüber laufen).
-3. **Tunnel-Container auf VM 102 stoppen:**
-   - Auf der VM den Container stoppen:
-     ```bash
-     cd <PROJECT_DIR>
-     docker compose stop tunnel
-     ```
-   - *Vorschlag für die Zukunft:* Den Dienst `tunnel` erst aus `docker-compose.yml` entfernen, wenn der Betrieb über R2 für mindestens 14 Tage stabil gelaufen ist.
-4. **`TUNNEL_TOKEN` entfernen:**
+### Bereinigung auf der VM
+Um verbliebene Container und das Docker-Image auf VM 102 aufzuräumen:
+1. **Verwaiste Container entfernen:**
+   ```bash
+   cd <PROJECT_DIR>
+   docker compose up -d --remove-orphans
+   ```
+2. **Docker-Image entfernen:**
+   ```bash
+   docker image rm cloudflare/cloudflared:latest
+   ```
+3. **`TUNNEL_TOKEN` entfernen:**
    - Aus der Datei `<PROJECT_DIR>/.env` den Eintrag `TUNNEL_TOKEN=...` entfernen.
-5. **Absicherung von `/internal/` bleibt bestehen:**
+4. **Absicherung von `/internal/` bleibt bestehen:**
    - Der Nginx-Schutz in `pipeline/nginx/default.conf` (`deny all` bei Vorhandensein des `CF-Connecting-IP`-Headers und strikte Beschränkung auf RFC1918/Localhost) verbleibt dauerhaft als Defense-in-Depth in der Konfiguration, um versehentliche Freigaben bei künftigen Reverse-Proxy-Konfigurationen auszuschließen.
 
-### Prüfschritte nach dem Stoppen
+### Prüfschritte nach dem Abbau
 - [ ] Öffentliche Pipeline testen: `curl -I https://pipeline.openfiremap.org/metadata.json` liefert unverändert HTTP 200 via Cloudflare R2.
 - [ ] Internes Monitoring testen: `curl -I http://<PIPELINE_LAN_IP>:8080/internal/system_stats.json` liefert weiterhin HTTP 200 aus dem Heimnetz.
-- [ ] Docker-Status auf der VM prüfen: `docker compose ps` zeigt `web` als *running* und `tunnel` als *stopped* (oder `exited 0`).
+- [ ] Docker-Status auf der VM prüfen: `docker compose ps` zeigt `web` als *running* (kein `tunnel`-Container mehr vorhanden).
 
 ### Rückweg (Rollback im Bedarfsfall)
 Sollte der Tunnel als Notfall-Kanal reaktiviert werden müssen:
-1. `TUNNEL_TOKEN` in `<PROJECT_DIR>/.env` wieder eintragen.
-2. `docker compose up -d tunnel` starten.
-3. Im Cloudflare Zero Trust Dashboard den Public Hostname (z. B. als Backup-Subdomain `backup-pipeline.openfiremap.org`) wieder auf `http://<PIPELINE_LAN_IP>:8080` verlinken.
+1. Den entfernten Service `tunnel` wieder in `<PROJECT_DIR>/docker-compose.yml` unter `services:` einfügen:
+   ```yaml
+     tunnel:
+       image: cloudflare/cloudflared:latest
+       container_name: openfiremap-tunnel
+       restart: unless-stopped
+       command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+       depends_on:
+         - web
+       logging:
+         driver: "json-file"
+         options:
+           max-size: "10m"
+           max-file: "3"
+   ```
+2. `TUNNEL_TOKEN` in `<PROJECT_DIR>/.env` wieder eintragen.
+3. `docker compose up -d tunnel` starten.
+4. Im Cloudflare Zero Trust Dashboard den Public Hostname wieder auf `http://<PIPELINE_LAN_IP>:8080` verlinken.
 
 ---
 

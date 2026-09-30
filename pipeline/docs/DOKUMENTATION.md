@@ -88,8 +88,8 @@ Die Pipeline lässt sich über das vorgefertigte Home-Assistant-Package unter `p
 
 - **Primäre Produktions-Auslieferung:** Läuft direkt über Cloudflare R2 unter `<PIPELINE_PUBLIC_URL>`. Der Browser bezieht Kacheln via HTTP Range Requests direkt aus dem R2 Object Storage.
 - **Rolle des Nginx-Servers auf VM 102:** Dient als lokaler Build- und Backup-Server im Heimnetzwerk (Port 8080) für lokale Tests, Entwicklungszwecke und internes Monitoring (z. B. Home Assistant).
-- **Rolle des Cloudflare-Tunnels (`openfiremap-tunnel`):** Der Tunnel leitete vor der R2-Migration Anfragen an Nginx weiter. Da R2 die öffentliche Last vollständig übernimmt, wird der Tunnel im Regelbetrieb nicht mehr zwingend benötigt. Er verbleibt vorerst als Fallback-/Redundanz-Kanal aktiv, sollte jedoch perspektivisch entweder auf eine dedizierte Backup-Subdomain umgestellt oder abgeschaltet werden.
-- **Absicherung des Endpunkts `/internal/`:** Da der Tunnel-Container aus Nginx-Sicht aus dem internen Docker-Bridge-Netzwerk anfragt, sperrt Nginx `/internal/` sofort per HTTP 403, sobald der Cloudflare-Header `CF-Connecting-IP` erkannt wird.
+- **Status des Cloudflare-Tunnels (`openfiremap-tunnel`):** Der Tunnel leitete vor der R2-Migration Anfragen an Nginx weiter. Seit dem 29.09.2026 zeigt der DNS-Eintrag direkt auf R2; der Tunnel wurde abgeschaltet und am 30.09.2026 aus `docker-compose.yml` entfernt.
+- **Absicherung des Endpunkts `/internal/`:** Als Defense-in-Depth für künftige Reverse-Proxy- oder Tunnel-Konfigurationen sperrt Nginx Anfragen an `/internal/` sofort per HTTP 403, sobald der Cloudflare-Header `CF-Connecting-IP` erkannt wird, und erlaubt ausschließlich Zugriffe aus RFC1918-Netzwerken und von Localhost.
 
 ## Qualitätssicherung
 

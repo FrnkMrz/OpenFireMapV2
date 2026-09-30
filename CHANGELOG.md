@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Betrieb & Infrastruktur
+- **Entfernung des Cloudflare-Tunnel-Dienstes**:
+  - `pipeline/docker-compose.yml`: Service `tunnel` (`openfiremap-tunnel`, Image `cloudflare/cloudflared:latest`) vollständig entfernt, da der produktive Datenverkehr von `pipeline.openfiremap.org` seit dem 29.09.2026 direkt über Cloudflare R2 läuft.
+  - `pipeline/setup-vm102.sh`: Setup-Logik und Überprüfung von `TUNNEL_TOKEN` entfernt, doppelte Healthcheck-Zeile bereinigt und Endpunkt-Überschrift auf R2 angepasst.
+  - `pipeline/docs/OPERATIONS_INTERNAL.md` & `pipeline/docs/DOKUMENTATION.md`: Dokumentation zum Tunnel-Rückbau aktualisiert sowie Rollback-Anleitung mit dem Compose-Snippet ergänzt; `pipeline/docs/ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md` gelöscht.
+  - `pipeline/nginx/default.conf`: Schutz von `/internal/` gegen Zugriff mit Header `CF-Connecting-IP` sowie RFC1918-Beschränkung verbleibt unverändert als dauerhafte Defense-in-Depth.
+  - `docs/ARCHITEKTUR.md`: Formulierung zur Nichterreichbarkeit interner Statusdateien auf lokales Netzwerk (Heimnetz) angepasst.
+
 ## [v0.8.1] - 2026-09-30
 
 ### Resilienz & Ausfallsicherheit

@@ -73,41 +73,18 @@ docker compose build builder
 echo "⚡ [4/5] Führe Datenextraktion aus (DACHLiLu / konfigurierte Region)..."
 docker compose run --rm builder
 
-# 5. Web-Server & Tunnel starten
+# 5. Web-Server starten
 echo "🌐 [5/5] Starte Nginx Webserver..."
 cd "$PROJECT_DIR"
 docker compose up -d web
-
-# Tunnel prüfen und starten falls TUNNEL_TOKEN vorhanden
-HAS_TUNNEL_TOKEN=false
-if [ -f "${PROJECT_DIR}/.env" ] && grep -E -q '^TUNNEL_TOKEN=[^[:space:]]+' "${PROJECT_DIR}/.env"; then
-  HAS_TUNNEL_TOKEN=true
-elif [ -n "${TUNNEL_TOKEN:-}" ]; then
-  HAS_TUNNEL_TOKEN=true
-fi
-
-if [ "$HAS_TUNNEL_TOKEN" = true ]; then
-  echo "🔒 Starte Cloudflare Tunnel..."
-  docker compose up -d tunnel
-else
-  echo ""
-  echo "⚠️  HINWEIS: Kein TUNNEL_TOKEN in ${PROJECT_DIR}/.env gefunden."
-  echo "   Der Cloudflare-Tunnel wurde übersprungen. Die Pipeline ist lokal auf Port 8080 erreichbar."
-  echo "   Um den öffentlichen Tunnel zu aktivieren:"
-  echo "     1. echo 'TUNNEL_TOKEN=<dein-token>' >> ${PROJECT_DIR}/.env"
-  echo "     2. chmod 600 ${PROJECT_DIR}/.env"
-  echo "     3. cd ${PROJECT_DIR} && docker compose up -d tunnel"
-  echo ""
-fi
 
 echo ""
 echo "================================================================="
 echo "✅ OpenFireMap Pipeline erfolgreich eingerichtet & gestartet!"
 echo "================================================================="
-echo "Öffentliche HTTPS-Endpunkte (Cloudflare Tunnel):"
+echo "Öffentliche HTTPS-Endpunkte (Cloudflare R2):"
 echo " * Status & Metadaten: https://pipeline.openfiremap.org/metadata.json"
 echo " * PMTiles Kacheln:   https://pipeline.openfiremap.org/openfiremap.pmtiles"
-echo " * Healthcheck:        https://pipeline.openfiremap.org/metadata.json"
 echo ""
 echo "Lokale Test-URLs im Heimnetz (Port 8080):"
 echo " * Status & Metadaten: http://<PIPELINE_LAN_IP>:8080/metadata.json"
