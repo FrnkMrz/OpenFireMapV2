@@ -83,7 +83,7 @@ Die Pipeline lässt sich über das vorgefertigte Home-Assistant-Package unter `p
      Auch bei dieser Variante muss `<NOTIFY_SERVICE>` in den Automationen direkt ersetzt werden.
 4. **Hinweis zum Initialstatus:**
    Die Entitäten aus `sync_status.json` (`sensor.openfiremap_sync_*`, `binary_sensor.openfiremap_upload_erfolgreich`, `binary_sensor.openfiremap_in_sync`) zeigen bis zum ersten erfolgreichen nächtlichen `update.sh`-Lauf den Status `unavailable`. Dies ist normales Verhalten, da die Statusdatei erst beim Build erzeugt wird.
-5. Konfigurationsprüfung in Home Assistant durchführen und YAML neu laden.
+5. Konfigurationsprüfung in Home Assistant durchführen und YAML neu laden (bei neuen `rest:`-Sensoren wie in v0.8.2 ist ein Neustart von Home Assistant erforderlich).
 6. Vor dem Einbinden die Entitätsreferenzen prüfen:
    ```bash
    python3 pipeline/tools/check_ha_entities.py pipeline/monitoring/homeassistant/openfiremap.yaml
@@ -100,6 +100,11 @@ Die Pipeline lässt sich über das vorgefertigte Home-Assistant-Package unter `p
 - `OpenFireMap Datenalter Stunden` und `OpenFireMap Daten Synchron` werden bei
   fehlenden Versionsdaten ebenfalls `unavailable`. Dadurch erzeugen sie während
   eines Endpunktausfalls keinen zweiten Alarm.
+- `OpenFireMap Sync Alter Stunden` überwacht als Heartbeat den Zeitpunkt der letzten
+  Prüfung (`checked_at`). Bei Überschreitung von 30 Stunden schlägt die Automation
+  `openfiremap_heartbeat_missing` Alarm (entkoppelt vom tatsächlichen Alter der OSM-Daten).
+- `OpenFireMap Sync Ergebnis` spiegelt den Ausgang des letzten Update-Laufs (`built`,
+  `upload_only`, `skipped_no_changes`, `failed`).
 - Ein echter `upload_ok: false`-Status löst den Sync-Alarm nach 15 Minuten aus.
 - Ein Hydranten-REST-Ausfall wird nicht als Bestandseinbruch auf null interpretiert.
 

@@ -100,6 +100,12 @@ curl -s -I -H "Range: bytes=0-0" "https://pipeline.openfiremap.org/openfiremap.p
 - **Systemstatistiken:** `<DATA_DIR>/raw/system_stats.json` (im LAN abrufbar unter `http://<PIPELINE_LAN_IP>:8080/internal/system_stats.json`)
 
 ### Bedeutung der Synchronisations-Felder (`sync_status.json`)
+- `result` – Status des letzten Laufs:
+  - `built` – Neuer Build gebaut und erfolgreich nach R2 hochgeladen.
+  - `upload_only` – Datenbestand unverändert, aber lokaler Stand wurde nach R2 synchronisiert.
+  - `skipped_no_changes` – Keine Änderungen an Extrakten oder Code; Build und Upload übersprungen (Kacheln bleiben im CDN-Cache gecacht).
+  - `failed` – Fehler während des Laufs aufgetreten.
+- `last_build_generated_at` – Zeitstempel des letzten echten Daten-Builds (bleibt bei `skipped_no_changes` stabil).
 - `upload_ok: true` – Der Upload von Daten und Metadaten nach R2 wurde ohne Übertragungsfehler abgeschlossen.
 - `in_sync: true` – Die öffentliche Version auf R2 (`generated_at` und Byte-Größe) stimmt exakt mit dem lokalen Build auf der VM überein.
 - `in_sync: false` – Diskrepanz erkannt (z. B. lokaler Build abgeschlossen, aber Upload unvollständig oder Edge liefert noch alte Metadaten).
@@ -128,10 +134,10 @@ curl -s -I -H "Range: bytes=0-0" "https://pipeline.openfiremap.org/openfiremap.p
 
 ## Cloudflare-Tunnel (abgebaut)
 
-Seit dem 29.09.2026 zeigt der DNS-Eintrag von `pipeline.openfiremap.org` direkt auf Cloudflare R2. Der Tunnel überträgt keinen produktiven Datenverkehr mehr und der Service `tunnel` wurde am 30.09.2026 aus `docker-compose.yml` entfernt.
+Seit dem 29.09.2026 zeigt der DNS-Eintrag von `pipeline.openfiremap.org` direkt auf Cloudflare R2. Der Tunnel überträgt keinen produktiven Datenverkehr mehr und der Service `tunnel` wurde am 30.09.2026 aus `docker-compose.yml` entfernt. Am 30.09.2026 wurden auf VM 102 der Container entfernt, das Image gelöscht und das Token aus `.env` bereinigt.
 
 ### Bereinigung auf der VM
-Um verbliebene Container und das Docker-Image auf VM 102 aufzuräumen:
+Um verbliebene Container und das Docker-Image auf VM 102 aufzuräumen (am 30.09.2026 durchgeführt):
 1. **Verwaiste Container entfernen:**
    ```bash
    cd <PROJECT_DIR>
@@ -147,9 +153,10 @@ Um verbliebene Container und das Docker-Image auf VM 102 aufzuräumen:
    - Der Nginx-Schutz in `pipeline/nginx/default.conf` (`deny all` bei Vorhandensein des `CF-Connecting-IP`-Headers und strikte Beschränkung auf RFC1918/Localhost) verbleibt dauerhaft als Defense-in-Depth in der Konfiguration, um versehentliche Freigaben bei künftigen Reverse-Proxy-Konfigurationen auszuschließen.
 
 ### Prüfschritte nach dem Abbau
-- [ ] Öffentliche Pipeline testen: `curl -I https://pipeline.openfiremap.org/metadata.json` liefert unverändert HTTP 200 via Cloudflare R2.
-- [ ] Internes Monitoring testen: `curl -I http://<PIPELINE_LAN_IP>:8080/internal/system_stats.json` liefert weiterhin HTTP 200 aus dem Heimnetz.
-- [ ] Docker-Status auf der VM prüfen: `docker compose ps` zeigt `web` als *running* (kein `tunnel`-Container mehr vorhanden).
+- [x] Öffentliche Pipeline testen: `curl -I https://pipeline.openfiremap.org/metadata.json` liefert unverändert HTTP 200 via Cloudflare R2 (geprüft am 30.09.2026).
+- [x] Internes Monitoring testen: `curl -I http://<PIPELINE_LAN_IP>:8080/internal/system_stats.json` liefert weiterhin HTTP 200 aus dem Heimnetz (geprüft am 30.09.2026).
+- [x] Docker-Status auf der VM prüfen: `docker compose ps` zeigt `web` als *running* und *healthy* (kein `tunnel`-Container mehr vorhanden, geprüft am 30.09.2026).
+- [x] Defense-in-Depth testen: `curl -sI -H "CF-Connecting-IP: 1.2.3.4" http://<PIPELINE_LAN_IP>:8080/internal/sync_status.json` liefert HTTP 403 Forbidden (geprüft am 30.09.2026).
 
 ### Rückweg (Rollback im Bedarfsfall)
 Sollte der Tunnel als Notfall-Kanal reaktiviert werden müssen:
