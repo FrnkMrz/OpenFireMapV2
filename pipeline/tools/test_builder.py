@@ -389,5 +389,219 @@ class TestUpdateScript(unittest.TestCase):
                 self.assertEqual(data.get("build_warnings"), [], "build_warnings in sync_status.json muss initial leer sein")
 
 
+class TestBuildFingerprints(unittest.TestCase):
+    """
+    Testet die Fingerprint- und Skip-Logik von build_features.py (Teil 5 des Auftrags):
+    1. Kein Fingerprint vorhanden -> Build
+    2. Alles gleich -> Exit 10 / has_changed=False, publish/ unverändert
+    3. Ein Land mit neuer mtime/Größe -> Build, nennt das Land
+    4. Builder-Datei oder tippecanoe-Argumente geändert -> Build
+    5. FORCE_BUILD=true bei gleichem Stand -> Build
+    6. Teilweiser Rückfall (ein Land Download-Fehler, andere neu) -> Build
+    7. Alle Länder cached_head_failed/fallback_after_error, sonst gleich -> Exit 10 (has_changed=False)
+    8. Fingerprint-Datei kaputt -> Build
+    """
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.raw_dir = os.path.join(self.tmp.name, "raw")
+        self.publish_dir = os.path.join(self.tmp.name, "publish")
+        os.makedirs(self.raw_dir, exist_ok=True)
+        os.makedirs(self.publish_dir, exist_ok=True)
+
+        self.targets = [
+            {"id": "germany", "name": "Deutschland", "filename": "germany-latest.osm.pbf", "url": "https://example.com/de.pbf"},
+            {"id": "austria", "name": "Österreich", "filename": "austria-latest.osm.pbf", "url": "https://example.com/at.pbf"},
+        ]
+
+        # Dummy PBF-Dateien anlegen
+        for t in self.targets:
+            pbf = os.path.join(self.raw_dir, t["filename"])
+            with open(pbf, "wb") as f:
+                f.write(b"osm_dummy_data_" + t["id"].encode())
+            mtime = 1700000000
+            os.utime(pbf, (mtime, mtime))
+
+        self.builder_hash = build_features.compute_builder_hash(self.targets)
+        self.extract_fps = build_features.compute_extract_fingerprints(self.targets, raw_dir=self.raw_dir)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_1_no_fingerprint_triggers_build(self):
+        """1. Kein Fingerprint vorhanden -> Build."""
+        saved_fp = build_features.load_build_fingerprint(raw_dir=self.raw_dir)
+        self.assertIsNone(saved_fp)
+
+        has_changed, reasons, country_status = build_features.check_fingerprint_changes(
+            self.builder_hash, self.extract_fps, saved_fp
+        )
+        self.assertTrue(has_changed)
+        self.assertTrue(any("Kein gültiger Build-Fingerprint" in r for r in reasons))
+
+    def test_2_identical_fingerprints_skip_build(self):
+        """2. Alles gleich -> kein Build (Exit 10), publish/ bleibt unangetastet."""
+        marker_file = os.path.join(self.publish_dir, "marker.txt")
+        with open(marker_file, "w") as f:
+            f.write("existing_build")
+
+        fp_data = {
+            "builder_hash": self.builder_hash,
+            "generated_at": "2026-09-30T06:00:00Z",
+            "extracts": self.extract_fps
+        }
+        build_features.save_build_fingerprint(fp_data, raw_dir=self.raw_dir)
+
+        saved_fp = build_features.load_build_fingerprint(raw_dir=self.raw_dir)
+        self.assertIsNotNone(saved_fp)
+
+        has_changed, reasons, country_status = build_features.check_fingerprint_changes(
+            self.builder_hash, self.extract_fps, saved_fp
+        )
+        self.assertFalse(has_changed)
+        self.assertEqual(len(reasons), 0)
+        self.assertIn("unverändert", country_status["germany"])
+        self.assertIn("unverändert", country_status["austria"])
+
+        # publish/ Verzeichnis unangetastet
+        self.assertTrue(os.path.exists(marker_file))
+        with open(marker_file, "r") as f:
+            self.assertEqual(f.read(), "existing_build")
+
+    def test_3_extract_changed_triggers_build_and_names_country(self):
+        """3. Ein Land mit neuer mtime/Größe -> Build, Log nennt das Land."""
+        fp_data = {
+            "builder_hash": self.builder_hash,
+            "generated_at": "2026-09-30T06:00:00Z",
+            "extracts": self.extract_fps
+        }
+        build_features.save_build_fingerprint(fp_data, raw_dir=self.raw_dir)
+        saved_fp = build_features.load_build_fingerprint(raw_dir=self.raw_dir)
+
+        # Ändere mtime von Deutschland
+        de_pbf = os.path.join(self.raw_dir, "germany-latest.osm.pbf")
+        os.utime(de_pbf, (1700050000, 1700050000))
+
+        new_extract_fps = build_features.compute_extract_fingerprints(self.targets, raw_dir=self.raw_dir)
+        has_changed, reasons, country_status = build_features.check_fingerprint_changes(
+            self.builder_hash, new_extract_fps, saved_fp
+        )
+        self.assertTrue(has_changed)
+        self.assertTrue(any("germany" in r for r in reasons))
+        self.assertTrue(country_status["germany"].startswith("geändert"))
+        self.assertTrue(country_status["austria"].startswith("unverändert"))
+
+    def test_4_builder_change_or_tippecanoe_triggers_build(self):
+        """4. Builder-Datei oder tippecanoe-Argumente geändert -> Build."""
+        fp_data = {
+            "builder_hash": self.builder_hash,
+            "generated_at": "2026-09-30T06:00:00Z",
+            "extracts": self.extract_fps
+        }
+        build_features.save_build_fingerprint(fp_data, raw_dir=self.raw_dir)
+        saved_fp = build_features.load_build_fingerprint(raw_dir=self.raw_dir)
+
+        # 4a: Builder Skriptinhalt geändert
+        mod_hash = build_features.compute_builder_hash(self.targets, script_content=b"# modified python code")
+        self.assertNotEqual(mod_hash, self.builder_hash)
+        has_changed, reasons, _ = build_features.check_fingerprint_changes(
+            mod_hash, self.extract_fps, saved_fp
+        )
+        self.assertTrue(has_changed)
+        self.assertTrue(any("Builder-Code" in r for r in reasons))
+
+        # 4b: Tippecanoe-Konfiguration geändert
+        with patch.dict(build_features.TIPPECANOE_CONFIG, {"maxzoom": 15}):
+            tc_hash = build_features.compute_builder_hash(self.targets)
+            self.assertNotEqual(tc_hash, self.builder_hash)
+            has_changed, reasons, _ = build_features.check_fingerprint_changes(
+                tc_hash, self.extract_fps, saved_fp
+            )
+            self.assertTrue(has_changed)
+            self.assertTrue(any("Builder-Code" in r for r in reasons))
+
+    def test_5_force_build_triggers_build(self):
+        """5. FORCE_BUILD=true bei gleichem Stand -> Build."""
+        fp_data = {
+            "builder_hash": self.builder_hash,
+            "generated_at": "2026-09-30T06:00:00Z",
+            "extracts": self.extract_fps
+        }
+        build_features.save_build_fingerprint(fp_data, raw_dir=self.raw_dir)
+        saved_fp = build_features.load_build_fingerprint(raw_dir=self.raw_dir)
+
+        has_changed, reasons, _ = build_features.check_fingerprint_changes(
+            self.builder_hash, self.extract_fps, saved_fp, force_build=True
+        )
+        self.assertTrue(has_changed)
+        self.assertTrue(any("FORCE_BUILD=true" in r for r in reasons))
+
+    def test_6_partial_fallback_triggers_build(self):
+        """6. Teilweiser Rückfall (ein Land Download-Fehler, andere neu) -> Build."""
+        fp_data = {
+            "builder_hash": self.builder_hash,
+            "generated_at": "2026-09-30T06:00:00Z",
+            "extracts": self.extract_fps
+        }
+        build_features.save_build_fingerprint(fp_data, raw_dir=self.raw_dir)
+        saved_fp = build_features.load_build_fingerprint(raw_dir=self.raw_dir)
+
+        # Deutschland neu heruntergeladen (neue mtime)
+        de_pbf = os.path.join(self.raw_dir, "germany-latest.osm.pbf")
+        os.utime(de_pbf, (1700099999, 1700099999))
+        new_extract_fps = build_features.compute_extract_fingerprints(self.targets, raw_dir=self.raw_dir)
+
+        # Österreich hatte Download-Fehler und greift auf Fallback zurück
+        extracts_meta = {
+            "germany": {"status": "downloaded"},
+            "austria": {"status": "fallback_after_error"}
+        }
+
+        has_changed, reasons, country_status = build_features.check_fingerprint_changes(
+            self.builder_hash, new_extract_fps, saved_fp, extracts_meta=extracts_meta
+        )
+        self.assertTrue(has_changed)
+        self.assertTrue(any("germany" in r for r in reasons))
+        self.assertEqual(country_status["germany"], "geändert (downloaded)")
+        self.assertEqual(country_status["austria"], "unverändert (fallback_after_error)")
+
+    def test_7_all_countries_fallback_or_cached_skips_build(self):
+        """7. Alle Länder cached_head_failed/fallback_after_error, sonst gleich -> Exit 10 (Skip)."""
+        fp_data = {
+            "builder_hash": self.builder_hash,
+            "generated_at": "2026-09-30T06:00:00Z",
+            "extracts": self.extract_fps
+        }
+        build_features.save_build_fingerprint(fp_data, raw_dir=self.raw_dir)
+        saved_fp = build_features.load_build_fingerprint(raw_dir=self.raw_dir)
+
+        extracts_meta = {
+            "germany": {"status": "cached_head_failed"},
+            "austria": {"status": "fallback_after_error"}
+        }
+
+        has_changed, reasons, country_status = build_features.check_fingerprint_changes(
+            self.builder_hash, self.extract_fps, saved_fp, extracts_meta=extracts_meta
+        )
+        self.assertFalse(has_changed)
+        self.assertEqual(len(reasons), 0)
+        self.assertEqual(country_status["germany"], "unverändert (cached_head_failed)")
+        self.assertEqual(country_status["austria"], "unverändert (fallback_after_error)")
+
+    def test_8_corrupted_fingerprint_triggers_build(self):
+        """8. Fingerprint-Datei kaputt -> Build."""
+        fp_file = os.path.join(self.raw_dir, "build_fingerprint.json")
+        with open(fp_file, "w") as f:
+            f.write("{corrupted_json_content: true,")
+
+        saved_fp = build_features.load_build_fingerprint(raw_dir=self.raw_dir)
+        self.assertIsNone(saved_fp)
+
+        has_changed, reasons, _ = build_features.check_fingerprint_changes(
+            self.builder_hash, self.extract_fps, saved_fp
+        )
+        self.assertTrue(has_changed)
+        self.assertTrue(any("Kein gültiger Build-Fingerprint" in r for r in reasons))
+
+
 if __name__ == "__main__":
     unittest.main()

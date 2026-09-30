@@ -13,6 +13,8 @@ LOG_FILE="${LOG_FILE:-${DATA_DIR}/update.log}"
 LOCK_FILE="${LOCK_FILE:-${DATA_DIR}/update.lock}"
 SYNC_STATUS_FILE="${SYNC_STATUS_FILE:-${RAW_DIR}/sync_status.json}"
 BUILD_WARNINGS_FILE="${BUILD_WARNINGS_FILE:-${RAW_DIR}/build_warnings.json}"
+BUILD_FINGERPRINT_FILE="${BUILD_FINGERPRINT_FILE:-${RAW_DIR}/build_fingerprint.json}"
+PUBLISHED_FINGERPRINT_FILE="${PUBLISHED_FINGERPRINT_FILE:-${RAW_DIR}/published_fingerprint.json}"
 PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-https://pipeline.openfiremap.org}"
 CF_CACHE_LIMIT_BYTES="${CF_CACHE_LIMIT_BYTES:-536870912}" # 512 MiB
 
@@ -34,17 +36,23 @@ rm -f "${BUILD_WARNINGS_FILE}"
 # Hilfsfunktion zum sicheren Schreiben von sync_status.json
 write_sync_status() {
   local checked_at="$1"
-  local local_gen="$2"
-  local public_gen="$3"
-  local in_sync="$4"
-  local local_bytes="$5"
-  local public_bytes="$6"
-  local over_limit="$7"
-  local upload_ok="$8"
-  local last_err="$9"
+  local result="$2"
+  local last_build_gen="$3"
+  local local_gen="$4"
+  local public_gen="$5"
+  local in_sync="$6"
+  local local_bytes="$7"
+  local public_bytes="$8"
+  local over_limit="$9"
+  local upload_ok="${10}"
+  local last_err="${11}"
 
   local j_checked_at="null"
   [ -n "$checked_at" ] && j_checked_at="\"$checked_at\""
+  local j_result="null"
+  [ -n "$result" ] && j_result="\"$result\""
+  local j_last_build_gen="null"
+  [ -n "$last_build_gen" ] && j_last_build_gen="\"$last_build_gen\""
   local j_local_gen="null"
   [ -n "$local_gen" ] && j_local_gen="\"$local_gen\""
   local j_public_gen="null"
@@ -69,9 +77,12 @@ write_sync_status() {
     fi
   fi
 
-  cat <<EOF > "${SYNC_STATUS_FILE}"
+  local tmp_status="${SYNC_STATUS_FILE}.tmp.$$"
+  cat <<EOF > "${tmp_status}"
 {
   "checked_at": ${j_checked_at},
+  "result": ${j_result},
+  "last_build_generated_at": ${j_last_build_gen},
   "local_generated_at": ${j_local_gen},
   "public_generated_at": ${j_public_gen},
   "in_sync": ${in_sync},
@@ -84,6 +95,7 @@ write_sync_status() {
   "last_error": ${j_last_err}
 }
 EOF
+  mv -f "${tmp_status}" "${SYNC_STATUS_FILE}"
 }
 
 # Lokale Kenndaten auslesen
@@ -93,6 +105,21 @@ get_local_gen() {
   else
     echo ""
   fi
+}
+
+get_build_gen() {
+  if [ -f "${BUILD_FINGERPRINT_FILE}" ]; then
+    grep -o '"generated_at": *"[^"]*"' "${BUILD_FINGERPRINT_FILE}" | head -n1 | cut -d'"' -f4 || echo ""
+  else
+    echo ""
+  fi
+}
+
+fingerprints_match() {
+  if [ ! -f "${BUILD_FINGERPRINT_FILE}" ] || [ ! -f "${PUBLISHED_FINGERPRINT_FILE}" ]; then
+    return 1
+  fi
+  cmp -s "${BUILD_FINGERPRINT_FILE}" "${PUBLISHED_FINGERPRINT_FILE}"
 }
 
 get_local_bytes() {
@@ -111,39 +138,76 @@ cd "$PROJECT_DIR"
 
 # Initialisiere sync_status vor dem Build (mit bisherigem Stand, falls vorhanden)
 INIT_CHECKED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+INIT_BUILD_GEN=$(get_build_gen)
 INIT_LOCAL_GEN=$(get_local_gen)
 INIT_LOCAL_BYTES=$(get_local_bytes)
 INIT_OVER_LIMIT=false
 if [ "$INIT_LOCAL_BYTES" -gt "$CF_CACHE_LIMIT_BYTES" ]; then
   INIT_OVER_LIMIT=true
 fi
-write_sync_status "$INIT_CHECKED_AT" "$INIT_LOCAL_GEN" "" "false" "$INIT_LOCAL_BYTES" "" "$INIT_OVER_LIMIT" "false" "Update-Lauf gestartet..."
+write_sync_status "$INIT_CHECKED_AT" "" "$INIT_BUILD_GEN" "$INIT_LOCAL_GEN" "" "false" "$INIT_LOCAL_BYTES" "" "$INIT_OVER_LIMIT" "false" "Update-Lauf gestartet..."
 
 # Führe Datenbuild aus (nutzt intelligenten HEAD-Check zur Vermeidung unnötiger Downloads)
-if ! FORCE_DOWNLOAD=${FORCE_DOWNLOAD:-false} docker compose run --rm builder >> "$LOG_FILE" 2>&1; then
-  BUILD_ERR="FEHLER: Daten-Build (builder) fehlgeschlagen!"
+BUILDER_EXIT=0
+FORCE_DOWNLOAD=${FORCE_DOWNLOAD:-false} FORCE_BUILD=${FORCE_BUILD:-false} docker compose run --rm builder >> "$LOG_FILE" 2>&1 || BUILDER_EXIT=$?
+
+if [ "$BUILDER_EXIT" -ne 0 ] && [ "$BUILDER_EXIT" -ne 10 ]; then
+  BUILD_ERR="FEHLER: Daten-Build (builder) fehlgeschlagen (Exit-Code ${BUILDER_EXIT})!"
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] ${BUILD_ERR}" >> "$LOG_FILE"
-  write_sync_status "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$INIT_LOCAL_GEN" "" "false" "$INIT_LOCAL_BYTES" "" "$INIT_OVER_LIMIT" "false" "$BUILD_ERR"
+  write_sync_status "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "failed" "$INIT_BUILD_GEN" "$INIT_LOCAL_GEN" "" "false" "$INIT_LOCAL_BYTES" "" "$INIT_OVER_LIMIT" "false" "$BUILD_ERR"
   exit 1
 fi
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Daten-Build erfolgreich abgeschlossen." >> "$LOG_FILE"
-
-# Aktualisiere lokale Kenndaten nach dem Build
+# Lokale Kenndaten nach dem Builder-Lauf
 LOCAL_GEN=$(get_local_gen)
+LAST_BUILD_GEN=$(get_build_gen)
+[ -z "$LAST_BUILD_GEN" ] && LAST_BUILD_GEN="$LOCAL_GEN"
 LOCAL_BYTES=$(get_local_bytes)
 OVER_LIMIT=false
 if [ "$LOCAL_BYTES" -gt "$CF_CACHE_LIMIT_BYTES" ]; then
   OVER_LIMIT=true
 fi
 
-# Optionaler R2-Upload (falls rclone installiert und Remote 'r2:' eingerichtet ist)
+# R2 Verfügbarkeit prüfen
 R2_ENABLED=false
+if command -v rclone &> /dev/null && rclone listremotes 2>/dev/null | grep -q "^r2:"; then
+  R2_ENABLED=true
+fi
+
+# Öffentlichen Stand (metadata.json) abfragen
+PUBLIC_GEN_PRE=""
+if [ "$R2_ENABLED" = "true" ]; then
+  CB_TS=$(date +%s%N 2>/dev/null || date +%s)
+  META_RESP=$(curl -s -f -m 15 "${PUBLIC_BASE_URL}/metadata.json?cb=${CB_TS}" 2>/dev/null || echo "")
+  if [ -n "$META_RESP" ]; then
+    PUBLIC_GEN_PRE=$(echo "$META_RESP" | grep -o '"generated_at": *"[^"]*"' | head -n1 | cut -d'"' -f4 || echo "")
+  fi
+fi
+
+# Bestimme Ergebnis und Upload-Bedarf
+BUILD_RESULT=""
+DO_UPLOAD=false
+
+if [ "$BUILDER_EXIT" -eq 10 ]; then
+  if fingerprints_match && [ -n "$LOCAL_GEN" ] && [ "$PUBLIC_GEN_PRE" = "$LOCAL_GEN" ]; then
+    BUILD_RESULT="skipped_no_changes"
+    DO_UPLOAD=false
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Keine Änderungen und Datenbestand bereits veröffentlicht (generated_at=${LOCAL_GEN}). Überspringe Upload." >> "$LOG_FILE"
+  else
+    BUILD_RESULT="upload_only"
+    DO_UPLOAD=true
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Keine Änderungen beim Build, aber lokaler Stand noch nicht auf R2 veröffentlicht (öffentlich: '${PUBLIC_GEN_PRE}', lokal: '${LOCAL_GEN}'). Starte Upload..." >> "$LOG_FILE"
+  fi
+else
+  BUILD_RESULT="built"
+  DO_UPLOAD=true
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Daten-Build erfolgreich abgeschlossen." >> "$LOG_FILE"
+fi
+
 SYNC_SUCCESS=true
 LAST_ERROR=""
 
-if command -v rclone &> /dev/null && rclone listremotes 2>/dev/null | grep -q "^r2:"; then
-  R2_ENABLED=true
+if [ "$R2_ENABLED" = "true" ] && [ "$DO_UPLOAD" = "true" ]; then
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] Synchronisiere Datenbestand nach Cloudflare R2 (openfiremap-pipeline)..." >> "$LOG_FILE"
 
   # Schritt 1: Zuerst PMTiles-Archiv hochladen (Cache-Control: 86400s / 24h)
@@ -189,13 +253,13 @@ if command -v rclone &> /dev/null && rclone listremotes 2>/dev/null | grep -q "^
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Cloudflare R2 Sync erfolgreich abgeschlossen." >> "$LOG_FILE"
   else
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Cloudflare R2 Sync mit Fehlern abgebrochen." >> "$LOG_FILE"
-    write_sync_status "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$LOCAL_GEN" "" "false" "$LOCAL_BYTES" "" "$OVER_LIMIT" "false" "$LAST_ERROR"
+    write_sync_status "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$BUILD_RESULT" "$LAST_BUILD_GEN" "$LOCAL_GEN" "" "false" "$LOCAL_BYTES" "" "$OVER_LIMIT" "false" "$LAST_ERROR"
     exit 1
   fi
 fi
 
 # ==============================================================================
-# Upload-Verifikation gegen öffentlichen R2-Endpunkt
+# Upload-Verifikation gegen öffentlichen R2-Endpunkt (läuft auch bei skipped als Heartbeat)
 # ==============================================================================
 IN_SYNC=false
 PUBLIC_GEN=""
@@ -230,8 +294,8 @@ if [ "$R2_ENABLED" = "true" ] && [ "$SYNC_SUCCESS" = "true" ]; then
     fi
 
     if [ $VERIFY_ATTEMPT -lt $MAX_ATTEMPTS ]; then
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Noch nicht synchron (Lokal: gen=${LOCAL_GEN}, bytes=${LOCAL_BYTES} | Öffentlich: gen=${PUBLIC_GEN}, bytes=${PUBLIC_BYTES}). Warte 20s..." >> "$LOG_FILE"
-      sleep 20
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Noch nicht synchron (Lokal: gen=${LOCAL_GEN}, bytes=${LOCAL_BYTES} | Öffentlich: gen=${PUBLIC_GEN}, bytes=${PUBLIC_BYTES}). Warte ${VERIFY_SLEEP_SEC:-20}s..." >> "$LOG_FILE"
+      sleep "${VERIFY_SLEEP_SEC:-20}"
     fi
     VERIFY_ATTEMPT=$((VERIFY_ATTEMPT + 1))
   done
@@ -239,20 +303,29 @@ if [ "$R2_ENABLED" = "true" ] && [ "$SYNC_SUCCESS" = "true" ]; then
   CHECKED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
   if [ "$IN_SYNC" = "true" ]; then
-    write_sync_status "$CHECKED_AT" "$LOCAL_GEN" "$PUBLIC_GEN" "true" "$LOCAL_BYTES" "$PUBLIC_BYTES" "$OVER_LIMIT" "true" ""
+    # Bei erfolgreichem Build oder Nach-Upload: Fingerprint als veröffentlicht sichern
+    if [ "$BUILD_RESULT" = "built" ] || [ "$BUILD_RESULT" = "upload_only" ]; then
+      if [ -f "${BUILD_FINGERPRINT_FILE}" ]; then
+        TMP_PUB="${PUBLISHED_FINGERPRINT_FILE}.tmp.$$"
+        cp "${BUILD_FINGERPRINT_FILE}" "${TMP_PUB}"
+        mv -f "${TMP_PUB}" "${PUBLISHED_FINGERPRINT_FILE}"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Published-Fingerprint erfolgreich aktualisiert." >> "$LOG_FILE"
+      fi
+    fi
+    write_sync_status "$CHECKED_AT" "$BUILD_RESULT" "$LAST_BUILD_GEN" "$LOCAL_GEN" "$PUBLIC_GEN" "true" "$LOCAL_BYTES" "$PUBLIC_BYTES" "$OVER_LIMIT" "true" ""
   else
     LAST_ERROR="Öffentlicher R2-Stand weicht nach ${MAX_ATTEMPTS} Prüfversuchen von lokalen Daten ab (lokal: gen=${LOCAL_GEN}, bytes=${LOCAL_BYTES} | öffentlich: gen=${PUBLIC_GEN}, bytes=${PUBLIC_BYTES})"
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNUNG: ${LAST_ERROR}" >> "$LOG_FILE"
-    write_sync_status "$CHECKED_AT" "$LOCAL_GEN" "$PUBLIC_GEN" "false" "$LOCAL_BYTES" "$PUBLIC_BYTES" "$OVER_LIMIT" "true" "$LAST_ERROR"
+    write_sync_status "$CHECKED_AT" "$BUILD_RESULT" "$LAST_BUILD_GEN" "$LOCAL_GEN" "$PUBLIC_GEN" "false" "$LOCAL_BYTES" "$PUBLIC_BYTES" "$OVER_LIMIT" "true" "$LAST_ERROR"
     exit 2
   fi
 else
   # Wenn R2 nicht aktiviert war, lokalen Stand als nicht synchronisiert vermerken
-  write_sync_status "$CHECKED_AT" "$LOCAL_GEN" "" "false" "$LOCAL_BYTES" "" "$OVER_LIMIT" "true" "R2 Upload deaktiviert (kein Remote)"
+  write_sync_status "$CHECKED_AT" "$BUILD_RESULT" "$LAST_BUILD_GEN" "$LOCAL_GEN" "" "false" "$LOCAL_BYTES" "" "$OVER_LIMIT" "true" "R2 Upload deaktiviert (kein Remote)"
 fi
 
-# Optionaler Cloudflare Cache-Purge für pmtiles und metadata.json (nur bei erfolgreichem Sync)
-if [ "$SYNC_SUCCESS" = "true" ] && [ "$IN_SYNC" = "true" ]; then
+# Optionaler Cloudflare Cache-Purge für pmtiles und metadata.json (nur bei echtem Upload)
+if [ "$DO_UPLOAD" = "true" ] && [ "$SYNC_SUCCESS" = "true" ] && [ "$IN_SYNC" = "true" ]; then
   if [ -f "${PROJECT_DIR}/.env" ]; then
     set -a
     # shellcheck disable=SC1091
@@ -276,7 +349,7 @@ if [ "$SYNC_SUCCESS" = "true" ] && [ "$IN_SYNC" = "true" ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] HINWEIS: CF_ZONE_ID oder CF_API_TOKEN nicht gesetzt. Cloudflare Cache-Purge übersprungen." >> "$LOG_FILE"
   fi
 else
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Cloudflare Cache-Purge übersprungen (kein erfolgreicher Sync)." >> "$LOG_FILE"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Cloudflare Cache-Purge übersprungen (kein Upload oder nicht synchron)." >> "$LOG_FILE"
 fi
 
 echo "========================================================" >> "$LOG_FILE"

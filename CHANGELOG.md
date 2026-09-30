@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.8.2] - 2026-09-30
+
+### Performance & Ressourcenschonung
+- **Skip-if-unchanged Build- & Upload-Logik**:
+  - `pipeline/builder/build_features.py`: Berechnung von Extrakt-Fingerprints (`id`, `size_bytes`, `mtime` via `curl -R`) und deterministischem Builder-Hash (SHA-256 über Python-Code, Konfiguration, Layer und Tippecanoe-Argumente).
+  - Unveränderte Quelldaten und identischer Builder-Hash überspringen den aufwendigen 25–30-minütigen Build-Prozess mit dem dedizierten Exit-Code 10 (`Keine Änderungen seit Build <generated_at> – Build übersprungen`).
+  - `publish/` bleibt bei übersprungenen Läufen unangetastet.
+  - Option `FORCE_BUILD=true` zur expliziten Erzwingung eines Neubaus auch bei identischen Extrakten (über `docker-compose.yml` durchgereicht).
+- **Edge-Cache-Schonung & Kachel-Stabilität**:
+  - `pipeline/update.sh`: Unterteilung jedes Laufs in drei klare Ergebnisse:
+    - `built`: Quelldaten/Code geändert oder erzwungen -> Build, R2-Upload, Verifikation und Aktualisierung des `published_fingerprint.json`.
+    - `upload_only`: Quelldaten unverändert, aber lokaler Stand weicht von R2 ab -> Nur R2-Upload und Verifikation (kein CPU-intensiver Neubau).
+    - `skipped_no_changes`: Quelldaten unverändert und öffentlich == lokal -> Kein Upload, kein Cloudflare-Cache-Purge, Verifikation läuft als schlanker Heartbeat.
+  - Verhindert unnötige Cache-Invalidierungen (`?v=<generated_at>`) auf Cloudflare R2: Kacheln bleiben für Web-Clients dauerhaft mit `HIT` im Edge-Cache.
+  - Atomare Speicherung von `raw/build_fingerprint.json` und `raw/published_fingerprint.json`.
+
+### Monitoring & Home Assistant
+- **Pipeline-Heartbeat-Sensor & -Automation**:
+  - Neuer Template-Sensor `sensor.openfiremap_sync_alter_stunden` auf Basis von `sync_status.json -> checked_at` (wird bei jedem Lauf aktualisiert).
+  - Neue Automation `openfiremap_heartbeat_missing`: Alarmierung, wenn seit > 30 Stunden kein Update-Lauf auf VM 102 stattfand (ersetzt die Prüfung auf `generated_at`).
+  - Neuer Sensor `sensor.openfiremap_sync_ergebnis` (`built`, `upload_only`, `skipped_no_changes`, `failed`).
+  - Entkopplung von Datenalter und Heartbeat: `sensor.openfiremap_datenalter_stunden` bleibt als reine Info; Veraltungs-Alarme basieren sauber auf `sensor.openfiremap_extrakt_alter_stunden` > 48h.
+
 ## [v0.8.1] - 2026-09-30
 
 ### Resilienz & Ausfallsicherheit

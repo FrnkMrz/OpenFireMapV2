@@ -57,7 +57,7 @@ Es gibt mehrere Cache-Ebenen:
 2. Bereits dekodierte PMTiles-Kacheln werden während der Sitzung im Speicher wiederverwendet.
 3. Die Pipeline meldet ihre Build-Version über `metadata.json`.
 
-Die PMTiles-URL erhält automatisch einen Versionsparameter. Ändert sich die Pipeline-Version, werden die PMTiles-Instanz, der Header und der Kachel-Cache verworfen. So wird verhindert, dass ein alter Browser- oder CDN-Cache eine neue Abdeckung verdeckt.
+Die PMTiles-URL erhält automatisch einen Versionsparameter (`?v=`). Ändert sich die Pipeline-Version, werden die PMTiles-Instanz, der Header und der Kachel-Cache verworfen. So wird verhindert, dass ein alter Browser- oder CDN-Cache eine neue Abdeckung verdeckt. Dank der Skip-if-unchanged-Logik der Pipeline (`built`, `upload_only`, `skipped_no_changes`) wird `generated_at` nur aktualisiert, wenn Geofabrik tatsächlich veränderte Daten bereitgestellt hat oder der Builder-Code angepasst wurde. Unveränderte Quelldaten erzeugen keinen neuen Versionsparameter, sodass der Cloudflare Edge Cache Kacheln stabil mit Cache-Hits ausliefert.
 
 ## Fallback-Logik
 

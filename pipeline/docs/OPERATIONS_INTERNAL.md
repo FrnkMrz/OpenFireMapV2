@@ -207,6 +207,31 @@ ls -lh <DATA_DIR>/raw/*-latest.osm.pbf
 
 ---
 
+## Runbook: Build-Steuerung & Skip-Logik
+
+### 1. Wie erzwinge ich einen vollständigen Neubau?
+Falls trotz unveränderter Geofabrik-Extrakte ein Neubau der PMTiles erzwungen werden soll (z. B. nach manuellen Anpassungen):
+```bash
+cd <PROJECT_DIR>
+FORCE_BUILD=true ./update.sh
+```
+Sollen gleichzeitig auch alle OSM-Extrakte neu von Geofabrik heruntergeladen werden:
+```bash
+FORCE_DOWNLOAD=true FORCE_BUILD=true ./update.sh
+```
+
+### 2. Was bedeutet das Ergebnis `upload_only`?
+- **Ursache:** Die Quelldaten und der Builder haben sich seit dem letzten Lauf nicht geändert, aber der lokale Build in `<DATA_DIR>/publish/` stimmt nicht mit dem öffentlichen Cloudflare-R2-Stand überein (z. B. weil beim vorherigen Lauf der R2-Upload abbrach oder `published_fingerprint.json` fehlte).
+- **Aktion von `update.sh`:** Der Builder wird übersprungen (keine 25–30 min CPU-Zeit). Stattdessen werden direkt PMTiles, GeoJSON und `metadata.json` nach R2 übertragen, die Konsistenz verifiziert und `published_fingerprint.json` geschrieben.
+
+### 3. Warum steht `generated_at` still, und wann ist das ein Problem?
+- **Normalzustand:** Wenn Geofabrik am Vorabend keine neuen Extrakte bereitgestellt hat oder der Cronjob ein zweites Mal am selben Tag läuft, erkennt der Builder `skipped_no_changes`. Es wird weder neu gebaut noch neu hochgeladen. `metadata.json` behält den bisherigen `generated_at`-Zeitstempel. Dies ist **ausdrücklich gewollt**, da Kacheln im Cloudflare Edge-Cache dadurch mit `HIT` gecacht bleiben und Web-Clients keine Kacheln neu laden müssen.
+- **Wann ist es ein Problem?**
+  - Wenn `sensor.openfiremap_sync_alter_stunden` > 30 h steigt: Der Cronjob auf VM 102 läuft nicht mehr (Alarmierung via Home Assistant Automation 3.2).
+  - Wenn `sensor.openfiremap_extrakt_alter_stunden` > 48 h steigt: Die Extrakte veralten, weil Geofabrik-Downloads dauerhaft scheitern (Alarmierung via Home Assistant Automation 3.8).
+
+---
+
 ## Post-Mortem: Vorfälle vom 30.09.2026
 
 ### Vorfall 1: Ausfall des Nachtlaufs durch Geofabrik-Veröffentlichungsfenster (03:30 UTC)

@@ -35,6 +35,7 @@ services:
       - PIPELINE_REGION=${PIPELINE_REGION:-dachlilu}
       - OSM_EXTRACT_URL=${OSM_EXTRACT_URL:-}
       - FORCE_DOWNLOAD=${FORCE_DOWNLOAD:-false}
+      - FORCE_BUILD=${FORCE_BUILD:-false}
     logging:
       driver: "json-file"
       options:

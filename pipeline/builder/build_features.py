@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import urllib.request
 import urllib.parse
+import hashlib
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
@@ -36,7 +37,10 @@ TMP_DIR = os.path.join(RAW_DIR, "tmp")
 PIPELINE_REGION = os.getenv("PIPELINE_REGION", "dachlilu").lower()
 OSM_EXTRACT_URL = os.getenv("OSM_EXTRACT_URL", "").strip()
 FORCE_DOWNLOAD = os.getenv("FORCE_DOWNLOAD", "false").lower() in ("true", "1", "yes")
+FORCE_BUILD = os.getenv("FORCE_BUILD", "false").lower() in ("true", "1", "yes")
 MAX_FALLBACK_AGE_HOURS = int(os.getenv("MAX_FALLBACK_AGE_HOURS", "72"))
+
+BUILD_FINGERPRINT_FILE = os.path.join(RAW_DIR, "build_fingerprint.json")
 
 BUILD_WARNINGS = []
 
@@ -111,6 +115,25 @@ FEATURE_CONFIGS = [
         "description": "Gemeindegrenzen und Verwaltungsgrenzen"
     }
 ]
+
+# Tippecanoe Vektorkachel-Konfiguration
+TIPPECANOE_CONFIG = {
+    "maxzoom": 14,
+    "options": [
+        "--force",
+        "-z", "14",
+        "--generate-ids",
+        "--no-feature-limit",
+        "--no-tile-size-limit",
+    ],
+    "layers": [
+        {"layer": "fire_stations", "file": "fire_stations.geojson", "minzoom": 12, "maxzoom": 14},
+        {"layer": "hydrants", "file": "hydrants.geojson", "minzoom": 14, "maxzoom": 14},
+        {"layer": "water_points", "file": "water_points.geojson", "minzoom": 14, "maxzoom": 14},
+        {"layer": "defibrillators", "file": "defibrillators.geojson", "minzoom": 14, "maxzoom": 14},
+        {"layer": "boundaries", "file": "boundaries.geojson", "minzoom": 12, "maxzoom": 14},
+    ]
+}
 
 
 def log(msg):
@@ -407,6 +430,153 @@ def run_cmd(cmd):
     return res.stdout
 
 
+def compute_builder_hash(targets=None, script_content=None):
+    """
+    Berechnet einen stabilen SHA-256-Fingerprint über den Builder-Code und
+    alle für das Ergebnis relevanten Konfigurationsparameter.
+    Enthält bewusst keine Zeitstempel oder Pfade, um über Umgebungen hinweg deterministisch zu sein.
+    """
+    hasher = hashlib.sha256()
+
+    # 1. Builder-Skriptinhalt
+    if script_content is not None:
+        hasher.update(script_content)
+    else:
+        script_path = os.path.abspath(__file__)
+        try:
+            with open(script_path, "rb") as f:
+                hasher.update(f.read())
+        except Exception:
+            pass
+
+    # 2. Relevante Build-Parameter
+    config_repr = {
+        "region": PIPELINE_REGION,
+        "osm_extract_url": OSM_EXTRACT_URL,
+        "targets": [
+            {"id": c["id"], "url": c.get("url", "")}
+            for c in (targets or [])
+        ],
+        "tippecanoe": TIPPECANOE_CONFIG,
+        "feature_configs": [
+            {
+                "name": it.get("name"),
+                "filter": it.get("filter"),
+                "geom_types": it.get("geom_types"),
+                "output": it.get("output"),
+            }
+            for it in FEATURE_CONFIGS
+        ]
+    }
+    hasher.update(json.dumps(config_repr, sort_keys=True).encode("utf-8"))
+    return hasher.hexdigest()
+
+
+def compute_extract_fingerprints(targets, raw_dir=None):
+    """
+    Ermittelt den Extrakt-Fingerprint { id, size_bytes, mtime } pro Land.
+    Die mtime entspricht dank curl -R dem Last-Modified von Geofabrik.
+    """
+    target_raw_dir = raw_dir or RAW_DIR
+    extracts = []
+    for t in targets:
+        pbf_path = os.path.join(target_raw_dir, t["filename"])
+        size_bytes = os.path.getsize(pbf_path) if os.path.exists(pbf_path) else 0
+        mtime = int(os.path.getmtime(pbf_path)) if os.path.exists(pbf_path) else 0
+        extracts.append({
+            "id": t["id"],
+            "size_bytes": size_bytes,
+            "mtime": mtime
+        })
+    return extracts
+
+
+def load_build_fingerprint(raw_dir=None):
+    """Lädt den zuletzt gespeicherten Build-Fingerprint aus raw/build_fingerprint.json."""
+    target_raw_dir = raw_dir or RAW_DIR
+    fp_file = os.path.join(target_raw_dir, "build_fingerprint.json")
+    if not os.path.exists(fp_file):
+        return None
+    try:
+        with open(fp_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if not isinstance(data, dict):
+                return None
+            if "builder_hash" not in data or "extracts" not in data:
+                return None
+            return data
+    except Exception as e:
+        log(f"Hinweis: Vorhandener Build-Fingerprint unlesbar/beschädigt ({e}).")
+        return None
+
+
+def save_build_fingerprint(data, raw_dir=None):
+    """Schreibt den Build-Fingerprint atomar nach raw/build_fingerprint.json."""
+    target_raw_dir = raw_dir or RAW_DIR
+    fp_file = os.path.join(target_raw_dir, "build_fingerprint.json")
+    tmp_file = f"{fp_file}.tmp.{os.getpid()}"
+    try:
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_file, fp_file)
+        log(f"Build-Fingerprint gespeichert: {fp_file}")
+    except Exception as e:
+        log(f"WARNUNG: Build-Fingerprint konnte nicht gespeichert werden: {e}")
+        if os.path.exists(tmp_file):
+            try:
+                os.remove(tmp_file)
+            except Exception:
+                pass
+
+
+def check_fingerprint_changes(current_builder_hash, current_extract_fps, saved_fp, extracts_meta=None, force_build=None):
+    """
+    Prüft, ob ein Neubau erforderlich ist.
+    Gibt (has_changed: bool, reasons: list[str], country_status: dict) zurück.
+    """
+    reasons = []
+    country_status = {}
+    is_forced = FORCE_BUILD if force_build is None else force_build
+
+    if is_forced:
+        reasons.append("Erzwungener Build (FORCE_BUILD=true)")
+
+    if saved_fp is None:
+        reasons.append("Kein gültiger Build-Fingerprint vorhanden (erster Lauf oder beschädigt)")
+        for curr in current_extract_fps:
+            cid = curr["id"]
+            meta_status = (extracts_meta or {}).get(cid, {}).get("status", "unbekannt")
+            country_status[cid] = f"initial ({meta_status})"
+        return True, reasons, country_status
+
+    if saved_fp.get("builder_hash") != current_builder_hash:
+        reasons.append("Builder-Code oder Konfigurationsparameter geändert")
+
+    saved_extracts = {e["id"]: e for e in saved_fp.get("extracts", []) if "id" in e}
+    for curr in current_extract_fps:
+        cid = curr["id"]
+        meta_status = (extracts_meta or {}).get(cid, {}).get("status", "unverändert")
+        if cid not in saved_extracts:
+            reasons.append(f"Neuer Extrakt hinzugefügt: {cid}")
+            country_status[cid] = f"neu ({meta_status})"
+        else:
+            prev = saved_extracts[cid]
+            if prev.get("size_bytes") != curr.get("size_bytes") or prev.get("mtime") != curr.get("mtime"):
+                reasons.append(f"Extrakt {cid} geändert (Größe oder Last-Modified abweichend)")
+                country_status[cid] = f"geändert ({meta_status})"
+            else:
+                country_status[cid] = f"unverändert ({meta_status})"
+
+    for prev_id in saved_extracts:
+        if not any(curr["id"] == prev_id for curr in current_extract_fps):
+            reasons.append(f"Extrakt entfernt: {prev_id}")
+
+    has_changed = len(reasons) > 0
+    return has_changed, reasons, country_status
+
+
 def count_geojson_features(file_path):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -535,22 +705,21 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None, extract
         log("=== Phase 3: Erstelle PMTiles Vektor-Kacheln mit tippecanoe ===")
         t_pmtiles = time.time()
 
-        layer_args = [
-            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "fire_stations.geojson"), "layer": "fire_stations", "minzoom": 12, "maxzoom": 14}),
-            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "hydrants.geojson"), "layer": "hydrants", "minzoom": 14, "maxzoom": 14}),
-            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "water_points.geojson"), "layer": "water_points", "minzoom": 14, "maxzoom": 14}),
-            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "defibrillators.geojson"), "layer": "defibrillators", "minzoom": 14, "maxzoom": 14}),
-            "-L", json.dumps({"file": os.path.join(PUBLISH_DIR, "boundaries.geojson"), "layer": "boundaries", "minzoom": 12, "maxzoom": 14}),
-        ]
+        layer_args = []
+        for l in TIPPECANOE_CONFIG["layers"]:
+            layer_args.extend([
+                "-L", json.dumps({
+                    "file": os.path.join(PUBLISH_DIR, l["file"]),
+                    "layer": l["layer"],
+                    "minzoom": l["minzoom"],
+                    "maxzoom": l["maxzoom"],
+                })
+            ])
 
         cmd = [
             "tippecanoe",
             "-o", pmtiles_output,
-            "--force",
-            "-z", "14",
-            "--generate-ids",
-            "--no-feature-limit",
-            "--no-tile-size-limit",
+            *TIPPECANOE_CONFIG["options"],
             *layer_args
         ]
         run_cmd(cmd)
@@ -698,7 +867,27 @@ def main():
 
     total_download_duration = sum(download_times)
 
-    # 2. Features filtern, mergen und PMTiles bauen
+    # 2. Fingerprints prüfen (Skip if unchanged)
+    current_builder_hash = compute_builder_hash(targets)
+    current_extract_fps = compute_extract_fingerprints(targets)
+    saved_fp = load_build_fingerprint()
+    has_changed, reasons, country_status = check_fingerprint_changes(
+        current_builder_hash, current_extract_fps, saved_fp, extracts_meta=extracts_meta
+    )
+
+    if not has_changed:
+        last_gen = saved_fp.get("generated_at", "unbekannt") if saved_fp else "unbekannt"
+        status_parts = [f"{cid}: {st}" for cid, st in country_status.items()]
+        status_str = ", ".join(status_parts) if status_parts else "alle unverändert"
+        log(f"Keine Änderungen seit Build {last_gen} – Build übersprungen ({status_str})")
+        save_build_warnings()
+        sys.exit(10)
+
+    log(f"=== Änderungen erkannt ({len(reasons)} Gründe) – starte Build ===")
+    for reason in reasons:
+        log(f"  * {reason}")
+
+    # 3. Features filtern, mergen und PMTiles bauen
     try:
         metadata, system_info = process_features(
             mode=mode,
@@ -707,6 +896,11 @@ def main():
             raw_sizes=raw_sizes,
             extracts_meta=extracts_meta
         )
+        save_build_fingerprint({
+            "builder_hash": current_builder_hash,
+            "generated_at": metadata.get("generated_at"),
+            "extracts": current_extract_fps
+        })
         save_build_warnings()
         print("\n" + "=" * 60)
         print(f" Region: {metadata['region'].upper()} ({', '.join(metadata['countries'])})")
