@@ -17,7 +17,9 @@ import {
   clearTileCache,
   PmtilesCoverageMismatch,
   warmupPipeline,
-  computeQueryZoom
+  computeQueryZoom,
+  isBoundaryElement,
+  boundaryGeometryToElements
 } from '../src/js/pipeline.js';
 import { Config } from '../src/js/config.js';
 import { PMTiles } from 'pmtiles';
@@ -1345,6 +1347,107 @@ describe('pipeline.js', () => {
       const t3 = await getVectorTile(dummyPmtiles, 14, 100, 200);
       expect(dummyPmtiles.getZxy).toHaveBeenCalledTimes(2);
       expect(t3).toBeDefined();
+    });
+  });
+
+  describe('Gemeindegrenzen: Kachel-Teilstücke und MultiLineString', () => {
+    it('boundaryGeometryToElements wandelt LineString in ein Element um (lat/lon getauscht, boundary-Tag ergänzt)', () => {
+      const els = boundaryGeometryToElements(
+        { type: 'LineString', coordinates: [[11.1, 49.1], [11.2, 49.2]] },
+        { admin_level: '8' },
+        'w1@14/1/2'
+      );
+      expect(els).toEqual([{
+        id: 'w1@14/1/2',
+        type: 'way',
+        tags: { boundary: 'administrative', admin_level: '8' },
+        geometry: [{ lat: 49.1, lon: 11.1 }, { lat: 49.2, lon: 11.2 }]
+      }]);
+    });
+
+    it('boundaryGeometryToElements zerlegt MultiLineString in einzelne Linien und verwirft Einzelpunkte', () => {
+      const els = boundaryGeometryToElements(
+        {
+          type: 'MultiLineString',
+          coordinates: [
+            [[11.1, 49.1], [11.2, 49.2]],
+            [[11.3, 49.3]],
+            [[11.4, 49.4], [11.5, 49.5], [11.6, 49.6]]
+          ]
+        },
+        {},
+        'k'
+      );
+      expect(els.map(e => e.id)).toEqual(['k#0', 'k#2']);
+      expect(els[1].geometry).toEqual([
+        { lat: 49.4, lon: 11.4 }, { lat: 49.5, lon: 11.5 }, { lat: 49.6, lon: 11.6 }
+      ]);
+      expect(els.every(e => e.tags.boundary === 'administrative')).toBe(true);
+    });
+
+    it('boundaryGeometryToElements ignoriert Punkte und Flächen', () => {
+      expect(boundaryGeometryToElements({ type: 'Point', coordinates: [11, 49] }, {}, 'p')).toEqual([]);
+      expect(boundaryGeometryToElements({ type: 'Polygon', coordinates: [[[11, 49], [11.1, 49], [11, 49.1], [11, 49]]] }, {}, 'a')).toEqual([]);
+      expect(boundaryGeometryToElements(undefined, {}, 'x')).toEqual([]);
+    });
+
+    it('isBoundaryElement erkennt Grenzwege ohne Tags und schließt POIs aus', () => {
+      const line = [{ lat: 49.1, lon: 11.1 }, { lat: 49.2, lon: 11.2 }];
+      expect(isBoundaryElement({ type: 'way', id: 13, geometry: line })).toBe(true);
+      expect(isBoundaryElement({ type: 'way', tags: { boundary: 'administrative' }, geometry: line })).toBe(true);
+      // POI-Wege kommen mit out center, Pipeline-POIs als Punkt
+      expect(isBoundaryElement({ type: 'way', tags: { amenity: 'fire_station' }, center: { lat: 49.1, lon: 11.1 } })).toBe(false);
+      expect(isBoundaryElement({ type: 'node', lat: 49.1, lon: 11.1, tags: { emergency: 'fire_hydrant' } })).toBe(false);
+      expect(isBoundaryElement({ type: 'way', geometry: [{ lat: 49.1, lon: 11.1 }] })).toBe(false);
+      expect(isBoundaryElement(null)).toBe(false);
+    });
+
+    it('fetchPipelineBoundaries behält die Teilstücke eines Wegs aus allen Kacheln (gleiche feat.id durch --generate-ids)', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      clearTileCache();
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return { ok: true, json: async () => ({ generated_at: '2026-10-01T18:00:00Z' }) };
+        }
+        return { ok: false, status: 404 };
+      });
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minZoom: 12, maxZoom: 14, minLat: 45.8, maxLat: 55.1, minLon: 5.7, maxLon: 17.2
+      });
+      vi.spyOn(PMTiles.prototype, 'getZxy').mockResolvedValue({ data: new Uint8Array([1, 2, 3]) });
+
+      // Ein Grenzweg (feat.id 7) quert alle Kacheln; jede Kachel liefert ihr zugeschnittenes Teilstück.
+      mockVectorTileLayers = {
+        boundaries: {
+          length: 1,
+          feature: () => ({
+            id: 7,
+            toGeoJSON: (x) => ({
+              type: 'Feature',
+              geometry: { type: 'LineString', coordinates: [[x / 1000, 49.55], [x / 1000 + 0.001, 49.551]] },
+              properties: { admin_level: '8' }
+            })
+          })
+        }
+      };
+
+      // Ausschnitt über der Kachelgrenze x=8703/8704 bei Zoom 14 (lon 11,25)
+      const bounds = {
+        getSouth: () => 49.549,
+        getNorth: () => 49.551,
+        getWest: () => 11.249,
+        getEast: () => 11.251
+      };
+
+      const elements = await fetchPipelineBoundaries(bounds, { zoom: 14 });
+      const tilesX = new Set(elements.map(el => String(el.id).split('@')[1]?.split('/')[1]));
+      expect(tilesX.has('8703')).toBe(true);
+      expect(tilesX.has('8704')).toBe(true);
+      expect(elements.every(el => String(el.id).startsWith('7@14/'))).toBe(true);
+      expect(new Set(elements.map(el => el.geometry[0].lon)).size).toBe(elements.length);
     });
   });
 });

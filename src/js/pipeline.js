@@ -592,6 +592,46 @@ export function extractCoordinates(geom) {
 }
 
 /**
+ * Erkennt Grenz-Elemente (Gemeindegrenzen) unabhängig von ihren Tags: Nur Grenzen tragen eine
+ * Linien-Geometrie (Overpass `out geom` bzw. Pipeline-Linien), POIs kommen mit `out center`
+ * bzw. als Punkt (lat/lon). Mitglieds-Wege der Gemeinde-Relationen haben oft keine eigenen Tags.
+ * @param {Object} el
+ * @returns {boolean}
+ */
+export function isBoundaryElement(el) {
+  return el?.type === 'way' && Array.isArray(el.geometry) && el.geometry.length >= 2;
+}
+
+/**
+ * Wandelt die Geometrie eines Grenz-Features in Grenz-Elemente um, ein Element je Linienteil.
+ * Der Kachel-Zuschnitt macht aus einem Weg, der eine Kachel verlässt und wieder betritt,
+ * einen MultiLineString. Die IDs leiten sich von keyPrefix ab; dieser muss je Kachel eindeutig
+ * sein, damit die zugeschnittenen Teile eines Wegs aus verschiedenen Kacheln erhalten bleiben.
+ * @param {Object} geometry GeoJSON LineString oder MultiLineString
+ * @param {Object} properties
+ * @param {string|number} keyPrefix
+ * @returns {Array<Object>}
+ */
+export function boundaryGeometryToElements(geometry, properties, keyPrefix) {
+  let lines;
+  if (geometry?.type === 'LineString') lines = [geometry.coordinates];
+  else if (geometry?.type === 'MultiLineString') lines = geometry.coordinates;
+  else return [];
+
+  const elements = [];
+  (lines || []).forEach((line, part) => {
+    if (!Array.isArray(line) || line.length < 2) return;
+    elements.push({
+      id: lines.length > 1 ? `${keyPrefix}#${part}` : keyPrefix,
+      type: 'way',
+      tags: { boundary: 'administrative', ...(properties || {}) },
+      geometry: line.map((pt) => ({ lat: pt[1], lon: pt[0] }))
+    });
+  });
+  return elements;
+}
+
+/**
  * Konvertiert ein GeoJSON Feature in das OpenFireMap-Elementformat.
  * @param {Object} feature 
  * @param {string} layerName 
@@ -1089,19 +1129,20 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
           const coords = gj.geometry?.coordinates;
           if (!Array.isArray(coords) || coords.length === 0) continue;
 
-          // Stabiler ID-Schlüssel
-          const firstPt = coords[0];
-          const lastPt = coords[coords.length - 1];
-          const key = feat.id ?? `${Math.round(firstPt[1] * 1e5)}_${Math.round(firstPt[0] * 1e5)}_${Math.round(lastPt[1] * 1e5)}_${Math.round(lastPt[0] * 1e5)}`;
+          // Stabiler ID-Schlüssel je Kachel: tippecanoe (--generate-ids) vergibt allen
+          // zugeschnittenen Teilen eines Wegs dieselbe feat.id. Ohne Kachelbezug bliebe nur
+          // das Teilstück der zuerst geladenen Kachel übrig (Lücken an Kachelrändern).
+          const firstPt = gj.geometry.type === 'MultiLineString' ? coords[0]?.[0] : coords[0];
+          const lastLine = gj.geometry.type === 'MultiLineString' ? coords[coords.length - 1] : coords;
+          const lastPt = lastLine?.[lastLine.length - 1];
+          if (!firstPt || !lastPt) continue;
+          const featKey = feat.id ?? `${Math.round(firstPt[1] * 1e5)}_${Math.round(firstPt[0] * 1e5)}_${Math.round(lastPt[1] * 1e5)}_${Math.round(lastPt[0] * 1e5)}`;
 
-          if (!boundaryMap.has(key)) {
-            boundaryMap.set(key, {
-              id: key,
-              type: 'way',
-              tags: { boundary: 'administrative', ...(gj.properties || {}) },
-              geometry: coords.map((pt) => ({ lat: pt[1], lon: pt[0] }))
-            });
-            newCount++;
+          for (const el of boundaryGeometryToElements(gj.geometry, gj.properties, `${featKey}@${queryZoom}/${x}/${y}`)) {
+            if (!boundaryMap.has(el.id)) {
+              boundaryMap.set(el.id, el);
+              newCount++;
+            }
           }
         }
 
@@ -1224,14 +1265,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       const elements = [];
       for (let i = 0; i < features.length; i++) {
         const feat = features[i];
-        const coords = feat.geometry?.coordinates;
-        if (!Array.isArray(coords) || coords.length === 0) continue;
-        elements.push({
-          id: feat.id || `boundary_${i}`,
-          type: 'way',
-          tags: { boundary: 'administrative', ...(feat.properties || {}) },
-          geometry: coords.map((pt) => ({ lat: pt[1], lon: pt[0] }))
-        });
+        elements.push(...boundaryGeometryToElements(feat.geometry, feat.properties, feat.id || `boundary_${i}`));
       }
       return elements;
     }

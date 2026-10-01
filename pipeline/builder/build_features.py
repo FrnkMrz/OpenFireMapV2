@@ -629,6 +629,47 @@ def build_export_cmd(item, source_pbf, output_file, work_dir):
     return cmd
 
 
+def export_feature_geojson(item, existing_parts, output_file, work_dir):
+    """
+    Führt die gefilterten Länder-PBFs eines Features zusammen und exportiert sie als GeoJSON.
+    Scheitert der Export an doppelten Objekt-IDs in der zusammengeführten PBF, wird pro Land
+    exportiert und anschließend nach ID dedupliziert. Beide Pfade nutzen build_export_cmd.
+    """
+    fname = item["name"]
+    merged_pbf = None
+    if len(existing_parts) > 1:
+        merged_pbf = os.path.join(work_dir, f"merged_{fname}.pbf")
+        log(f"Führe {len(existing_parts)} Auszüge für {item['description']} zusammen...")
+        run_cmd(["osmium", "merge", *existing_parts, "-o", merged_pbf, "--overwrite"])
+        source_pbf = merged_pbf
+    else:
+        source_pbf = existing_parts[0]
+
+    log(f"Exportiere GeoJSON: {item['output']}...")
+    try:
+        run_cmd(build_export_cmd(item, source_pbf, output_file, work_dir))
+    except RuntimeError as ex:
+        err_str = str(ex)
+        if not (("twice in input" in err_str or "Duplicate" in err_str) and len(existing_parts) > 1):
+            raise
+        first_line = err_str.strip().splitlines()[-1]
+        log(f"Hinweis: Doppelte Objekt-IDs in zusammengeführter PBF ({first_line}).")
+        log(f"Wechsle auf segmentierten Export pro Land mit anschließender ID-Deduplizierung für {fname}...")
+        part_geojsons = []
+        for idx, part_pbf in enumerate(existing_parts):
+            part_json = os.path.join(work_dir, f"{fname}_part_{idx}.geojson")
+            run_cmd(build_export_cmd(item, part_pbf, part_json, work_dir))
+            part_geojsons.append(part_json)
+
+        merge_geojson_files(part_geojsons, output_file)
+        for pj in part_geojsons:
+            _remove_quietly(pj)
+    finally:
+        # Zusammengeführte PBF sofort entfernen (Speicherentlastung)
+        if merged_pbf:
+            _remove_quietly(merged_pbf)
+
+
 def compute_builder_hash(targets=None, script_content=None):
     """
     Berechnet einen stabilen SHA-256-Fingerprint über den Builder-Code und
@@ -876,37 +917,7 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None, extract
                 raise RuntimeError(f"Keine gefilterten Auszüge für {fname} gefunden!")
 
             t_feature = time.time()
-            if len(existing_parts) > 1:
-                merged_pbf = os.path.join(work_dir, f"merged_{fname}.pbf")
-                log(f"Führe {len(existing_parts)} Auszüge für {item['description']} zusammen...")
-                run_cmd(["osmium", "merge", *existing_parts, "-o", merged_pbf, "--overwrite"])
-                source_pbf = merged_pbf
-            else:
-                source_pbf = existing_parts[0]
-
-            log(f"Exportiere GeoJSON: {item['output']}...")
-            try:
-                run_cmd(build_export_cmd(item, source_pbf, output_file, work_dir))
-            except RuntimeError as ex:
-                err_str = str(ex)
-                if ("twice in input" in err_str or "Duplicate" in err_str) and len(existing_parts) > 1:
-                    first_line = err_str.strip().splitlines()[-1]
-                    log(f"Hinweis: Doppelte Objekt-IDs in zusammengeführter PBF ({first_line}).")
-                    log(f"Wechsle auf segmentierten Export pro Land mit anschließender ID-Deduplizierung für {fname}...")
-                    part_geojsons = []
-                    for idx, part_pbf in enumerate(existing_parts):
-                        part_json = os.path.join(work_dir, f"{fname}_part_{idx}.geojson")
-                        run_cmd(build_export_cmd(item, part_pbf, part_json, work_dir))
-                        part_geojsons.append(part_json)
-
-                    merge_geojson_files(part_geojsons, output_file)
-                    for pj in part_geojsons:
-                        try:
-                            os.remove(pj)
-                        except OSError:
-                            pass
-                else:
-                    raise
+            export_feature_geojson(item, existing_parts, output_file, work_dir)
 
             count = count_geojson_features(output_file)
             file_size_kb = os.path.getsize(output_file) / 1024
@@ -937,11 +948,6 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None, extract
                         os.remove(p)
                     except Exception:
                         pass
-            if len(existing_parts) > 1 and os.path.exists(source_pbf):
-                try:
-                    os.remove(source_pbf)
-                except Exception:
-                    pass
 
         # -------------------------------------------------------------
         # Schritt 3: PMTiles Vektor-Kacheln mit tippecanoe erzeugen

@@ -9,7 +9,7 @@ import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
 import { fetchBoundaryData, fetchOSMData } from './api.js';
-import { isPipelineEligible, lon2tile, lat2tile, computeQueryZoom } from './pipeline.js';
+import { isPipelineEligible, lon2tile, lat2tile, computeQueryZoom, isBoundaryElement } from './pipeline.js';
 import { showNotification, hideNotification } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
 
@@ -1334,7 +1334,7 @@ export function renderBoundaries(elements, zoom) {
     const bWeight = isSat ? 3 : 1;
 
     for (const el of elements) {
-        if (!Array.isArray(el?.geometry) || el.geometry.length === 0) continue;
+        if (!isBoundaryElement(el)) continue;
 
         const latlngs = el.geometry.map(p => [p.lat, p.lon]);
         L.polyline(latlngs, {
