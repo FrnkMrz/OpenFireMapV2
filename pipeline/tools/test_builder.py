@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import json
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -47,6 +48,80 @@ class TestBuildFeatures(unittest.TestCase):
         self.assertIn("water_points", names)
         self.assertIn("defibrillators", names)
         self.assertIn("boundaries", names)
+
+    def test_boundaries_match_overpass_filter(self):
+        """Grenzen: nur admin_level=8 (wie Overpass) und nur die benötigten Tags."""
+        item = next(f for f in build_features.FEATURE_CONFIGS if f["name"] == "boundaries")
+        self.assertEqual(item["filter"], ["w/boundary=administrative"])
+        self.assertEqual(item["refine_filter"], ["w/admin_level=8"])
+        self.assertEqual(item["include_tags"], ["boundary", "admin_level"])
+
+    def test_prefilter_feature_runs_refine_stage(self):
+        """Mit refine_filter laufen zwei tags-filter-Stufen, die Zwischendatei wird entfernt."""
+        item = {"name": "boundaries", "filter": ["w/boundary=administrative"], "refine_filter": ["w/admin_level=8"]}
+        out_pbf = os.path.join(self.test_dir.name, "de_boundaries.pbf")
+        calls = []
+
+        def fake_run_cmd(cmd):
+            calls.append(cmd)
+            with open(cmd[cmd.index("-o") + 1], "w") as f:
+                f.write("x")
+
+        with patch("build_features.run_cmd", side_effect=fake_run_cmd):
+            build_features.prefilter_feature(item, "in.pbf", out_pbf)
+
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0][2:4], ["in.pbf", "w/boundary=administrative"])
+        self.assertEqual(calls[1][2:4], [f"{out_pbf}.stage1.pbf", "w/admin_level=8"])
+        self.assertEqual(calls[1][calls[1].index("-o") + 1], out_pbf)
+        self.assertFalse(os.path.exists(f"{out_pbf}.stage1.pbf"))
+
+    def test_prefilter_feature_single_stage(self):
+        """Ohne refine_filter bleibt es bei einem tags-filter-Aufruf."""
+        item = {"name": "hydrants", "filter": ["nwr/emergency=fire_hydrant"]}
+        with patch("build_features.run_cmd") as mock_run:
+            build_features.prefilter_feature(item, "in.pbf", "out.pbf")
+        mock_run.assert_called_once_with(
+            ["osmium", "tags-filter", "in.pbf", "nwr/emergency=fire_hydrant", "-o", "out.pbf", "--overwrite"])
+
+    def test_build_export_cmd_include_tags(self):
+        """include_tags erzeugt eine Export-Konfiguration, andere Features exportieren alle Tags."""
+        boundaries = next(f for f in build_features.FEATURE_CONFIGS if f["name"] == "boundaries")
+        cmd = build_features.build_export_cmd(boundaries, "src.pbf", "out.geojson", self.test_dir.name)
+        config_path = cmd[cmd.index("-c") + 1]
+        with open(config_path, encoding="utf-8") as f:
+            self.assertEqual(json.load(f), {"include_tags": ["boundary", "admin_level"]})
+        self.assertIn("linestring", cmd)
+
+        hydrants = next(f for f in build_features.FEATURE_CONFIGS if f["name"] == "hydrants")
+        self.assertNotIn("-c", build_features.build_export_cmd(hydrants, "src.pbf", "out.geojson", self.test_dir.name))
+
+    @unittest.skipUnless(shutil.which("osmium"), "osmium nicht installiert")
+    def test_boundaries_osmium_end_to_end(self):
+        """Echter osmium-Lauf: nur admin_level=8-Grenzen, nur boundary/admin_level als Tags."""
+        osm_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="test">
+ <node id="1" version="1" lat="49.0" lon="11.0"/><node id="2" version="1" lat="49.1" lon="11.1"/>
+ <node id="3" version="1" lat="49.2" lon="11.2"/><node id="4" version="1" lat="49.3" lon="11.3"/>
+ <way id="10" version="1"><nd ref="1"/><nd ref="2"/><tag k="boundary" v="administrative"/><tag k="admin_level" v="8"/><tag k="highway" v="residential"/></way>
+ <way id="11" version="1"><nd ref="2"/><nd ref="3"/><tag k="boundary" v="administrative"/><tag k="admin_level" v="9"/></way>
+ <way id="12" version="1"><nd ref="3"/><nd ref="4"/><tag k="boundary" v="administrative"/><tag k="admin_level" v="6"/></way>
+ <way id="13" version="1"><nd ref="1"/><nd ref="4"/><tag k="admin_level" v="8"/></way>
+</osm>"""
+        src = os.path.join(self.test_dir.name, "in.osm")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(osm_xml)
+        item = next(f for f in build_features.FEATURE_CONFIGS if f["name"] == "boundaries")
+        part_pbf = os.path.join(self.test_dir.name, "part.pbf")
+        out_geojson = os.path.join(self.test_dir.name, "boundaries.geojson")
+
+        build_features.prefilter_feature(item, src, part_pbf)
+        build_features.run_cmd(build_features.build_export_cmd(item, part_pbf, out_geojson, self.test_dir.name))
+
+        with open(out_geojson, encoding="utf-8") as f:
+            features = json.load(f)["features"]
+        self.assertEqual([feat["id"] for feat in features], ["w10"])
+        self.assertEqual(features[0]["properties"], {"boundary": "administrative", "admin_level": "8"})
 
     def test_dachlilu_countries_list(self):
         """Prüft die 5 DACHLiLu-Länder und URLs."""
