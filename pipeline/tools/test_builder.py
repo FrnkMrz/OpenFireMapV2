@@ -1344,6 +1344,47 @@ class TestCurlAttempts(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("--speed-time") + 1], str(build_features.CURL_SPEED_TIME))
         # curls eigenes --retry würde nach einem Abbruch wieder bei Byte 0 beginnen
         self.assertNotIn("--retry", cmd)
+        self.assertEqual(cmd[cmd.index("-H") + 1], "If-Range: " + self.INFO["last_modified"])
+
+    def test_no_if_range_without_last_modified(self):
+        cmd = build_features._build_curl_cmd(self.URL, self.partial, None)
+        self.assertNotIn("-H", cmd)
+        self.assertEqual(cmd[-3:], ["-o", self.partial, self.URL])
+
+    def test_changed_server_state_discards_partial_and_restarts(self):
+        """If-Range passt nicht mehr (curl 33) -> Teildatei verwerfen, Serverstand neu prüfen, neu laden."""
+        new_info = dict(self.INFO, last_modified="Fri, 02 Oct 2026 01:05:00 GMT", content_length=3600000)
+        calls = []
+
+        def run(cmd):
+            calls.append((list(cmd), os.path.getsize(self.partial) if os.path.exists(self.partial) else 0))
+            out = cmd[cmd.index("-o") + 1]
+            if len(calls) == 1:
+                with open(out, "ab") as f:
+                    f.write(b"a" * (120 * 1024))
+                raise RuntimeError("Befehl fehlgeschlagen: curl ...\ncurl: (28) Operation too slow.")
+            if len(calls) == 2:
+                # Server liefert neuen Stand mit HTTP 200; curl hängt nichts an
+                raise RuntimeError("Befehl fehlgeschlagen: curl ...\n"
+                                   "curl: (33) HTTP server doesn't seem to support byte ranges. Cannot resume.")
+            with open(out, "ab") as f:
+                f.write(b"b" * (240 * 1024))
+            return ""
+
+        with patch("build_features.run_cmd", side_effect=run), \
+             patch("build_features.check_remote_extract", return_value=new_info) as head, \
+             patch("shutil.which", return_value=None):
+            _, _, was_dl, _ = build_features._download_and_replace(self.URL, self.target, remote_info=self.INFO)
+
+        self.assertTrue(was_dl)
+        head.assert_called_once_with(self.URL)
+        self.assertEqual([size for _, size in calls], [0, 120 * 1024, 0])
+        if_range = [c[c.index("-H") + 1] for c, _ in calls]
+        self.assertEqual(if_range, ["If-Range: " + self.INFO["last_modified"]] * 2 + ["If-Range: " + new_info["last_modified"]])
+        # Kein Gemisch aus altem und neuem Stand
+        with open(self.target, "rb") as f:
+            self.assertEqual(set(f.read()), {ord("b")})
+        self.assertFalse(os.path.exists(self.partial + ".source.json"))
 
 
 if __name__ == "__main__":

@@ -36,6 +36,12 @@ services:
       - OSM_EXTRACT_URL=${OSM_EXTRACT_URL:-}
       - FORCE_DOWNLOAD=${FORCE_DOWNLOAD:-false}
       - FORCE_BUILD=${FORCE_BUILD:-false}
+      # Download-Feinsteuerung (optional, aus Shell oder .env); ungesetzt gelten die Standardwerte im Builder
+      - CURL_MAX_TIME
+      - CURL_SPEED_LIMIT
+      - CURL_SPEED_TIME
+      - CURL_ATTEMPTS
+      - CURL_RETRY_DELAY
     logging:
       driver: "json-file"
       options:

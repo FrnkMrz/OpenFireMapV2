@@ -453,14 +453,13 @@ def _prepare_resume(tmp_download, download_url, remote_info):
     return marker_path
 
 
-def _download_and_replace(download_url, target_path, status_label="fresh_download", remote_info=None):
-    """Lädt einen PBF-Auszug per curl herunter, validiert ihn und ersetzt die Zieldatei atomar."""
-    log(f"Starte Download mit curl: {download_url}")
-    tmp_download = target_path + ".download"
-    marker_path = _prepare_resume(tmp_download, download_url, remote_info)
-    start_time = time.time()
-
-    curl_cmd = [
+def _build_curl_cmd(download_url, tmp_download, remote_info):
+    """
+    curl-Befehl für einen Download-Versuch. Mit bekanntem Last-Modified wird If-Range gesendet:
+    Der Server liefert den Rest (HTTP 206) nur, wenn sich die Datei seit der Prüfung nicht geändert
+    hat; sonst antwortet er mit 200 und curl bricht mit Exit 33 ab, ohne etwas anzuhängen.
+    """
+    cmd = [
         "curl", "-sS", "-f", "-L", "-C", "-",
         "-R",  # Übernimmt den Last-Modified-Zeitstempel des Servers auf die lokale Datei
         "--max-redirs", "5",  # Verhindert Weiterleitungsschleifen (z. B. Geofabrik Fehler 47)
@@ -468,9 +467,19 @@ def _download_and_replace(download_url, target_path, status_label="fresh_downloa
         "--speed-limit", str(CURL_SPEED_LIMIT),  # Zu langsame Verbindung abbrechen ...
         "--speed-time", str(CURL_SPEED_TIME),  # ... wenn sie so viele Sekunden darunter bleibt
         "--max-time", str(CURL_MAX_TIME),  # Konfigurierbar, Standard 5400s (90 Minuten) je Versuch
-        "-o", tmp_download,
-        download_url
     ]
+    if remote_info and remote_info.get("last_modified"):
+        cmd.extend(["-H", f"If-Range: {remote_info['last_modified']}"])
+    cmd.extend(["-o", tmp_download, download_url])
+    return cmd
+
+
+def _download_and_replace(download_url, target_path, status_label="fresh_download", remote_info=None):
+    """Lädt einen PBF-Auszug per curl herunter, validiert ihn und ersetzt die Zieldatei atomar."""
+    log(f"Starte Download mit curl: {download_url}")
+    tmp_download = target_path + ".download"
+    marker_path = _prepare_resume(tmp_download, download_url, remote_info)
+    start_time = time.time()
 
     # Neuversuche als eigene curl-Aufrufe: curls eigenes --retry beginnt nach einem Abbruch wieder
     # bei Byte 0, nur ein neuer Aufruf mit -C - setzt am Ende der Teildatei fort (HTTP 206).
@@ -478,9 +487,18 @@ def _download_and_replace(download_url, target_path, status_label="fresh_downloa
     # Lauf fortsetzen kann (siehe _prepare_resume).
     for attempt in range(1, CURL_ATTEMPTS + 1):
         try:
-            run_cmd(curl_cmd)
+            run_cmd(_build_curl_cmd(download_url, tmp_download, remote_info))
             break
         except RuntimeError as err:
+            if "curl: (33)" in str(err):
+                # If-Range passt nicht mehr: Der Server liefert inzwischen einen anderen Stand
+                # (neuer Tagesstand oder ein Spiegel mit anderem Snapshot). curl hat nichts angehängt;
+                # Teil-Download verwerfen und mit dem aktuellen Serverstand neu beginnen.
+                log(f"Serverstand von {download_url} hat sich während des Downloads geändert. "
+                    "Verwerfe Teil-Download und lade neu.")
+                _remove_quietly(tmp_download)
+                remote_info = check_remote_extract(download_url)
+                marker_path = _prepare_resume(tmp_download, download_url, remote_info)
             if attempt == CURL_ATTEMPTS:
                 raise
             have_mb = os.path.getsize(tmp_download) / (1024 * 1024) if os.path.exists(tmp_download) else 0.0
