@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
   - `pipeline/builder/build_features.py`: Wenn `-latest.osm.pbf` nicht erreichbar ist (z. B. Endlosschleife HTTP 301 oder Timeout), leitet der Builder automatisch datierte Tagesextrakte (`<basis>-YYMMDD.osm.pbf`) für heute, gestern und vorgestern (UTC) ab und prüft diese per HEAD.
   - Die erste erreichbare Datei mit HTTP 200 wird heruntergeladen (sofern neuer als die lokale mtime) und atomar auf den Zielpfad `<land>-latest.osm.pbf` verschoben (neuer Status: `downloaded_dated`).
   - Erst wenn auch alle datierten Kandidaten scheitern, greift der lokale Rückgriff (sofern <= 72 h).
+  - Scheitert der Download oder die PBF-Validierung eines datierten Kandidaten, wird der nächste versucht (bisher wurde nach dem ersten erreichbaren Kandidaten direkt auf die lokale Datei zurückgegriffen). Ältere Kandidaten, die nicht neuer als die lokale Datei sind, werden dabei übersprungen.
 - **Transparenz bei veralteten Quellen (Fix B)**:
   - `build_features.py`: Wenn keine Änderungen vorliegen, aber mindestens ein Land den Status `cached_head_failed` oder `fallback_after_error` hat, beendet sich der Builder mit **Exit-Code 11** (statt 10).
   - `pipeline/update.sh`: Behandelt Exit 11 wie Exit 10 (kein CPU-intensiver Neubau, kein Upload bei synchronem R2-Stand), setzt das Ergebnis jedoch transparent auf `result: "skipped_stale_source"`.

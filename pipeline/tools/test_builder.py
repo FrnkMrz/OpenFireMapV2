@@ -434,6 +434,123 @@ class TestBuildFeatures(unittest.TestCase):
                 self.assertEqual(status, "cached_head_failed")
                 self.assertEqual(len(build_features.BUILD_WARNINGS), 1)
 
+    def _dated_candidate_urls(self, base="https://download.geofabrik.de/europe/liechtenstein"):
+        """Datierte Kandidaten-URLs für heute, gestern, vorgestern (UTC), wie im Builder abgeleitet."""
+        now_utc = datetime.now(timezone.utc)
+        return [f"{base}-{(now_utc - timedelta(days=d)).strftime('%y%m%d')}.osm.pbf" for d in (0, 1, 2)]
+
+    def _run_dated_scenario(self, outcomes, local_age_hours=48, remote_infos=None):
+        """
+        -latest ist nicht erreichbar (Weiterleitungsschleife), alle drei datierten Kandidaten liefern HTTP 200.
+        outcomes: je Kandidat "ok" (gültige PBF), "curl_error", "too_small" (unvollständig) oder "osmium_error".
+        Gibt (Ergebnis bzw. Exception, curl-URLs in Aufrufreihenfolge, HEAD-URLs, lokaler Pfad) zurück.
+        """
+        tmpdir = tempfile.mkdtemp(dir=self.test_dir.name)
+        local_pbf = os.path.join(tmpdir, "liechtenstein-latest.osm.pbf")
+        with open(local_pbf, "wb") as f:
+            f.write(b"x" * (120 * 1024))
+        mtime = time.time() - local_age_hours * 3600
+        os.utime(local_pbf, (mtime, mtime))
+
+        latest_url = "https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf"
+        cands = self._dated_candidate_urls()
+        newer = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        infos = remote_infos or {}
+        head_calls, curl_calls = [], []
+
+        def mock_check_remote(check_url, **kwargs):
+            head_calls.append(check_url)
+            if check_url in cands:
+                return infos.get(check_url, {"status": 200, "last_modified": newer, "content_length": 3500000, "url": check_url})
+            return None
+
+        def fake_run_cmd(cmd):
+            cand = next(c for c in cands if c in cmd)
+            curl_calls.append(cand)
+            outcome = outcomes[cands.index(cand)]
+            if outcome == "curl_error":
+                raise RuntimeError("curl: (28) Operation timed out")
+            tmp = next(arg for arg in cmd if arg.endswith(".download"))
+            with open(tmp, "wb") as f:
+                f.write(b"p" * (10 if outcome == "too_small" else 150 * 1024))
+            return ""
+
+        def fake_subprocess_run(cmd, **kwargs):
+            # osmium fileinfo prüft den zuletzt per curl geladenen Kandidaten
+            ok = outcomes[cands.index(curl_calls[-1])] != "osmium_error"
+            return subprocess.CompletedProcess(cmd, 0 if ok else 1, "", "" if ok else "PBF error: invalid BlobHeader")
+
+        with patch("build_features.check_remote_extract", side_effect=mock_check_remote), \
+             patch("build_features.run_cmd", side_effect=fake_run_cmd), \
+             patch("shutil.which", return_value="/usr/bin/osmium"), \
+             patch("build_features.subprocess.run", side_effect=fake_subprocess_run):
+            try:
+                result = build_features.download_extract(latest_url, local_pbf)
+            except RuntimeError as err:
+                result = err
+        return result, curl_calls, head_calls, local_pbf
+
+    def test_dated_fallback_first_candidate_curl_error_second_succeeds(self):
+        """Datierter Kandidat von heute bricht im curl ab -> Kandidat von gestern wird geladen."""
+        cands = self._dated_candidate_urls()
+        result, curl_calls, _, local_pbf = self._run_dated_scenario(["curl_error", "ok", "ok"])
+        self.assertEqual(result, (local_pbf, result[1], True, "downloaded_dated"))
+        self.assertEqual(curl_calls, cands[:2])
+        with open(local_pbf, "rb") as f:
+            self.assertEqual(f.read(1), b"p")
+        self.assertFalse(os.path.exists(local_pbf + ".download"))
+        self.assertFalse(os.path.exists(local_pbf + ".download.source.json"))
+        self.assertEqual(build_features.BUILD_WARNINGS, [])
+
+    def test_dated_fallback_invalid_downloads_try_next_candidate(self):
+        """Unvollständige (zu kleine) bzw. von osmium abgelehnte Downloads -> nächster Kandidat."""
+        cands = self._dated_candidate_urls()
+        result, curl_calls, _, local_pbf = self._run_dated_scenario(["too_small", "osmium_error", "ok"])
+        self.assertTrue(result[2])
+        self.assertEqual(result[3], "downloaded_dated")
+        self.assertEqual(curl_calls, cands)
+        self.assertFalse(os.path.exists(local_pbf + ".download"))
+
+    def test_dated_fallback_first_candidate_ok_stops(self):
+        """Erster datierter Kandidat erfolgreich -> keine weiteren HEAD-Prüfungen oder Downloads."""
+        cands = self._dated_candidate_urls()
+        result, curl_calls, head_calls, _ = self._run_dated_scenario(["ok", "ok", "ok"])
+        self.assertEqual(result[3], "downloaded_dated")
+        self.assertEqual(curl_calls, cands[:1])
+        self.assertNotIn(cands[1], head_calls)
+        self.assertNotIn(cands[2], head_calls)
+
+    def test_dated_fallback_all_candidates_fail_uses_local(self):
+        """Alle datierten Kandidaten scheitern -> alle versucht, dann lokaler Rückgriff mit Warnung."""
+        cands = self._dated_candidate_urls()
+        result, curl_calls, _, local_pbf = self._run_dated_scenario(["curl_error", "too_small", "osmium_error"])
+        self.assertEqual(result, (local_pbf, 0.0, False, "fallback_after_error"))
+        self.assertEqual(curl_calls, cands)
+        with open(local_pbf, "rb") as f:
+            self.assertEqual(f.read(1), b"x")  # lokale Datei unverändert
+        self.assertEqual(len(build_features.BUILD_WARNINGS), 1)
+        self.assertIn("inkl. datierter Ausweichquellen", build_features.BUILD_WARNINGS[0])
+
+    def test_dated_fallback_all_candidates_fail_stale_local_raises(self):
+        """Alle datierten Kandidaten scheitern und lokale Datei ist zu alt -> Fehler wie bisher."""
+        result, curl_calls, _, _ = self._run_dated_scenario(["curl_error"] * 3, local_age_hours=80)
+        self.assertIsInstance(result, RuntimeError)
+        self.assertIn("zu alt", str(result))
+        self.assertEqual(len(curl_calls), 3)
+
+    def test_dated_fallback_skips_older_candidate_after_failure(self):
+        """
+        Neuerer Kandidat scheitert, älterer ist nicht neuer als lokal -> wird übersprungen,
+        Ergebnis ist fallback_after_error (nicht cached_head_ok, da ein Download fehlschlug).
+        """
+        cands = self._dated_candidate_urls()
+        old = (datetime.now(timezone.utc) - timedelta(hours=30)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        infos = {c: {"status": 200, "last_modified": old, "content_length": 120 * 1024, "url": c} for c in cands[1:]}
+        result, curl_calls, _, local_pbf = self._run_dated_scenario(
+            ["curl_error", "ok", "ok"], local_age_hours=1, remote_infos=infos)
+        self.assertEqual(result, (local_pbf, 0.0, False, "fallback_after_error"))
+        self.assertEqual(curl_calls, cands[:1])
+
     def test_normal_case_latest_ok_unchanged(self):
         """Normalfall -latest OK -> unverändertes Verhalten (cached_head_ok bzw. fresh_download)."""
         with tempfile.TemporaryDirectory() as tmpdir:
