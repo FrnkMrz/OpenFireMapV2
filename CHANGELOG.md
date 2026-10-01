@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Neu
+- **Taginfo-Projektdatei** (#24, Issue #21):
+  - `public/taginfo.json` listet alle ausgewerteten OSM-Tags mit Beschreibung und ist unter https://openfiremap.org/taginfo.json abrufbar. Aufnahme in die [Taginfo-Projektliste](https://taginfo.openstreetmap.org/projects) ist beantragt (taginfo/taginfo-projects#293).
+  - Neuer Abschnitt „Verwendete OSM-Tags“ in `docs/DATENQUELLEN.md`.
+  - `test/taginfo.test.js` prüft Pflichtfelder und dass jeder Tag aus den Overpass-Abfragen und Pipeline-Filtern in der Datei steht.
+
+### Datenschutz
+- **Datenschutzerklärung für Cloudflare aktualisiert** (#23):
+  - Cloudflare (Pipeline), GitHub Pages und BayernAtlas als externe Dienste aufgeführt; keine Cookies/kein Tracking; lokale Speicherung und Standortfreigabe beschrieben; Rechtsgrundlagen, US-Übermittlung (DPF) und Betroffenenrechte ergänzt.
+  - Englische Fassung für nicht-deutsche Sprachen (deutsche Fassung bleibt verbindlich), Impressum auf § 5 DDG umgestellt, ungenutztes `maps.mail.ru` aus der CSP entfernt.
+  - Cache-Einstellung „Aus“ liest und schreibt IndexedDB nicht mehr und löscht vorhandene Einträge.
+
+### Behoben
+- **OSM-Standardkarte ohne Subdomains** (#20, danieldegroot2): Kacheln kommen von `tile.openstreetmap.org` statt `{s}.tile.openstreetmap.org`, wie es die OSM Foundation empfiehlt; CSP `img-src` entsprechend angepasst.
+- **CSV-Export: Untertyp von Feuerwachen** (#25): Gelesen wurde `tags.fire_station?.type`, das war immer leer. Jetzt `fire_station:type` über `getCsvSubtype()`, mit Tests.
+- **Pipeline: nur noch Gemeindegrenzen** (#26):
+  - Zweite `osmium tags-filter`-Stufe auf `admin_level=8`, passend zur Overpass-Abfrage. Bisher kamen alle Verwaltungsebenen 2–11 mit (123.642 Wege, 187 MB GeoJSON).
+  - Für die Grenzen werden nur noch `boundary` und `admin_level` exportiert (`osmium export -c` mit `include_tags`); Grenzwege trugen oft komplette Straßen-Tags.
+
 ### Behoben & Resilienz
 - **Geofabrik-Härtung gegen Weiterleitungsschleifen (Fix A)**:
   - `pipeline/builder/build_features.py`: Wenn `-latest.osm.pbf` nicht erreichbar ist (z. B. Endlosschleife HTTP 301 oder Timeout), leitet der Builder automatisch datierte Tagesextrakte (`<basis>-YYMMDD.osm.pbf`) für heute, gestern und vorgestern (UTC) ab und prüft diese per HEAD.
@@ -13,6 +32,10 @@ All notable changes to this project will be documented in this file.
   - `build_features.py`: Wenn keine Änderungen vorliegen, aber mindestens ein Land den Status `cached_head_failed` oder `fallback_after_error` hat, beendet sich der Builder mit **Exit-Code 11** (statt 10).
   - `pipeline/update.sh`: Behandelt Exit 11 wie Exit 10 (kein CPU-intensiver Neubau, kein Upload bei synchronem R2-Stand), setzt das Ergebnis jedoch transparent auf `result: "skipped_stale_source"`.
   - HA-Vorlage `pipeline/monitoring/homeassistant/openfiremap.yaml`: Dokumentation von `sensor.openfiremap_sync_ergebnis` um `skipped_stale_source` erweitert.
+- **Robustere Downloads und Exporte**:
+  - `osmium fileinfo` erhält das Format explizit (`-F pbf`), damit auch `.download`-Dateien geprüft werden können.
+  - curl-Zeitlimit konfigurierbar über `CURL_MAX_TIME` (Standard 5400 s statt 1800 s). Abgebrochene Downloads werden mit `curl -C -` fortgesetzt, aber nur, wenn der Teil-Download nachweislich zur selben Quelle und zum selben Serverstand gehört (Begleitdatei `.download.source.json` mit finaler URL, `Last-Modified`, `Content-Length`). Sonst wird neu begonnen, damit keine aus zwei Tagesständen zusammengesetzte PBF-Datei entsteht.
+  - Enthält die zusammengeführte PBF doppelte Objekt-IDs (z. B. Länderauszüge unterschiedlicher Tage), exportiert der Builder pro Land und dedupliziert die GeoJSON-Features anhand ihrer ID (`merge_geojson_files()`).
 
 ## [v0.8.3] - 2026-10-01
 
