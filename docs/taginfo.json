@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/taginfo/taginfo-projects/master/taginfo-project-schema.json",
   "data_format": 1,
   "data_url": "https://openfiremap.org/taginfo.json",
-  "data_updated": "20261001T000000Z",
+  "data_updated": "20261001T120000Z",
   "project": {
     "name": "OpenFireMap",
     "description": "Interactive web map of fire-service-related objects: fire stations, fire hydrants, firefighting water supplies and defibrillators.",
@@ -24,6 +24,11 @@
       "value": "fire_station",
       "object_types": ["node", "area"],
       "description": "Treated like amenity=fire_station (fire station marker), merged with the station it belongs to."
+    },
+    {
+      "key": "fire_station:type",
+      "object_types": ["node", "area"],
+      "description": "Subtype column in data exports."
     },
     {
       "key": "emergency",

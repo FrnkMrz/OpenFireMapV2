@@ -471,6 +471,20 @@ function escapeCSV(val) {
 }
 
 /**
+ * Ermittelt die Spalte "Untertyp" für den CSV-Export.
+ * OSM-Tags sind flach (Key mit Doppelpunkt), daher fire_station:type statt tags.fire_station.type.
+ */
+export function getCsvSubtype(tags, isStation, isDefib) {
+  if (isStation) return tags["fire_station:type"] || tags.building || "Feuerwehr";
+  if (isDefib) return "AED";
+  const subtype = tags["fire_hydrant:type"] || tags.emergency || "";
+  if (subtype === 'underground' && tags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
+    return 'WSH (Württembergischer Schachthydrant)';
+  }
+  return subtype;
+}
+
+/**
  * Exportiert alle relevanten Punkte im ausgewählten Ausschnitt als CSV-Tabelle.
  * UTF-8 BOM für Excel-Kompatibilität, Semikolon als Trennzeichen.
  */
@@ -544,17 +558,7 @@ export async function exportAsCSV() {
       if (!isStation && !isHydrant && !isDefib) return;
 
       const type = isStation ? "Feuerwache" : isDefib ? "Defibrillator" : "Hydrant / Wasserstelle";
-      let subtype;
-      if (isStation) {
-        subtype = tags.fire_station?.type || tags.building || "Feuerwehr";
-      } else if (isDefib) {
-        subtype = "AED";
-      } else {
-        subtype = tags["fire_hydrant:type"] || tags.emergency || "";
-        if (subtype === 'underground' && tags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
-          subtype = 'WSH (Württembergischer Schachthydrant)';
-        }
-      }
+      const subtype = getCsvSubtype(tags, isStation, isDefib);
 
       const name = tags.name || "";
       const ref = tags.ref || "";
