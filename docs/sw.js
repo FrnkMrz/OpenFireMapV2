@@ -12,7 +12,7 @@
  * veraltete Wasserentnahmestellen suggerieren könnte.
  */
 
-const CACHE_NAME = 'ofm-v15-static';
+const CACHE_NAME = 'ofm-v16-static';
 // Nur wirklich statische Assets precachen (keine gehashten Bundles!)
 const ASSETS = [
     '/',
@@ -77,7 +77,10 @@ self.addEventListener('fetch', (e) => {
     if (e.request.mode === 'navigate') {
         e.respondWith(
             fetch(e.request).then((response) => {
-                if (response && response.status === 200) {
+                // Nur die App-Hülle als Offline-Fallback ablegen. Andere Seitenaufrufe
+                // (z. B. /taginfo.json) dürfen den Eintrag '/index.html' nicht überschreiben.
+                const isAppShell = url.pathname === '/' || url.pathname === '/index.html';
+                if (isAppShell && response && response.status === 200) {
                     const responseToCache = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put('/index.html', responseToCache);
