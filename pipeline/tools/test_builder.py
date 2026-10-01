@@ -8,10 +8,11 @@ import os
 import sys
 import time
 import json
+import subprocess
 import tempfile
 import unittest
 from datetime import datetime, timezone, timedelta
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 # Füge builder-Verzeichnis zum Suchpfad hinzu
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "builder")))
@@ -523,9 +524,17 @@ class TestBuildFeatures(unittest.TestCase):
             valid_size_file = os.path.join(tmpdir, "valid_size.pbf")
             with open(valid_size_file, "wb") as f:
                 f.write(b"x" * (105 * 1024))
-            # Ohne osmium (oder wenn osmium gemockt wird) besteht die Größenprüfung
-            with patch("shutil.which", return_value=None):
+            # Mit gemocktem osmium: sicherstellen, dass '-F pbf' übergeben wird
+            with patch("shutil.which", return_value="/usr/bin/osmium"), \
+                 patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=0)
                 build_features.validate_pbf_file(valid_size_file)
+                mock_run.assert_called_once_with(
+                    ["/usr/bin/osmium", "fileinfo", "-F", "pbf", valid_size_file],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
 
     def test_check_remote_extract_follows_redirects_strictly_as_head(self):
         """302-Weiterleitung muss manuell per HEAD verfolgt werden (kein GET-Download)."""

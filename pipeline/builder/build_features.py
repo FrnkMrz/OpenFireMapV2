@@ -178,7 +178,7 @@ def validate_pbf_file(file_path, min_size_bytes=100 * 1024):
     osmium_bin = shutil.which("osmium")
     if osmium_bin:
         res = subprocess.run(
-            [osmium_bin, "fileinfo", file_path],
+            [osmium_bin, "fileinfo", "-F", "pbf", file_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
