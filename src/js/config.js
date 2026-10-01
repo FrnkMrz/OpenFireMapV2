@@ -13,6 +13,8 @@
  * ==========================================================================================
  */
 
+import { DACHLILU_COVERAGE } from './coverage/dachlilu.js';
+
 export const Config = {
   // ----------------------------------------------------------------------------------------
   // 1) Startverhalten der Karte
@@ -62,16 +64,24 @@ export const Config = {
    */
   pipeline: {
     enabled: true,
-    url: "http://192.168.178.152:8080",
+    url: "https://pipeline.openfiremap.org",
     usePmtiles: true,
     pmtilesFile: "openfiremap.pmtiles",
-    // Abdeckungsbereich Mittelfranken (Schnaittach, Nürnberg, Fürth, Erlangen, etc.)
+    // GeoJSON-Fallback für POIs und Grenzen (Default: false, um MB-Downloads auf Mobilgeräten zu verhindern)
+    geojsonFallback: false,
+    // Abdeckungsbereich DACHLiLu (Deutschland, Österreich, Schweiz, Luxemburg, Liechtenstein)
+    // Äußere Bounding-Box für schnelle Vorfilterung (O(1))
     bounds: {
-      south: 49.0,
-      west: 10.1,
-      north: 50.0,
-      east: 11.9
-    }
+      south: 45.8, // Südspitze Schweiz (Chiasso/Tessin)
+      west: 5.7,   // Westrand Luxemburg
+      north: 55.1, // Nordschwelle Sylt / Flensburg
+      east: 17.2   // Ostrand Burgenland (Österreich)
+    },
+    // Exaktes Grenzpolygon der DACHLiLu-Region (nach innen gepuffert, WGS84 [lat, lon]).
+    // Verhindert zuverlässig, dass Grenzstädte in Nachbarländern außerhalb von DACHLiLu
+    // (z. B. Frankreich, Italien, Tschechien, Polen, Dänemark) fälschlicherweise
+    // über die Pipeline angefragt werden und leer bleiben.
+    coveragePolygon: DACHLILU_COVERAGE
   },
 
   // ----------------------------------------------------------------------------------------

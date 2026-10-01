@@ -1,158 +1,71 @@
 # OpenFireMapV2
 
-## 🇩🇪 Deutsch
+[![Live](https://img.shields.io/badge/Live-openfiremap.org-2ea44f)](https://openfiremap.org)
+[![Version](https://img.shields.io/badge/version-v0.7.2-1f6feb)](https://github.com/FrnkMrz/OpenFireMapV2/releases)
+[![Tests](https://img.shields.io/badge/tests-99%20Vitest%20%2B%20Playwright-6f42c1)](https://github.com/FrnkMrz/OpenFireMapV2/actions)
+[![License](https://img.shields.io/github/license/FrnkMrz/OpenFireMapV2)](./LICENSE)
+[![OSM / ODbL](https://img.shields.io/badge/data-OpenStreetMap%20%2F%20ODbL-7a7a7a)](https://www.openstreetmap.org/copyright)
+[![GitHub Pages](https://img.shields.io/badge/deployed%20with-GitHub%20Pages-222222)](https://github.com/FrnkMrz/OpenFireMapV2/actions/workflows/pages.yml)
 
-### Überblick
+**OpenFireMapV2** ist eine weltweit nutzbare, interaktive Karte für Feuerwehren, OSM-Mitwirkende und alle, die feuerwehrrelevante Objekte schnell auffinden möchten. Sie zeigt unter anderem Feuerwachen, Hydranten, Löschwasserstellen und Defibrillatoren auf Basis offener OpenStreetMap-Daten.
 
-**OpenFireMapV2** ist eine interaktive, rein clientseitige Webkarte für feuerwehrrelevante Objekte wie  
-Feuerwachen, Löschwasserentnahmestellen, Hydranten und Defibrillatoren auf Basis von **OpenStreetMap (OSM)**.
+Die Live-Karte ist unter **[openfiremap.org](https://openfiremap.org)** erreichbar. Der Quellcode und die technische Dokumentation liegen im **[GitHub-Repository FrnkMrz/OpenFireMapV2](https://github.com/FrnkMrz/OpenFireMapV2)**.
 
-Das Projekt ist **nicht kommerziell** und dient als **Schulungs- und Übungsprojekt**.  
-Ziel ist es, moderne Webentwicklung ohne Framework-Overhead praxisnah zu verstehen.
+OpenFireMapV2 ist aktuell **v0.8.0**. OpenFireMap war von Anfang an weltweit nutzbar: Außerhalb der vorbereiteten Pipeline-Gebiete ruft die Anwendung Daten über Overpass ab. Für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein (DACHLiLu) steht zusätzlich eine schnelle, vorberechnete PMTiles-Versorgung über Cloudflare R2 bereit. Sie umfasst rund **1,25 Millionen feuerwehrrelevante Objekte**; durch den auf **MaxZoom 14** optimierten Build ist die aktuelle PMTiles-Datei etwa **192,5 MiB** groß (**201.892.499 Bytes**). Damit bleibt sie unter dem Cloudflare-Free-Cache-Limit von **512 MiB**. Die Pipeline erweitert nicht die geografische Abdeckung, sondern beschleunigt die Datenversorgung in diesen Gebieten.
 
-Die ursprüngliche OpenFireMap entstand um **2011**.  
-OpenFireMapV2 ist ein bewusster Neuaufbau mit aktueller Technik (Vite, ES Modules), klarer Struktur und guter Wartbarkeit.
+> OpenFireMapV2 ist ein nichtkommerzielles Open-Source-Projekt, das moderne Webtechnik mit offenen OpenStreetMap-Daten verbindet.
 
----
+## Warum OpenFireMap?
 
-### Ziele des Projekts
+- weltweite Nutzung mit Overpass-Fallback
+- schnelle PMTiles-Vektorkacheln für DACHLiLu per HTTP-Range-Requests
+- R2-optimierte Auslieferung mit abgestuften Cache-Zeiten, ETags und Upload-Verifikation
+- automatische Erkennung veralteter Pipeline-Abdeckung und Rückfall auf Overpass
+- Exporte als PNG, PDF, GPX und CSV
+- mehr als 30 Sprachen, IndexedDB-Cache sowie responsive Nutzung auf Desktop und Mobilgeräten
+- eine offene Grundlage, auf der OSM-Mitwirkende Daten verbessern und Feuerwehren regionale Informationen prüfen können
 
-- White-Coding mit **Vanilla JavaScript** (ES Modules)
-- Saubere Projekt- und Dateistruktur
-- Sicherer Umgang mit **Git & GitHub**
-- Nutzung von **GitHub Pages** (Deployment via Actions)
-- Modernes Tooling mit **Vite** (statt komplexer Custom-Skripte)
-- Klare Trennung von Quellcode und Build-Output
+### Architektur in einem Satz
 
----
-
-### Technische Eigenschaften
-
-- **Frontend only** (kein Backend)
-- **Online-Only by Design** (setzt eine aktive Internetverbindung für Live-Kartendaten voraus, keine Offline-App)
-- **Vite** als Build-Tool und Dev-Server
-- **Leaflet** für Kartenlogik (lokal eingebunden)
-- **OpenStreetMap** Daten (via Overpass API & Nominatim)
-- **Tailwind CSS** für das Styling
-- **PWA Ready** (Installierbar via Browser)
-- Mehrsprachigkeit mit Fallback (Deutsch / Englisch)
-- Keine externen CDN-Abhängigkeiten zur Laufzeit
-
----
-
-### Features
-
-- 🗺️ **Interaktive Karte** mit Feuerwachen, Hydranten, Wasserstellen und Defibrillatoren
-- 📦 **Intelligentes Caching** (IndexedDB) für schnelles Neuladen bekannter Bereiche
-- 🔄 **Stale-While-Revalidate** – sofortige Anzeige veralteter Daten, Live-Aktualisierung im Hintergrund
-- 🌍 **30+ Sprachen** unterstützt
-- 📤 **Export** als PNG, PDF, GPX oder CSV (inkl. UTF-8 BOM für direkte Excel-Kompatibilität, vollständigen Attributen aller POIs und skalierungsfreier Hydranten-Renderings auf allen Zoomstufen)
-- 🛰️ **Satellitenansicht** (Bing Maps, benötigt Online-Verbindung)
-- 📱 **Responsive Design** – funktioniert auf Desktop und Mobil
-- 🔧 **Smart Clustering & POI Bündelung**: Intelligente Gruppierung nah beieinander liegender Hydranten (unter 5m) inkl. Multi-Tooltips.
-- 💧 **Support für spezielle Typen**: Nativer Support für besondere regionale Hydrantentypen wie den *Württembergischen Schachthydrant (WSH)* inkl. visuellem Hinweis auf das benötigte spezielle Standrohr.
-- 🔗 **Permalink & Teilen**: Teile die exakte Sicht auf die Karte inklusive Kartenebene als Web-Link oder per nativer Smartphone-Share-API (WhatsApp, SMS, etc.).
-- 🗺️ **Regionale Basisdaten**: Vollautomatische, standortbezogene Einblendung der perfekten lokalen Daten, wie z.B. die amtlichen Luftbilder (DOP) und die Webkarte des Freistaats Bayern (nur Desktop).
-
-### Hydranten-Ladestatus
-
-Beim Abruf von Hydrantendaten zeigt die Karte einen nicht blockierenden Status an. Damit schnelle Overpass-Antworten nicht flackern, erscheint er erst nach 500 ms. Nach 6 Sekunden weist er auf einen weiterhin laufenden Abruf hin und nennt die bislang geladene Hydrantenanzahl. Ein erfolgreicher Abruf wird für 1,6 Sekunden bestätigt; bei einem Fehler kann der Abruf direkt über den Wiederholen-Button erneut gestartet werden.
-
-Die Zeitwerte liegen zentral unter `Config.performance` in `src/js/config.js`:
-
-- `hydrantStatusShowDelayMs`
-- `hydrantStatusSlowAfterMs`
-- `hydrantStatusSuccessDurationMs`
-
-### Zuverlässigkeit von Datenabruf und Export
-
-Overpass-Abfragen verwenden mehrere Endpunkte, einen lokalen IndexedDB-Cache sowie einen Backoff bei Überlastung. Beim Verschieben der Karte werden veraltete Abrufe abgebrochen; nur die Antwort des aktuellsten Ausschnitts darf die angezeigten Daten aktualisieren. Schlägt ein Abruf für den aktuellen Bereich endgültig fehl, startet die Anwendung nach kurzer Wartezeit automatisch einen neuen Versuch.
-
-Beim PNG- und PDF-Export wird der gewählte Kartenausschnitt unverändert übernommen. Ein erneuter Klick auf **„Ausschnitt wählen“** verwirft das vorherige Rechteck. Kopfzeile und Karte werden getrennt gerendert, damit die Kopfzeile auch bei kleinen Ausschnitten keine Kartendaten verdeckt.
-
-### Projektstruktur
-
-```
-OpenFireMapV2/
-├─ public/          # Statische Assets (Favicons, etc.)
-├─ src/
-│  ├─ js/           # App-Logik (Module)
-│  ├─ lang/         # Übersetzungen
-│  └─ input.css     # Tailwind CSS Einstiegspunkt
-├─ docs/            # Build-Output (für GitHub Pages)
-├─ index.html       # Haupt-Einstiegspunkt
-├─ vite.config.js   # Konfiguration
-├─ package.json
-└─ README.md
+```text
+Browser → PMTiles / Cloudflare R2 (innerhalb DACHLiLu) → Overpass-Fallback
+                         ↘ Overpass weltweit außerhalb DACHLiLu
 ```
 
----
+Der Browser lädt bei PMTiles nur die für den sichtbaren Kartenausschnitt benötigten Kachelbereiche. Wenn Pipeline-Daten fehlen, veraltet sind oder nicht erreichbar sind, wechselt die Anwendung automatisch zu Overpass. Nach einem Build werden PMTiles, GeoJSON und `metadata.json` in einer sicheren Reihenfolge nach R2 übertragen und der öffentliche Stand anschließend anhand von `generated_at` und Dateigröße geprüft.
 
-### Build & Entwicklung
+## Dokumentation
 
-Voraussetzung: [Node.js](https://nodejs.org/) installiert.
+- [Erste Schritte](docs/ERSTE_SCHRITTE.md) – Karte, Suche, Layer, Export und mobile Nutzung
+- [Architektur](docs/ARCHITEKTUR.md) – Frontend, PMTiles, R2, Cache und Fallback-Logik
+- [Datenquellen](docs/DATENQUELLEN.md) – OSM, Geofabrik, Overpass, Nominatim und Lizenzen
+- [FAQ](docs/FAQ.md) – häufige Fragen zu Ladezeiten, Aktualität und Offline-Nutzung
+- [Geschichte von OpenFireMap](docs/GESCHICHTE.md) – belegbare Meilensteine seit 2010
+- [Projektvorstellung Deutsch](docs/PROJEKT_VORSTELLUNG_DE.md) / [English](docs/PROJECT_PRESENTATION_EN.md)
+- [Mitmachen](CONTRIBUTING.md) und [Sicherheit](SECURITY.md)
+
+## Entwicklung
+
+Voraussetzung ist eine aktuelle Node.js-Version.
 
 ```bash
-# Abhängigkeiten installieren
-npm install
-
-# Lokalen Entwicklungsserver starten (Hot Module Replacement)
-npm run dev
-
-# Projekt bauen (Output in /docs)
-npm run build
-
-# Gebautes Projekt lokal testen
-npm run preview
+npm ci
+npm run dev       # Vite-Entwicklungsserver
+npm run build     # Produktions-Build nach docs/
+npm run lint
+npm run i18n:check
+npm run test:ci
+npx playwright test
 ```
 
----
+Der GitHub-Actions-Workflow baut und veröffentlicht den Inhalt von `docs/` über GitHub Pages. Die Anwendung bleibt eine clientseitige Webanwendung ohne eigenes Backend.
 
-### Lizenz & Daten
+## Lizenz und Daten
 
-**Code:**  
-[MIT License](LICENSE) (siehe Repository)
+Der Quellcode steht unter der [MIT-Lizenz](LICENSE). Die Kartendaten stammen aus [OpenStreetMap](https://www.openstreetmap.org/) und stehen unter der [Open Data Commons Open Database License (ODbL)](https://www.openstreetmap.org/copyright). Weitere Quellen und Hinweise sind in [Datenquellen](docs/DATENQUELLEN.md) dokumentiert.
 
-**Kartendaten:**  
-© [OpenStreetMap contributors](https://www.openstreetmap.org/copyright)  
-Veröffentlicht unter der **Open Data Commons Open Database License (ODbL)**.
+## English summary
 
-**Geocoding:**  
-Nominatim Search API (nutzt OSM Daten).
+OpenFireMapV2 is a worldwide, client-side web map for fire stations, hydrants, water supply points and AEDs based on OpenStreetMap data. The live map is available at [openfiremap.org](https://openfiremap.org), and the source code is maintained in the [GitHub repository](https://github.com/FrnkMrz/OpenFireMapV2).
 
----
-
-## 🇬🇧 English
-
-### Overview
-
-**OpenFireMapV2** is a fully client-side interactive web map for fire-service-related objects such as  
-fire stations, water supply points, hydrants and defibrillators based on **OpenStreetMap (OSM)**.
-
-This is a **non-commercial learning project** focused on clean JavaScript, maintainable structure and GitHub workflows.
-Please note: This is an **online-only application** by design and requires an active internet connection to stream live map data and search results. It is not intended for offline use in emergency situations.
-
----
-
-### Tech Stack
-
-- **Vite** (Bundler & Dev Server)
-- **Vanilla JS** (ES Modules)
-- **Leaflet** (Map logic)
-- **Tailwind CSS**
-- **GitHub Pages** Hosting
-- **Hydrant loading status** with delayed display, slow-load feedback, success confirmation, and retry
-- **Multi-format Export** (PNG, PDF, GPX, CSV with Excel-ready UTF-8 BOM)
-
-### Development
-
-```bash
-npm install
-npm run dev     # Start dev server
-npm run build   # Build for production
-```
-
-### License
-
-**Code:** MIT License  
-**Map Data:** © OpenStreetMap contributors (ODbL)
+Version **v0.8.0** combines global Overpass access with a fast pre-built PMTiles pipeline for Germany, Austria, Switzerland, Luxembourg and Liechtenstein. The pipeline serves roughly **1.25 million objects** from Cloudflare R2 using HTTP Range Requests. An optimized MaxZoom 14 build currently keeps the PMTiles archive at about **192.5 MiB (201,892,499 bytes)**, below Cloudflare's 512 MiB free-cache limit. It accelerates those areas but does not replace worldwide Overpass coverage. See the [English project presentation](docs/PROJECT_PRESENTATION_EN.md) for a concise technical overview.

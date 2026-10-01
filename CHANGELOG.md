@@ -2,6 +2,222 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.8.3] - 2026-10-01
+
+### Sicherheit
+- **Abhängigkeiten aktualisiert (`npm audit fix`)**:
+  - `jspdf` 4.2.0 → 4.2.1 (kritisch: PDF Object Injection via FreeText color, GHSA-7x6v-j9x4-qf24; HTML Injection in New-Window-Pfaden, GHSA-wfv2-pwc8-crg5).
+  - `dompurify` 3.3.1 → 3.4.16 (mittel: Cross-Site-Scripting, GHSA-v2wj-7wpq-c8vv).
+  - `fflate` 0.8.2 → 0.8.3 (mittel: Endlosschleife bei fehlerhaften ZIP64-Archiven, GHSA-px8p-9vwx-vf98).
+  - Dev-Abhängigkeiten im erlaubten SemVer-Bereich mitaktualisiert (u. a. Vitest 4.1, Rollup 4.63, PostCSS 8.5.28); veraltete Projektversion in `package-lock.json` (0.6.11) korrigiert.
+- **CI-Sicherheitsprüfung verschärft** (`.github/workflows/pages.yml`):
+  - `npm audit --omit=dev --audit-level=high` bricht den Build bei High/Critical in Laufzeit-Abhängigkeiten jetzt ab. Bisher wurde ein Fehlschlag per `|| echo` verschluckt, wodurch die kritische jsPDF-Lücke unbemerkt blieb.
+  - Dev-Abhängigkeiten werden weiterhin geprüft, erzeugen aber nur eine Warnung, damit Advisories in Build-Tooling kein Deployment blockieren.
+
+## [v0.8.2] - 2026-09-30
+
+### Performance & Ressourcenschonung
+- **Skip-if-unchanged Build- & Upload-Logik**:
+  - `pipeline/builder/build_features.py`: Berechnung von Extrakt-Fingerprints (`id`, `size_bytes`, `mtime` via `curl -R`) und deterministischem Builder-Hash (SHA-256 über Python-Code, Konfiguration, Layer und Tippecanoe-Argumente).
+  - Unveränderte Quelldaten und identischer Builder-Hash überspringen den aufwendigen 25–30-minütigen Build-Prozess mit dem dedizierten Exit-Code 10 (`Keine Änderungen seit Build <generated_at> – Build übersprungen`).
+  - `publish/` bleibt bei übersprungenen Läufen unangetastet.
+  - Option `FORCE_BUILD=true` zur expliziten Erzwingung eines Neubaus auch bei identischen Extrakten (über `docker-compose.yml` durchgereicht).
+- **Edge-Cache-Schonung & Kachel-Stabilität**:
+  - `pipeline/update.sh`: Unterteilung jedes Laufs in drei klare Ergebnisse:
+    - `built`: Quelldaten/Code geändert oder erzwungen -> Build, R2-Upload, Verifikation und Aktualisierung des `published_fingerprint.json`.
+    - `upload_only`: Quelldaten unverändert, aber lokaler Stand weicht von R2 ab -> Nur R2-Upload und Verifikation (kein CPU-intensiver Neubau).
+    - `skipped_no_changes`: Quelldaten unverändert und öffentlich == lokal -> Kein Upload, kein Cloudflare-Cache-Purge, Verifikation läuft als schlanker Heartbeat.
+  - Verhindert unnötige Cache-Invalidierungen (`?v=<generated_at>`) auf Cloudflare R2: Kacheln bleiben für Web-Clients dauerhaft mit `HIT` im Edge-Cache.
+  - Atomare Speicherung von `raw/build_fingerprint.json` und `raw/published_fingerprint.json`.
+
+### Monitoring & Home Assistant
+- **Pipeline-Heartbeat-Sensor & -Automation**:
+  - Neuer Template-Sensor `sensor.openfiremap_sync_alter_stunden` auf Basis von `sync_status.json -> checked_at` (wird bei jedem Lauf aktualisiert).
+  - Neue Automation `openfiremap_heartbeat_missing`: Alarmierung, wenn seit > 30 Stunden kein Update-Lauf auf VM 102 stattfand (ersetzt die Prüfung auf `generated_at`).
+  - Neuer Sensor `sensor.openfiremap_sync_ergebnis` (`built`, `upload_only`, `skipped_no_changes`, `failed`).
+  - Entkopplung von Datenalter und Heartbeat: `sensor.openfiremap_datenalter_stunden` bleibt als reine Info; Veraltungs-Alarme basieren sauber auf `sensor.openfiremap_extrakt_alter_stunden` > 48h.
+
+### Betrieb & Infrastruktur
+- **Entfernung des Cloudflare-Tunnel-Dienstes**:
+  - `pipeline/docker-compose.yml`: Service `tunnel` (`openfiremap-tunnel`, Image `cloudflare/cloudflared:latest`) vollständig entfernt, da der produktive Datenverkehr von `pipeline.openfiremap.org` seit dem 29.09.2026 direkt über Cloudflare R2 läuft.
+  - `pipeline/setup-vm102.sh`: Setup-Logik und Überprüfung von `TUNNEL_TOKEN` entfernt, doppelte Healthcheck-Zeile bereinigt und Endpunkt-Überschrift auf R2 angepasst.
+  - `pipeline/docs/OPERATIONS_INTERNAL.md` & `pipeline/docs/DOKUMENTATION.md`: Dokumentation zum Tunnel-Rückbau aktualisiert sowie Rollback-Anleitung mit dem Compose-Snippet ergänzt; `pipeline/docs/ANLEITUNG_HTTPS_CLOUDFLARE_TUNNEL.md` gelöscht.
+  - `pipeline/nginx/default.conf`: Schutz von `/internal/` gegen Zugriff mit Header `CF-Connecting-IP` sowie RFC1918-Beschränkung verbleibt unverändert als dauerhafte Defense-in-Depth.
+  - `docs/ARCHITEKTUR.md`: Formulierung zur Nichterreichbarkeit interner Statusdateien auf lokales Netzwerk (Heimnetz) angepasst.
+
+## [v0.8.1] - 2026-09-30
+
+### Resilienz & Ausfallsicherheit
+- **Automatischer Download-Fallback bei Geofabrik-Störungen**:
+  - `pipeline/builder/build_features.py`: Schlägt ein PBF-Download fehl (z. B. durch Weiterleitungsschleifen oder Verbindungsabbrüche im nächtlichen Veröffentlichungsfenster von Geofabrik), greift der Builder automatisch auf die vorhandene lokale PBF-Datei zurück, sofern diese nicht älter als 72 Stunden ist (`MAX_FALLBACK_AGE_HOURS=72`).
+  - Der Build läuft unterbrechungsfrei durch und vermeidet unnötige Komplettabbrüche; der Zustand wird transparent als Warnung protokolliert (`fallback_after_error`).
+- **curl-Härtung**:
+  - Ergänzung von `--max-redirs 5` zur Verhinderung von zirkulären HTTP-302-Weiterleitungsschleifen (wie Geofabrik-Fehler 47).
+  - Stille Fehlerausgabe (`-sS`) eliminiert Hunderte unnötiger Fortschrittszeilen im Build-Log (`update.log`), während echte Fehlermeldungen sichtbar bleiben.
+  - Hinzufügen von `--retry-all-errors` zur automatischen Wiederholung bei Server- und Proxy-Aussetzern (z. B. 429/5xx oder Verbindungsresets).
+- **Integritätsprüfung vor Verschieben**:
+  - Heruntergeladene PBF-Dateien werden vor dem atomaren Verschieben (`os.replace`) auf Mindestgröße (> 100 KB) und strukturelle Validität (`osmium fileinfo`) geprüft, um abgerissene oder unvollständige Downloads abzufangen.
+- **Prozessverriegelung & Warnungs-Bereinigung**:
+  - `pipeline/update.sh`: Absicherung gegen parallele Ausführung von Cronjob und manuellen Aufrufen mittels `flock` (`/srv/docker/data/openfiremap/update.lock`) mit Fehlercode `exit 3`.
+  - Entfernung veralteter `build_warnings.json` direkt nach Lockfile-Übernahme vor dem Start des Builds.
+  - Unterstützung für Pfad-Überschreibungen über Umgebungsvariablen (`DATA_DIR`, `PROJECT_DIR` etc.) für flexibleres Testen.
+- **HEAD-Prüfung ohne GET-Umschaltung**:
+  - `pipeline/builder/build_features.py`: Manuelles Verfolgen von HTTP-Redirects strikt mit `HEAD` (max. 5 Sprünge), um zu verhindern, dass Standard-Redirect-Handler bei 302-Weiterleitungen auf `GET` umschalten und Multi-Gigabyte-Dateien herunterladen.
+
+### Transparenz & Monitoring
+- **Metadaten-Erweiterung (`metadata.json`)**:
+  - Neues Top-Level-Feld `extracts_oldest_age_hours` zur schnellen Erkennung veralteter Quelldaten.
+  - Neues Objekt `extracts` mit Details zu jedem verwendeten Landes-Extrakt (Name, relative Dateinamen, Dateigröße in Bytes/MiB, Zeitstempel, Alter in Stunden und Status: `fresh_download`, `cached_head_ok`, `cached_head_failed`, `fallback_after_error`).
+  - Strikte Datensicherheit: Keine internen Dateipfade oder lokalen IP-Adressen in den Metadaten.
+- **Synchronisations-Status (`sync_status.json`)**:
+  - Übernahme von `build_warnings` aus dem Builder in die Statusdatei für das interne Monitoring.
+- **Home Assistant Integration (`openfiremap.yaml`)**:
+  - Neuer Sensor `sensor.openfiremap_extrakt_alter_stunden` und neuer Sensor `sensor.openfiremap_build_warnungen`.
+  - Neue Automation: Alarmierung, falls der älteste OSM-Auszug älter als 48 Stunden wird (`openfiremap_extracts_outdated`).
+  - Validiert mit `check_ha_entities.py` (24 Entitätsdefinitionen, 0 fehlende Verweise).
+
+### Betrieb & Dokumentation
+- **Verschiebung des nächtlichen Cronjobs**:
+  - Verlegung der Startzeit von `03:30 UTC` (05:30 MESZ) auf `05:43 UTC` (07:43 MESZ / 06:43 MEZ) auf VM 102 mit ausreichend zeitlichem Sicherheitsabstand zum täglichen Geofabrik-Generierungsfenster (ca. 01:00–04:15 UTC) und Vermeidung von Spitzenlasten zur vollen Stunde.
+  - Klarstellung in der Betriebsdokumentation: Die VM läuft auf UTC; Zeitstempel im Log und in der Crontab sind UTC.
+- **Betriebsdokumentation & Post-Mortem**:
+  - `pipeline/docs/OPERATIONS_INTERNAL.md` um ein Runbook zur Behebung von Geofabrik-Downloadstörungen und ein detailliertes Post-Mortem zu den Vorfällen vom 30.09.2026 (Nachtlauf-Ausfall um 03:30 UTC und paralleler Lauf um 06:00 UTC) ergänzt.
+
+## [v0.8.0] - 2026-09-29
+
+### Performance
+- **z14-Datenmodell & Cloudflare-Edge-Cache (HIT)**:
+  - Optimierung des Vektorkachel-Datenmodells auf Zoomstufen z12–14 (Hydranten, Wasserstellen und Defibrillatoren auf z14 beschränkt; Wachen und Grenzen auf z12–14) (`ad36beb`).
+  - Reduzierung der PMTiles-Dateigröße für DACHLiLu von 539.096.217 Bytes auf **201.892.499 Bytes (≈ 192,5 MiB)** (-62,5 %).
+  - Cloudflare Edge Cache liefert Kacheln nun zuverlässig mit `cf-cache-status: HIT` aus, da die Datei weit unter der 512-MiB-Grenze für Cloudflare Free liegt (zuvor Cache-Bypass) (`79f2f9d`).
+  - Live-Messungen (Desktop 1440×800, Kartenzoom 16): **2–6 statt zuvor 24–35 Kachel-Requests**, vollständige Datendichte ohne fehlende Hydranten (Nürnberg 241/241, Berlin 197/197, Zürich 392/392, Wien 299/298 mit ~0,6 m Randeffekt) (`51d8da1`, `6245958`).
+- **Preconnect, Warmup & Progressives Rendern**:
+  - Früher DNS-/TLS-Preconnect zu `pipeline.openfiremap.org` und Header-Warmup vor dem ersten Rendering (`777918c`).
+  - Progressives Rendern: Sichtbarer Kartenausschnitt wird sofort gezeichnet (`isPartial: true`), der Pufferring wird asynchron im Hintergrund nachgeladen (`777918c`).
+  - Dynamische Ermittlung der Kachel-Zoomstufe aus dem PMTiles-Header (`queryZoom`), voll abwärts- und aufwärtskompatibel mit z14- und z16-Dateien (`fdd696b`).
+
+### Stabilität & Fehlerbehebungen
+- **Zustandskonsistenz bei schnellen Kartenbewegungen (A → B → A)**:
+  - Streaming-Fortschritt vom globalen App-Zustand isoliert; Beseitigung von Status-Flackern (`LÄDT...` / `AKTUELL`) (`e336572`).
+  - Export-Konsistenz: Laufende Ladevorgänge für fremde Viewports verfälschen nicht mehr den Exportstatus (`e336572`).
+- **Export-Wartezeit & Pufferring-Optimierung**:
+  - `pendingBufferFetches` als `Set` implementiert; verhindert unendliche Export-Wartezeiten (5 s / 10 s Timeout) bei parallelen POI- und Grenz-Pufferringen (`f090800`).
+  - Unnötiges Neu-Rendern (mit Flackern durch `clearLayers`) bei Bewegungen innerhalb bereits vollständig geladener Bereiche eliminiert (`f090800`).
+  - Pufferringe brechen bei minimalen Kartenbewegungen innerhalb der aktiven Bounding-Box (`activeFetchBounds`) nicht mehr vorzeitig ab (`f090800`).
+- **Controller-Reset & Ladezustandsprüfung**:
+  - `AbortController` werden im `finally` auf `null` zurückgesetzt, sobald alle sichtbaren Abrufe und Pufferringe abgeschlossen sind (`1575b30`).
+  - `hasActiveRequest` prüft nun den realen Ladezustand (`isFetchingData || isFetchingBoundaries || pendingBufferFetches.size > 0`) (`1575b30`).
+
+### Pipeline & Betrieb
+- **Upload-Verifikation & Synchronisations-Status**:
+  - `pipeline/update.sh`: 3-fache automatisierte Verifikation gegen den öffentlichen R2-Endpunkt (`generated_at` und Byte-Größe via HTTP `Range: bytes=0-0`), Ergebnis wird nach `raw/sync_status.json` geschrieben (`1575b30`).
+  - `pipeline/builder/build_features.py`: `metadata.json` um `pmtiles.size_bytes` (exakte Bytes) ergänzt; `size_mb` als MiB dokumentiert (`1575b30`).
+- **Interner Nginx-Endpunkt `/internal/`**:
+  - Bereitstellung von `system_stats.json` und `sync_status.json` für das interne Monitoring auf VM 102 (`1575b30`).
+  - Strikter Zugriffsschutz: Nur RFC1918-Netzwerke und Localhost; sofortige HTTP 403-Sperre bei Anfragen über den Cloudflare-Tunnel via `CF-Connecting-IP` (`1575b30`).
+
+### Monitoring
+- **Home-Assistant-Paket (`openfiremap.yaml`)**:
+  - Vorlage mit 22 Entitäten zur lückenlosen Überwachung von öffentlichem R2-CDN, lokalem Build-Zustand auf VM 102, Festplattenbelegung und R2-Synchronisation (`1575b30`).
+  - Template-Sensoren auf moderne `template:`-Struktur migriert und mit Ausfall- und Verfügbarkeitslogik gehärtet (`9953ebf`).
+- **Validierungswerkzeug (`check_ha_entities.py`)**:
+  - Prüfskript zur Erkennung fehlender oder fehlerhafter Home-Assistant-Entitätsreferenzen mit HA-Slugifizierung (`1575b30`).
+
+### Tests
+- **Netzwerk-Sperre & Deterministische Tests**:
+  - Globale Netzwerk-Sperre in Unit-Tests zur Verhinderung von ungewollten externen Netzwerkaufrufen (`6162ddc`).
+  - Ausbau der Vitest-Testsuite auf 125 Tests und Hinzufügen von Playwright-E2E-Tests für progressives Rendern und Pipeline-Performance (`c05a3ff`, `f090800`, `1575b30`).
+
+## [v0.7.2] - 2026-09-29
+
+### Optimierung der Status- & Benachrichtigungsmeldungen
+- **Klare Aufgabentrennung**:
+  - Permanente Status-Box (`#status-box`): Zeigt dezent und dauerhaft die Zoomstufe und den Datenzustand (`AKTUELL`, `AKTUELL (Lokal)`, `LÄDT...`, `STANDBY`) mit weichen Farbübergängen (`transition-colors`).
+  - Hydranten-Ladeanzeige (`#hydrant-download-status`): Übernimmt exklusiv detailliertes Feedback zum Ladevorgang von Hydrantendaten (Objektanzahl, Spinner, SWR-Refresh, Langläufer und Fehler mit Retry `↻`).
+  - Toasts (`#notification-box` via `showNotification`): Ausschließlich für Nutzeraktionen (GPS-Ortung, Link teilen, Kartenexport) und Systemwarnungen/Fehler. Redundante Lade-Meldungen bei jeder Kartenbewegung wurden vollständig entfernt.
+- **Typisierte Toasts mit Icons & Farben**:
+  - Unterstützung für `success` (Grün mit Häkchen-Icon), `info` (Blau mit Info-Icon), `warning` (Gelb mit Warn-Icon) und `error` (Rot mit Ausrufezeichen-Icon).
+  - Screenreader-optimierte ARIA-Rollen (`role="status"` vs `role="alert"`, dynamisches `aria-live`).
+  - XSS-sicher über native DOM-Knoten (`textContent`).
+  - Sanfte Ein- und Ausblendanimationen (`opacity` + `translateY`).
+  - Neues `hideNotification()` zum vorzeitigen Schließen, sobald Netzwerk-Retries erfolgreich beendet sind.
+- **Kollisionsfreies Mobile-Layout**:
+  - Toasts auf Smartphones unterhalb der Top-Leiste zentriert (`top: 76px;`), sodass Burger-Menü und Status-Box nicht überdeckt werden.
+  - Hydranten-Ladeanzeige auf `bottom: 92px; right: 16px;` gelegt, kollisionsfrei mit dem zentrierten Ortungs-Dock (`bottom: 32px`).
+- **Pipeline-Performance (10x Ladebeschleunigung in Chrome)**:
+  - **In-Flight Request Deduplication** (`getVectorTile` in `src/js/pipeline.js`): Parallele Kachelabrufe für POIs und Gemeindegrenzen teilen sich exakt dieselbe Netzwerk-Promise; jede Kachel wird nur noch 1x über HTTP Range-Requests geladen (spart 50 % der Anfragen).
+  - **In-Memory Tile-Cache** (`_tileCache`, FIFO/LRU bis 256 Kacheln): Kacheln werden im RAM gehalten; wiederholte Ansichten schwenken in 0 ms.
+  - **Kachelnetz-Pufferoptimierung**: Auf Desktop-Bildschirmen wird der Kachelpufferring vermieden, da das Kachelnetz das Sichtfeld bereits vollständig abdeckt. Verhindert das Vorladen von 26 unsichtbaren Randkacheln und senkt die Kachelanfragen von 108 auf 30 (-72 %).
+  - **Deduplizierung von `metadata.json`**: Parallele Abrufe werden via `_pendingMetadataPromise` zusammengeführt (1 statt 2 Abrufe).
+  - **Worker-Pool mit 10 parallelen Streams**: Verhindert HTTP/2-Stream-Stau und Socket-Blockaden in Chromium.
+- **Tests & Qualität**:
+  - Neue Vitest-Testsuite `test/notification.test.js` (6 Tests für Typen, Timer, Dismissal, Accessibility und XSS-Schutz).
+  - 4 neue Unit-Tests in `test/pipeline.test.js` für Kachel-Caching, Promise-Sharing und Cache-Clear (insgesamt 99/99 Tests grün).
+  - Neuer Playwright-Performance-Test `tests/pipeline-performance.spec.js` zur dauerhaften Überprüfung von Kacheldeduplizierung und Ladezeit.
+
+## [v0.7.1] - 2026-09-29
+
+### Stale-Cache-Schutz & Pipeline-Härtung
+- **Automatisches Cache-Busting (`?v=<generated_at>`)**:
+  - `src/js/pipeline.js` fragt vor dem Laden der PMTiles-Vektorkacheln `metadata.json` ab (3 s Timeout, `cache: 'no-cache'`).
+  - Hängt den `generated_at`-Zeitstempel als Versionsparameter (`?v=...`) an die Kachel-URL an. Verhindert, dass Edge-Caches oder Browser nach einem Rollout veraltete Kacheln oder veraltete Header ausliefern.
+  - Erkennt Versionsänderungen zur Laufzeit automatisch und invalidiert gecachte PMTiles-Instanzen und Header.
+- **Coverage-Mismatch-Erkennung (`PmtilesCoverageMismatch`)**:
+  - `src/js/pipeline.js` prüft die Header-Bounding-Box (`minLat`, `maxLat`, `minLon`, `maxLon`) vor dem Abruf gegen den angeforderten Viewport.
+  - Liegt der Viewport außerhalb des Headers (z. B. wenn noch ein veralteter regionaler Header im Cache liegt), wird der Header einmalig mit `forceRefresh` neu geladen.
+  - Passt die Abdeckung weiterhin nicht, wird `PmtilesCoverageMismatch` geworfen und der Overpass-Fallback aktiviert, anstatt leere Flächen anzuzeigen.
+- **Gehärtetes Pipeline-Update (`pipeline/update.sh`)**:
+  - Upload-Reihenfolge nach Cloudflare R2 abgesichert: Zuerst Daten (`*.pmtiles` und `*.geojson`), zuletzt `metadata.json` (erst nach vollständigem, fehlerfreiem Daten-Upload).
+  - Spezifische `Cache-Control`-Header beim R2-Upload via rclone gesetzt (`*.pmtiles`: 86400 s / 24 h, `*.geojson`: 3600 s / 1 h, `metadata.json`: `no-cache, no-store, must-revalidate, max-age=0`).
+  - Cloudflare Edge Cache Purge wird nur bei erfolgreichem Sync ausgeführt; Abbruch bei Sync-Fehlern (`exit 1`).
+- **Dokumentation & Endpunktbereinigung**:
+  - Obsoleszenter interner Endpunkt `/healthz` in allen externen Dokumenten und Setup-Skripten durch `https://pipeline.openfiremap.org/metadata.json` ersetzt.
+  - Dokumentation des 512-MB-Cloudflare-Free-Limits (539 MB PMTiles geht als dynamischer Range-Request direkt an R2 mit 0 € Egress und 10 Mio. kostenlosen Class B Operations).
+  - Anleitung zur Freigabe von `http://localhost:5173` in der R2 CORS-Policy für die lokale Entwicklung.
+  - `CLAUDE.md` und `AGENTS.md` aktualisiert: R2 ist primäre Edge-Quelle; VM 102 dient als lokale Test- und Backup-Umgebung.
+
+### Tests
+- **Vitest Unit-Tests**: 89/89 Tests erfolgreich (+11 neue Tests für `isViewportInHeader`, `getPipelineVersion`, `getPipelinePmtilesUrl` und PMTiles Mock Coverage Mismatch / Version Switch).
+
+## [v0.7.0] - 2026-09-29
+
+### Neue Features: DACHLiLu-Erweiterung & Cloudflare R2
+- **Länderübergreifende Pipeline-Abdeckung (DACHLiLu)**: Erweiterung der Vektorkachel-Pipeline von Bayern auf 5 Länder: Deutschland (DE), Österreich (AT), Schweiz (CH), Luxemburg (LU) und Liechtenstein (LI).
+  - Über **1,25 Millionen POIs**: 1.019.158 Hydranten (+336 %), 47.379 Feuerwachen (+438 %), 25.610 Löschwasserstellen (+314 %), 40.347 Defibrillatoren (+597 %) sowie 123.618 Gemeindegrenzen.
+  - Kompakte PMTiles-Datei `openfiremap.pmtiles` mit 514,12 MB (Zoom 12–16).
+- **Cloudflare R2 Object Storage Integration**:
+  - Weltweite Auslieferung der Vektorkacheln über Cloudflare R2 Edge unter `https://pipeline.openfiremap.org/openfiremap.pmtiles`.
+  - Vollständige Entlastung des Heimnetzwerks/DSL-Uploads bei **0 € Egress-Kosten**.
+  - HTTP Range Requests (HTTP 206 Partial Content) und CORS für `https://openfiremap.org` nahtlos aktiv.
+- **Filter-then-Merge Builder-Architektur**:
+  - `pipeline/builder/build_features.py`: Parallele/sequentielle Tag-Filterung einzelner Länder-Auszüge mit anschließender Osmium-Verschmelzung.
+  - Intelligenter `HEAD`-Check: Überspringt unveränderte Geofabrik-PBFs in < 1 Sekunde; `FORCE_DOWNLOAD=true` für erzwungenes Neuladen.
+  - RAM-Disk-Nutzung (`/dev/shm`) für performante I/O-Filterung mit automatischem Disk-Fallback.
+- **MultiPolygon-Grenzabdeckung im Frontend**:
+  - Neues hochpräzises Abdeckungspolygon `DACHLILU_COVERAGE` (`src/js/coverage/dachlilu.js`) mit 2.128 Stützpunkten und 500 m Innenpuffer.
+  - `isPointInPolygon` und `isRectInPolygon` um native MultiPolygon-Unterstützung erweitert.
+- **Automatischer R2-Sync**: Nächtlicher Cronjob auf VM 102 (`update.sh`) synchronisiert neue Builds automatisch per `rclone` zu Cloudflare R2.
+
+### Qualitätssicherung & Tests
+- **Vitest Unit-Tests**: 78/78 Tests erfolgreich (inklusive aller Städte in DE, AT, CH, LU, LI und Grenzprüfungen).
+- **Playwright E2E-Tests**: 11/11 Tests erfolgreich (Koordinaten für Overpass-Fallback-Tests auf Paris außerhalb der DACHLiLu-Pipeline angepasst).
+
+## [v0.6.13] - 2026-09-28
+
+### Neue Features & Pipeline-Verbesserungen
+- **Präzises Bayern-Abdeckungspolygon**: Neues nach innen gepuffertes Abdeckungspolygon mit 1.296 Stützpunkten (`BAYERN_COVERAGE`, generiert via `pipeline/tools/build_coverage_polygon.py` aus OSM-Relation R2145268, 500 m Innenpuffer, 250 m Toleranz). Verhindert, dass Grenzgebiete außerhalb Bayerns fälschlicherweise der Pipeline zugeordnet werden und leer bleiben.
+- **Exakter Rechtecktest (`isRectInPolygon`)**: Viewports werden nun vollständig auf Kantenüberschneidungen und alle 4 Ecken geprüft (statt bisheriger 5-Punkt-Stichprobe). 40.000 zufällige Viewports in der Simulation verifiziert: 0 fehlerhafte Viewports (>0,1 % außerhalb Bayerns).
+- **Direkter Overpass-Fallback (GeoJSON abgeschaltet)**: Deaktivierung des extrem datenintensiven GeoJSON-Fallbacks (`Config.pipeline.geojsonFallback: false`). Bei PMTiles-Problemen schaltet die App transparent direkt auf Overpass um, ohne mehr als 60 MB GeoJSON auf Mobilgeräten herunterzuladen.
+
+### Sicherheit & Pipeline-Härtung
+- **`metadata.json` entschärft**: Der `system`-Block mit internen Server-Festplattenbelegungen wurde aus der öffentlichen `metadata.json` entfernt und in eine interne `system_stats.json` ausgelagert.
+- **Setup-Skript gehärtet**: `pipeline/setup-vm102.sh` um `openfiremap-tunnel` ergänzt mit Prüfung auf `TUNNEL_TOKEN` vor dem Start.
+- **Automatisierter Cache-Purge**: Vorbereitung für gezielten Cloudflare-Cache-Purge in `pipeline/update.sh`.
+
+### Aufräumarbeiten & Wartung
+- **Service Worker Bereinigung**: Veraltete lokale IP- und Port-8080-Bypässe aus `public/sw.js` entfernt. Cache-Version auf `ofm-v11-static` erhöht.
+- **Dokumentation aktualisiert**: Anpassung aller Dokumente und Roadmaps auf die neue 2-Stufen-Kaskade (PMTiles ➔ Overpass).
+
 ## [v0.6.12] - 2026-09-24
 
 ### Neue Features

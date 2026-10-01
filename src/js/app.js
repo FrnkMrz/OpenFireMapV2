@@ -17,6 +17,7 @@ import { initMapLogic } from './map.js';
 import { initI18n, updatePageLanguage } from './i18n.js';
 import { setupUI, showNotification } from './ui.js';
 import { State } from './state.js';
+import { warmupPipeline } from './pipeline.js';
 
 // Expose State globally for tests and debugging
 if (typeof window !== 'undefined') {
@@ -42,6 +43,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     console.log('[OpenFireMapV2] App startet...');
 
+    // 0) Pipeline frühzeitig aufwärmen (parallel zu Leaflet/i18n/UI, nicht blockierend)
+    warmupPipeline();
+
     // 1) i18n (Default: de, Fallback: en)
     await initI18n();
     updatePageLanguage();
@@ -55,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const msg =
         'Leaflet wurde nicht geladen. Prüfe index.html (leaflet.js) und den Pfad unter assets/vendor/leaflet/.';
       console.error('[OpenFireMapV2]', msg);
-      showNotification(msg, 8000);
+      showNotification(msg, 8000, 'error');
       return;
     }
 
@@ -69,11 +73,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       const msg = 'Karte wurde nicht initialisiert (State.map ist leer).';
       console.error('[OpenFireMapV2]', msg);
-      showNotification(msg, 8000);
+      showNotification(msg, 8000, 'error');
     }
   } catch (err) {
     console.error('[OpenFireMapV2] Fataler Fehler beim Start:', err);
-    showNotification(`Startfehler: ${err?.message ?? String(err)}`, 8000);
+    showNotification(`Startfehler: ${err?.message ?? String(err)}`, 8000, 'error');
   }
 
   // PWA Service Worker Registration

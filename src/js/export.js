@@ -13,6 +13,7 @@
 import { State } from "./state.js";
 import { Config } from "./config.js";
 import { fetchDataForExport } from "./api.js";
+import { waitForPendingBuffers } from "./pipeline.js";
 import { t, getLang } from "./i18n.js";
 import { showNotification, toggleExportMenu } from "./ui.js";
 import { jsPDF } from "jspdf";
@@ -279,7 +280,7 @@ export function startSelection() {
   State.selection.active = true;
   State.map.dragging.disable();
   State.map.getContainer().classList.add("selection-mode");
-  showNotification(t("drag_area"));
+  showNotification(t("drag_area"), 3000, 'info');
 }
 
 function clearSelection() {
@@ -367,6 +368,13 @@ function escapeXML(str) {
  */
 export async function exportAsGPX() {
   try {
+    let waitCycles = 0;
+    while (State.isFetchingData && waitCycles < 25) {
+      await new Promise(r => setTimeout(r, 100));
+      waitCycles++;
+    }
+    await waitForPendingBuffers({ timeoutMs: 3000 });
+
     const bounds = State.selection.finalBounds || State.map.getBounds();
     const elementsForExport = getPreparedCachedExportElements();
     const pointsToExport = elementsForExport.filter((el) => {
@@ -377,7 +385,7 @@ export async function exportAsGPX() {
     });
 
     if (pointsToExport.length === 0) {
-      showNotification(t("no_objects"));
+      showNotification(t("no_objects"), 3000, 'warning');
       return;
     }
 
@@ -448,11 +456,11 @@ export async function exportAsGPX() {
     link.click();
     URL.revokeObjectURL(url);
 
-    showNotification(`${pointsToExport.length} ${t("gpx_success")}`);
+    showNotification(`${pointsToExport.length} ${t("gpx_success")}`, 3000, 'success');
     toggleExportMenu();
   } catch (e) {
     console.error("GPX Fehler:", e);
-    showNotification("GPX Fehler: " + e.message, 5000);
+    showNotification("GPX Fehler: " + e.message, 5000, 'error');
   }
 }
 
@@ -463,11 +471,32 @@ function escapeCSV(val) {
 }
 
 /**
+ * Ermittelt die Spalte "Untertyp" für den CSV-Export.
+ * OSM-Tags sind flach (Key mit Doppelpunkt), daher fire_station:type statt tags.fire_station.type.
+ */
+export function getCsvSubtype(tags, isStation, isDefib) {
+  if (isStation) return tags["fire_station:type"] || tags.building || "Feuerwehr";
+  if (isDefib) return "AED";
+  const subtype = tags["fire_hydrant:type"] || tags.emergency || "";
+  if (subtype === 'underground' && tags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
+    return 'WSH (Württembergischer Schachthydrant)';
+  }
+  return subtype;
+}
+
+/**
  * Exportiert alle relevanten Punkte im ausgewählten Ausschnitt als CSV-Tabelle.
  * UTF-8 BOM für Excel-Kompatibilität, Semikolon als Trennzeichen.
  */
 export async function exportAsCSV() {
   try {
+    let waitCycles = 0;
+    while (State.isFetchingData && waitCycles < 25) {
+      await new Promise(r => setTimeout(r, 100));
+      waitCycles++;
+    }
+    await waitForPendingBuffers({ timeoutMs: 3000 });
+
     const bounds = State.selection.finalBounds || State.map.getBounds();
     const elementsForExport = getPreparedCachedExportElements();
     const pointsToExport = elementsForExport.filter((el) => {
@@ -478,7 +507,7 @@ export async function exportAsCSV() {
     });
 
     if (pointsToExport.length === 0) {
-      showNotification(t("no_objects"));
+      showNotification(t("no_objects"), 3000, 'warning');
       return;
     }
 
@@ -529,17 +558,7 @@ export async function exportAsCSV() {
       if (!isStation && !isHydrant && !isDefib) return;
 
       const type = isStation ? "Feuerwache" : isDefib ? "Defibrillator" : "Hydrant / Wasserstelle";
-      let subtype;
-      if (isStation) {
-        subtype = tags.fire_station?.type || tags.building || "Feuerwehr";
-      } else if (isDefib) {
-        subtype = "AED";
-      } else {
-        subtype = tags["fire_hydrant:type"] || tags.emergency || "";
-        if (subtype === 'underground' && tags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
-          subtype = 'WSH (Württembergischer Schachthydrant)';
-        }
-      }
+      const subtype = getCsvSubtype(tags, isStation, isDefib);
 
       const name = tags.name || "";
       const ref = tags.ref || "";
@@ -588,11 +607,11 @@ export async function exportAsCSV() {
     link.click();
     URL.revokeObjectURL(url);
 
-    showNotification(`${pointsToExport.length} ${t("csv_success") || t("gpx_success")}`);
+    showNotification(`${pointsToExport.length} ${t("csv_success") || t("gpx_success")}`, 3000, 'success');
     toggleExportMenu();
   } catch (e) {
     console.error("CSV Fehler:", e);
-    showNotification("CSV Fehler: " + e.message, 5000);
+    showNotification("CSV Fehler: " + e.message, 5000, 'error');
   }
 }
 
@@ -672,18 +691,19 @@ async function generateMapCanvas() {
 
   if (!needsStrictOnlineFetch) {
     // Falls die Karte gerade noch Daten im Hintergrund lädt (z. B. nach einem Pan), 
-    // warten wir mit Timeout (max. 10s), damit wir den finalen Cache haben.
+    // oder der Pufferring noch läuft, warten wir mit Timeout (max. 10s), damit wir den finalen Cache haben.
     let waitCycles = 0;
-    const MAX_WAIT_CYCLES = 50; // 50 * 200ms = 10 Sekunden
+    const MAX_WAIT_CYCLES = 50;
     while (State.isFetchingData && waitCycles < MAX_WAIT_CYCLES) {
       if (signal?.aborted) throw new DOMException('Export wurde abgebrochen.', 'AbortError');
       setStatus(`${t("loading_data") || "Lade Daten..."} (Warte auf Karte)`);
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 100));
       waitCycles++;
     }
     if (waitCycles >= MAX_WAIT_CYCLES) {
       console.warn("Export: Timeout beim Warten auf Hintergrund-Ladevorgang der Karte. Fahre mit verfügbaren Daten fort.");
     }
+    await waitForPendingBuffers({ signal, timeoutMs: 5000 });
 
     // Liegt der gewünschte Export-Ausschnitt VOLLSTÄNDIG innerhalb der BBox,
     // die die App zuletzt für die Darstellung geladen hat?
@@ -713,16 +733,16 @@ async function generateMapCanvas() {
         elementsForExport = preprocessElementsForExport(fallbackCachedElements);
       }
 
-      showNotification(`Export: ${elementsForExport.length} Objekte (Online geladen).`, 3000);
+      showNotification(`Export: ${elementsForExport.length} Objekte (Online geladen).`, 3000, 'info');
     } catch (e) {
       if (e?.name === 'AbortError') throw e;
       console.warn("Export-Fetch fehlgeschlagen, nutze Cache als Fallback", e);
       const fallbackCachedElements = getCachedExportElements();
       elementsForExport = preprocessElementsForExport(fallbackCachedElements);
-      showNotification(`Export Warnung: Ladefehler, nutze Cache (${elementsForExport.length} Objekte).`, 5000);
+      showNotification(`Export Warnung: Ladefehler, nutze Cache (${elementsForExport.length} Objekte).`, 5000, 'warning');
     }
   } else {
-    showNotification(`Export: ${elementsForExport.length} Objekte (aus Cache).`, 2000);
+    showNotification(`Export: ${elementsForExport.length} Objekte (aus Cache).`, 2000, 'info');
   }
   console.log("Final export elements count:", elementsForExport.length);
 
@@ -1087,7 +1107,7 @@ export async function exportAsPNG() {
     document.body.removeChild(link);
 
     toggleExportMenu();
-    showNotification("Download gestartet (PNG)!", 3000);
+    showNotification("Download gestartet (PNG)!", 3000, 'success');
 
   } catch (e) {
     handleExportError(e);
@@ -1146,7 +1166,7 @@ export async function exportAsPDF() {
     pdf.save(`${filename}.pdf`);
 
     toggleExportMenu();
-    showNotification("Download gestartet (PDF)!", 3000);
+    showNotification("Download gestartet (PDF)!", 3000, 'success');
 
   } catch (e) {
     handleExportError(e);
@@ -1155,7 +1175,7 @@ export async function exportAsPDF() {
 
 function handleExportError(e) {
   console.error("EXPORT FEHLER:", e);
-  showNotification("FEHLER: " + e.message, 10000);
+  showNotification("FEHLER: " + e.message, 8000, 'error');
   setTimeout(() => {
     document.getElementById("export-progress").classList.add("hidden");
     document.getElementById("export-setup").classList.remove("hidden");

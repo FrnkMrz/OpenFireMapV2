@@ -14,6 +14,8 @@ const DEFAULT_LANG = 'de';
 const FALLBACK_LANG = 'en';
 
 let currentLang = DEFAULT_LANG;
+// Gewünschte Sprache, auch wenn es dafür keine Übersetzung gibt (für Rechtstexte)
+let requestedLang = DEFAULT_LANG;
 let currentDict = null;
 let fallbackDict = null;
 
@@ -76,6 +78,7 @@ export async function initI18n() {
 
   // Zielsprache bestimmen
   const detected = detectLangCode();
+  requestedLang = normalizeLang(detected);
   const detectedDict = await loadLangDict(detected);
 
   if (detectedDict) {
@@ -104,6 +107,7 @@ export async function setLang(code) {
   if (!dict) return false;
 
   currentLang = normalizeLang(code);
+  requestedLang = currentLang;
   currentDict = dict;
 
   localStorage.setItem('ofm_lang', currentLang);
@@ -146,6 +150,12 @@ export function updatePageLanguage() {
 
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+  });
+
+  // Rechtstexte: Deutsch ist verbindlich, alle anderen Sprachen sehen die englische Fassung
+  const legalLang = (currentLang === 'de' && requestedLang === 'de') ? 'de' : 'en';
+  document.querySelectorAll('[data-legal-lang]').forEach(el => {
+    el.classList.toggle('hidden', el.getAttribute('data-legal-lang') !== legalLang);
   });
 }
 

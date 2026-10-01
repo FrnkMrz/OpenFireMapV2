@@ -89,8 +89,14 @@ jobs:
       # --------------------------------------------------------------------
       # Tests & Checks (inklusive Professional Setup)
       # --------------------------------------------------------------------
-      - name: Security Check
-        run: npm audit --audit-level=high || echo 'Audit failed, please review' >&2
+      # Bricht bei High/Critical in Laufzeit-Abhängigkeiten ab (diese landen im Bundle).
+      # Dev-Abhängigkeiten werden nur gemeldet, damit ein neues Advisory in Tooling
+      # (Vite, Vitest, ...) nicht jedes Deployment blockiert.
+      - name: Security Check (runtime dependencies)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Security Check (dev dependencies, report only)
+        run: npm audit --audit-level=high || echo '::warning::npm audit meldet High/Critical in Dev-Abhängigkeiten'
 
       - name: Run Linter
         run: npm run lint

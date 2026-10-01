@@ -14,7 +14,7 @@
 import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
-import { showNotification } from './ui.js';
+import { showNotification, hideNotification } from './ui.js';
 
 import { fetchJson, HttpError } from './net.js';
 import { isPipelineEligible, fetchPipelineData, fetchPipelineBoundaries } from './pipeline.js';
@@ -88,7 +88,7 @@ async function maybeGlobalBackoff(reqId, signal = null) {
 
     // Visuelles Feedback: Zeige dem User, dass wir aufgrund Überlastung warten
     const waitSec = Math.ceil(waitMs / 1000);
-    showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000));
+    showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000), 'warning');
 
     await sleep(waitMs, signal);
   }
@@ -404,7 +404,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
 
       // Zeige nur wenn es der letzte Endpoint ist (sonst zu viele Notifications)
       if (!silent && attemptNum === endpoints.length - 1) {
-        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, 3000);
+        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, 3000, 'warning');
       }
       continue;
     }
@@ -416,7 +416,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
           endpoint.includes('z.overpass-api.de') ? 'Server 2' :
             endpoint.includes('lz4.overpass-api.de') ? 'Server 3' : 'Alternativ-Server';
 
-        showNotification(`${t('trying_server')} ${serverName}...`, 60000);
+        showNotification(`${t('trying_server')} ${serverName}...`, 60000, 'info');
       }
 
       emit({ phase: 'try', reqId, endpoint, attemptNum });
@@ -450,9 +450,10 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       const elements = Array.isArray(json?.elements) ? json.elements.length : null;
       emit({ phase: 'net_ok', reqId, endpoint, ms, elements });
 
-      // Erfolg -> globalen Backoff resetten
+      // Erfolg -> globalen Backoff resetten und temporäre Server-Meldungen schließen
       GLOBAL_BACKOFF_MS = 0;
       GLOBAL_BACKOFF_UNTIL = 0;
+      hideNotification();
 
       return json;
 
@@ -473,9 +474,9 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
           // Visuelles Feedback: Rate Limit
           if (!silent) {
             if (attemptNum < endpoints.length - 1) {
-              showNotification(t('server_ratelimit_retry'), 4000);
+              showNotification(t('server_ratelimit_retry'), 4000, 'warning');
             } else {
-              showNotification(t('all_servers_busy'), 6000);
+              showNotification(t('all_servers_busy'), 6000, 'warning');
             }
           }
 
@@ -488,7 +489,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
 
           // Visuelles Feedback: Server Error
           if (!silent && attemptNum < endpoints.length - 1) {
-            showNotification(t('server_error_retry'), 4000);
+            showNotification(t('server_error_retry'), 4000, 'warning');
           }
 
           await sleep(400, signal);
@@ -521,7 +522,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       const waitSec = Math.ceil(minCooldown / 1000);
       emit({ phase: 'wait_for_cooldown', reqId, waitMs: minCooldown });
       if (!silent) {
-        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown);
+        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown, 'warning');
       }
 
       await sleep(minCooldown + 500, signal); // +500ms Puffer
@@ -580,6 +581,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
   // loading state...
   State.isFetchingData = true;
+  State.activeFetchBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
   emit({ phase: 'load_start', reqId, zoom, bboxKey, dataset: 'poi', dataClass });
   reportHydrantDownload(hydrantStatus, 'loading');
 
@@ -587,7 +589,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
   if (State.controllers.fetch) State.controllers.fetch.abort();
   const controller = new AbortController();
   State.controllers.fetch = controller;
-  const isCurrentRequest = () => State.controllers.fetch === controller;
+  const isCurrentRequest = () => !controller.signal.aborted && (State.controllers.fetch === controller || State.controllers.fetch === null);
   const ensureCurrentRequest = () => {
     if (!isCurrentRequest()) throw createAbortError();
   };
@@ -609,11 +611,50 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
     const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
     if (isPipelineEligible(viewBounds, zoom)) {
       try {
-        console.log('[API] Verwende lokale Pipeline für Mittelfranken...');
-        const pipelineElements = await fetchPipelineData(viewBounds, requestedMode, { signal: controller.signal, zoom });
+        console.log('[API] Verwende lokale Pipeline für DACHLiLu...');
+        let hasReportedSuccess = false;
+        const onPoiProgress = (progressElements, isPartial = true, meta = {}) => {
+          if (!isCurrentRequest()) return;
+          if (meta?.phase !== 'buffer' && !hasReportedSuccess) {
+            reportHydrantDownload(hydrantStatus, 'loading', progressElements);
+          }
+          if (typeof onProgressData === 'function') {
+            try {
+              onProgressData(progressElements, isPartial);
+            } catch (renderErr) {
+              console.warn('[API] Fehler beim progressiven Rendern der Pipeline-POIs:', renderErr);
+            }
+          }
+        };
+
+        const onBufferComplete = (bufferedElements, fullBounds) => {
+          if (!isCurrentRequest()) return;
+          State.cachedPoiElements = bufferedElements;
+          State.loadedPoiBounds = fullBounds;
+          syncCombinedCachedElements();
+          if ((!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) && !State.isFetchingBoundaries) {
+            State.activeFetchBounds = null;
+          }
+          reportHydrantDownload(hydrantStatus, 'success', bufferedElements);
+          if (typeof onProgressData === 'function') {
+            try {
+              onProgressData(bufferedElements, false);
+            } catch (renderErr) {
+              console.warn('[API] Fehler beim Rendern nach Pufferabschluss:', renderErr);
+            }
+          }
+        };
+
+        const pipelineElements = await fetchPipelineData(viewBounds, requestedMode, {
+          signal: controller.signal,
+          zoom,
+          onProgressData: onPoiProgress,
+          onBufferComplete
+        });
         ensureCurrentRequest();
 
         if (Array.isArray(pipelineElements)) {
+          hasReportedSuccess = true;
           State.cachedPoiElements = pipelineElements;
           State.loadedPoiBounds = pipelineElements.loadedBounds || viewBounds;
           State.loadedPoiMode = requestedMode;
@@ -624,7 +665,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
           if (typeof onProgressData === 'function') {
             try {
-              onProgressData(pipelineElements);
+              onProgressData(pipelineElements, false);
             } catch (renderErr) {
               console.warn('[API] Fehler beim Rendern der Pipeline-POIs:', renderErr);
             }
@@ -764,7 +805,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
         // Visuelles Feedback: Nutzer weiß, dass alte Daten angezeigt werden
         const errType = (err instanceof HttpError && err.status === 429) ? t('server_error_type_overload') :
           (err instanceof HttpError && err.status >= 500) ? t('server_error_type_server') : t('server_error_type_connection');
-        showNotification(`${errType} - ${t('showing_cached')}`, 4000);
+        showNotification(`${errType} - ${t('showing_cached')}`, 4000, 'warning');
 
         // WICHTIG: NICHT werfen! Wir haben ja erfolgreiche Daten (aus Cache).
         // Der User sieht Marker, also ist das KEIN Fehler-Zustand.
@@ -781,13 +822,22 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           message: String(err?.message || err)
         });
 
-        showNotification(t(msgKey), 5000);
+        showNotification(t(msgKey), 5000, 'error');
         reportHydrantDownload(hydrantStatus, 'error');
         throw err;
       }
     }
   } finally {
-    if (isCurrentRequest()) State.isFetchingData = false;
+    if (isCurrentRequest()) {
+      State.isFetchingData = false;
+      const hasActiveBuffer = Boolean(State.pendingBufferFetches && State.pendingBufferFetches.size > 0);
+      if (!hasActiveBuffer && State.controllers.fetch === controller) {
+        State.controllers.fetch = null;
+      }
+      if (!hasActiveBuffer && !State.isFetchingBoundaries) {
+        State.activeFetchBounds = null;
+      }
+    }
   }
 }
 
@@ -814,32 +864,68 @@ export async function fetchBoundaryData(onProgressData = null) {
   if (State.controllers.boundaryFetch) State.controllers.boundaryFetch.abort();
   const controller = new AbortController();
   State.controllers.boundaryFetch = controller;
+  State.isFetchingBoundaries = true;
+  const isCurrentBoundaryRequest = () => !controller.signal.aborted && (State.controllers.boundaryFetch === controller || State.controllers.boundaryFetch === null);
   const ensureCurrentRequest = () => {
-    if (State.controllers.boundaryFetch !== controller) throw createAbortError();
+    if (!isCurrentBoundaryRequest()) throw createAbortError();
   };
 
-  if (_bgBoundaryRefresh && _bgBoundaryRefresh.cacheKey !== cacheKey) {
-    _bgBoundaryRefresh.controller.abort();
-    ++_bgBoundaryGen;
-    _bgBoundaryRefresh = null;
-  }
+  try {
+    if (_bgBoundaryRefresh && _bgBoundaryRefresh.cacheKey !== cacheKey) {
+      _bgBoundaryRefresh.controller.abort();
+      ++_bgBoundaryGen;
+      _bgBoundaryRefresh = null;
+    }
 
-  const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
+    const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
 
-  if (isPipelineEligible(viewBounds, zoom)) {
-    try {
-      console.log('[API] Verwende lokale Pipeline für Gemeindegrenzen...');
-      const boundaryElements = await fetchPipelineBoundaries(viewBounds, { signal: controller.signal, zoom });
+    if (isPipelineEligible(viewBounds, zoom)) {
+      try {
+        console.log('[API] Verwende lokale Pipeline für Gemeindegrenzen...');
+        const onBoundaryBufferComplete = (bufferedElements, fullBounds) => {
+          if (!isCurrentBoundaryRequest()) return;
+          State.cachedBoundaryElements = bufferedElements;
+          State.loadedBoundaryBounds = fullBounds;
+          syncCombinedCachedElements();
+          if ((!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) && !State.isFetchingData) {
+            State.activeFetchBounds = null;
+          }
+        if (typeof onProgressData === 'function') {
+          try {
+            onProgressData(bufferedElements, false);
+          } catch (renderErr) {
+            console.warn('[API] Fehler beim Rendern nach Boundary-Pufferabschluss:', renderErr);
+          }
+        }
+      };
+
+      const onBoundaryProgress = (progressElements, isPartial = true) => {
+        if (!isCurrentBoundaryRequest()) return;
+        if (typeof onProgressData === 'function') {
+          try {
+            onProgressData(progressElements, isPartial);
+          } catch (renderErr) {
+            console.warn('[API] Fehler bei progressiver Boundary-Meldung:', renderErr);
+          }
+        }
+      };
+
+      const boundaryElements = await fetchPipelineBoundaries(viewBounds, {
+        signal: controller.signal,
+        zoom,
+        onProgressData: onBoundaryProgress,
+        onBufferComplete: onBoundaryBufferComplete
+      });
       ensureCurrentRequest();
 
-      if (Array.isArray(boundaryElements) && boundaryElements.length > 0) {
+      if (Array.isArray(boundaryElements)) {
         State.cachedBoundaryElements = boundaryElements;
-        State.loadedBoundaryBounds = viewBounds;
+        State.loadedBoundaryBounds = boundaryElements.loadedBounds || viewBounds;
         syncCombinedCachedElements();
 
         emit({ phase: 'boundary_pipeline_hit', reqId, zoom, dataset: 'boundary', elements: boundaryElements.length });
         if (typeof onProgressData === 'function') {
-          onProgressData(boundaryElements);
+          onProgressData(boundaryElements, false);
         }
         return boundaryElements;
       }
@@ -941,6 +1027,18 @@ export async function fetchBoundaryData(onProgressData = null) {
       return State.cachedBoundaryElements;
     }
     throw err;
+  }
+  } finally {
+    if (isCurrentBoundaryRequest()) {
+      State.isFetchingBoundaries = false;
+      const hasActiveBuffer = Boolean(State.pendingBufferFetches && State.pendingBufferFetches.size > 0);
+      if (!hasActiveBuffer && State.controllers.boundaryFetch === controller) {
+        State.controllers.boundaryFetch = null;
+      }
+      if (!hasActiveBuffer && !State.isFetchingData) {
+        State.activeFetchBounds = null;
+      }
+    }
   }
 }
 

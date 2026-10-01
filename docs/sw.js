@@ -12,7 +12,7 @@
  * veraltete Wasserentnahmestellen suggerieren könnte.
  */
 
-const CACHE_NAME = 'ofm-v10-static';
+const CACHE_NAME = 'ofm-v14-static';
 // Nur wirklich statische Assets precachen (keine gehashten Bundles!)
 const ASSETS = [
     '/',
@@ -57,8 +57,7 @@ self.addEventListener('fetch', (e) => {
     // (Verhindert den bekannten Safari/WebKit-Bug, bei dem der SW Range-Header verwirft)
     if (e.request.headers.has('range') ||
         url.pathname.endsWith('.pmtiles') ||
-        url.port === '8080' ||
-        url.hostname === '192.168.178.152') {
+        url.hostname === 'pipeline.openfiremap.org') {
         return;
     }
 

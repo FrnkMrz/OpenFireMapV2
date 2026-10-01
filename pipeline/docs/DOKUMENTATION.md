@@ -1,99 +1,122 @@
-# System- und Betriebsdokumentation: OpenFireMap DACH Data Pipeline
+# Pipeline-Dokumentation
 
-Stand: September 2026
+## Zweck
 
-Diese Dokumentation beschreibt die technische Architektur, den Betrieb und die Wiederherstellung der **OpenFireMap DACH Data Pipeline** auf dem Proxmox-Heimserver (KW3).
+Die DACHLiLu-Pipeline bereitet OpenStreetMap-Daten für eine schnelle Darstellung in OpenFireMapV2 vor. Sie erzeugt statische Vektorkacheln und Metadaten; der Browser lädt davon nur die für den sichtbaren Ausschnitt benötigten Bereiche.
 
----
+## Datenfluss & Zeitplan
 
-## 1. Infrastruktur & Zielsystem
+1. Der nächtliche Update-Lauf (`update.sh`) startet täglich um **05:43 UTC** (07:43 MESZ / 06:43 MEZ) per Cronjob auf VM 102 (nach dem nächtlichen Veröffentlichungsfenster von Geofabrik, krumme Minute zur Vermeidung von Spitzenlasten).
+2. Regionale PBF-Extrakte werden aus der Geofabrik-Quelle bezogen (mit intelligentem HEAD-Check, atomarer Validierung und robustem Fallback auf vorhandene lokale Extrakte bei Download-Ausfällen).
+3. Der Builder filtert feuerwehrrelevante Objekte und erzeugt PMTiles.
+4. `metadata.json` beschreibt Version, Build-Zeit, Statistiken und Zustand/Alter der verwendeten Extrakte.
+5. Cloudflare R2 stellt die Artefakte über HTTPS bereit.
+6. Das Frontend prüft Version und Abdeckung und greift bei Problemen auf Overpass zurück.
 
-### 1.1 Proxmox Host (KW3 / Schnaittach)
-* **Plattform:** HP EliteDesk/ProDesk 800 G4 Mini
-* **CPU:** Intel Core i5-8500T (6 Threads)
-* **Arbeitsspeicher:** 16 GiB RAM
-* **Speicher:** 512 GB NVMe (LVM-Thin `local-lvm`)
-* **Proxmox:** PVE 9.2 (No-Subscription Repos)
-* **Netzwerk:** `192.168.178.8` an `vmbr0` (Heimnetz `192.168.178.0/24`)
+## Öffentliche Qualitätsmerkmale
 
-### 1.2 Virtuelle Maschine 102 (`docker-lab-KW3`)
-* **Zweck:** Dedizierte, isolierte Docker-Laufzeitumgebung
-* **Betriebssystem:** Debian 13 (Trixie), Cloud-Image
-* **Ressourcen:** 2 vCPU (`host`), 4 GiB RAM (kein Ballooning), 128 GiB NVMe
-* **Netzwerk:** Feste IP `192.168.178.152` (FRITZ!Box DHCP-Reservierung)
-* **Benutzer:** `frank` (in `docker`-Gruppe)
-* **Pfade:**
-  * Projektbasis: `/srv/docker/projects/openfiremap-pipeline`
-  * Persistente Daten: `/srv/docker/data/openfiremap`
-* **Snapshot-Basis:** `docker-basis-20260921` (Rücksprungpunkt vor Projekt-Setup)
+- HTTP-Range-Requests statt vollständigem Download der PMTiles-Datei
+- CORS für den Browserzugriff
+- Cache-Busting über die Pipeline-Version
+- Erkennung einer nicht passenden oder veralteten PMTiles-Abdeckung
+- Overpass-Fallback außerhalb DACHLiLu und bei Pipeline-Fehlern
+- keine Veröffentlichung von Systemmetriken, Zugangsdaten oder internen Netzwerkdaten
 
----
+## Build nur bei Änderungen („Skip if unchanged“)
 
-## 2. Architektur & Designentscheidungen
+Um unnötige CPU-Last (25–30 min Buildzeit), Bandbreite und vor allem Kachel-Invalidierungen im Cloudflare Edge-Cache zu vermeiden, baut der Builder nur neu, wenn sich die Quelldaten oder der Build-Code tatsächlich geändert haben:
 
-### Warum keine eigene Overpass-Instanz oder PostGIS?
-* Eine vollständige Overpass-Datenbank (für Deutschland oder DACH) benötigt mindestens 32–64 GiB RAM und Hunderte Gigabyte NVMe-I/O. Auf einer 4-GiB-VM würde der OOM-Killer (Out of Memory) sofort greifen.
-* PostGIS mit `osm2pgsql` wäre möglich, erfordert aber ständige Datenbankpflege, Migrationen, Indizes und einen API-Layer (z. B. Node.js oder Python-Backend).
-* **Die gewählte Lösung (Static-First mit Osmium & Nginx):**
-  * `osmium-tool` (C++) filtert Millionen OSM-Objekte direkt aus `.osm.pbf` in Sekunden (< 20 Sekunden für 90 MB Rohdaten).
-  * Vorkomprimierte GeoJSON-Dateien werden direkt über Nginx ausgeliefert.
-  * **Vorteil:** Extrem schlank (< 200 MB RAM-Bedarf zur Laufzeit), keine offenen Datenbank-Ports, keine Absturzgefahr durch Speicherlecks.
+| Ergebnis (`sync_status.result`) | Bedingung | Aktion |
+|---|---|---|
+| `built` | Mindestens ein OSM-Extrakt neu/geändert, **oder** Builder-Fingerprint geändert, **oder** `FORCE_BUILD=true`, **oder** kein gültiger Fingerprint vorhanden (erster Lauf) | Build + R2-Upload + Verifikation + Published-Fingerprint |
+| `upload_only` | Quelldaten und Builder unverändert, aber der **lokale** Stand ist noch nicht auf R2 veröffentlicht (z. B. nach Upload-Fehler) | Kein Build, nur R2-Upload + Verifikation + Published-Fingerprint |
+| `skipped_no_changes` | Quelldaten unverändert **und** R2 ist bereits synchron zum lokalen Stand | Kein Build, kein Upload, Verifikation läuft als Heartbeat |
 
----
+### Fingerprints & Erkennung
 
-## 3. Komponenten der Pipeline
+1. **Extrakt-Fingerprint**: Pro Land wird `{ id, size_bytes, mtime }` erfasst. Die `mtime` entspricht dank `curl -R` dem exakten `Last-Modified`-Header von Geofabrik.
+2. **Builder-Fingerprint**: Ein deterministischer SHA-256-Hash über den Python-Quellcode von `build_features.py` und alle ergebnisrelevanten Parameter (`PIPELINE_REGION`, `OSM_EXTRACT_URL`, Zielländer, `TIPPECANOE_CONFIG`, Layer-Definitionen).
+3. **Speicherorte (intern unter `raw/`, nicht öffentlich)**:
+   - `raw/build_fingerprint.json`: Fingerprint des letzten erfolgreichen lokalen Builds.
+   - `raw/published_fingerprint.json`: Fingerprint des erfolgreich auf Cloudflare R2 veröffentlichten Stands.
+4. **Cache-Vorteile**: Da bei `skipped_no_changes` kein Upload und kein Cache-Purge stattfindet, bleibt `generated_at` in `metadata.json` und damit der Parameter `?v=` für Web-Clients stabil. Der Cloudflare Edge Cache liefert Kacheln dauerhaft mit `HIT` aus.
 
-### 3.1 `openfiremap-builder` (Docker)
-* **Basis:** Python 3.12-slim mit installiertem `osmium-tool`, `tippecanoe` (C++) und `curl`.
-* **Aufgabe:**
-  1. Download des aktuellen PBF von Geofabrik (mit Resume-Funktion und Retries).
-  2. Filterung nach OSM-Tags (Hydranten, Wachen, Löschwasserstellen, Defibrillatoren sowie Verwaltungsgrenzen `boundaries`).
-  3. Export als GeoJSON nach `/srv/docker/data/openfiremap/publish/`.
-  4. **PMTiles Vektorkachel-Erzeugung (`tippecanoe`):**  
-     Bündelt alle Layer (`fire_stations`, `hydrants`, `water_points`, `defibrillators`, `boundaries`) in eine einzige kompakte Datei `openfiremap.pmtiles` (12 MB inkl. aller Grenzlinien, Zoom 12–16) in unter 5 Sekunden.
-  5. Berechnung von Differenzen zum Vortag (`diff`), Speicherauslastung und Schreiben von `metadata.json`.
+## Aktuelle Größenordnung
 
-### 3.2 `openfiremap-web` (Docker / Nginx Alpine)
-* **Port:** `8080` (vermeidet Kollisionen mit Standard-Port 80)
-* **Features:**
-  * Auslieferung von `.pmtiles` mit **HTTP 206 Partial Content (Range Requests)**
-  * `gzip off;` dediziert für `.pmtiles`, damit HTTP Byte Serving auch in Safari/WebKit mit `Accept-Encoding: gzip` standardkonform funktioniert
-  * `gzip on;` aktiv für GeoJSON und JSON (reduziert Transfergröße um ~80 %)
-  * Vollständige CORS-Header inklusive `Access-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges, ETag`
-  * Healthcheck-Endpunkt `/healthz`
-  * Logging: Maximal 3 Dateien à 10 MB
+Die DACHLiLu-Ausgabe umfasst rund 1,25 Millionen feuerwehrrelevante Objekte. Das PMTiles-Archiv ist dank optimiertem Zoom-Level 14 etwa **192,5 MB** groß (201.892.499 Bytes) und liegt damit weit unter dem Cloudflare Free-Cache-Limit von 512 MiB. Diese Werte sind Momentaufnahmen; der aktuelle Build-Zeitstempel und detaillierte Statistiken stehen in `metadata.json`.
 
----
+## Home-Assistant-Überwachung
 
-## 4. Betrieb, Wartung & Automatisierung
+Die Pipeline lässt sich über das vorgefertigte Home-Assistant-Package unter `pipeline/monitoring/homeassistant/openfiremap.yaml` überwachen.
 
-### 4.1 Nächtliches Daten-Update (Cronjob)
-Auf VM 102 läuft in der Crontab von `frank`:
-```bash
-30 3 * * * /srv/docker/projects/openfiremap-pipeline/update.sh
-```
-* **Zeitpunkt:** 03:30 Uhr nachts (Geofabrik erzeugt neue Auszüge meist zwischen 01:00 und 02:30 Uhr).
-* **Log-Datei:** `/srv/docker/data/openfiremap/update.log`
+### Überwachte Metriken:
+- **Öffentlicher CDN-Status (R2):** Erreichbarkeit, Datenalter in Stunden, Versions-Zeitstempel (`generated_at`), Extrakt-Alter in Stunden (`extracts_oldest_age_hours`), Objektzahlen (Hydranten, Wachen, Wasserstellen, Defis, Grenzen), PMTiles-Größe und MaxZoom.
+- **Lokaler VM-Status:** Lokale Version auf VM 102, Festplattenbelegung (`/internal/system_stats.json`).
+- **Synchronisations-Status:** Automatische Erkennung von Diskrepanzen zwischen lokalem Build und öffentlichem R2-Stand (`/internal/sync_status.json`) sowie Build-Warnungen.
 
-### 4.2 Wichtige Steuerungsbefehle
-* **Container-Status prüfen:** `docker ps`
-* **Webserver neustarten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose restart web`
-* **Manuellen Datenbuild starten:** `cd /srv/docker/projects/openfiremap-pipeline && docker compose run --rm builder`
-* **Update-Log ansehen:** `tail -n 50 /srv/docker/data/openfiremap/update.log`
+### Einbindung der Vorlage:
+1. In Home Assistant Packages aktivieren (in `/config/configuration.yaml`):
+   ```yaml
+   homeassistant:
+     packages: !include_dir_named packages
+   ```
+2. Datei `openfiremap.yaml` in den Home-Assistant-Ordner `/config/packages/` kopieren.
+3. Platzhalter konfigurieren:
+   - **Standardweg (Suchen & Ersetzen):**
+     - `<PIPELINE_PUBLIC_URL>`: Öffentliche URL, z. B. `https://pipeline.openfiremap.org`
+     - `<PIPELINE_LAN_URL>`: LAN-URL des Nginx-Servers, z. B. `http://<PIPELINE_LAN_IP>:8080` (Muster)
+     - `<NOTIFY_SERVICE>`: Benachrichtigungsdienst, z. B. `notify.persistent_notification` oder `notify.mobile_app_smartphone` (muss direkt als Dienstname im YAML stehen; Home Assistant unterstützt kein `!secret` für Service-Namen).
+   - **Alternative via `secrets.yaml`:**
+     Home Assistant erlaubt kein Ersetzen von Teil-Strings innerhalb von URLs via `!secret`. Daher müssen vollständige URLs in `secrets.yaml` hinterlegt und die `resource:`-Zeilen in `openfiremap.yaml` angepasst werden:
+     ```yaml
+     # in /config/secrets.yaml
+     openfiremap_public_metadata_url: "https://pipeline.openfiremap.org/metadata.json"
+     openfiremap_lan_metadata_url: "http://<PIPELINE_LAN_IP>:8080/metadata.json"
+     openfiremap_lan_system_stats_url: "http://<PIPELINE_LAN_IP>:8080/internal/system_stats.json"
+     openfiremap_lan_sync_status_url: "http://<PIPELINE_LAN_IP>:8080/internal/sync_status.json"
 
-### 4.3 Home-Assistant-Überwachung (KW3)
-Home Assistant (`192.168.178.191`) fragt alle 5 Minuten `http://192.168.178.152:8080/metadata.json` über einen REST-Sensor ab.
-Überwachte Werte:
-* **Systemstatus:** `ok` / `offline`
-* **Zusammenfassung:** z. B. `"38151 Hydranten (±0), 1212 Wachen (±0), 761 Wasserstellen (±0), 954 Defis (±0)"`
-* **Tägliche Differenz:** `diff_text` pro Objekttyp
-* **Speicherplatz:** `disk_free_gb`, `disk_used_percent`
-* **Build-Dauer:** `timings.total_sec`
+     # in /config/packages/openfiremap.yaml
+     rest:
+       - resource: !secret openfiremap_public_metadata_url
+         ...
+     ```
+     Auch bei dieser Variante muss `<NOTIFY_SERVICE>` in den Automationen direkt ersetzt werden.
+4. **Hinweis zum Initialstatus:**
+   Die Entitäten aus `sync_status.json` (`sensor.openfiremap_sync_*`, `binary_sensor.openfiremap_upload_erfolgreich`, `binary_sensor.openfiremap_in_sync`) zeigen bis zum ersten erfolgreichen nächtlichen `update.sh`-Lauf den Status `unavailable`. Dies ist normales Verhalten, da die Statusdatei erst beim Build erzeugt wird.
+5. Konfigurationsprüfung in Home Assistant durchführen und YAML neu laden (bei neuen `rest:`-Sensoren wie in v0.8.2 ist ein Neustart von Home Assistant erforderlich).
+6. Vor dem Einbinden die Entitätsreferenzen prüfen:
+   ```bash
+   python3 pipeline/tools/check_ha_entities.py pipeline/monitoring/homeassistant/openfiremap.yaml
+   ```
+   Das Skript leitet die Entity-ID aus dem Anzeigenamen (nicht aus `unique_id`) ab,
+   berücksichtigt die Home-Assistant-Slugifizierung einschließlich Umlauten und `ß`
+   und meldet fehlende oder doppelte Referenzen. HA-Tags wie `!secret` und `!include`
+   müssen dafür nicht aufgelöst werden.
 
----
+### Ausfall- und Alarmverhalten
 
-## 5. Sicherheit & Rollback
+- Ein fehlgeschlagener öffentlicher REST-Abruf ergibt `unavailable`; der öffentliche
+  Endpunkt-Alarm reagiert darauf nach 10 Minuten.
+- `OpenFireMap Datenalter Stunden` und `OpenFireMap Daten Synchron` werden bei
+  fehlenden Versionsdaten ebenfalls `unavailable`. Dadurch erzeugen sie während
+  eines Endpunktausfalls keinen zweiten Alarm.
+- `OpenFireMap Sync Alter Stunden` überwacht als Heartbeat den Zeitpunkt der letzten
+  Prüfung (`checked_at`). Bei Überschreitung von 30 Stunden schlägt die Automation
+  `openfiremap_heartbeat_missing` Alarm (entkoppelt vom tatsächlichen Alter der OSM-Daten).
+- `OpenFireMap Sync Ergebnis` spiegelt den Ausgang des letzten Update-Laufs (`built`,
+  `upload_only`, `skipped_no_changes`, `failed`).
+- Ein echter `upload_ok: false`-Status löst den Sync-Alarm nach 15 Minuten aus.
+- Ein Hydranten-REST-Ausfall wird nicht als Bestandseinbruch auf null interpretiert.
 
-* **Keine Portweiterleitung im Router:** Der Dienst läuft ausschließlich im lokalen Heimnetz (`192.168.178.0/24`).
-* **Sicherer Rollback:** Falls auf VM 102 Probleme auftreten, kann in Proxmox auf den Snapshot `docker-basis-20260921` zurückgerollt werden.
-* **Neustart nach Stromausfall:** Das HP-BIOS ist auf automatischen Start nach Stromwiederkehr konfiguriert. Da VM 102 keinen Autostart hat, bleibt sie nach einem Host-Neustart aus, bis sie bewusst gestartet wird.
+## Rolle des Cloudflare-Tunnels vs. Cloudflare R2
+
+- **Primäre Produktions-Auslieferung:** Läuft direkt über Cloudflare R2 unter `<PIPELINE_PUBLIC_URL>`. Der Browser bezieht Kacheln via HTTP Range Requests direkt aus dem R2 Object Storage.
+- **Rolle des Nginx-Servers auf VM 102:** Dient als lokaler Build- und Backup-Server im Heimnetzwerk (Port 8080) für lokale Tests, Entwicklungszwecke und internes Monitoring (z. B. Home Assistant).
+- **Status des Cloudflare-Tunnels (`openfiremap-tunnel`):** Der Tunnel leitete vor der R2-Migration Anfragen an Nginx weiter. Seit dem 29.09.2026 zeigt der DNS-Eintrag direkt auf R2; der Tunnel wurde abgeschaltet und am 30.09.2026 aus `docker-compose.yml` entfernt.
+- **Absicherung des Endpunkts `/internal/`:** Als Defense-in-Depth für künftige Reverse-Proxy- oder Tunnel-Konfigurationen sperrt Nginx Anfragen an `/internal/` sofort per HTTP 403, sobald der Cloudflare-Header `CF-Connecting-IP` erkannt wird, und erlaubt ausschließlich Zugriffe aus RFC1918-Netzwerken und von Localhost.
+
+## Qualitätssicherung
+
+Builder-Tests, Abdeckungsprüfungen und der Playwright-Performance-Test prüfen die wesentlichen Pfade. Änderungen an der Pipeline sollten zusätzlich mit `npm run build`, den Vitest-Tests und den E2E-Tests der Hauptanwendung validiert werden.
+
+Betriebsnamen, private IP-Adressen, Benutzer, lokale Pfade, Snapshot-Namen und Geheimnisse gehören nicht in öffentliche Dokumente. Siehe [OPERATIONS_INTERNAL.md](OPERATIONS_INTERNAL.md) für die private Checklistenstruktur.

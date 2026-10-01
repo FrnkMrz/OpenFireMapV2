@@ -28,13 +28,16 @@
         script-src 'self';
         style-src 'self' 'unsafe-inline';
         img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://*.tile.opentopomap.org https://tile.openstreetmap.org https://tile.openstreetmap.de https://*.bayernwolke.de;
-        connect-src 'self' http://192.168.178.152:8080 http://localhost:* ws://localhost:* https://*.overpass-api.de https://overpass-api.de https://overpass.openstreetmap.fr https://overpass.kumi.systems https://maps.mail.ru https://nominatim.openstreetmap.org;
+        connect-src 'self' https://pipeline.openfiremap.org http://localhost:* ws://localhost:* https://*.overpass-api.de https://overpass-api.de https://overpass.openstreetmap.fr https://overpass.kumi.systems https://nominatim.openstreetmap.org;
     ">
 
     <!-- SECURITY: Permissions-Policy -->
     <meta http-equiv="Permissions-Policy"
         content="accelerometer=(), camera=(), geolocation=(self), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()">
 
+
+    <!-- Preconnect für Cloudflare R2 Pipeline (DNS- & TLS-Handshake vorziehen) -->
+    <link rel="preconnect" href="https://pipeline.openfiremap.org" crossorigin>
 
     <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" sizes="180x180" href="./favicons/apple-icon-180x180.png">
@@ -50,8 +53,8 @@
       So bleibt die Reihenfolge stabil (Leaflet -> config -> app),
       ohne Timing-Probleme mit defer/module.
     -->
-  <script type="module" crossorigin src="./assets/index-Bpcv38cX.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DAfOF3zc.css">
+  <script type="module" crossorigin src="./assets/index-mJY4bTrk.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BjJzXA8M.css">
 </head>
 
 <body>
@@ -60,7 +63,7 @@
     <main>
         <div id="map" aria-label="Karte" role="application"></div>
 
-        <div id="notification-box" role="alert" aria-live="polite"></div>
+        <div id="notification-box" role="status" aria-live="polite"></div>
 
         <div id="desktop-controls" class="absolute top-5 left-5 z-[1000] flex gap-3">
 
@@ -215,7 +218,7 @@
             <div class="flex justify-between gap-4"><span data-i18n="zoom_info">ZOOM</span><span id="zoom-val"
                     class="text-white font-bold">14.0</span></div>
             <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status"
-                    class="text-green-400">AKTUELL</span></div>
+                    class="text-green-400 transition-colors duration-200">AKTUELL</span></div>
         </div>
 
         <div id="hydrant-download-status" class="absolute bottom-28 right-10 z-[1000] max-w-[min(22rem,calc(100vw-2.5rem))]"></div>
@@ -468,7 +471,7 @@
                 <section>
                     <h3 class="text-sm font-bold text-white mb-1">Impressum</h3>
                     <p class="leading-relaxed text-slate-400">
-                        Angaben gemäß § 5 TMG:<br><br>
+                        Angaben gemäß § 5 DDG:<br><br>
                         <strong>Frank März</strong><br>
                         Kersbacher Weg 3<br>
                         91220 Schnaittach<br>
@@ -479,23 +482,98 @@
                     </p>
                 </section>
 
-                <section>
+                <!-- Datenschutz: Deutsch ist verbindlich, Englisch für alle anderen Sprachen (Umschaltung in i18n.js) -->
+                <section data-legal-lang="de" lang="de">
                     <h3 class="text-sm font-bold text-white mb-1">Datenschutzerklärung (Kurzfassung)</h3>
                     <p class="leading-relaxed text-slate-400 mb-2">
-                        Diese Anwendung läuft als "Client-Side Application" direkt in Ihrem Browser. Wir speichern keine
-                        personenbezogenen Daten auf eigenen Servern.
+                        Verantwortlich ist der im Impressum genannte Betreiber. Die Anwendung läuft vollständig in Ihrem
+                        Browser. Es gibt keinen eigenen Server mit Nutzerdaten, keine Benutzerkonten, keine Cookies und
+                        kein Tracking oder Analyse-Tools.
+                    </p>
+                    <p class="leading-relaxed text-slate-400 mb-2">
+                        <strong>Speicherung auf Ihrem Gerät:</strong> Spracheinstellung, Cache-Dauer und bereits geladene
+                        Kartendaten werden im Browser (localStorage/IndexedDB) gespeichert, damit die Karte schneller und
+                        schonender lädt. Diese Daten verlassen Ihr Gerät nicht. Den Cache können Sie in den Einstellungen abschalten;
+                        alles lässt sich über die Browser-Einstellungen („Websitedaten löschen“) entfernen
+                        (§ 25 Abs. 2 Nr. 2 TDDDG).
+                    </p>
+                    <p class="leading-relaxed text-slate-400 mb-2">
+                        <strong>Standort:</strong> Nur wenn Sie die Ortung antippen und im Browser zustimmen. Die Position
+                        wird nur lokal verwendet, um die Karte dorthin zu bewegen.
                     </p>
                     <p class="leading-relaxed text-slate-400">
-                        Um die Karten anzuzeigen und Daten abzurufen, verbindet sich Ihr Browser jedoch direkt mit
-                        folgenden externen Diensten, wobei technisch bedingt Ihre IP-Adresse übertragen wird:
+                        <strong>Externe Dienste:</strong> Um Seite, Karten und Daten zu laden, verbindet sich Ihr Browser
+                        direkt mit folgenden Anbietern. Dabei werden technisch bedingt Ihre IP-Adresse, Browserangaben und
+                        der angefragte Kartenausschnitt bzw. Suchbegriff übertragen:
                     </p>
                     <ul class="list-disc list-inside mt-2 space-y-1 text-slate-500">
-                        <li><strong>Karten-Server (OSM, CartoDB, Esri/ArcGIS, OpenTopoMap):</strong> Zum Laden der
-                            Kartenbilder (Kacheln).</li>
-                        <li><strong>Overpass API:</strong> Zum Abruf der Hydranten-, Wachen- und Defibrillatordaten.
-                        </li>
-                        <li><strong>Nominatim (OSM):</strong> Für die Ortssuche und Adressbestimmung.</li>
+                        <li><strong>GitHub Pages</strong> (GitHub Inc., USA): Hosting dieser Webseite.</li>
+                        <li><strong>Cloudflare</strong> (Cloudflare Inc., USA): Auslieferung der vorberechneten
+                            Feuerwehr-Daten über pipeline.openfiremap.org.</li>
+                        <li><strong>Karten-Server</strong> (OpenStreetMap, CARTO, Esri, OpenTopoMap, BayernAtlas):
+                            Hintergrundkarten, je nach gewählter Ebene.</li>
+                        <li><strong>Overpass API</strong> (öffentliche OSM-Server): Abruf von Hydranten, Wachen und
+                            Defibrillatoren, wenn keine vorberechneten Daten verfügbar sind.</li>
+                        <li><strong>Nominatim</strong> (OpenStreetMap Foundation): Ortssuche.</li>
                     </ul>
+                    <p class="leading-relaxed text-slate-400 mt-2 mb-2">
+                        Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer funktionierenden
+                        Karte). Bei Anbietern in den USA kann eine Übermittlung dorthin erfolgen; GitHub und Cloudflare sind
+                        nach dem EU-US Data Privacy Framework zertifiziert. Es gelten zusätzlich die Datenschutzhinweise der
+                        jeweiligen Anbieter.
+                    </p>
+                    <p class="leading-relaxed text-slate-400">
+                        <strong>Ihre Rechte:</strong> Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch
+                        (Art. 15–21 DSGVO) sowie Beschwerde bei einer Datenschutz-Aufsichtsbehörde. Kontakt:
+                        info@openfiremap.org
+                    </p>
+                </section>
+
+                <section data-legal-lang="en" lang="en" class="hidden">
+                    <h3 class="text-sm font-bold text-white mb-1">Privacy Policy (Summary)</h3>
+                    <p class="leading-relaxed text-slate-500 italic mb-2">
+                        Translation for convenience; the German version is legally binding.
+                    </p>
+                    <p class="leading-relaxed text-slate-400 mb-2">
+                        The controller is the operator named in the Impressum (legal notice). The application runs
+                        entirely in your browser. There is no own server holding user data, no user accounts, no cookies
+                        and no tracking or analytics tools.
+                    </p>
+                    <p class="leading-relaxed text-slate-400 mb-2">
+                        <strong>Storage on your device:</strong> Language, cache duration and already loaded map data are
+                        stored in your browser (localStorage/IndexedDB) so the map loads faster and with less load on
+                        public services. This data never leaves your device. You can switch the cache off in the settings and remove
+                        everything via your browser settings ("clear site data").
+                    </p>
+                    <p class="leading-relaxed text-slate-400 mb-2">
+                        <strong>Location:</strong> Only if you tap the locate button and allow it in your browser. The
+                        position is used locally to move the map.
+                    </p>
+                    <p class="leading-relaxed text-slate-400">
+                        <strong>External services:</strong> To load the page, maps and data, your browser connects directly
+                        to the following providers. For technical reasons your IP address, browser information and the
+                        requested map area or search term are transmitted:
+                    </p>
+                    <ul class="list-disc list-inside mt-2 space-y-1 text-slate-500">
+                        <li><strong>GitHub Pages</strong> (GitHub Inc., USA): hosting of this website.</li>
+                        <li><strong>Cloudflare</strong> (Cloudflare Inc., USA): delivery of the pre-computed fire service
+                            data via pipeline.openfiremap.org.</li>
+                        <li><strong>Map servers</strong> (OpenStreetMap, CARTO, Esri, OpenTopoMap, BayernAtlas): base
+                            maps, depending on the selected layer.</li>
+                        <li><strong>Overpass API</strong> (public OSM servers): hydrants, stations and defibrillators when
+                            no pre-computed data is available.</li>
+                        <li><strong>Nominatim</strong> (OpenStreetMap Foundation): place search.</li>
+                    </ul>
+                    <p class="leading-relaxed text-slate-400 mt-2 mb-2">
+                        Legal basis is Art. 6(1)(f) GDPR (legitimate interest in a working map). Data may be transferred to
+                        providers in the USA; GitHub and Cloudflare are certified under the EU-US Data Privacy Framework.
+                        The privacy policies of the respective providers also apply.
+                    </p>
+                    <p class="leading-relaxed text-slate-400">
+                        <strong>Your rights:</strong> access, rectification, erasure, restriction, objection
+                        (Art. 15–21 GDPR) and the right to lodge a complaint with a data protection authority. Contact:
+                        info@openfiremap.org
+                    </p>
                 </section>
 
                 <section>

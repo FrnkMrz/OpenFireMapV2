@@ -1,0 +1,461 @@
+# ==============================================================================
+# OpenFireMap DACH Data Pipeline - Home Assistant Monitoring Package
+# ==============================================================================
+# Zweck:
+#   Vollständige Überwachung der Daten-Pipeline (öffentlich via Cloudflare R2,
+#   lokaler Build-Status auf VM 102 und interne Metriken wie Festplattenplatz
+#   und R2-Synchronisationszustand).
+#
+# Einbindung in Home Assistant:
+#   1. Speichere diese Datei unter: /config/packages/openfiremap.yaml
+#   2. Stelle sicher, dass in /config/configuration.yaml Packages aktiviert sind:
+#        homeassistant:
+#          packages: !include_dir_named packages
+#   3. Standardweg: Platzhalter per Suchen und Ersetzen austauschen:
+#        - <PIPELINE_PUBLIC_URL> -> z. B. "https://pipeline.openfiremap.org"
+#        - <PIPELINE_LAN_URL>    -> z. B. "http://<PIPELINE_LAN_IP>:8080"
+#        - <NOTIFY_SERVICE>      -> z. B. "notify.persistent_notification" oder
+#                                   "notify.mobile_app_dein_smartphone"
+#        WICHTIG: <NOTIFY_SERVICE> muss direkt als Dienstname eingetragen werden,
+#        da Home Assistant '!secret' für Service-Namen nicht unterstützt!
+#
+#   Alternative via /config/secrets.yaml (nur für vollständige URLs):
+#        Home Assistant unterstützt keine String-Interpolation mit !secret.
+#        Wenn secrets.yaml verwendet wird, müssen die URLs als Ganzes definiert
+#        und die 'resource:'-Einträge angepasst werden:
+#        secrets.yaml:
+#          openfiremap_public_metadata_url: "https://pipeline.openfiremap.org/metadata.json"
+#          openfiremap_lan_metadata_url: "http://<PIPELINE_LAN_IP>:8080/metadata.json"
+#          openfiremap_lan_system_stats_url: "http://<PIPELINE_LAN_IP>:8080/internal/system_stats.json"
+#          openfiremap_lan_sync_status_url: "http://<PIPELINE_LAN_IP>:8080/internal/sync_status.json"
+#        openfiremap.yaml:
+#          resource: !secret openfiremap_public_metadata_url
+#          ...
+#        Auch bei diesem Weg muss <NOTIFY_SERVICE> in den Automationen direkt
+#        ersetzt werden.
+#
+#   4. Hinweis zum Initialstatus:
+#        Die Sensoren basierend auf 'sync_status.json' (openfiremap_sync_*,
+#        openfiremap_upload_erfolgreich, openfiremap_in_sync) zeigen bis zum
+#        ersten erfolgreichen Lauf von 'update.sh' den Status 'unavailable'.
+#        Das ist erwartet, da die Datei erst beim ersten Build erzeugt wird.
+#
+#   5. Konfiguration prüfen und Home Assistant neu laden.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. REST-Sensoren (Abfrageintervall: 5 Minuten / 300 Sekunden)
+# ------------------------------------------------------------------------------
+rest:
+  # 1.1 Öffentliche Metadaten (Cloudflare R2 CDN)
+  - resource: "<PIPELINE_PUBLIC_URL>/metadata.json"
+    scan_interval: 300
+    headers:
+      User-Agent: "Home-Assistant-OpenFireMap-Monitor"
+    sensor:
+      - name: "OpenFireMap Öffentlich Status"
+        unique_id: "openfiremap_public_status"
+        value_template: "{{ value_json.status | default('error') }}"
+        icon: "mdi:map-marker-check"
+
+      - name: "OpenFireMap Öffentlich Version"
+        unique_id: "openfiremap_public_generated_at"
+        value_template: "{{ value_json.generated_at | default('unknown') }}"
+        icon: "mdi:clock-check-outline"
+
+      - name: "OpenFireMap Öffentlich Region"
+        unique_id: "openfiremap_public_region"
+        value_template: "{{ value_json.region | default('unknown') }}"
+        icon: "mdi:earth"
+
+      - name: "OpenFireMap Öffentlich Hydranten"
+        unique_id: "openfiremap_public_hydrants"
+        value_template: "{{ value_json.features.hydrants.count | default(0) }}"
+        unit_of_measurement: "Stück"
+        state_class: "total"
+        icon: "mdi:fire-hydrant"
+
+      - name: "OpenFireMap Öffentlich Feuerwachen"
+        unique_id: "openfiremap_public_fire_stations"
+        value_template: "{{ value_json.features.fire_stations.count | default(0) }}"
+        unit_of_measurement: "Stück"
+        state_class: "total"
+        icon: "mdi:fire-truck"
+
+      - name: "OpenFireMap Öffentlich Löschwasserstellen"
+        unique_id: "openfiremap_public_water_points"
+        value_template: "{{ value_json.features.water_points.count | default(0) }}"
+        unit_of_measurement: "Stück"
+        state_class: "total"
+        icon: "mdi:water-pump"
+
+      - name: "OpenFireMap Öffentlich Defibrillatoren"
+        unique_id: "openfiremap_public_defibrillators"
+        value_template: "{{ value_json.features.defibrillators.count | default(0) }}"
+        unit_of_measurement: "Stück"
+        state_class: "total"
+        icon: "mdi:heart-pulse"
+
+      - name: "OpenFireMap Öffentlich Grenzen"
+        unique_id: "openfiremap_public_boundaries"
+        value_template: "{{ value_json.features.boundaries.count | default(0) }}"
+        unit_of_measurement: "Linien"
+        state_class: "total"
+        icon: "mdi:vector-polygon"
+
+      - name: "OpenFireMap Öffentlich PMTiles Bytes"
+        unique_id: "openfiremap_public_pmtiles_size_bytes"
+        value_template: >-
+          {% if value_json.pmtiles.size_bytes is defined %}
+            {{ value_json.pmtiles.size_bytes }}
+          {% elif value_json.pmtiles.size_mb is defined %}
+            {{ (value_json.pmtiles.size_mb * 1024 * 1024) | round(0) }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "B"
+        state_class: "measurement"
+        icon: "mdi:database"
+
+      - name: "OpenFireMap Öffentlich PMTiles MaxZoom"
+        unique_id: "openfiremap_public_pmtiles_maxzoom"
+        value_template: "{{ value_json.pmtiles.maxzoom | default(0) }}"
+        icon: "mdi:magnify-plus-outline"
+
+      - name: "OpenFireMap Extrakt-Alter Stunden"
+        unique_id: "openfiremap_extracts_oldest_age_hours"
+        value_template: "{{ value_json.extracts_oldest_age_hours | default(0) }}"
+        unit_of_measurement: "h"
+        state_class: "measurement"
+        icon: "mdi:timer-sand"
+
+    binary_sensor:
+      - name: "OpenFireMap Öffentlich Erreichbar"
+        unique_id: "openfiremap_public_reachable"
+        value_template: "{{ value_json.status == 'ok' }}"
+        device_class: "connectivity"
+
+  # 1.2 Lokale Metadaten auf VM 102 (Heimnetz / Port 8080)
+  - resource: "<PIPELINE_LAN_URL>/metadata.json"
+    scan_interval: 300
+    sensor:
+      - name: "OpenFireMap Lokal Version"
+        unique_id: "openfiremap_local_generated_at"
+        value_template: "{{ value_json.generated_at | default('unknown') }}"
+        icon: "mdi:server"
+
+  # 1.3 Interner Systemstatus auf VM 102 (nur LAN / Port 8080)
+  - resource: "<PIPELINE_LAN_URL>/internal/system_stats.json"
+    scan_interval: 300
+    sensor:
+      - name: "OpenFireMap Festplatte Belegt"
+        unique_id: "openfiremap_disk_used_percent"
+        value_template: "{{ value_json.system.disk_used_percent | default(0) }}"
+        unit_of_measurement: "%"
+        state_class: "measurement"
+        icon: "mdi:harddisk"
+
+      - name: "OpenFireMap Festplatte Frei"
+        unique_id: "openfiremap_disk_free_gb"
+        value_template: "{{ value_json.system.disk_free_gb | default(0) }}"
+        unit_of_measurement: "GB"
+        state_class: "measurement"
+        icon: "mdi:harddisk-plus"
+
+  # 1.4 Interner Synchronisationsstatus auf VM 102 (nach update.sh)
+  - resource: "<PIPELINE_LAN_URL>/internal/sync_status.json"
+    scan_interval: 300
+    sensor:
+      - name: "OpenFireMap Sync Letzter Fehler"
+        unique_id: "openfiremap_sync_last_error"
+        value_template: "{{ value_json.last_error | default('Kein Fehler') }}"
+        icon: "mdi:alert-circle-outline"
+
+      - name: "OpenFireMap Sync Letzte Prüfung"
+        unique_id: "openfiremap_sync_checked_at"
+        value_template: "{{ value_json.checked_at | default('unknown') }}"
+        icon: "mdi:calendar-clock"
+
+      - name: "OpenFireMap Sync Ergebnis"
+        unique_id: "openfiremap_sync_result"
+        value_template: "{{ value_json.result | default('unknown') }}"
+        icon: "mdi:check-decagram"
+
+      - name: "OpenFireMap Build Warnungen"
+        unique_id: "openfiremap_sync_build_warnings"
+        value_template: >-
+          {% if value_json.build_warnings is defined and value_json.build_warnings is iterable %}
+            {{ value_json.build_warnings | length }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "Warnungen"
+        state_class: "measurement"
+        icon: "mdi:alert-outline"
+
+    binary_sensor:
+      - name: "OpenFireMap Upload Erfolgreich"
+        unique_id: "openfiremap_sync_upload_ok"
+        value_template: "{{ value_json.upload_ok | default(false) }}"
+        device_class: "problem"
+
+      - name: "OpenFireMap In Sync"
+        unique_id: "openfiremap_sync_in_sync"
+        value_template: "{{ value_json.in_sync | default(false) }}"
+        device_class: "connectivity"
+
+# ------------------------------------------------------------------------------
+# 2. Template-Sensoren (Berechnete Zustände)
+# ------------------------------------------------------------------------------
+template:
+  - sensor:
+      - name: "OpenFireMap Datenalter Stunden"
+        unique_id: "openfiremap_data_age_hours"
+        availability: >-
+          {{ states('sensor.openfiremap_offentlich_version') not in
+             ['unknown', 'unavailable', 'none', ''] }}
+        state: >-
+          {{ ((as_timestamp(now()) -
+              as_timestamp(states('sensor.openfiremap_offentlich_version'))) / 3600) | round(1) }}
+        unit_of_measurement: "h"
+        state_class: "measurement"
+        icon: "mdi:timer-sand"
+
+      - name: "OpenFireMap PMTiles Größe MiB"
+        unique_id: "openfiremap_pmtiles_size_mib"
+        availability: >-
+          {{ states('sensor.openfiremap_offentlich_pmtiles_bytes') not in
+             ['unknown', 'unavailable', 'none', ''] }}
+        state: >-
+          {% set b = states('sensor.openfiremap_offentlich_pmtiles_bytes') | float(0) %}
+          {{ (b / 1048576) | round(2) }}
+        unit_of_measurement: "MiB"
+        state_class: "measurement"
+        icon: "mdi:file-chart"
+
+      - name: "OpenFireMap Sync Alter Stunden"
+        unique_id: "openfiremap_sync_age_hours"
+        availability: >-
+          {{ states('sensor.openfiremap_sync_letzte_prufung') not in
+             ['unknown', 'unavailable', 'none', ''] }}
+        state: >-
+          {{ ((as_timestamp(now()) -
+              as_timestamp(states('sensor.openfiremap_sync_letzte_prufung'))) / 3600) | round(1) }}
+        unit_of_measurement: "h"
+        state_class: "measurement"
+        icon: "mdi:heart-pulse"
+
+  - binary_sensor:
+      - name: "OpenFireMap Daten Synchron"
+        unique_id: "openfiremap_versions_in_sync"
+        availability: >-
+          {{ states('sensor.openfiremap_offentlich_version') not in
+             ['unknown', 'unavailable', 'none', ''] and
+             states('sensor.openfiremap_lokal_version') not in
+             ['unknown', 'unavailable', 'none', ''] }}
+        state: >-
+          {{ states('sensor.openfiremap_offentlich_version') ==
+             states('sensor.openfiremap_lokal_version') }}
+        device_class: "connectivity"
+
+      - name: "OpenFireMap Über Cloudflare Cache Limit"
+        unique_id: "openfiremap_over_cf_cache_limit"
+        availability: >-
+          {{ states('sensor.openfiremap_offentlich_pmtiles_bytes') not in
+             ['unknown', 'unavailable', 'none', ''] }}
+        state: >-
+          {% set b = states('sensor.openfiremap_offentlich_pmtiles_bytes') | int(0) %}
+          {{ b > 536870912 }}
+        device_class: "problem"
+
+# ------------------------------------------------------------------------------
+# 3. Automationen (Alarme & Benachrichtigungen via <NOTIFY_SERVICE>)
+# ------------------------------------------------------------------------------
+automation:
+  # 3.1 Öffentlicher Endpunkt 2x hintereinander (10 Min) nicht erreichbar
+  - id: "openfiremap_public_unreachable"
+    alias: "OpenFireMap: Öffentlicher Endpunkt nicht erreichbar"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.openfiremap_offentlich_erreichbar
+        # Ein fehlgeschlagener REST-Abruf ergibt "unavailable", nicht "off".
+        to:
+          - "off"
+          - "unavailable"
+        for: "00:10:00"
+    action:
+      - service: <NOTIFY_SERVICE>
+        data:
+          title: "🚨 OpenFireMap Ausfall"
+          message: "Die öffentliche Pipeline <PIPELINE_PUBLIC_URL>/metadata.json ist seit über 10 Minuten nicht erreichbar!"
+
+  # 3.2 Pipeline-Heartbeat: Kein Update-Lauf seit > 30 Stunden (Cron läuft täglich um 05:43 UTC)
+  - id: "openfiremap_heartbeat_missing"
+    alias: "OpenFireMap: Pipeline Heartbeat fehlt (>30h)"
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.openfiremap_sync_alter_stunden
+        above: 30
+        # "unavailable" wird wegen availability nicht numerisch ausgewertet.
+    action:
+      - service: <NOTIFY_SERVICE>
+        data:
+          title: "🚨 OpenFireMap Pipeline Heartbeat fehlt"
+          message: >-
+            Auf VM 102 wurde seit über 30 Stunden kein Update-Lauf ausgeführt (Alter: {{ states('sensor.openfiremap_sync_alter_stunden') }} h)!
+            Letzte Prüfung: {{ states('sensor.openfiremap_sync_letzte_prufung') }}. Bitte Cronjob auf VM 102 prüfen.
+
+  # 3.3 Lokal ≠ Öffentlich länger als 2 Stunden oder Upload fehlgeschlagen
+  - id: "openfiremap_sync_mismatch"
+    alias: "OpenFireMap: R2 Sync Diskrepanz oder Fehler"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.openfiremap_daten_synchron
+        to: "off"
+        for: "02:00:00"
+        # "unavailable" bedeutet fehlende Vergleichsdaten und wird bewusst
+        # nicht als Sync-Fehler gewertet.
+      - platform: state
+        entity_id: binary_sensor.openfiremap_upload_erfolgreich
+        to: "off"
+        for: "00:15:00"
+        # Nur explizit gemeldetes upload_ok: false ist ein Fehler; "unavailable"
+        # des internen Endpunkts bleibt unbekannt und wird nicht fehlinterpretiert.
+    condition:
+      - condition: template
+        value_template: >-
+          {{ states('sensor.openfiremap_offentlich_version') not in
+             ['unknown', 'unavailable', 'none', ''] and
+             states('sensor.openfiremap_lokal_version') not in
+             ['unknown', 'unavailable', 'none', ''] }}
+    action:
+      - service: <NOTIFY_SERVICE>
+        data:
+          title: "⚠️ OpenFireMap Sync-Fehler"
+          message: >-
+            VM 102 und R2 sind seit über 2 Stunden nicht synchron oder der Upload schlug fehl!
+            Lokal: {{ states('sensor.openfiremap_lokal_version') }}
+            Öffentlich: {{ states('sensor.openfiremap_offentlich_version') }}
+            Fehler: {{ states('sensor.openfiremap_sync_letzter_fehler') }}
+
+  # 3.4 Festplattenbelegung auf VM 102 > 85 %
+  - id: "openfiremap_disk_warning"
+    alias: "OpenFireMap: VM 102 Festplatte fast voll (>85%)"
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.openfiremap_festplatte_belegt
+        above: 85
+        # Numeric-State-Trigger ignoriert "unavailable" bewusst.
+    action:
+      - service: <NOTIFY_SERVICE>
+        data:
+          title: "💾 OpenFireMap Speicher-Warnung"
+          message: "Die Daten-Partition auf VM 102 ist zu {{ states('sensor.openfiremap_festplatte_belegt') }}% belegt (Frei: {{ states('sensor.openfiremap_festplatte_frei') }} GB)."
+
+  # 3.5 Hydrantenzahl sinkt um mehr als 5 %
+  - id: "openfiremap_hydrants_drop"
+    alias: "OpenFireMap: Signifikanter Rückgang der Hydranten (>5%)"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.openfiremap_offentlich_hydranten
+    condition:
+      - condition: template
+        value_template: >-
+          {% set alt = trigger.from_state.state if trigger.from_state else 'unknown' %}
+          {% set neu = trigger.to_state.state if trigger.to_state else 'unknown' %}
+          {{ alt not in ['unknown', 'unavailable', 'none', ''] and
+             neu not in ['unknown', 'unavailable', 'none', ''] and
+             alt | float(0) > 100000 and neu | float(0) < (alt | float(0) * 0.95) }}
+        # Ein REST-Ausfall darf nicht als Rückgang auf null gelten.
+    action:
+      - service: <NOTIFY_SERVICE>
+        data:
+          title: "🚨 OpenFireMap Daten-Warnung"
+          message: >-
+            Die Anzahl der Hydranten ist von {{ trigger.from_state.state }} auf {{ trigger.to_state.state }} gefallen (>5% Rückgang)!
+
+  # 3.6 PMTiles über Cache-Limit (512 MiB)
+  - id: "openfiremap_cache_limit_exceeded"
+    alias: "OpenFireMap: PMTiles überschreitet Cloudflare Free Cache-Grenze"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.openfiremap_uber_cloudflare_cache_limit
+        to: "on"
+        # Bei fehlenden PMTiles-Metadaten ist der Sensor "unavailable";
+        # ein Cache-Hinweis wird dann bewusst nicht ausgelöst.
+    action:
+      - service: <NOTIFY_SERVICE>
+        data:
+          title: "ℹ️ OpenFireMap Cache-Hinweis"
+          message: >-
+            Die Datei openfiremap.pmtiles ({{ states('sensor.openfiremap_pmtiles_grosse_mib') }} MiB)
+            übersteigt das 512-MiB-Limit von Cloudflare!
+
+  # 3.7 MaxZoom ungleich 14
+  - id: "openfiremap_maxzoom_notice"
+    alias: "OpenFireMap: MaxZoom weicht von 14 ab"
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.openfiremap_offentlich_pmtiles_maxzoom
+        above: 14
+      - platform: numeric_state
+        entity_id: sensor.openfiremap_offentlich_pmtiles_maxzoom
+        below: 14
+        # Numeric-State-Trigger ignoriert "unavailable" bewusst.
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.openfiremap_offentlich_pmtiles_maxzoom') not in ['0', 'unknown', 'unavailable'] }}"
+    action:
+      - service: <NOTIFY_SERVICE>
+        data:
+          title: "ℹ️ OpenFireMap Zoom-Hinweis"
+          message: "Der PMTiles MaxZoom beträgt aktuell {{ states('sensor.openfiremap_offentlich_pmtiles_maxzoom') }} (erwartet: 14)."
+
+  # 3.8 Geofabrik-Extrakte veraltet (> 48 Stunden)
+  - id: "openfiremap_extracts_outdated"
+    alias: "OpenFireMap: OSM-Extrakte veraltet (>48h)"
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.openfiremap_extrakt_alter_stunden
+        above: 48
+    action:
+      - service: <NOTIFY_SERVICE>
+        data:
+          title: "⚠️ OpenFireMap Extrakt-Warnung"
+          message: >-
+            Der älteste OSM-Auszug von Geofabrik ist {{ states('sensor.openfiremap_extrakt_alter_stunden') }} Stunden alt!
+            Bitte Downloads oder Geofabrik-Erreichbarkeit auf VM 102 prüfen.
+
+# ==============================================================================
+# 4. Lovelace Dashboard-Beispiel (Entities-Card)
+# ==============================================================================
+# type: vertical-stack
+# cards:
+#   - type: entities
+#     title: "OpenFireMap DACHLiLu Pipeline"
+#     show_header_toggle: false
+#     entities:
+#       - entity: binary_sensor.openfiremap_offentlich_erreichbar
+#         name: "Öffentlicher Status (R2)"
+#       - entity: binary_sensor.openfiremap_daten_synchron
+#         name: "Synchronisation (VM vs. R2)"
+#       - entity: sensor.openfiremap_datenalter_stunden
+#         name: "Datenalter"
+#       - entity: sensor.openfiremap_pmtiles_grosse_mib
+#         name: "PMTiles Dateigröße"
+#       - entity: sensor.openfiremap_offentlich_hydranten
+#         name: "Hydranten Gesamt"
+#       - entity: sensor.openfiremap_offentlich_feuerwachen
+#         name: "Feuerwachen"
+#       - entity: sensor.openfiremap_festplatte_belegt
+#         name: "Festplatte VM 102"
+#       - entity: sensor.openfiremap_sync_letzter_fehler
+#         name: "Letzter Sync-Status"

@@ -163,22 +163,69 @@ body {
     animation: pulse-red 2s infinite;
 }
 
-/* Benachrichtigungs-Box (z.B. Fehler) */
+/* =========================================
+   BENACHRICHTIGUNGS-BOX (Toast / Systemmeldungen)
+   ========================================= */
 #notification-box {
-    position: absolute;
+    position: fixed;
     top: 20px;
-    right: 20px;
-    z-index: 2000;
+    left: 50%;
+    transform: translateX(-50%) translateY(-12px);
+    z-index: 4000;
     display: none;
-    background: #ef4444;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 12px;
-    /* FIX: Hier fehlte der Schatten-Wert und das Semikolon! */
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    opacity: 0;
+    pointer-events: none;
+    padding: 10px 18px;
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    max-width: min(28rem, calc(100vw - 2.5rem));
+    width: max-content;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* FIX: Hier fehlte die schließende Klammer! */
+#notification-box.is-visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+}
+
+#notification-box[data-type="success"] {
+    background: rgba(6, 78, 59, 0.94);
+    color: #ecfdf5;
+    border: 1px solid rgba(52, 211, 153, 0.45);
+}
+
+#notification-box[data-type="error"] {
+    background: rgba(127, 29, 29, 0.94);
+    color: #fef2f2;
+    border: 1px solid rgba(248, 113, 113, 0.5);
+}
+
+#notification-box[data-type="warning"] {
+    background: rgba(120, 53, 15, 0.94);
+    color: #fffbeb;
+    border: 1px solid rgba(251, 191, 36, 0.5);
+}
+
+#notification-box[data-type="info"] {
+    background: rgba(15, 23, 42, 0.94);
+    color: #f8fafc;
+    border: 1px solid rgba(96, 165, 250, 0.45);
+}
+
+@media (max-width: 768px) {
+    #notification-box {
+        top: 76px;
+        font-size: 12px;
+        padding: 8px 14px;
+        max-width: calc(100vw - 2rem);
+    }
+}
 
 /* =========================================
    GPS STANDORT MARKER (Repariert)
@@ -291,6 +338,14 @@ body {
 .hydrant-download-status[data-state="slow"] { border-color: rgba(251, 191, 36, 0.85); color: #fef3c7; }
 .hydrant-download-status[data-state="success"] { border-color: rgba(52, 211, 153, 0.65); }
 .hydrant-download-status[data-state="error"] { border-color: rgba(248, 113, 113, 0.75); color: #fecaca; }
+
+@media (max-width: 768px) {
+    #hydrant-download-status {
+        bottom: 92px; /* Oberhalb des zentrierten Locate-Buttons (bottom: 32px) */
+        right: 16px;
+        max-width: calc(100vw - 2rem);
+    }
+}
 /* =========================================
    ANDROID SCALING FIX
    ========================================= */

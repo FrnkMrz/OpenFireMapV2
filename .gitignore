@@ -3,7 +3,7 @@ node_modules/
 dist/
 .cache/
 .vite/
-coverage/
+/coverage/
 *.log
 
 # Environment
@@ -39,3 +39,11 @@ osv-scanner.*
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Pipeline tool caches and simulation exports
+pipeline/tools/.*cache*
+pipeline/tools/*.json
+
+# iCloud-Konfliktkopien (Repo liegt bewusst in iCloud Drive)
+* 2
+* 2.*

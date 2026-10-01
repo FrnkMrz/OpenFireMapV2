@@ -35,7 +35,18 @@ export const State = {
     loadedPoiMode: null,
 
     // --- LADE-STATUS ---
-    isFetchingData: false,  // Lädt die Map gerade im Hintergrund neue Daten?
+    isFetchingData: false,        // Lädt die Map gerade im Hintergrund neue Hydranten/POIs?
+    isFetchingBoundaries: false,  // Lädt die Map gerade im Hintergrund neue Gemeindegrenzen?
+    pendingBufferFetches: new Set(), // Set laufender Promises des Hintergrund-Pufferrings
+    get pendingBufferFetch() {
+        return this.pendingBufferFetches && this.pendingBufferFetches.size > 0 ? this.pendingBufferFetches : null;
+    },
+    set pendingBufferFetch(val) {
+        if (!val && this.pendingBufferFetches) {
+            this.pendingBufferFetches.clear();
+        }
+    },
+    activeFetchBounds: null, // BoundingBox der aktuellen Pipeline/OSM-Anfrage inkl. Pufferring
     queryBounds: null,      // Welche Query-Bounds für den nächsten/aktuellen Fetch berechnet wurden?
 
     // Welcher Hintergrund ist gerade an? (Startwert: 'voyager')

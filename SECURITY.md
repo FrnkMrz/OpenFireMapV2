@@ -1,31 +1,22 @@
-# Security Policy
+# Sicherheitsrichtlinie
 
-## Supported Versions
+## Sicherheitsprobleme melden
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+Bitte melde Sicherheitsprobleme nicht öffentlich mit Zugangsdaten, Tunnel-Token, privaten URLs oder anderen vertraulichen Informationen. Nutze nach Möglichkeit eine private Sicherheitsmeldung über GitHub. Falls diese Funktion für das Repository nicht verfügbar ist, eröffne ein Issue ohne vertrauliche Details und bitte um einen privaten Kontaktweg.
 
-## Reporting a Vulnerability
+Für normale Fehler und Verbesserungsvorschläge ist [GitHub Issues](https://github.com/FrnkMrz/OpenFireMapV2/issues) der richtige Ort.
 
-This is a personal, non-commercial project. If you find a security vulnerability, please open an issue in the GitHub repository or contact the maintainer directly. We aim to address critical security issues within 7 days.
+## Was nicht in Issues gehört
 
-## Data Privacy & Storage Policy
+- Cloudflare-Tunnel-Token, API-Schlüssel oder Passwörter
+- private IP-Adressen, interne DNS-Namen und Serverpfade
+- persönliche Zugangsdaten oder Log-Auszüge mit Geheimnissen
+- personenbezogene Daten aus eigenen Testsystemen
 
-**Type:** Client-Side Application (PWA)
+## Datenschutz und externe Dienste
 
-1.  **Server-Side:** We do not operate a backend server that stores user data. All logic runs in your browser.
-2.  **Local Storage:** The application uses the browser's `localStorage` API for the following non-sensitive purposes:
-    *   `ofm_last_view`: Stores the last map position (latitude, longitude, zoom) to restore the view on next visit.
-    *   `OFM_DEBUG`: Optional flag to enable debug logging.
-    *   **Policy:** No Personally Identifiable Information (PII) is stored in `localStorage`.
-3.  **External Services:** The application connects directly to:
-    *   **OpenStreetMap / Overpass API:** To fetch map data.
-    *   **Nominatim:** For location search.
-    *   **Tile Servers:** To load map tiles.
-    *   *Note:* Your IP address is visible to these services as part of standard HTTP requests.
+OpenFireMapV2 ist eine clientseitige Anwendung und betreibt kein Projekt-Backend zur Speicherung von Nutzerdaten. Die Anwendung nutzt je nach Einstellung `localStorage` und IndexedDB für Kartenpositionen, Cache-Daten und technische Einstellungen. Es werden keine Cookies und keine Tracking- oder Analyse-Tools verwendet. Für Hosting (GitHub Pages), Pipeline-Daten (Cloudflare), Kartendaten, Suche und Basiskarten werden externe Dienste kontaktiert; dabei gelten deren Datenschutz- und Nutzungsbedingungen. Neue externe Dienste müssen sowohl in der Content Security Policy als auch in der Datenschutzerklärung (`index.html`, deutsche und englische Fassung) ergänzt werden. Weitere Hinweise stehen in [Datenquellen](docs/DATENQUELLEN.md) und in der Anwendung selbst.
 
-## Known Risks & Acceptable Use
-*   **XSS / Injection:** The application sanitizes all user-generated content (e.g. from OpenStreetMap tags) using `escapeHtml` before rendering.
-*   **CSP:** A strict Content Security Policy is enforced to prevent execution of unauthorized scripts.
+## Unterstützte Version
+
+Die aktuelle Entwicklungsversion ist **v0.7.2**. Sicherheitsmeldungen beziehen sich primär auf den aktuellen Stand des `main`-Branches.

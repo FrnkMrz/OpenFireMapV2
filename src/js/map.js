@@ -9,8 +9,8 @@ import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
 import { fetchBoundaryData, fetchOSMData } from './api.js';
-import { isPipelineEligible, lon2tile, lat2tile } from './pipeline.js';
-import { showNotification } from './ui.js';
+import { isPipelineEligible, lon2tile, lat2tile, computeQueryZoom } from './pipeline.js';
+import { showNotification, hideNotification } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
 
 // ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ export async function shareMap() {
     // Fallback: Zwischenablage
     try {
         await navigator.clipboard.writeText(url);
-        showNotification(t('link_copied') || 'Link kopiert!', 3000);
+        showNotification(t('link_copied') || 'Link kopiert!', 3000, 'success');
     } catch {
         // Letzter Fallback: prompt
         window.prompt(t('link_copied') || 'Link kopiert!', url);
@@ -164,6 +164,7 @@ export function initMapLogic() {
     let lastFetchKey = null;
     let lastMotionAt = 0;
     let latestFetchIntent = 0;
+    let currentFetchIntent = 0;
     let lastRenderedFetchIntent = 0;
     let lastRenderedBoundaryIntent = 0;
     let idleRefreshTimer = null;
@@ -265,34 +266,6 @@ export function initMapLogic() {
         return 'z18+';
     };
 
-    const stableObjectEntries = (obj) => {
-        if (!obj || typeof obj !== 'object') return [];
-        return Object.entries(obj).sort(([a], [b]) => a.localeCompare(b));
-    };
-
-    const elementFingerprint = (el) => {
-        if (!el || typeof el !== 'object') return '';
-        const tags = stableObjectEntries(el.tags).map(([k, v]) => `${k}:${String(v)}`).join('|');
-        const centerLat = Number(el.center?.lat ?? el.lat ?? 0).toFixed(5);
-        const centerLon = Number(el.center?.lon ?? el.lon ?? 0).toFixed(5);
-        const geometry = Array.isArray(el.geometry)
-            ? el.geometry.map((p) => `${Number(p.lat).toFixed(5)},${Number(p.lon).toFixed(5)}`).join(';')
-            : '';
-        return [
-            el.type || 'node',
-            el.id ?? '',
-            centerLat,
-            centerLon,
-            tags,
-            geometry
-        ].join('#');
-    };
-
-    const elementsFingerprint = (elements) => {
-        if (!Array.isArray(elements) || elements.length === 0) return 'empty';
-        return elements.map(elementFingerprint).sort().join('||');
-    };
-
     const poiCoverageMatchesMode = (mode) => {
         if (!State.loadedPoiBounds || !State.map) return false;
         const viewBounds = State.map.getBounds();
@@ -383,7 +356,7 @@ export function initMapLogic() {
     const getTileBBoxKey = (zoom) => {
         if (!State.map) return '';
         const b = State.map.getBounds();
-        const qZoom = Math.min(Math.max(zoom, 12), 14);
+        const qZoom = computeQueryZoom(zoom);
         const minX = lon2tile(b.getWest(), qZoom);
         const maxX = lon2tile(b.getEast(), qZoom);
         const minY = lat2tile(b.getNorth(), qZoom);
@@ -392,7 +365,7 @@ export function initMapLogic() {
     };
 
 
-    State.map.on('moveend zoomend', () => {
+    function onViewChange() {
         // Permalink-Hash aktualisieren
         updatePermalink();
 
@@ -460,11 +433,63 @@ export function initMapLogic() {
             return;
         }
 
-        if (poiCoverageMatchesMode(mode) && boundaryCoverageMatchesView(zoom)) {
+        const currentViewBounds = State.map.getBounds();
+        const hasActiveRequest = Boolean(
+            State.isFetchingData ||
+            State.isFetchingBoundaries ||
+            (State.pendingBufferFetches && State.pendingBufferFetches.size > 0)
+        );
+        const isCoveredByActiveFetch = Boolean(hasActiveRequest && State.activeFetchBounds && State.activeFetchBounds.contains(currentViewBounds));
+        let abortedForeignRequest = false;
+
+        // Wenn der Nutzer den Bereich einer laufenden Anfrage verlassen hat: sofort abbrechen!
+        if (hasActiveRequest && !isCoveredByActiveFetch) {
+            if (State.controllers.fetch) {
+                State.controllers.fetch.abort();
+                State.controllers.fetch = null;
+            }
+            if (State.controllers.boundaryFetch) {
+                State.controllers.boundaryFetch.abort();
+                State.controllers.boundaryFetch = null;
+            }
+            State.isFetchingData = false;
+            State.isFetchingBoundaries = false;
+            State.pendingBufferFetches?.clear();
+            State.activeFetchBounds = null;
+            abortedForeignRequest = true;
+        }
+
+        const isCoveredByLoaded = poiCoverageMatchesMode(mode) && boundaryCoverageMatchesView(zoom);
+
+        if (isCoveredByLoaded || isCoveredByActiveFetch) {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+                debounceTimer = null;
+            }
+            if (idleRefreshTimer) {
+                clearTimeout(idleRefreshTimer);
+                idleRefreshTimer = null;
+            }
+
+            // Nur wenn tatsächlich eine laufende Anfrage für einen anderen Ausschnitt
+            // abgebrochen wurde, müssen wir veraltete Intents invalidieren und
+            // Marker & Boundaries sauber aus State neu rendern (isPartial: false),
+            // um eventuelle Teildaten eines abgebrochenen Requests B aus dem DOM zu entfernen!
+            if (abortedForeignRequest) {
+                latestFetchIntent += 1;
+                currentFetchIntent = latestFetchIntent;
+
+                renderMarkers(State.cachedPoiElements || [], zoom, { isPartial: false });
+                if (zoom >= 14) {
+                    renderBoundaries(State.cachedBoundaryElements || [], zoom);
+                }
+            }
+
             const statusEl = document.getElementById('data-status');
             if (statusEl) {
-                statusEl.innerText = t('status_current');
-                statusEl.className = 'text-green-400';
+                const inPl = isPipelineEligible(State.map.getBounds(), zoom);
+                statusEl.innerText = inPl ? `${t('status_current')} (Lokal)` : t('status_current');
+                statusEl.className = 'text-green-400 font-bold';
             }
             window.dispatchEvent(new CustomEvent('ofm:overpass', {
                 detail: {
@@ -507,6 +532,7 @@ export function initMapLogic() {
         debounceTimer = setTimeout(doFetch, debounceMs);
 
         async function doFetch() {
+            currentFetchIntent = fetchIntent;
             const statusEl = document.getElementById('data-status');
             const movingRecently = !inPipeline && (Date.now() - lastMotionAt) < RAPID_INTERACTION_MS;
             const hasStaleToKeep = (State.cachedPoiElements?.length || State.cachedBoundaryElements?.length);
@@ -557,31 +583,23 @@ export function initMapLogic() {
                     statusEl.className = 'text-blue-400';
                 }
 
-                // Detaillierte Lade-Info anzeigen (wird bei Cache-Hit überschrieben)
-                showNotification(t('loading_data'), 30000);
-
-                // Track if we rendered cached data
-                let cachedCount = 0;
-                let cachedFingerprint = 'empty';
-
                 // SWR: Wir geben renderMarkers als Callback mit, 
                 // damit Cache-Daten sofort gezeichnet werden.
-                const poiPromise = fetchOSMData((cachedData) => {
-                    cachedCount = cachedData?.length || 0;
-                    cachedFingerprint = elementsFingerprint(cachedData);
-                    if (cachedCount > 0) {
-                        // Cache-Hit: Zeige Daten + Hinweis auf Aktualisierung
-                        showNotification(`${cachedCount} ${t('cached_objects')} – ${t('refreshing')}`, 30000);
+                const poiPromise = fetchOSMData((cachedData, isPartial = false) => {
+                    if (fetchIntent !== currentFetchIntent) return;
+                    renderMarkers(cachedData, zoom, { isPartial });
+                }, (status) => {
+                    if (fetchIntent === currentFetchIntent) {
+                        hydrantDownloadStatus.update(status);
                     }
-                    renderMarkers(cachedData, zoom);
-                }, (status) => hydrantDownloadStatus.update(status));
+                });
                 // Gemeindegrenzen asynchron im Hintergrund laden – blockiert POIs nicht!
                 fetchBoundaryData((cachedBoundaryData) => {
-                    if (fetchIntent >= lastRenderedBoundaryIntent) {
+                    if (fetchIntent >= lastRenderedBoundaryIntent && fetchIntent === currentFetchIntent) {
                         renderBoundaries(cachedBoundaryData, zoom);
                     }
                 }).then((boundaryData) => {
-                    if (fetchIntent >= lastRenderedBoundaryIntent && boundaryData) {
+                    if (fetchIntent >= lastRenderedBoundaryIntent && fetchIntent === currentFetchIntent && boundaryData) {
                         lastRenderedBoundaryIntent = fetchIntent;
                         renderBoundaries(boundaryData, zoom);
                     }
@@ -596,16 +614,11 @@ export function initMapLogic() {
                 // Nur abbrechen, wenn bereits ein NEUERER Abruf fertig gerendert wurde.
                 // Ein reiner movestart durch kontinuierliche Safari-Gestensteuerung
                 // darf fertig geladene Kacheldaten NIEMALS verwerfen!
-                if (fetchIntent < lastRenderedFetchIntent) return;
+                if (fetchIntent < lastRenderedFetchIntent || fetchIntent !== currentFetchIntent) return;
                 lastRenderedFetchIntent = fetchIntent;
 
                 if (data) {
-                    // Nur erneut rendern, wenn sich die Datenmenge geändert hat
-                    const networkCount = data.length || 0;
-                    const networkChanged = elementsFingerprint(data) !== cachedFingerprint;
-                    if (networkChanged) {
-                        renderMarkers(data, zoom);
-                    }
+                    renderMarkers(data, zoom);
 
                     const inPipelineArea = isPipelineEligible(State.map?.getBounds?.(), zoom);
                     if (statusEl) {
@@ -613,18 +626,8 @@ export function initMapLogic() {
                         statusEl.className = 'text-green-400 font-bold';
                     }
 
-                    // Erfolgs-Nachricht: Cache-Info erhalten, wenn Cache aktuell war
-                    if (cachedCount > 0 && !networkChanged) {
-                        // Cache war aktuell - zeige das deutlich
-                        showNotification(`${t('from_cache')} (${cachedCount} ${t('objects')})`, 3000);
-                    } else if (cachedCount > 0) {
-                        // Cache + Aktualisierung
-                        showNotification(`${t('data_updated')} (${cachedCount} → ${networkCount})`, 2500);
-                    } else {
-                        // Frische Daten
-                        const suffix = inPipelineArea ? ' – Lokal' : '';
-                        showNotification(`${t('data_complete')} (${networkCount} ${t('objects')}${suffix})`, 2000);
-                    }
+                    // Falls vorher eine Server-Warnung (z.B. Wartezeit) angezeigt wurde, diese schließen
+                    hideNotification();
                 } else if (data === null) {
                     // Kein Fehler, aber leere Query (z.B. Zoom zu klein)
                     if (statusEl) {
@@ -638,7 +641,7 @@ export function initMapLogic() {
                     return;
                 }
 
-                if (fetchIntent < lastRenderedFetchIntent) return;
+                if (fetchIntent < lastRenderedFetchIntent || fetchIntent !== currentFetchIntent) return;
 
                 // Fehlerbehandlung
                 if (statusEl) {
@@ -654,11 +657,13 @@ export function initMapLogic() {
                 if (retryTimer) clearTimeout(retryTimer);
                 retryTimer = setTimeout(() => {
                     retryTimer = null;
-                    if (fetchIntent === latestFetchIntent) doFetch();
+                    if (fetchIntent === latestFetchIntent && fetchIntent === currentFetchIntent) doFetch();
                 }, 8000);
             }
         } // end doFetch
-    });
+    }
+    _testing.onViewChange = onViewChange;
+    State.map.on('moveend zoomend', onViewChange);
 
     State.map.on('click', () => {
         if (!State.selection.active) {
@@ -1197,7 +1202,7 @@ export function drawLineToNearest() {
  * OPTIMIERUNG: Nutzt "Diffing", um Flackern zu verhindern.
  * Es werden nur Marker entfernt/hinzugefügt, die sich tatsächlich geändert haben.
  */
-export function renderMarkers(elements, zoom) {
+export function renderMarkers(elements, zoom, { isPartial = false } = {}) {
     // ------------------------------------------------------------
     // Pre-Processing: intelligentes Clustering NUR für Feuerwehrwachen
     // ------------------------------------------------------------
@@ -1309,10 +1314,13 @@ export function renderMarkers(elements, zoom) {
 
     // --- H. AUFRÄUMEN (Garbage Collection) ---
     // Wir entfernen alle Marker von der Karte, die im aktuellen Datensatz NICHT mehr vorkommen.
-    for (const [id, entry] of State.markerCache) {
-        if (!markersToKeep.has(id)) {
-            State.markerLayer.removeLayer(entry.marker);
-            State.markerCache.delete(id);
+    // Bei partiellen Zwischen-Renderings wird das Aufräumen übersprungen, um Flackern zu verhindern.
+    if (!isPartial) {
+        for (const [id, entry] of State.markerCache) {
+            if (!markersToKeep.has(id)) {
+                State.markerLayer.removeLayer(entry.marker);
+                State.markerCache.delete(id);
+            }
         }
     }
 }
@@ -1581,5 +1589,6 @@ export const _testing = {
     distanceMeters,
     countTags,
     clusterPOIs,
-    clusterFireStations
+    clusterFireStations,
+    onViewChange: null
 };
