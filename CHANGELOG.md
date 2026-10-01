@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
   - Cache-Einstellung „Aus“ liest und schreibt IndexedDB nicht mehr und löscht vorhandene Einträge.
 
 ### Behoben
+- **Leere Karte in Safari nach Deploys**: Der Service Worker lieferte `index.html` cache-first aus; nach einem Deploy verwies die alte Seite auf gelöschte gehashte Bundles (404, keine Karte). Seitenaufrufe laufen jetzt network-first (Cache nur offline), Cache-Name auf `ofm-v15-static` erhöht.
 - **OSM-Standardkarte ohne Subdomains** (#20, danieldegroot2): Kacheln kommen von `tile.openstreetmap.org` statt `{s}.tile.openstreetmap.org`, wie es die OSM Foundation empfiehlt; CSP `img-src` entsprechend angepasst.
 - **CSV-Export: Untertyp von Feuerwachen** (#25): Gelesen wurde `tags.fire_station?.type`, das war immer leer. Jetzt `fire_station:type` über `getCsvSubtype()`, mit Tests.
 - **Pipeline: nur noch Gemeindegrenzen** (#26):
