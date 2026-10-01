@@ -346,19 +346,18 @@ def get_dated_extract_candidates(url):
     return candidates
 
 
-def find_dated_extract_candidate(url, timeout=15):
+def iter_dated_extract_candidates(url, timeout=15):
     """
-    Prüft datierte Kandidaten für eine -latest.osm.pbf URL per HEAD (heute, gestern, vorgestern UTC).
-    Kurzer Timeout (standardmäßig 15 s je Kandidat), HTTP 404 ist erwartbar und kein Fehler.
-    Gibt (candidate_url, remote_info) für die erste Datei mit HTTP 200 zurück,
-    oder None, wenn keine verfügbar ist.
+    Prüft datierte Kandidaten für eine -latest.osm.pbf URL per HEAD (heute, gestern, vorgestern UTC)
+    und liefert nacheinander (candidate_url, remote_info) für jede Datei mit HTTP 200.
+    Die HEAD-Prüfung erfolgt erst bei Bedarf, d. h. ein Kandidat wird nur geprüft, wenn der
+    vorherige nicht verwendet werden konnte. Kurzer Timeout (standardmäßig 15 s je Kandidat),
+    HTTP 404 ist erwartbar und kein Fehler.
     """
-    candidates = get_dated_extract_candidates(url)
-    for cand_url, _ in candidates:
+    for cand_url, _ in get_dated_extract_candidates(url):
         info = check_remote_extract(cand_url, timeout=timeout)
         if info and info.get("status") == 200:
-            return cand_url, info
-    return None
+            yield cand_url, info
 
 
 def is_remote_newer(remote_info, target_path):
@@ -495,7 +494,8 @@ def download_extract(url, target_path):
     4. Ist die datierte Datei nicht neuer als lokal, gilt cached_head_ok.
     5. Ist sie neuer, wird sie geladen und als target_path (<land>-latest.osm.pbf) abgelegt
        (Status: downloaded_dated).
-    6. Erst wenn auch datierte Kandidaten scheitern, greift der bestehende lokale Rückgriff
+       Scheitert Download oder PBF-Validierung, wird der nächste datierte Kandidat versucht.
+    6. Erst wenn alle datierten Kandidaten scheitern, greift der bestehende lokale Rückgriff
        (<= MAX_FALLBACK_AGE_HOURS) mit Status cached_head_failed bzw. fallback_after_error.
     Gibt (target_path, duration, was_downloaded, status) zurück.
     """
@@ -529,16 +529,19 @@ def download_extract(url, target_path):
         except Exception as e:
             log(f"Download von {url} fehlgeschlagen ({e}). Prüfe datierte Ausweichquellen...")
 
-    # 2. Ausweichquelle: Datierte Tagesextrakte prüfen (wenn HEAD fehlschlug oder Download von -latest fehlschlug)
-    dated_candidate = find_dated_extract_candidate(url, timeout=15)
+    # 2. Ausweichquelle: Datierte Tagesextrakte prüfen (wenn HEAD fehlschlug oder Download von -latest fehlschlug).
+    #    Alle erreichbaren Kandidaten werden der Reihe nach versucht (heute, gestern, vorgestern),
+    #    bis ein Download inkl. PBF-Validierung gelingt.
     attempted_dated_download = False
-    is_cand_newer = False
-    if dated_candidate:
-        cand_url, cand_info = dated_candidate
+    for cand_url, cand_info in iter_dated_extract_candidates(url, timeout=15):
         log(f"Gefundene datierte Ausweichquelle: {cand_url} (HTTP 200, Last-Modified: {cand_info.get('last_modified')})")
 
         is_cand_newer, _ = is_remote_newer(cand_info, target_path)
         if not is_cand_newer and not FORCE_DOWNLOAD:
+            if attempted_dated_download:
+                # Ein neuerer Kandidat ist gescheitert; ein älterer Stand bringt gegenüber lokal nichts.
+                log(f"Überspringe datierte Ausweichquelle {cand_url} (nicht neuer als lokale Datei).")
+                continue
             local_size = os.path.getsize(target_path)
             local_size_mb = local_size / (1024 * 1024)
             log(f"Auszug ist aktuell (Server-Ausweichquelle: {cand_url}, {cand_info.get('last_modified')}, {local_size_mb:.1f} MB). Überspringe Download.")
@@ -548,7 +551,7 @@ def download_extract(url, target_path):
         try:
             return _download_and_replace(cand_url, target_path, status_label="downloaded_dated", remote_info=cand_info)
         except Exception as e:
-            log(f"Download der datierten Ausweichquelle {cand_url} fehlgeschlagen ({e}).")
+            log(f"Download der datierten Ausweichquelle {cand_url} fehlgeschlagen ({e}). Versuche nächsten Kandidaten...")
 
     # 3. Lokaler Rückgriff (sofern <= MAX_FALLBACK_AGE_HOURS)
     if os.path.exists(target_path):
