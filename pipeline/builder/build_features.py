@@ -40,7 +40,9 @@ OSM_EXTRACT_URL = os.getenv("OSM_EXTRACT_URL", "").strip()
 FORCE_DOWNLOAD = os.getenv("FORCE_DOWNLOAD", "false").lower() in ("true", "1", "yes")
 FORCE_BUILD = os.getenv("FORCE_BUILD", "false").lower() in ("true", "1", "yes")
 MAX_FALLBACK_AGE_HOURS = int(os.getenv("MAX_FALLBACK_AGE_HOURS", "72"))
-CURL_MAX_TIME = int(os.getenv("CURL_MAX_TIME", "5400"))
+# Zeitlimit je curl-Versuch. Neuversuche setzen fort (If-Range, -C -), daher kurz genug, um eine
+# knapp über CURL_SPEED_LIMIT dahinkriechende Verbindung gegen eine neue zu tauschen (Standard 20 min).
+CURL_MAX_TIME = int(os.getenv("CURL_MAX_TIME", "1200"))
 # Mindestrate: Fällt die Übertragung CURL_SPEED_TIME Sekunden lang unter CURL_SPEED_LIMIT Bytes/s,
 # bricht curl ab und der nächste Versuch setzt auf einer neuen Verbindung fort. Geofabrik verteilt
 # Downloads auf mehrere Server, von denen einzelne zeitweise nur wenige hundert KB/s liefern.
@@ -466,7 +468,7 @@ def _build_curl_cmd(download_url, tmp_download, remote_info):
         "--connect-timeout", "30",
         "--speed-limit", str(CURL_SPEED_LIMIT),  # Zu langsame Verbindung abbrechen ...
         "--speed-time", str(CURL_SPEED_TIME),  # ... wenn sie so viele Sekunden darunter bleibt
-        "--max-time", str(CURL_MAX_TIME),  # Konfigurierbar, Standard 5400s (90 Minuten) je Versuch
+        "--max-time", str(CURL_MAX_TIME),  # Konfigurierbar, Standard 1200s (20 Minuten) je Versuch
     ]
     if remote_info and remote_info.get("last_modified"):
         cmd.extend(["-H", f"If-Range: {remote_info['last_modified']}"])
@@ -645,6 +647,25 @@ def prefilter_feature(item, pbf_path, out_pbf):
     finally:
         if os.path.exists(stage_pbf):
             os.remove(stage_pbf)
+
+
+def prefilter_country(pbf_path, cid, work_dir, features=None):
+    """
+    Filtert einen Länderauszug in EINEM tags-filter-Durchlauf auf die Filter aller Features und teilt
+    die kleine Zwischendatei danach je Feature auf (prefilter_feature). Die große Länderdatei wird so
+    nur einmal gelesen statt einmal je Feature. Das Ergebnis je Feature ist identisch: Die Zwischendatei
+    enthält alle Treffer samt der referenzierten Knoten, Wege und Relationsmitglieder.
+    """
+    features = features if features is not None else FEATURE_CONFIGS
+    combined_pbf = os.path.join(work_dir, f"{cid}__all_features.pbf")
+    all_filters = list(dict.fromkeys(expr for item in features for expr in item["filter"]))
+    try:
+        run_cmd(["osmium", "tags-filter", pbf_path, *all_filters, "-o", combined_pbf, "--overwrite"])
+        log(f"Gemeinsame Vorfilterung: {os.path.getsize(combined_pbf) / (1024 * 1024):.1f} MB Zwischendatei.")
+        for item in features:
+            prefilter_feature(item, combined_pbf, os.path.join(work_dir, f"{cid}_{item['name']}.pbf"))
+    finally:
+        _remove_quietly(combined_pbf)
 
 
 def build_export_cmd(item, source_pbf, output_file, work_dir):
@@ -933,10 +954,7 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None, extract
             log(f"--- Vorfilterung {cname} ({cid}, {c_size_mb:.1f} MB) ---")
             t_country = time.time()
 
-            for item in FEATURE_CONFIGS:
-                fname = item["name"]
-                out_part_pbf = os.path.join(work_dir, f"{cid}_{fname}.pbf")
-                prefilter_feature(item, pbf_path, out_part_pbf)
+            prefilter_country(pbf_path, cid, work_dir)
 
             log(f"Land {cname} erfolgreich vorgefiltert in {time.time() - t_country:.1f}s.")
 
