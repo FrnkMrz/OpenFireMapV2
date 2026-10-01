@@ -231,7 +231,7 @@ function makeOverpassCacheKey({ zoom, bboxKey, queryKind }) {
 }
 
 function makeBoundaryCacheKey({ bboxKey }) {
-  return `overpass:v3:boundaries:bbox:${bboxKey}`;
+  return `overpass:v4:boundaries:bbox:${bboxKey}`;
 }
 
 function cloneBounds(bounds) {
@@ -277,7 +277,7 @@ function buildPoiQuery(zoom, bbox) {
 
 function buildBoundaryQuery(zoom, bbox) {
   if (zoom < 14) return '';
-  return `[out:json][timeout:25][bbox:${bbox}];(way["boundary"="administrative"]["admin_level"="8"];)->.boundaries;.boundaries out geom;`;
+  return `[out:json][timeout:25][bbox:${bbox}];rel["boundary"="administrative"]["admin_level"="8"]->.r; way(r.r)(${bbox})->.boundaries; .boundaries out geom;`;
 }
 
 function stableObjectEntries(obj) {
@@ -1064,13 +1064,13 @@ export async function fetchDataForExport(bounds, zoom, signal) {
   queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
   queryParts.push(`node["emergency"="defibrillator"];`);
   const boundaryQuery = (zoom >= 14)
-    ? `(way["boundary"="administrative"]["admin_level"="8"];)->.boundaries; .boundaries out geom;`
+    ? `rel["boundary"="administrative"]["admin_level"="8"]->.r; way(r.r)(${bbox})->.boundaries; .boundaries out geom;`
     : '';
 
   const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 
-  // Wir nutzen v2 als Prefix, um fehlerhafte Caches der alten Version aus der lokalen DB zu umgehen.
-  const cacheKey = `export_v2:${zoom}:${bbox}`;
+  // Wir nutzen v3 als Prefix, um fehlerhafte Caches der alten Version aus der lokalen DB zu umgehen.
+  const cacheKey = `export_v3:${zoom}:${bbox}`;
   return await fetchWithRetry(q, {
     cacheKey,
     cacheTtlMs: 1000 * 60 * 60, // 1h Cache
@@ -1090,5 +1090,6 @@ export const _testing = {
   epMarkOk,
   epMarkFail,
   EP,
-  countHydrants
+  countHydrants,
+  buildBoundaryQuery
 };

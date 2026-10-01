@@ -135,13 +135,13 @@
     {
       "key": "boundary",
       "value": "administrative",
-      "object_types": ["way"],
+      "object_types": ["way", "relation"],
       "description": "Municipality boundaries drawn as overlay from zoom 14 and in map exports."
     },
     {
       "key": "admin_level",
       "value": "8",
-      "object_types": ["way"],
+      "object_types": ["way", "relation"],
       "description": "Restricts the boundary overlay to municipality level."
     },
     {

@@ -951,7 +951,8 @@ async function generateMapCanvas() {
 
   // Boundaries zeichnen (z.B. Gemeindegrenzen)
   for (const el of elementsForExport) {
-    if (el.tags && el.tags.boundary === 'administrative' && el.geometry) {
+    const isBoundary = el.tags?.boundary === 'administrative' || (el.type === 'way' && Array.isArray(el.geometry));
+    if (isBoundary && Array.isArray(el.geometry) && el.geometry.length > 0) {
       // Linie zeichnen
       const coords = el.geometry.map(p => {
         const px = (lon2tile(p.lon, targetZoom) - originTileX) * 256 + margin;
@@ -973,7 +974,8 @@ async function generateMapCanvas() {
   // Marker zeichnen
   // ... (Code bleibt gleich, nur Kontext ist ctx)
   for (const el of elementsForExport) {
-    if (el.tags?.boundary === 'administrative') continue; // Schon gemalt
+    const isBoundary = el.tags?.boundary === 'administrative' || (el.type === 'way' && Array.isArray(el.geometry));
+    if (isBoundary) continue; // Schon gemalt
 
     const lat = el.lat || el.center?.lat;
     const lon = el.lon || el.center?.lon;
