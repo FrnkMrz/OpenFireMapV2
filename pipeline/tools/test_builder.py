@@ -1000,17 +1000,98 @@ class TestBuildFingerprints(unittest.TestCase):
             target = os.path.join(tmpdir, "extract-latest.osm.pbf")
             tmp_download = target + ".download"
 
-            # Simuliere abgebrochenen Download, der schon 50 KB geschrieben hat
+            # Simuliere abgebrochenen Download derselben Quelle, der schon 50 KB geschrieben hat
+            info = {"status": 200, "url": "https://example.com/test.pbf",
+                    "last_modified": "Thu, 01 Oct 2026 01:02:00 GMT", "content_length": 3500000}
             with open(tmp_download, "wb") as f:
                 f.write(b"x" * 50000)
+            with open(tmp_download + ".source.json", "w", encoding="utf-8") as f:
+                json.dump({k: info[k] for k in ("url", "last_modified", "content_length")}, f)
 
             with patch("build_features.run_cmd", side_effect=RuntimeError("curl (28) timeout")):
                 with self.assertRaises(RuntimeError):
-                    build_features._download_and_replace("https://example.com/test.pbf", target)
+                    build_features._download_and_replace("https://example.com/test.pbf", target, remote_info=info)
 
             # .download-Datei muss erhalten geblieben sein!
             self.assertTrue(os.path.exists(tmp_download))
             self.assertEqual(os.path.getsize(tmp_download), 50000)
+
+
+class TestDownloadResume(unittest.TestCase):
+    """curl -C - darf nur einen Teil-Download derselben Quelle und desselben Serverstands fortsetzen."""
+
+    URL = "https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf"
+    INFO = {"status": 200, "url": "https://download.geofabrik.de/europe/liechtenstein-261001.osm.pbf",
+            "last_modified": "Thu, 01 Oct 2026 01:02:00 GMT", "content_length": 3500000}
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.target = os.path.join(self.tmpdir.name, "liechtenstein-latest.osm.pbf")
+        self.partial = self.target + ".download"
+        self.marker = self.partial + ".source.json"
+        self.seen = {}
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def _write_partial(self, marker=None):
+        with open(self.partial, "wb") as f:
+            f.write(b"alt" * 1000)
+        if marker is not None:
+            with open(self.marker, "w", encoding="utf-8") as f:
+                json.dump(marker, f)
+
+    def _fake_curl(self, fail=False):
+        def run(cmd):
+            # Zustand zum Zeitpunkt des curl-Aufrufs festhalten
+            self.seen["partial_kept"] = os.path.exists(self.partial)
+            with open(self.marker, encoding="utf-8") as f:
+                self.seen["marker"] = json.load(f)
+            with open(self.partial, "ab") as f:
+                f.write(b"y" * (150 * 1024))
+            if fail:
+                raise RuntimeError("curl: (28) Operation timed out")
+            return ""
+        return run
+
+    def _download(self, info, fail=False):
+        with patch("build_features.run_cmd", side_effect=self._fake_curl(fail)), \
+             patch("shutil.which", return_value=None):
+            return build_features._download_and_replace(self.URL, self.target, remote_info=info)
+
+    def _marker_for(self, info):
+        return {"url": info["url"], "last_modified": info["last_modified"], "content_length": info["content_length"]}
+
+    def test_partial_without_marker_is_discarded(self):
+        self._write_partial()
+        self._download(self.INFO)
+        self.assertFalse(self.seen["partial_kept"])
+        self.assertEqual(self.seen["marker"], self._marker_for(self.INFO))
+
+    def test_partial_from_same_source_is_resumed(self):
+        self._write_partial(self._marker_for(self.INFO))
+        self._download(self.INFO)
+        self.assertTrue(self.seen["partial_kept"])
+        with open(self.target, "rb") as f:
+            self.assertTrue(f.read().startswith(b"alt"))
+
+    def test_partial_from_older_server_state_is_discarded(self):
+        old = dict(self.INFO, last_modified="Wed, 30 Sep 2026 01:02:00 GMT")
+        self._write_partial(self._marker_for(old))
+        self._download(self.INFO)
+        self.assertFalse(self.seen["partial_kept"])
+
+    def test_curl_failure_keeps_partial_and_marker_success_cleans_up(self):
+        with self.assertRaises(RuntimeError):
+            self._download(self.INFO, fail=True)
+        self.assertTrue(os.path.exists(self.partial))
+        self.assertTrue(os.path.exists(self.marker))
+
+        self._download(self.INFO)
+        self.assertTrue(self.seen["partial_kept"])
+        self.assertFalse(os.path.exists(self.partial))
+        self.assertFalse(os.path.exists(self.marker))
+        self.assertTrue(os.path.exists(self.target))
 
 
 if __name__ == "__main__":

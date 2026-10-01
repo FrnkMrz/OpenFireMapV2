@@ -401,10 +401,55 @@ def run_cmd(cmd):
     return res.stdout
 
 
-def _download_and_replace(download_url, target_path, status_label="fresh_download"):
+def _remove_quietly(path):
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+def _prepare_resume(tmp_download, download_url, remote_info):
+    """
+    Erlaubt curl -C - nur, wenn der Teil-Download zur selben Quelle und zum selben Serverstand gehört
+    (finale URL, Last-Modified, Content-Length). Sonst würde curl das Ende einer anderen Datei
+    anhängen (z. B. neuer Tagesstand oder datierte Ausweichquelle), und osmium fileinfo ohne -e
+    erkennt so eine zusammengesetzte Datei nicht.
+    """
+    marker_path = tmp_download + ".source.json"
+    source = None
+    if remote_info and remote_info.get("last_modified"):
+        source = {
+            "url": remote_info.get("url") or download_url,
+            "last_modified": remote_info.get("last_modified"),
+            "content_length": remote_info.get("content_length"),
+        }
+
+    if os.path.exists(tmp_download):
+        saved = None
+        try:
+            with open(marker_path, "r", encoding="utf-8") as f:
+                saved = json.load(f)
+        except (OSError, ValueError):
+            pass
+        if source is not None and saved == source:
+            log(f"Setze unterbrochenen Download fort ({os.path.getsize(tmp_download) / (1024 * 1024):.1f} MB vorhanden).")
+        else:
+            log("Verwerfe vorhandenen Teil-Download (andere Quelle oder neuer Serverstand).")
+            _remove_quietly(tmp_download)
+
+    _remove_quietly(marker_path)
+    if source is not None:
+        with open(marker_path, "w", encoding="utf-8") as f:
+            json.dump(source, f)
+    return marker_path
+
+
+def _download_and_replace(download_url, target_path, status_label="fresh_download", remote_info=None):
     """Lädt einen PBF-Auszug per curl herunter, validiert ihn und ersetzt die Zieldatei atomar."""
     log(f"Starte Download mit curl: {download_url}")
     tmp_download = target_path + ".download"
+    marker_path = _prepare_resume(tmp_download, download_url, remote_info)
     start_time = time.time()
 
     curl_cmd = [
@@ -420,12 +465,9 @@ def _download_and_replace(download_url, target_path, status_label="fresh_downloa
         download_url
     ]
 
-    try:
-        run_cmd(curl_cmd)
-    except Exception:
-        # Bei curl-Abbruch oder Timeout die .download-Datei behalten,
-        # damit curl -C - beim nächsten Versuch nahtlos fortsetzen kann!
-        raise
+    # Bei curl-Abbruch oder Timeout bleiben .download und Herkunftsmarker liegen,
+    # damit der nächste Versuch mit curl -C - fortsetzen kann (siehe _prepare_resume).
+    run_cmd(curl_cmd)
 
     try:
         validate_pbf_file(tmp_download)
@@ -436,12 +478,10 @@ def _download_and_replace(download_url, target_path, status_label="fresh_downloa
         return target_path, duration, True, status_label
     except Exception:
         # PBF-Validierung fehlgeschlagen -> Datei ist korrupt oder unvollständig, hier löschen
-        if os.path.exists(tmp_download):
-            try:
-                os.remove(tmp_download)
-            except Exception:
-                pass
+        _remove_quietly(tmp_download)
         raise
+    finally:
+        _remove_quietly(marker_path)
 
 
 def download_extract(url, target_path):
@@ -485,7 +525,7 @@ def download_extract(url, target_path):
 
         # Download von -latest versuchen
         try:
-            return _download_and_replace(url, target_path, status_label="fresh_download")
+            return _download_and_replace(url, target_path, status_label="fresh_download", remote_info=remote_info)
         except Exception as e:
             log(f"Download von {url} fehlgeschlagen ({e}). Prüfe datierte Ausweichquellen...")
 
@@ -506,7 +546,7 @@ def download_extract(url, target_path):
 
         attempted_dated_download = True
         try:
-            return _download_and_replace(cand_url, target_path, status_label="downloaded_dated")
+            return _download_and_replace(cand_url, target_path, status_label="downloaded_dated", remote_info=cand_info)
         except Exception as e:
             log(f"Download der datierten Ausweichquelle {cand_url} fehlgeschlagen ({e}).")
 
