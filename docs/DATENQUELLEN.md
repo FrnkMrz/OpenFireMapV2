@@ -28,6 +28,12 @@ Overpass-Abfragen greifen auf den aktuellen Stand zu, den der jeweilige Overpass
 
 Die Pipeline prüft ihre Versionskennung und erkennt widersprüchliche oder veraltete Abdeckung. In solchen Fällen fällt die Anwendung auf Overpass zurück, statt eine nicht passende PMTiles-Datei als aktuell auszugeben.
 
+## Auslieferung über Cloudflare
+
+Die vorberechneten PMTiles und `metadata.json` liegen in Cloudflare R2 und werden über `pipeline.openfiremap.org` (Cloudflare CDN) ausgeliefert. Der Browser lädt sie direkt; Cloudflare verarbeitet dabei technisch bedingt IP-Adresse und Anfragedaten. Es werden keine Cookies gesetzt. Die Webseite selbst wird über GitHub Pages ausgeliefert.
+
+Wer Cloudflare-Funktionen wie Bot Fight Mode, Web Analytics oder Zaraz aktiviert, muss vorher die Datenschutzerklärung in `index.html` prüfen, da diese Funktionen Cookies oder Skripte einbringen können.
+
 ## Lizenzen und Quellenhinweise
 
 - OSM-Daten: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), verfügbar unter der [ODbL](https://opendatacommons.org/licenses/odbl/).

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // We need to mock the import of language files because they are dynamic in i18n.js
 // Ideally i18n.js should be refactored to specific exports, but we can test the logic we can access.
@@ -37,4 +38,29 @@ describe('i18n.js', () => {
     // but init might have been called or we call it.
 
     // Let's settle for basic API surface testing to ensure no crashes.
+
+    describe('legal text language switch', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <section data-legal-lang="de"></section>
+                <section data-legal-lang="en" class="hidden"></section>`;
+        });
+        afterEach(() => {
+            document.body.innerHTML = '';
+        });
+
+        const visible = () => [...document.querySelectorAll('[data-legal-lang]')]
+            .filter(el => !el.classList.contains('hidden'))
+            .map(el => el.getAttribute('data-legal-lang'));
+
+        it('shows the German privacy text for German', async () => {
+            await i18n.setLang('de');
+            expect(visible()).toEqual(['de']);
+        });
+
+        it('shows the English privacy text for any other language', async () => {
+            await i18n.setLang('fr');
+            expect(visible()).toEqual(['en']);
+        });
+    });
 });

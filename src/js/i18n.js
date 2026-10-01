@@ -147,6 +147,12 @@ export function updatePageLanguage() {
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
   });
+
+  // Rechtstexte: Deutsch ist verbindlich, alle anderen Sprachen sehen die englische Fassung
+  const legalLang = currentLang === 'de' ? 'de' : 'en';
+  document.querySelectorAll('[data-legal-lang]').forEach(el => {
+    el.classList.toggle('hidden', el.getAttribute('data-legal-lang') !== legalLang);
+  });
 }
 
 /**
