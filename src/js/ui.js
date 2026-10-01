@@ -12,6 +12,7 @@ import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
 import { APP_VERSION } from './version.js';
+import { clearCache, isCacheDisabled } from './cache.js';
 
 // Lazy-Loader: export.js (inkl. jspdf + html2canvas) wird erst bei Bedarf geladen.
 // Das spart ~70 KB gzipped bei jedem App-Start.
@@ -120,6 +121,8 @@ function setupCacheDurationSelects() {
     };
 
     syncValue(localStorage.getItem('ofm_cache_hours') || '168');
+    // Bei "Aus" auch Altbestände entfernen
+    if (isCacheDisabled()) clearCache();
 
     selects.forEach((select) => {
         if (select.__ofmCacheBound) return;
@@ -129,6 +132,7 @@ function setupCacheDurationSelects() {
             const nextValue = select.value || '168';
             localStorage.setItem('ofm_cache_hours', nextValue);
             syncValue(nextValue);
+            if (isCacheDisabled()) clearCache();
             showNotification(t('cache_saved'), 2500, 'success');
         });
     });

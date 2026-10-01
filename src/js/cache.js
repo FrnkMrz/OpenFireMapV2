@@ -11,6 +11,18 @@ const DEFAULT_STALE_MULTIPLIER = 3;
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
+/**
+ * Cache-Einstellung "Aus" (0): nichts lesen, nichts schreiben.
+ * Die Datenschutzerklärung sagt zu, dass der Cache abschaltbar ist.
+ */
+export function isCacheDisabled() {
+  try {
+    return localStorage.getItem('ofm_cache_hours') === '0';
+  } catch {
+    return false;
+  }
+}
+
 export function getCachePolicy(dataClass = 'default') {
   let userTtlMs = null;
   try {
@@ -142,6 +154,7 @@ export async function getCache(key, maxAgeMs) {
 }
 
 export async function getCacheEntry(key) {
+  if (isCacheDisabled()) return null;
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -188,6 +201,7 @@ export async function deleteCacheEntry(key) {
  */
 export async function setCache(key, data, meta = {}) {
   console.log('[Cache] setCache', key, data?.elements?.length);
+  if (isCacheDisabled()) return;
   try {
     const policy = meta?.dataClass ? getCachePolicy(meta.dataClass) : {};
     const entry = {

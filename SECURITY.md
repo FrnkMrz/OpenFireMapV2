@@ -15,7 +15,7 @@ Für normale Fehler und Verbesserungsvorschläge ist [GitHub Issues](https://git
 
 ## Datenschutz und externe Dienste
 
-OpenFireMapV2 ist eine clientseitige Anwendung und betreibt kein Projekt-Backend zur Speicherung von Nutzerdaten. Die Anwendung nutzt je nach Einstellung `localStorage` und IndexedDB für Kartenpositionen, Cache-Daten und technische Einstellungen. Für Kartendaten, Suche, Basiskarten und Pipeline-Zugriffe werden externe Dienste kontaktiert; dabei gelten deren Datenschutz- und Nutzungsbedingungen. Weitere Hinweise stehen in [Datenquellen](docs/DATENQUELLEN.md) und in der Anwendung selbst.
+OpenFireMapV2 ist eine clientseitige Anwendung und betreibt kein Projekt-Backend zur Speicherung von Nutzerdaten. Die Anwendung nutzt je nach Einstellung `localStorage` und IndexedDB für Kartenpositionen, Cache-Daten und technische Einstellungen. Es werden keine Cookies und keine Tracking- oder Analyse-Tools verwendet. Für Hosting (GitHub Pages), Pipeline-Daten (Cloudflare), Kartendaten, Suche und Basiskarten werden externe Dienste kontaktiert; dabei gelten deren Datenschutz- und Nutzungsbedingungen. Neue externe Dienste müssen sowohl in der Content Security Policy als auch in der Datenschutzerklärung (`index.html`, deutsche und englische Fassung) ergänzt werden. Weitere Hinweise stehen in [Datenquellen](docs/DATENQUELLEN.md) und in der Anwendung selbst.
 
 ## Unterstützte Version
 
