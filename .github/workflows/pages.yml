@@ -39,11 +39,15 @@ on:
 # ------------------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------------------
-# Verhindert parallele Deploys (z.B. bei schnellem Push hintereinander)
+# Parallele Läufe begrenzen – getrennt nach Branch bzw. PR:
+# - main: Läufe warten aufeinander, ein laufender Deploy wird nie abgebrochen
+#   (bei mehreren wartenden Läufen bleibt nur der neueste stehen)
+# - PRs: ein neuer Push bricht den veralteten Lauf desselben PRs ab
+# Eine gemeinsame Gruppe für alles hat dazu geführt, dass PR-Läufe den main-Deploy abbrachen.
 # ------------------------------------------------------------------------------------------
 concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  group: pages-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
