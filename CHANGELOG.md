@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.8.3] - 2026-10-01
+
+### Sicherheit
+- **Abhängigkeiten aktualisiert (`npm audit fix`)**:
+  - `jspdf` 4.2.0 → 4.2.1 (kritisch: PDF Object Injection via FreeText color, GHSA-7x6v-j9x4-qf24; HTML Injection in New-Window-Pfaden, GHSA-wfv2-pwc8-crg5).
+  - `dompurify` 3.3.1 → 3.4.16 (mittel: Cross-Site-Scripting, GHSA-v2wj-7wpq-c8vv).
+  - `fflate` 0.8.2 → 0.8.3 (mittel: Endlosschleife bei fehlerhaften ZIP64-Archiven, GHSA-px8p-9vwx-vf98).
+  - Dev-Abhängigkeiten im erlaubten SemVer-Bereich mitaktualisiert (u. a. Vitest 4.1, Rollup 4.63, PostCSS 8.5.28); veraltete Projektversion in `package-lock.json` (0.6.11) korrigiert.
+- **CI-Sicherheitsprüfung verschärft** (`.github/workflows/pages.yml`):
+  - `npm audit --omit=dev --audit-level=high` bricht den Build bei High/Critical in Laufzeit-Abhängigkeiten jetzt ab. Bisher wurde ein Fehlschlag per `|| echo` verschluckt, wodurch die kritische jsPDF-Lücke unbemerkt blieb.
+  - Dev-Abhängigkeiten werden weiterhin geprüft, erzeugen aber nur eine Warnung, damit Advisories in Build-Tooling kein Deployment blockieren.
+
 ## [v0.8.2] - 2026-09-30
 
 ### Performance & Ressourcenschonung
