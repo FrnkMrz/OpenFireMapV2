@@ -12,7 +12,7 @@
  * veraltete Wasserentnahmestellen suggerieren könnte.
  */
 
-const CACHE_NAME = 'ofm-v14-static';
+const CACHE_NAME = 'ofm-v15-static';
 // Nur wirklich statische Assets precachen (keine gehashten Bundles!)
 const ASSETS = [
     '/',
@@ -71,6 +71,24 @@ self.addEventListener('fetch', (e) => {
         return;
     }
 
+    // Seitenaufrufe (index.html) immer zuerst aus dem Netz laden (network-first).
+    // Cache-first würde nach einem Deploy eine veraltete index.html liefern, die auf
+    // nicht mehr existierende gehashte Bundles verweist (404 → leere Karte, v.a. Safari).
+    if (e.request.mode === 'navigate') {
+        e.respondWith(
+            fetch(e.request).then((response) => {
+                if (response && response.status === 200) {
+                    const responseToCache = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put('/index.html', responseToCache);
+                    });
+                }
+                return response;
+            }).catch(() => caches.match('/index.html'))
+        );
+        return;
+    }
+
     e.respondWith(
         caches.match(e.request).then((cachedResponse) => {
             if (cachedResponse) {
@@ -98,11 +116,6 @@ self.addEventListener('fetch', (e) => {
                 }
 
                 return response;
-            }).catch(() => {
-                // Offline fallback: Zeige cached index.html für Navigation
-                if (e.request.mode === 'navigate') {
-                    return caches.match('/index.html');
-                }
             });
         })
     );
