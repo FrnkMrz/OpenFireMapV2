@@ -881,6 +881,63 @@ class TestBuildFingerprints(unittest.TestCase):
         self.assertTrue(has_changed)
         self.assertTrue(any("Kein gültiger Build-Fingerprint" in r for r in reasons))
 
+    def test_merge_geojson_files_deduplicates_by_id(self):
+        """merge_geojson_files führt mehrere FeatureCollections zusammen und entfernt Duplikate."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file1 = os.path.join(tmpdir, "part1.geojson")
+            file2 = os.path.join(tmpdir, "part2.geojson")
+            merged = os.path.join(tmpdir, "merged.geojson")
+
+            with open(file1, "w", encoding="utf-8") as f:
+                json.dump({
+                    "type": "FeatureCollection",
+                    "features": [
+                        {"type": "Feature", "id": "w1", "properties": {"v": 1}},
+                        {"type": "Feature", "id": "w2", "properties": {"v": 1}}
+                    ]
+                }, f)
+
+            with open(file2, "w", encoding="utf-8") as f:
+                json.dump({
+                    "type": "FeatureCollection",
+                    "features": [
+                        {"type": "Feature", "id": "w2", "properties": {"v": 2}},  # Duplikat
+                        {"type": "Feature", "id": "w3", "properties": {"v": 1}}
+                    ]
+                }, f)
+
+            build_features.merge_geojson_files([file1, file2], merged)
+
+            with open(merged, "r", encoding="utf-8") as f:
+                result = json.load(f)
+
+            self.assertEqual(result["type"], "FeatureCollection")
+            features = result["features"]
+            self.assertEqual(len(features), 3)
+            ids = [feat["id"] for feat in features]
+            self.assertEqual(ids, ["w1", "w2", "w3"])
+            # Erstes Auftreten bleibt erhalten
+            self.assertEqual(features[1]["properties"]["v"], 1)
+
+    def test_download_preserves_partial_file_on_curl_error(self):
+        """Bei curl-Netzwerkfehlern oder Timeouts bleibt die .download-Datei für Resume (-C -) erhalten."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = os.path.join(tmpdir, "extract-latest.osm.pbf")
+            tmp_download = target + ".download"
+
+            # Simuliere abgebrochenen Download, der schon 50 KB geschrieben hat
+            with open(tmp_download, "wb") as f:
+                f.write(b"x" * 50000)
+
+            with patch("build_features.run_cmd", side_effect=RuntimeError("curl (28) timeout")):
+                with self.assertRaises(RuntimeError):
+                    build_features._download_and_replace("https://example.com/test.pbf", target)
+
+            # .download-Datei muss erhalten geblieben sein!
+            self.assertTrue(os.path.exists(tmp_download))
+            self.assertEqual(os.path.getsize(tmp_download), 50000)
+
 
 if __name__ == "__main__":
     unittest.main()
+

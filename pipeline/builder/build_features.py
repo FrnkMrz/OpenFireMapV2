@@ -40,6 +40,7 @@ OSM_EXTRACT_URL = os.getenv("OSM_EXTRACT_URL", "").strip()
 FORCE_DOWNLOAD = os.getenv("FORCE_DOWNLOAD", "false").lower() in ("true", "1", "yes")
 FORCE_BUILD = os.getenv("FORCE_BUILD", "false").lower() in ("true", "1", "yes")
 MAX_FALLBACK_AGE_HOURS = int(os.getenv("MAX_FALLBACK_AGE_HOURS", "72"))
+CURL_MAX_TIME = int(os.getenv("CURL_MAX_TIME", "5400"))
 
 BUILD_FINGERPRINT_FILE = os.path.join(RAW_DIR, "build_fingerprint.json")
 
@@ -409,25 +410,33 @@ def _download_and_replace(download_url, target_path, status_label="fresh_downloa
         "--retry-delay", "3",
         "--retry-all-errors",  # Wiederholt auch bei Verbindungsproblemen und Proxy-Fehlern
         "--connect-timeout", "30",
-        "--max-time", "1800",  # Bis zu 30 Minuten für große Extrakte (z. B. Deutschland 4,6 GB)
+        "--max-time", str(CURL_MAX_TIME),  # Konfigurierbar, Standard 5400s (90 Minuten)
         "-o", tmp_download,
         download_url
     ]
 
     try:
         run_cmd(curl_cmd)
+    except Exception:
+        # Bei curl-Abbruch oder Timeout die .download-Datei behalten,
+        # damit curl -C - beim nächsten Versuch nahtlos fortsetzen kann!
+        raise
+
+    try:
         validate_pbf_file(tmp_download)
         os.replace(tmp_download, target_path)
         duration = time.time() - start_time
         total_mb = os.path.getsize(target_path) / (1024 * 1024)
         log(f"Download abgeschlossen ({status_label}, Quelle: {download_url}): {total_mb:.1f} MB in {duration:.1f}s.")
         return target_path, duration, True, status_label
-    finally:
+    except Exception:
+        # PBF-Validierung fehlgeschlagen -> Datei ist korrupt oder unvollständig, hier löschen
         if os.path.exists(tmp_download):
             try:
                 os.remove(tmp_download)
             except Exception:
                 pass
+        raise
 
 
 def download_extract(url, target_path):
@@ -690,6 +699,33 @@ def count_geojson_features(file_path):
         return -1
 
 
+def merge_geojson_files(part_files, output_file):
+    """
+    Führt mehrere GeoJSON FeatureCollections zusammen und dedupliziert Features anhand ihrer 'id'.
+    Verwendet Streaming, um den Speicherbedarf gering zu halten.
+    """
+    seen_ids = set()
+    first = True
+    with open(output_file, "w", encoding="utf-8") as out_f:
+        out_f.write('{"type":"FeatureCollection","features":[\n')
+        for pf in part_files:
+            if not os.path.exists(pf):
+                continue
+            with open(pf, "r", encoding="utf-8") as in_f:
+                data = json.load(in_f)
+                for feat in data.get("features", []):
+                    feat_id = feat.get("id") or feat.get("properties", {}).get("@id")
+                    if feat_id:
+                        if feat_id in seen_ids:
+                            continue
+                        seen_ids.add(feat_id)
+                    if not first:
+                        out_f.write(",\n")
+                    first = False
+                    json.dump(feat, out_f, ensure_ascii=False)
+        out_f.write("\n]}\n")
+
+
 def process_features(mode, targets, download_duration=0, raw_sizes=None, extracts_meta=None):
     """
     Verarbeitet alle Ziel-Auszüge nach dem „Filter-then-Merge“-Verfahren:
@@ -764,7 +800,32 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None, extract
             export_cmd = ["osmium", "export", source_pbf, "--add-unique-id=type_id", "-o", output_file, "--overwrite"]
             if item.get("geom_types"):
                 export_cmd.extend(["--geometry-types", ",".join(item["geom_types"])])
-            run_cmd(export_cmd)
+
+            try:
+                run_cmd(export_cmd)
+            except RuntimeError as ex:
+                err_str = str(ex)
+                if ("twice in input" in err_str or "Duplicate" in err_str) and len(existing_parts) > 1:
+                    first_line = err_str.strip().splitlines()[-1]
+                    log(f"Hinweis: Doppelte Objekt-IDs in zusammengeführter PBF ({first_line}).")
+                    log(f"Wechsle auf segmentierten Export pro Land mit anschließender ID-Deduplizierung für {fname}...")
+                    part_geojsons = []
+                    for idx, part_pbf in enumerate(existing_parts):
+                        part_json = os.path.join(work_dir, f"{fname}_part_{idx}.geojson")
+                        p_cmd = ["osmium", "export", part_pbf, "--add-unique-id=type_id", "-o", part_json, "--overwrite"]
+                        if item.get("geom_types"):
+                            p_cmd.extend(["--geometry-types", ",".join(item["geom_types"])])
+                        run_cmd(p_cmd)
+                        part_geojsons.append(part_json)
+
+                    merge_geojson_files(part_geojsons, output_file)
+                    for pj in part_geojsons:
+                        try:
+                            os.remove(pj)
+                        except OSError:
+                            pass
+                else:
+                    raise
 
             count = count_geojson_features(output_file)
             file_size_kb = os.path.getsize(output_file) / 1024
