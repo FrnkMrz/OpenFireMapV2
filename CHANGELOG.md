@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
   - Für die Grenzen werden nur noch `boundary` und `admin_level` exportiert (`osmium export -c` mit `include_tags`); Grenzwege trugen oft komplette Straßen-Tags.
 
 ### Behoben & Resilienz
+- **Downloads hängen nicht mehr an langsamen Geofabrik-Servern fest**: curls eigenes `--retry` begann nach einem Abbruch wieder bei Byte 0, sodass der Deutschland-Auszug (4,6 GB) bei einem langsamen Server nach jedem 90-Minuten-Timeout neu startete (am 01.10. ~0,9 MB/s statt bis zu 77 MB/s auf einer neuen Verbindung). Neuversuche laufen jetzt als eigene curl-Aufrufe mit `-C -` (setzen per HTTP 206 fort, `CURL_ATTEMPTS`, Standard 6), und `--speed-limit`/`--speed-time` brechen Verbindungen ab, die 60 s unter 1 MiB/s bleiben (`CURL_SPEED_LIMIT`, `CURL_SPEED_TIME`).
 - **Geofabrik-Härtung gegen Weiterleitungsschleifen (Fix A)**:
   - `pipeline/builder/build_features.py`: Wenn `-latest.osm.pbf` nicht erreichbar ist (z. B. Endlosschleife HTTP 301 oder Timeout), leitet der Builder automatisch datierte Tagesextrakte (`<basis>-YYMMDD.osm.pbf`) für heute, gestern und vorgestern (UTC) ab und prüft diese per HEAD.
   - Die erste erreichbare Datei mit HTTP 200 wird heruntergeladen (sofern neuer als die lokale mtime) und atomar auf den Zielpfad `<land>-latest.osm.pbf` verschoben (neuer Status: `downloaded_dated`).
