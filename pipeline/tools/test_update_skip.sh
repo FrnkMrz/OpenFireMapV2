@@ -190,6 +190,9 @@ run_test "Exit 0 -> built (3 rclone calls)" 0 "none" "true" "built" 3 0
 # Test 4: Builder Exit 1 -> failed, 0 rclone calls, exit 1
 run_test "Exit 1 -> failed (0 rclone calls)" 1 "same" "true" "failed" 0 1
 
+# Test 5: Builder Exit 11 + synchron -> skipped_stale_source (0 rclone calls)
+run_test "Exit 11 + synchron -> skipped_stale_source (0 rclone calls)" 11 "same" "true" "skipped_stale_source" 0 0
+
 echo ""
 if [ "$FAILED_TESTS" -eq 0 ]; then
   echo "🎉 Alle update.sh-Tests erfolgreich bestanden!"

@@ -104,6 +104,7 @@ curl -s -I -H "Range: bytes=0-0" "https://pipeline.openfiremap.org/openfiremap.p
   - `built` – Neuer Build gebaut und erfolgreich nach R2 hochgeladen.
   - `upload_only` – Datenbestand unverändert, aber lokaler Stand wurde nach R2 synchronisiert.
   - `skipped_no_changes` – Keine Änderungen an Extrakten oder Code; Build und Upload übersprungen (Kacheln bleiben im CDN-Cache gecacht).
+  - `skipped_stale_source` – Keine Änderungen, aber mindestens ein Land konnte nicht geprüft oder aktualisiert werden (Quelle veraltet / HEAD fehlgeschlagen); Build und Upload übersprungen.
   - `failed` – Fehler während des Laufs aufgetreten.
 - `last_build_generated_at` – Zeitstempel des letzten echten Daten-Builds (bleibt bei `skipped_no_changes` stabil).
 - `upload_ok: true` – Der Upload von Daten und Metadaten nach R2 wurde ohne Übertragungsfehler abgeschlossen.
@@ -286,6 +287,7 @@ Der Cronjob-Start um 03:30 UTC lag mitten im täglichen Veröffentlichungsfenste
 7. **PBF-Integritätsprüfung:** Validierung der Mindestgröße (> 100 KB) und Struktur (`osmium fileinfo`) vor dem atomaren Verschieben via `os.replace`.
 8. **Bereinigung alter Warnungen:** `update.sh` entfernt veraltete `build_warnings.json` direkt nach erfolgreichem `flock` vor dem Build.
 9. **Monitoring:** Neuer Home Assistant Sensor `sensor.openfiremap_extrakt_alter_stunden` mit Automation bei Alter > 48 h sowie Übernahme von `build_warnings` in `sync_status.json`.
+10. **Datierte Tagesextrakte als Ausweichquelle (v0.8.4):** Wenn `-latest.osm.pbf` nicht erreichbar ist (z. B. Geofabrik-Weiterleitungsschleife 301 oder Timeout), prüft der Builder automatisch datierte Extrakte (`<basis>-YYMMDD.osm.pbf`) für heute, gestern und vorgestern (UTC) per HEAD. Die erste Datei mit HTTP 200 wird heruntergeladen (sofern neuer als lokal) und als `<land>-latest.osm.pbf` abgelegt (Status: `downloaded_dated`). Erst wenn auch alle datierten Kandidaten scheitern, greift der lokale Rückgriff (Exit 11 führt in `update.sh` zu `skipped_stale_source`).
 
 ---
 

@@ -9,9 +9,11 @@ import sys
 import time
 import json
 import shutil
+import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from datetime import datetime, timezone, timedelta
+from unittest.mock import patch, MagicMock
 
 # Füge builder-Verzeichnis zum Suchpfad hinzu
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "builder")))
@@ -235,6 +237,275 @@ class TestBuildFeatures(unittest.TestCase):
                 self.assertEqual(len(build_features.BUILD_WARNINGS), 1)
                 self.assertIn("HEAD-Prüfung für", build_features.BUILD_WARNINGS[0])
 
+    def test_dated_fallback_today_available(self):
+        """-latest mit Schleife + datierte Datei von heute vorhanden -> downloaded_dated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            local_pbf = os.path.join(tmpdir, "liechtenstein-latest.osm.pbf")
+            with open(local_pbf, "wb") as f:
+                f.write(b"x" * (120 * 1024))
+            mtime = time.time() - (48 * 3600)  # 2 Tage alt
+            os.utime(local_pbf, (mtime, mtime))
+
+            now_utc = datetime.now(timezone.utc)
+            today_str = now_utc.strftime("%y%m%d")
+            today_cand = f"https://download.geofabrik.de/europe/liechtenstein-{today_str}.osm.pbf"
+
+            def mock_check_remote(check_url, **kwargs):
+                if check_url.endswith("-latest.osm.pbf"):
+                    return None  # Weiterleitungsschleife
+                if check_url == today_cand:
+                    return {
+                        "status": 200,
+                        "last_modified": "Thu, 01 Oct 2026 06:00:00 GMT",
+                        "content_length": 3500000,
+                        "url": check_url
+                    }
+                return None
+
+            def fake_run_cmd(cmd):
+                for arg in cmd:
+                    if arg.endswith(".download"):
+                        with open(arg, "wb") as f:
+                            f.write(b"y" * (150 * 1024))
+                return ""
+
+            with patch("build_features.check_remote_extract", side_effect=mock_check_remote), \
+                 patch("build_features.run_cmd", side_effect=fake_run_cmd), \
+                 patch("shutil.which", return_value=None):
+                path, duration, was_dl, status = build_features.download_extract(
+                    "https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf",
+                    local_pbf
+                )
+                self.assertEqual(path, local_pbf)
+                self.assertTrue(was_dl)
+                self.assertEqual(status, "downloaded_dated")
+                self.assertFalse(os.path.exists(local_pbf + ".download"))
+
+    def test_dated_fallback_only_yesterday_available(self):
+        """-latest mit Schleife + datierte Datei nur von gestern -> diese wird verwendet, falls neuer als lokal."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            local_pbf = os.path.join(tmpdir, "liechtenstein-latest.osm.pbf")
+            with open(local_pbf, "wb") as f:
+                f.write(b"x" * (120 * 1024))
+            mtime = time.time() - (48 * 3600)  # 2 Tage alt
+            os.utime(local_pbf, (mtime, mtime))
+
+            now_utc = datetime.now(timezone.utc)
+            yest_utc = now_utc - timedelta(days=1)
+            yest_str = yest_utc.strftime("%y%m%d")
+            yest_cand = f"https://download.geofabrik.de/europe/liechtenstein-{yest_str}.osm.pbf"
+
+            def mock_check_remote(check_url, **kwargs):
+                if check_url.endswith("-latest.osm.pbf"):
+                    return None  # Schleife
+                if check_url == yest_cand:
+                    return {
+                        "status": 200,
+                        "last_modified": "Thu, 01 Oct 2026 01:22:00 GMT",
+                        "content_length": 3450000,
+                        "url": check_url
+                    }
+                return None
+
+            def fake_run_cmd(cmd):
+                for arg in cmd:
+                    if arg.endswith(".download"):
+                        with open(arg, "wb") as f:
+                            f.write(b"z" * (150 * 1024))
+                return ""
+
+            with patch("build_features.check_remote_extract", side_effect=mock_check_remote), \
+                 patch("build_features.run_cmd", side_effect=fake_run_cmd), \
+                 patch("shutil.which", return_value=None):
+                path, duration, was_dl, status = build_features.download_extract(
+                    "https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf",
+                    local_pbf
+                )
+                self.assertEqual(path, local_pbf)
+                self.assertTrue(was_dl)
+                self.assertEqual(status, "downloaded_dated")
+
+    def test_dated_fallback_older_local_mtime_vs_newer_server_last_modified(self):
+        """
+        Prüft den konkreten Vorfall: Lokale Datei mtime 30.09. 02:26 UTC,
+        Kandidat -260930 mit Last-Modified 01.10. 01:22 GMT -> muss als NEUER erkannt und geladen werden.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            local_pbf = os.path.join(tmpdir, "germany-latest.osm.pbf")
+            with open(local_pbf, "wb") as f:
+                f.write(b"x" * (120 * 1024))
+            local_dt = datetime(2026, 9, 30, 2, 26, 59, tzinfo=timezone.utc)
+            os.utime(local_pbf, (local_dt.timestamp(), local_dt.timestamp()))
+
+            def mock_check_remote(check_url, **kwargs):
+                if check_url.endswith("-latest.osm.pbf"):
+                    return None  # Weiterleitungsschleife
+                if "260930" in check_url:
+                    return {
+                        "status": 200,
+                        "last_modified": "Thu, 01 Oct 2026 01:22:09 GMT",
+                        "content_length": 4800000000,
+                        "url": check_url
+                    }
+                return None
+
+            def fake_run_cmd(cmd):
+                for arg in cmd:
+                    if arg.endswith(".download"):
+                        with open(arg, "wb") as f:
+                            f.write(b"g" * (150 * 1024))
+                return ""
+
+            with patch("build_features.check_remote_extract", side_effect=mock_check_remote), \
+                 patch("build_features.run_cmd", side_effect=fake_run_cmd), \
+                 patch("shutil.which", return_value=None):
+                path, duration, was_dl, status = build_features.download_extract(
+                    "https://download.geofabrik.de/europe/germany-latest.osm.pbf",
+                    local_pbf
+                )
+                self.assertEqual(path, local_pbf)
+                self.assertTrue(was_dl)
+                self.assertEqual(status, "downloaded_dated")
+
+    def test_dated_fallback_after_latest_download_failure(self):
+        """HEAD auf -latest liefert 200, aber curl auf -latest schlägt fehl (z. B. Timeout 28 oder Abbruch) -> Ausweichquelle greift."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            local_pbf = os.path.join(tmpdir, "switzerland-latest.osm.pbf")
+            with open(local_pbf, "wb") as f:
+                f.write(b"x" * (120 * 1024))
+            mtime = time.time() - (48 * 3600)
+            os.utime(local_pbf, (mtime, mtime))
+
+            latest_url = "https://download.geofabrik.de/europe/switzerland-latest.osm.pbf"
+
+            def mock_check_remote(check_url, **kwargs):
+                if check_url == latest_url:
+                    return {
+                        "status": 200,
+                        "last_modified": "Thu, 01 Oct 2026 04:00:00 GMT",
+                        "content_length": 550000000,
+                        "url": check_url
+                    }
+                if "260930" in check_url:
+                    return {
+                        "status": 200,
+                        "last_modified": "Thu, 01 Oct 2026 04:00:00 GMT",
+                        "content_length": 550000000,
+                        "url": check_url
+                    }
+                return None
+
+            def fake_run_cmd(cmd):
+                # Download von -latest schlägt fehl (z. B. Timeout curl 28)
+                if latest_url in cmd:
+                    raise RuntimeError("curl: (28) Operation timed out")
+                # Download der datierten Ausweichquelle gelingt
+                for arg in cmd:
+                    if arg.endswith(".download"):
+                        with open(arg, "wb") as f:
+                            f.write(b"s" * (150 * 1024))
+                return ""
+
+            with patch("build_features.check_remote_extract", side_effect=mock_check_remote), \
+                 patch("build_features.run_cmd", side_effect=fake_run_cmd), \
+                 patch("shutil.which", return_value=None):
+                path, duration, was_dl, status = build_features.download_extract(latest_url, local_pbf)
+                self.assertEqual(path, local_pbf)
+                self.assertTrue(was_dl)
+                self.assertEqual(status, "downloaded_dated")
+
+    def test_dated_fallback_none_available_falls_back_to_local(self):
+        """-latest mit Schleife + keine datierte Datei -> lokaler Rückgriff wie bisher."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            local_pbf = os.path.join(tmpdir, "liechtenstein-latest.osm.pbf")
+            with open(local_pbf, "wb") as f:
+                f.write(b"x" * (120 * 1024))
+            mtime = time.time() - 3600  # 1 Stunde alt
+            os.utime(local_pbf, (mtime, mtime))
+
+            # Alle Checks liefern None
+            with patch("build_features.check_remote_extract", return_value=None):
+                path, duration, was_dl, status = build_features.download_extract(
+                    "https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf",
+                    local_pbf
+                )
+                self.assertEqual(path, local_pbf)
+                self.assertFalse(was_dl)
+                self.assertEqual(status, "cached_head_failed")
+                self.assertEqual(len(build_features.BUILD_WARNINGS), 1)
+
+    def test_normal_case_latest_ok_unchanged(self):
+        """Normalfall -latest OK -> unverändertes Verhalten (cached_head_ok bzw. fresh_download)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            local_pbf = os.path.join(tmpdir, "austria-latest.osm.pbf")
+            with open(local_pbf, "wb") as f:
+                f.write(b"x" * (120 * 1024))
+            now = time.time()
+            os.utime(local_pbf, (now, now))
+
+            # 1. Datei ist aktuell -> cached_head_ok
+            remote_info = {
+                "status": 200,
+                "last_modified": datetime.fromtimestamp(now, timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT"),
+                "content_length": 120 * 1024,
+                "url": "https://download.geofabrik.de/europe/austria-latest.osm.pbf"
+            }
+            with patch("build_features.check_remote_extract", return_value=remote_info):
+                path, duration, was_dl, status = build_features.download_extract(
+                    "https://download.geofabrik.de/europe/austria-latest.osm.pbf",
+                    local_pbf
+                )
+                self.assertEqual(status, "cached_head_ok")
+                self.assertFalse(was_dl)
+
+            # 2. Server-Datei ist neuer -> fresh_download
+            remote_info_newer = {
+                "status": 200,
+                "last_modified": datetime.fromtimestamp(now + 3600, timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT"),
+                "content_length": 130 * 1024,
+                "url": "https://download.geofabrik.de/europe/austria-latest.osm.pbf"
+            }
+            def fake_run_cmd(cmd):
+                for arg in cmd:
+                    if arg.endswith(".download"):
+                        with open(arg, "wb") as f:
+                            f.write(b"n" * (130 * 1024))
+                return ""
+
+            with patch("build_features.check_remote_extract", return_value=remote_info_newer), \
+                 patch("build_features.run_cmd", side_effect=fake_run_cmd), \
+                 patch("shutil.which", return_value=None):
+                path, duration, was_dl, status = build_features.download_extract(
+                    "https://download.geofabrik.de/europe/austria-latest.osm.pbf",
+                    local_pbf
+                )
+                self.assertEqual(status, "fresh_download")
+                self.assertTrue(was_dl)
+
+    def test_main_exit_codes_10_and_11(self):
+        """Keine Änderungen + cached_head_failed -> Exit 11; ohne Rückgriff -> Exit 10."""
+        # 1. Fall: Keine Änderungen, aber Status cached_head_failed -> Exit 11
+        with tempfile.TemporaryDirectory() as tmpdir:
+            targets = [{"id": "germany", "name": "Deutschland", "filename": "germany-latest.osm.pbf", "url": "https://example.com/de.pbf"}]
+            with patch("build_features.resolve_targets", return_value=("single", targets)), \
+                 patch("build_features.download_extract", return_value=("/path/to/pbf", 0.0, False, "cached_head_failed")), \
+                 patch("build_features.check_fingerprint_changes", return_value=(False, [], {"germany": "unverändert (cached_head_failed)"})), \
+                 patch("build_features.save_build_warnings"):
+                with self.assertRaises(SystemExit) as cm:
+                    build_features.main()
+                self.assertEqual(cm.exception.code, 11)
+
+        # 2. Fall: Keine Änderungen und sauberer Status cached_head_ok -> Exit 10
+        with tempfile.TemporaryDirectory() as tmpdir:
+            targets = [{"id": "germany", "name": "Deutschland", "filename": "germany-latest.osm.pbf", "url": "https://example.com/de.pbf"}]
+            with patch("build_features.resolve_targets", return_value=("single", targets)), \
+                 patch("build_features.download_extract", return_value=("/path/to/pbf", 0.0, False, "cached_head_ok")), \
+                 patch("build_features.check_fingerprint_changes", return_value=(False, [], {"germany": "unverändert (cached_head_ok)"})), \
+                 patch("build_features.save_build_warnings"):
+                with self.assertRaises(SystemExit) as cm:
+                    build_features.main()
+                self.assertEqual(cm.exception.code, 10)
+
     def test_extracts_metadata_no_internal_paths_or_ips(self):
         """extracts-Metadaten enthalten relative Dateinamen, Alter und keine absoluten Pfade oder internen IPs."""
         targets = [
@@ -313,7 +584,7 @@ class TestBuildFeatures(unittest.TestCase):
                 for ext_id, ext_info in metadata["extracts"].items():
                     self.assertNotIn("/", ext_info["filename"])
                     self.assertNotIn("\\", ext_info["filename"])
-                    self.assertIn(ext_info["status"], ["fresh_download", "cached_head_ok", "cached_head_failed", "fallback_after_error"])
+                    self.assertIn(ext_info["status"], ["fresh_download", "downloaded_dated", "cached_head_ok", "cached_head_failed", "fallback_after_error"])
 
     def test_validate_pbf_file(self):
         """PBF-Validierung: Dateien < 100 KB müssen fehlschlagen."""
@@ -328,9 +599,17 @@ class TestBuildFeatures(unittest.TestCase):
             valid_size_file = os.path.join(tmpdir, "valid_size.pbf")
             with open(valid_size_file, "wb") as f:
                 f.write(b"x" * (105 * 1024))
-            # Ohne osmium (oder wenn osmium gemockt wird) besteht die Größenprüfung
-            with patch("shutil.which", return_value=None):
+            # Mit gemocktem osmium: sicherstellen, dass '-F pbf' übergeben wird
+            with patch("shutil.which", return_value="/usr/bin/osmium"), \
+                 patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=0)
                 build_features.validate_pbf_file(valid_size_file)
+                mock_run.assert_called_once_with(
+                    ["/usr/bin/osmium", "fileinfo", "-F", "pbf", valid_size_file],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
 
     def test_check_remote_extract_follows_redirects_strictly_as_head(self):
         """302-Weiterleitung muss manuell per HEAD verfolgt werden (kein GET-Download)."""
@@ -677,6 +956,144 @@ class TestBuildFingerprints(unittest.TestCase):
         self.assertTrue(has_changed)
         self.assertTrue(any("Kein gültiger Build-Fingerprint" in r for r in reasons))
 
+    def test_merge_geojson_files_deduplicates_by_id(self):
+        """merge_geojson_files führt mehrere FeatureCollections zusammen und entfernt Duplikate."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file1 = os.path.join(tmpdir, "part1.geojson")
+            file2 = os.path.join(tmpdir, "part2.geojson")
+            merged = os.path.join(tmpdir, "merged.geojson")
+
+            with open(file1, "w", encoding="utf-8") as f:
+                json.dump({
+                    "type": "FeatureCollection",
+                    "features": [
+                        {"type": "Feature", "id": "w1", "properties": {"v": 1}},
+                        {"type": "Feature", "id": "w2", "properties": {"v": 1}}
+                    ]
+                }, f)
+
+            with open(file2, "w", encoding="utf-8") as f:
+                json.dump({
+                    "type": "FeatureCollection",
+                    "features": [
+                        {"type": "Feature", "id": "w2", "properties": {"v": 2}},  # Duplikat
+                        {"type": "Feature", "id": "w3", "properties": {"v": 1}}
+                    ]
+                }, f)
+
+            build_features.merge_geojson_files([file1, file2], merged)
+
+            with open(merged, "r", encoding="utf-8") as f:
+                result = json.load(f)
+
+            self.assertEqual(result["type"], "FeatureCollection")
+            features = result["features"]
+            self.assertEqual(len(features), 3)
+            ids = [feat["id"] for feat in features]
+            self.assertEqual(ids, ["w1", "w2", "w3"])
+            # Erstes Auftreten bleibt erhalten
+            self.assertEqual(features[1]["properties"]["v"], 1)
+
+    def test_download_preserves_partial_file_on_curl_error(self):
+        """Bei curl-Netzwerkfehlern oder Timeouts bleibt die .download-Datei für Resume (-C -) erhalten."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = os.path.join(tmpdir, "extract-latest.osm.pbf")
+            tmp_download = target + ".download"
+
+            # Simuliere abgebrochenen Download derselben Quelle, der schon 50 KB geschrieben hat
+            info = {"status": 200, "url": "https://example.com/test.pbf",
+                    "last_modified": "Thu, 01 Oct 2026 01:02:00 GMT", "content_length": 3500000}
+            with open(tmp_download, "wb") as f:
+                f.write(b"x" * 50000)
+            with open(tmp_download + ".source.json", "w", encoding="utf-8") as f:
+                json.dump({k: info[k] for k in ("url", "last_modified", "content_length")}, f)
+
+            with patch("build_features.run_cmd", side_effect=RuntimeError("curl (28) timeout")):
+                with self.assertRaises(RuntimeError):
+                    build_features._download_and_replace("https://example.com/test.pbf", target, remote_info=info)
+
+            # .download-Datei muss erhalten geblieben sein!
+            self.assertTrue(os.path.exists(tmp_download))
+            self.assertEqual(os.path.getsize(tmp_download), 50000)
+
+
+class TestDownloadResume(unittest.TestCase):
+    """curl -C - darf nur einen Teil-Download derselben Quelle und desselben Serverstands fortsetzen."""
+
+    URL = "https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf"
+    INFO = {"status": 200, "url": "https://download.geofabrik.de/europe/liechtenstein-261001.osm.pbf",
+            "last_modified": "Thu, 01 Oct 2026 01:02:00 GMT", "content_length": 3500000}
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.target = os.path.join(self.tmpdir.name, "liechtenstein-latest.osm.pbf")
+        self.partial = self.target + ".download"
+        self.marker = self.partial + ".source.json"
+        self.seen = {}
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def _write_partial(self, marker=None):
+        with open(self.partial, "wb") as f:
+            f.write(b"alt" * 1000)
+        if marker is not None:
+            with open(self.marker, "w", encoding="utf-8") as f:
+                json.dump(marker, f)
+
+    def _fake_curl(self, fail=False):
+        def run(cmd):
+            # Zustand zum Zeitpunkt des curl-Aufrufs festhalten
+            self.seen["partial_kept"] = os.path.exists(self.partial)
+            with open(self.marker, encoding="utf-8") as f:
+                self.seen["marker"] = json.load(f)
+            with open(self.partial, "ab") as f:
+                f.write(b"y" * (150 * 1024))
+            if fail:
+                raise RuntimeError("curl: (28) Operation timed out")
+            return ""
+        return run
+
+    def _download(self, info, fail=False):
+        with patch("build_features.run_cmd", side_effect=self._fake_curl(fail)), \
+             patch("shutil.which", return_value=None):
+            return build_features._download_and_replace(self.URL, self.target, remote_info=info)
+
+    def _marker_for(self, info):
+        return {"url": info["url"], "last_modified": info["last_modified"], "content_length": info["content_length"]}
+
+    def test_partial_without_marker_is_discarded(self):
+        self._write_partial()
+        self._download(self.INFO)
+        self.assertFalse(self.seen["partial_kept"])
+        self.assertEqual(self.seen["marker"], self._marker_for(self.INFO))
+
+    def test_partial_from_same_source_is_resumed(self):
+        self._write_partial(self._marker_for(self.INFO))
+        self._download(self.INFO)
+        self.assertTrue(self.seen["partial_kept"])
+        with open(self.target, "rb") as f:
+            self.assertTrue(f.read().startswith(b"alt"))
+
+    def test_partial_from_older_server_state_is_discarded(self):
+        old = dict(self.INFO, last_modified="Wed, 30 Sep 2026 01:02:00 GMT")
+        self._write_partial(self._marker_for(old))
+        self._download(self.INFO)
+        self.assertFalse(self.seen["partial_kept"])
+
+    def test_curl_failure_keeps_partial_and_marker_success_cleans_up(self):
+        with self.assertRaises(RuntimeError):
+            self._download(self.INFO, fail=True)
+        self.assertTrue(os.path.exists(self.partial))
+        self.assertTrue(os.path.exists(self.marker))
+
+        self._download(self.INFO)
+        self.assertTrue(self.seen["partial_kept"])
+        self.assertFalse(os.path.exists(self.partial))
+        self.assertFalse(os.path.exists(self.marker))
+        self.assertTrue(os.path.exists(self.target))
+
 
 if __name__ == "__main__":
     unittest.main()
+
