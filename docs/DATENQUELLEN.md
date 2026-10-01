@@ -6,6 +6,23 @@ Die fachlichen Objekte der Karte stammen aus [OpenStreetMap (OSM)](https://www.o
 
 Fehlen Objekte oder sind Angaben falsch, sollte die Korrektur direkt in OpenStreetMap vorgenommen werden. Siehe dazu auch die [FAQ](FAQ.md).
 
+## Verwendete OSM-Tags
+
+Die maschinenlesbare Liste aller ausgewerteten Tags liegt unter [`openfiremap.org/taginfo.json`](https://openfiremap.org/taginfo.json) (Quelle: `public/taginfo.json`) und wird von [Taginfo](https://taginfo.openstreetmap.org/projects) eingelesen. Kurzfassung:
+
+| Objekt | Tags | Darstellung |
+| --- | --- | --- |
+| Feuerwache | `amenity=fire_station`, `building=fire_station` | ab Zoom 12, zusammengehörige Objekte werden zu einem Marker gebündelt |
+| Hydrant | `emergency=fire_hydrant` | ab Zoom 15, Symbol nach `fire_hydrant:type` (`pillar`, `underground`, `wall`, `pipe`, `dry_barrel`) |
+| Württembergischer Schachthydrant | `fire_hydrant:type=underground` + `fire_hydrant:style=wsh` | eigenes Symbol mit Hinweis |
+| Löschwasserentnahme | `emergency=water_tank`, `suction_point`, `fire_water_pond`, `cistern` | ab Zoom 15, blaues Symbol |
+| Defibrillator | `emergency=defibrillator` | ab Zoom 15 |
+| Gemeindegrenze | `boundary=administrative` + `admin_level=8` | Overlay ab Zoom 14 |
+
+Im Tooltip werden alle Tags eines Objekts angezeigt. Der CSV-Export übernimmt zusätzlich `name`, `ref`, `operator`, `addr:*` sowie `fire_hydrant:diameter`, `fire_hydrant:pressure` und `fire_hydrant:flow` (ersatzweise `diameter`, `pressure`, `flow`).
+
+Wer neue Tags auswertet, ergänzt sie in `public/taginfo.json` und passt `data_updated` an. `test/taginfo.test.js` schlägt fehl, wenn ein in Overpass-Abfragen oder Pipeline-Filtern verwendeter Tag dort fehlt.
+
 ## Geofabrik
 
 Für die vorberechnete Pipeline werden regionale OSM-PBF-Extrakte von [Geofabrik](https://download.geofabrik.de/) verarbeitet. Die Extrakte werden gefiltert, zu relevanten Objektarten verarbeitet und als PMTiles veröffentlicht.

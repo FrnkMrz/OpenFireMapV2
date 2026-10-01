@@ -1,0 +1,183 @@
+{
+  "$schema": "https://raw.githubusercontent.com/taginfo/taginfo-projects/master/taginfo-project-schema.json",
+  "data_format": 1,
+  "data_url": "https://openfiremap.org/taginfo.json",
+  "data_updated": "20261001T120000Z",
+  "project": {
+    "name": "OpenFireMap",
+    "description": "Interactive web map of fire-service-related objects: fire stations, fire hydrants, firefighting water supplies and defibrillators.",
+    "project_url": "https://openfiremap.org/",
+    "doc_url": "https://github.com/FrnkMrz/OpenFireMapV2/blob/main/docs/DATENQUELLEN.md#verwendete-osm-tags",
+    "icon_url": "https://openfiremap.org/favicons/favicon-16x16.png",
+    "contact_name": "Frank März",
+    "contact_email": "info@openfiremap.org"
+  },
+  "tags": [
+    {
+      "key": "amenity",
+      "value": "fire_station",
+      "object_types": ["node", "area"],
+      "description": "Shown as fire station marker from zoom 12. Nearby objects of the same station are merged into one marker."
+    },
+    {
+      "key": "building",
+      "value": "fire_station",
+      "object_types": ["node", "area"],
+      "description": "Treated like amenity=fire_station (fire station marker), merged with the station it belongs to."
+    },
+    {
+      "key": "fire_station:type",
+      "object_types": ["node", "area"],
+      "description": "Subtype column in data exports."
+    },
+    {
+      "key": "emergency",
+      "value": "fire_hydrant",
+      "object_types": ["node"],
+      "description": "Shown as red hydrant marker from zoom 15, including a 100 m range circle on selection."
+    },
+    {
+      "key": "fire_hydrant:type",
+      "value": "pillar",
+      "object_types": ["node"],
+      "description": "Hydrant symbol with letter 'O'."
+    },
+    {
+      "key": "fire_hydrant:type",
+      "value": "underground",
+      "object_types": ["node"],
+      "description": "Hydrant symbol with letter 'U'."
+    },
+    {
+      "key": "fire_hydrant:type",
+      "value": "wall",
+      "object_types": ["node"],
+      "description": "Dedicated wall hydrant symbol."
+    },
+    {
+      "key": "fire_hydrant:type",
+      "value": "pipe",
+      "object_types": ["node"],
+      "description": "Hydrant symbol with letter 'I'."
+    },
+    {
+      "key": "fire_hydrant:type",
+      "value": "dry_barrel",
+      "object_types": ["node"],
+      "description": "Hydrant symbol with letter 'Ø'."
+    },
+    {
+      "key": "fire_hydrant:style",
+      "value": "wsh",
+      "object_types": ["node"],
+      "description": "Together with fire_hydrant:type=underground: shown with a separate symbol and hint for the Württemberg shaft hydrant (Württembergischer Schachthydrant)."
+    },
+    {
+      "key": "fire_hydrant:diameter",
+      "object_types": ["node"],
+      "description": "Shown in the tooltip and included in data exports."
+    },
+    {
+      "key": "fire_hydrant:pressure",
+      "object_types": ["node"],
+      "description": "Shown in the tooltip and included in data exports."
+    },
+    {
+      "key": "fire_hydrant:flow",
+      "object_types": ["node"],
+      "description": "Shown in the tooltip and included in data exports."
+    },
+    {
+      "key": "diameter",
+      "object_types": ["node"],
+      "description": "Fallback for fire_hydrant:diameter in data exports."
+    },
+    {
+      "key": "pressure",
+      "object_types": ["node"],
+      "description": "Fallback for fire_hydrant:pressure in data exports."
+    },
+    {
+      "key": "flow",
+      "object_types": ["node"],
+      "description": "Fallback for fire_hydrant:flow in data exports."
+    },
+    {
+      "key": "emergency",
+      "value": "water_tank",
+      "object_types": ["node", "area"],
+      "description": "Shown as blue water supply marker from zoom 15."
+    },
+    {
+      "key": "emergency",
+      "value": "suction_point",
+      "object_types": ["node", "area"],
+      "description": "Shown as blue water supply marker from zoom 15."
+    },
+    {
+      "key": "emergency",
+      "value": "fire_water_pond",
+      "object_types": ["node", "area"],
+      "description": "Shown as blue water supply marker from zoom 15."
+    },
+    {
+      "key": "emergency",
+      "value": "cistern",
+      "object_types": ["node", "area"],
+      "description": "Shown as blue water supply marker from zoom 15."
+    },
+    {
+      "key": "emergency",
+      "value": "defibrillator",
+      "object_types": ["node"],
+      "description": "Shown as defibrillator (AED) marker from zoom 15."
+    },
+    {
+      "key": "boundary",
+      "value": "administrative",
+      "object_types": ["way"],
+      "description": "Municipality boundaries drawn as overlay from zoom 14 and in map exports."
+    },
+    {
+      "key": "admin_level",
+      "value": "8",
+      "object_types": ["way"],
+      "description": "Restricts the boundary overlay to municipality level."
+    },
+    {
+      "key": "name",
+      "object_types": ["node", "way", "relation"],
+      "description": "Marker tooltip title and label in data exports."
+    },
+    {
+      "key": "ref",
+      "object_types": ["node", "way", "relation"],
+      "description": "Label in data exports when no name is set."
+    },
+    {
+      "key": "operator",
+      "object_types": ["node", "way", "relation"],
+      "description": "Included in data exports."
+    },
+    {
+      "key": "addr:street",
+      "object_types": ["node", "way", "relation"],
+      "description": "Included in data exports."
+    },
+    {
+      "key": "addr:housenumber",
+      "object_types": ["node", "way", "relation"],
+      "description": "Included in data exports."
+    },
+    {
+      "key": "addr:postcode",
+      "object_types": ["node", "way", "relation"],
+      "description": "Included in data exports."
+    },
+    {
+      "key": "addr:city",
+      "object_types": ["node", "way", "relation"],
+      "description": "Included in data exports."
+    }
+  ]
+}
