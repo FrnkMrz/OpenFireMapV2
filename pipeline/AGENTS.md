@@ -12,11 +12,11 @@ This repository builds and serves optimized static GeoJSON datasets of fire-serv
 - **Nginx (Alpine)**: Static web server on port 8080 with CORS and gzip enabled
 - **Python 3.12 + osmium-tool (C++)**: Fast OSM PBF filtering and GeoJSON export
 - **Geofabrik**: Source for OSM PBF extracts
-- **Target environment**: Proxmox VM 102 (`docker-lab-KW3`), Debian 13, 2 vCPU, 4 GiB RAM
+- **Target environment**: Proxmox VM 102 (`docker-lab-KW3`), Debian 13, 2 vCPU, 8 GB RAM (7.7 GiB usable); the builder container uses a 2 GB `/dev/shm` RAM disk (`shm_size`)
 
 ## Key Principles & Constraints
 
-1. **No heavy databases**: Do NOT introduce PostGIS or a full Overpass API instance. The 4 GiB RAM limit of VM 102 must be respected.
+1. **No heavy databases**: Do NOT introduce PostGIS or a full Overpass API instance. The 8 GB RAM of VM 102 (shared with the web container and the OS page cache for the PBF extracts) must be respected.
 2. **Static-First**: The web container only serves pre-built static GeoJSON and metadata JSON files.
 3. **High Performance**: Use `osmium-tool` for filtering and geometry generation.
 4. **CORS & Compression**: All endpoints must allow cross-origin requests (`Access-Control-Allow-Origin: *`) and have gzip enabled.
