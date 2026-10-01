@@ -31,6 +31,7 @@ Um unnötige CPU-Last (25–30 min Buildzeit), Bandbreite und vor allem Kachel-I
 | `built` | Mindestens ein OSM-Extrakt neu/geändert, **oder** Builder-Fingerprint geändert, **oder** `FORCE_BUILD=true`, **oder** kein gültiger Fingerprint vorhanden (erster Lauf) | Build + R2-Upload + Verifikation + Published-Fingerprint |
 | `upload_only` | Quelldaten und Builder unverändert, aber der **lokale** Stand ist noch nicht auf R2 veröffentlicht (z. B. nach Upload-Fehler) | Kein Build, nur R2-Upload + Verifikation + Published-Fingerprint |
 | `skipped_no_changes` | Quelldaten unverändert **und** R2 ist bereits synchron zum lokalen Stand | Kein Build, kein Upload, Verifikation läuft als Heartbeat |
+| `skipped_stale_source` | Keine Änderungen an lokalen Vorlagen, aber Quelle für mindestens ein Land nicht prüfbar oder fehlerhaft (Exit 11) **und** R2 synchron | Kein Build, kein Upload, Warnungen protokolliert |
 
 ### Fingerprints & Erkennung
 
@@ -104,7 +105,7 @@ Die Pipeline lässt sich über das vorgefertigte Home-Assistant-Package unter `p
   Prüfung (`checked_at`). Bei Überschreitung von 30 Stunden schlägt die Automation
   `openfiremap_heartbeat_missing` Alarm (entkoppelt vom tatsächlichen Alter der OSM-Daten).
 - `OpenFireMap Sync Ergebnis` spiegelt den Ausgang des letzten Update-Laufs (`built`,
-  `upload_only`, `skipped_no_changes`, `failed`).
+  `upload_only`, `skipped_no_changes`, `skipped_stale_source`, `failed`).
 - Ein echter `upload_ok: false`-Status löst den Sync-Alarm nach 15 Minuten aus.
 - Ein Hydranten-REST-Ausfall wird nicht als Bestandseinbruch auf null interpretiert.
 

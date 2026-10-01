@@ -14,8 +14,9 @@ import shutil
 import subprocess
 import urllib.request
 import urllib.parse
+import urllib.error
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 
 # Konfiguration über Umgebungsvariablen
@@ -306,6 +307,12 @@ def check_remote_extract(url, max_redirects=5, timeout=15):
                 else:
                     log(f"Hinweis: Unerwarteter HTTP-Status {status} für {current_url}")
                     return None
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                log(f"Hinweis: Datei nicht vorhanden (HTTP 404): {current_url}")
+            else:
+                log(f"Hinweis: HTTP-Fehler {e.code} für {current_url}: {e.reason}")
+            return None
         except Exception as e:
             log(f"Hinweis: HEAD-Anfrage für {current_url} nicht verfügbar ({e}).")
             return None
@@ -314,54 +321,83 @@ def check_remote_extract(url, max_redirects=5, timeout=15):
     return None
 
 
-def download_extract(url, target_path):
+def get_dated_extract_candidates(url):
     """
-    Lädt einen PBF-Auszug herunter mit Ausfallsicherheit:
-    - Prüft vorab per HEAD-Request das Server-Änderungsdatum und die Dateigröße.
-    - curl mit -sS, --max-redirs 5, --retry-all-errors gegen Geofabrik-Weiterleitungsschleifen.
-    - Validiert die Datei vor dem atomaren Verschieben (os.replace).
-    - Fällt bei Download-Fehlern robust auf eine vorhandene lokale Datei zurück
-      (sofern <= MAX_FALLBACK_AGE_HOURS).
-    Gibt (target_path, duration, was_downloaded, status) zurück.
+    Leitet für eine -latest.osm.pbf URL die datierten Kandidaten ab:
+    <basis>-YYMMDD.osm.pbf für heute, gestern, vorgestern (UTC).
+    Gibt eine Liste von Tupeln zurück: [(candidate_url, date_str), ...]
     """
-    log(f"Prüfe OSM-Auszug: {target_path}")
-    remote_info = check_remote_extract(url)
-    head_ok = (remote_info is not None and remote_info.get("status") == 200)
+    suffix = "-latest.osm.pbf"
+    if not url.endswith(suffix):
+        return []
+    base_url = url[:-len(suffix)]
+    candidates = []
+    now_utc = datetime.now(timezone.utc)
+    for days_back in (0, 1, 2):
+        d = now_utc - timedelta(days=days_back)
+        date_str = d.strftime("%y%m%d")
+        candidates.append((f"{base_url}-{date_str}.osm.pbf", date_str))
+    return candidates
 
-    if os.path.exists(target_path) and not FORCE_DOWNLOAD:
-        local_size = os.path.getsize(target_path)
-        local_size_mb = local_size / (1024 * 1024)
-        local_mtime = os.path.getmtime(target_path)
-        local_age_hours = (time.time() - local_mtime) / 3600
 
-        if head_ok and remote_info.get("last_modified"):
-            try:
-                remote_dt = parsedate_to_datetime(remote_info["last_modified"])
-                remote_ts = remote_dt.timestamp()
-                expected_size = remote_info.get("content_length")
+def find_dated_extract_candidate(url, timeout=15):
+    """
+    Prüft datierte Kandidaten für eine -latest.osm.pbf URL per HEAD (heute, gestern, vorgestern UTC).
+    Kurzer Timeout (standardmäßig 15 s je Kandidat), HTTP 404 ist erwartbar und kein Fehler.
+    Gibt (candidate_url, remote_info) für die erste Datei mit HTTP 200 zurück,
+    oder None, wenn keine verfügbar ist.
+    """
+    candidates = get_dated_extract_candidates(url)
+    for cand_url, _ in candidates:
+        info = check_remote_extract(cand_url, timeout=timeout)
+        if info and info.get("status") == 200:
+            return cand_url, info
+    return None
 
-                size_matches = (expected_size is None or local_size == expected_size)
-                if local_mtime >= (remote_ts - 5) and size_matches:
-                    log(f"Auszug ist aktuell (Server: {remote_info['last_modified']}, {local_size_mb:.1f} MB). Überspringe Download.")
-                    return target_path, 0.0, False, "cached_head_ok"
-            except Exception as ex:
-                log(f"Hinweis beim Timestamp-Vergleich ({target_path}): {ex}")
-        elif not head_ok:
-            # HEAD-Anfrage nicht verfügbar (z. B. Timeout bei Geofabrik)
-            if local_age_hours <= MAX_FALLBACK_AGE_HOURS:
-                warn_msg = (
-                    f"HEAD-Prüfung für {url} nicht verfügbar. Verwende vorhandene lokale Datei "
-                    f"{os.path.basename(target_path)} (Alter: {local_age_hours:.1f}h, {local_size_mb:.1f} MB)."
-                )
-                record_warning(warn_msg)
-                return target_path, 0.0, False, "cached_head_failed"
-            else:
-                log(
-                    f"HEAD-Prüfung fehlgeschlagen und lokale Datei ist älter als {MAX_FALLBACK_AGE_HOURS}h "
-                    f"({local_age_hours:.1f}h). Versuche Download trotz fehlendem HEAD."
-                )
 
-    log(f"Starte Download mit curl: {url}")
+def is_remote_newer(remote_info, target_path):
+    """
+    Prüft, ob eine gefundene Remote-Datei neuer als die lokale Datei ist.
+    Vergleicht AUSSCHLIESSLICH Last-Modified (HEAD) gegen die lokale mtime
+    (mit 5s Toleranz wie im Standard-Check). Niemals das Datum aus dem Dateinamen.
+    Gibt (is_newer, remote_ts) zurück.
+    """
+    if not os.path.exists(target_path):
+        return True, None
+
+    local_mtime = os.path.getmtime(target_path)
+    local_size = os.path.getsize(target_path)
+    expected_size = remote_info.get("content_length")
+
+    if not remote_info.get("last_modified"):
+        log(f"Hinweis: Kein Last-Modified-Header in Remote-Info für {target_path} vorhanden.")
+        return True, None
+
+    try:
+        remote_dt = parsedate_to_datetime(remote_info["last_modified"])
+        remote_ts = remote_dt.timestamp()
+    except Exception as ex:
+        log(f"Hinweis beim Parsen von Last-Modified ({remote_info['last_modified']}): {ex}")
+        return True, None
+
+    size_matches = (expected_size is None or local_size == expected_size)
+    if local_mtime >= (remote_ts - 5) and size_matches:
+        return False, remote_ts
+    return True, remote_ts
+
+
+def run_cmd(cmd):
+    log(f"Ausführen: {' '.join(cmd)}")
+    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if res.returncode != 0:
+        log(f"FEHLER: {res.stderr}")
+        raise RuntimeError(f"Befehl fehlgeschlagen: {' '.join(cmd)}\n{res.stderr}")
+    return res.stdout
+
+
+def _download_and_replace(download_url, target_path, status_label="fresh_download"):
+    """Lädt einen PBF-Auszug per curl herunter, validiert ihn und ersetzt die Zieldatei atomar."""
+    log(f"Starte Download mit curl: {download_url}")
     tmp_download = target_path + ".download"
     start_time = time.time()
 
@@ -375,7 +411,7 @@ def download_extract(url, target_path):
         "--connect-timeout", "30",
         "--max-time", "1800",  # Bis zu 30 Minuten für große Extrakte (z. B. Deutschland 4,6 GB)
         "-o", tmp_download,
-        url
+        download_url
     ]
 
     try:
@@ -384,50 +420,117 @@ def download_extract(url, target_path):
         os.replace(tmp_download, target_path)
         duration = time.time() - start_time
         total_mb = os.path.getsize(target_path) / (1024 * 1024)
-        log(f"Download abgeschlossen: {total_mb:.1f} MB in {duration:.1f}s.")
-        return target_path, duration, True, "fresh_download"
-    except Exception as e:
-        # 1. Angefangene/korrupte .download-Datei verwerfen
+        log(f"Download abgeschlossen ({status_label}, Quelle: {download_url}): {total_mb:.1f} MB in {duration:.1f}s.")
+        return target_path, duration, True, status_label
+    finally:
         if os.path.exists(tmp_download):
             try:
                 os.remove(tmp_download)
             except Exception:
                 pass
 
-        # 2. Prüfen, ob eine lokale Datei als Fallback verwendet werden kann
-        if os.path.exists(target_path):
+
+def download_extract(url, target_path):
+    """
+    Lädt einen PBF-Auszug herunter mit mehrstufiger Ausfallsicherheit:
+    1. Prüft vorab per HEAD-Request das Server-Änderungsdatum und die Dateigröße von -latest.
+    2. Ist der Auszug aktuell, wird der Download übersprungen (cached_head_ok).
+    3. Scheitert -latest (Weiterleitungsschleife, Timeout, Downloadfehler), wird automatisch
+       nach datierten Tagesextrakten (heute, gestern, vorgestern UTC) als Ausweichquelle gesucht,
+       bevor auf eine lokale Vorlagendatei zurückgegriffen wird.
+    4. Ist die datierte Datei nicht neuer als lokal, gilt cached_head_ok.
+    5. Ist sie neuer, wird sie geladen und als target_path (<land>-latest.osm.pbf) abgelegt
+       (Status: downloaded_dated).
+    6. Erst wenn auch datierte Kandidaten scheitern, greift der bestehende lokale Rückgriff
+       (<= MAX_FALLBACK_AGE_HOURS) mit Status cached_head_failed bzw. fallback_after_error.
+    Gibt (target_path, duration, was_downloaded, status) zurück.
+    """
+    log(f"Prüfe OSM-Auszug: {target_path}")
+    remote_info = check_remote_extract(url)
+    head_ok = (remote_info is not None and remote_info.get("status") == 200)
+
+    # 1. Normalfall: HEAD auf -latest war erfolgreich
+    if head_ok:
+        if os.path.exists(target_path) and not FORCE_DOWNLOAD:
+            local_size = os.path.getsize(target_path)
+            local_size_mb = local_size / (1024 * 1024)
             local_mtime = os.path.getmtime(target_path)
-            age_hours = (time.time() - local_mtime) / 3600
-            local_mb = os.path.getsize(target_path) / (1024 * 1024)
 
-            if age_hours <= MAX_FALLBACK_AGE_HOURS:
+            if remote_info.get("last_modified"):
+                try:
+                    remote_dt = parsedate_to_datetime(remote_info["last_modified"])
+                    remote_ts = remote_dt.timestamp()
+                    expected_size = remote_info.get("content_length")
+
+                    size_matches = (expected_size is None or local_size == expected_size)
+                    if local_mtime >= (remote_ts - 5) and size_matches:
+                        log(f"Auszug ist aktuell (Server: {remote_info['last_modified']}, {local_size_mb:.1f} MB). Überspringe Download.")
+                        return target_path, 0.0, False, "cached_head_ok"
+                except Exception as ex:
+                    log(f"Hinweis beim Timestamp-Vergleich ({target_path}): {ex}")
+
+        # Download von -latest versuchen
+        try:
+            return _download_and_replace(url, target_path, status_label="fresh_download")
+        except Exception as e:
+            log(f"Download von {url} fehlgeschlagen ({e}). Prüfe datierte Ausweichquellen...")
+
+    # 2. Ausweichquelle: Datierte Tagesextrakte prüfen (wenn HEAD fehlschlug oder Download von -latest fehlschlug)
+    dated_candidate = find_dated_extract_candidate(url, timeout=15)
+    attempted_dated_download = False
+    is_cand_newer = False
+    if dated_candidate:
+        cand_url, cand_info = dated_candidate
+        log(f"Gefundene datierte Ausweichquelle: {cand_url} (HTTP 200, Last-Modified: {cand_info.get('last_modified')})")
+
+        is_cand_newer, _ = is_remote_newer(cand_info, target_path)
+        if not is_cand_newer and not FORCE_DOWNLOAD:
+            local_size = os.path.getsize(target_path)
+            local_size_mb = local_size / (1024 * 1024)
+            log(f"Auszug ist aktuell (Server-Ausweichquelle: {cand_url}, {cand_info.get('last_modified')}, {local_size_mb:.1f} MB). Überspringe Download.")
+            return target_path, 0.0, False, "cached_head_ok"
+
+        attempted_dated_download = True
+        try:
+            return _download_and_replace(cand_url, target_path, status_label="downloaded_dated")
+        except Exception as e:
+            log(f"Download der datierten Ausweichquelle {cand_url} fehlgeschlagen ({e}).")
+
+    # 3. Lokaler Rückgriff (sofern <= MAX_FALLBACK_AGE_HOURS)
+    if os.path.exists(target_path):
+        local_mtime = os.path.getmtime(target_path)
+        local_size = os.path.getsize(target_path)
+        local_size_mb = local_size / (1024 * 1024)
+        local_age_hours = (time.time() - local_mtime) / 3600
+
+        if local_age_hours <= MAX_FALLBACK_AGE_HOURS:
+            if head_ok or attempted_dated_download:
+                status_key = "fallback_after_error"
                 warn_msg = (
-                    f"Download von {url} fehlgeschlagen ({e}). "
+                    f"Download von {url} (inkl. datierter Ausweichquellen) fehlgeschlagen. "
                     f"Verwende vorhandene lokale Datei {os.path.basename(target_path)} als Fallback "
-                    f"(Alter: {age_hours:.1f}h, {local_mb:.1f} MB)."
+                    f"(Alter: {local_age_hours:.1f}h, {local_size_mb:.1f} MB)."
                 )
-                record_warning(warn_msg)
-                return target_path, 0.0, False, "fallback_after_error"
             else:
-                err_msg = (
-                    f"Download von {url} fehlgeschlagen ({e}) und vorhandene lokale Datei "
-                    f"{os.path.basename(target_path)} ist zu alt ({age_hours:.1f}h > {MAX_FALLBACK_AGE_HOURS}h)."
+                status_key = "cached_head_failed"
+                warn_msg = (
+                    f"HEAD-Prüfung für {url} und datierte Ausweichquellen nicht verfügbar. "
+                    f"Verwende vorhandene lokale Datei {os.path.basename(target_path)} "
+                    f"(Alter: {local_age_hours:.1f}h, {local_size_mb:.1f} MB)."
                 )
-                log(f"FEHLER: {err_msg}")
-                raise RuntimeError(err_msg) from e
+            record_warning(warn_msg)
+            return target_path, 0.0, False, status_key
         else:
-            err_msg = f"Download von {url} fehlgeschlagen ({e}) und keine lokale Datei vorhanden."
+            err_msg = (
+                f"Download von {url} fehlgeschlagen und vorhandene lokale Datei "
+                f"{os.path.basename(target_path)} ist zu alt ({local_age_hours:.1f}h > {MAX_FALLBACK_AGE_HOURS}h)."
+            )
             log(f"FEHLER: {err_msg}")
-            raise RuntimeError(err_msg) from e
-
-
-def run_cmd(cmd):
-    log(f"Ausführen: {' '.join(cmd)}")
-    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    if res.returncode != 0:
-        log(f"FEHLER: {res.stderr}")
-        raise RuntimeError(f"Befehl fehlgeschlagen: {' '.join(cmd)}\n{res.stderr}")
-    return res.stdout
+            raise RuntimeError(err_msg)
+    else:
+        err_msg = f"Download von {url} fehlgeschlagen und keine lokale Datei vorhanden."
+        log(f"FEHLER: {err_msg}")
+        raise RuntimeError(err_msg)
 
 
 def compute_builder_hash(targets=None, script_content=None):
@@ -864,6 +967,17 @@ def main():
                 "age_hours": pbf_age_h,
                 "status": status
             }
+        else:
+            raw_sizes[target["id"]] = 0.0
+            extracts_meta[target["id"]] = {
+                "name": target["name"],
+                "filename": target["filename"],
+                "size_bytes": 0,
+                "size_mb": 0.0,
+                "mtime": "",
+                "age_hours": 0.0,
+                "status": status
+            }
 
     total_download_duration = sum(download_times)
 
@@ -881,6 +995,17 @@ def main():
         status_str = ", ".join(status_parts) if status_parts else "alle unverändert"
         log(f"Keine Änderungen seit Build {last_gen} – Build übersprungen ({status_str})")
         save_build_warnings()
+
+        # Fix B: Wenn Quelle für mindestens ein Land nicht prüfbar/fehlerhaft war (Exit 11)
+        stale_statuses = {"cached_head_failed", "fallback_after_error"}
+        stale_countries = [
+            cid for cid, meta in extracts_meta.items()
+            if meta.get("status") in stale_statuses
+        ]
+        if stale_countries:
+            log(f"Hinweis: Quelle für folgende Länder veraltet oder nicht prüfbar: {', '.join(stale_countries)} (Exit 11)")
+            sys.exit(11)
+
         sys.exit(10)
 
     log(f"=== Änderungen erkannt ({len(reasons)} Gründe) – starte Build ===")

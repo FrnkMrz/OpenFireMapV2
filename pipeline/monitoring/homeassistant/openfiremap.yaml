@@ -176,6 +176,7 @@ rest:
         value_template: "{{ value_json.checked_at | default('unknown') }}"
         icon: "mdi:calendar-clock"
 
+      # Mögliche Werte: built, upload_only, skipped_no_changes, skipped_stale_source, failed
       - name: "OpenFireMap Sync Ergebnis"
         unique_id: "openfiremap_sync_result"
         value_template: "{{ value_json.result | default('unknown') }}"

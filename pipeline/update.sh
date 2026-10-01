@@ -155,7 +155,7 @@ write_sync_status "$INIT_CHECKED_AT" "" "$INIT_BUILD_GEN" "$INIT_LOCAL_GEN" "" "
 BUILDER_EXIT=0
 FORCE_DOWNLOAD=${FORCE_DOWNLOAD:-false} FORCE_BUILD=${FORCE_BUILD:-false} docker compose run --rm builder >> "$LOG_FILE" 2>&1 || BUILDER_EXIT=$?
 
-if [ "$BUILDER_EXIT" -ne 0 ] && [ "$BUILDER_EXIT" -ne 10 ]; then
+if [ "$BUILDER_EXIT" -ne 0 ] && [ "$BUILDER_EXIT" -ne 10 ] && [ "$BUILDER_EXIT" -ne 11 ]; then
   BUILD_ERR="FEHLER: Daten-Build (builder) fehlgeschlagen (Exit-Code ${BUILDER_EXIT})!"
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] ${BUILD_ERR}" >> "$LOG_FILE"
   write_sync_status "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "failed" "$INIT_BUILD_GEN" "$INIT_LOCAL_GEN" "" "false" "$INIT_LOCAL_BYTES" "" "$INIT_OVER_LIMIT" "false" "$BUILD_ERR"
@@ -192,11 +192,16 @@ fi
 BUILD_RESULT=""
 DO_UPLOAD=false
 
-if [ "$BUILDER_EXIT" -eq 10 ]; then
+if [ "$BUILDER_EXIT" -eq 10 ] || [ "$BUILDER_EXIT" -eq 11 ]; then
   if fingerprints_match && [ -n "$LOCAL_GEN" ] && [ "$PUBLIC_GEN_PRE" = "$LOCAL_GEN" ]; then
-    BUILD_RESULT="skipped_no_changes"
+    if [ "$BUILDER_EXIT" -eq 11 ]; then
+      BUILD_RESULT="skipped_stale_source"
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Keine Änderungen, aber Quelle für mindestens ein Land veraltet oder nicht erreichbar (Exit-Code 11). Überspringe Upload." >> "$LOG_FILE"
+    else
+      BUILD_RESULT="skipped_no_changes"
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Keine Änderungen und Datenbestand bereits veröffentlicht (generated_at=${LOCAL_GEN}). Überspringe Upload." >> "$LOG_FILE"
+    fi
     DO_UPLOAD=false
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Keine Änderungen und Datenbestand bereits veröffentlicht (generated_at=${LOCAL_GEN}). Überspringe Upload." >> "$LOG_FILE"
   else
     BUILD_RESULT="upload_only"
     DO_UPLOAD=true
