@@ -8,10 +8,32 @@ const {
     epGet,
     epMarkOk,
     epMarkFail,
-    EP
+    EP,
+    buildBoundaryQuery
 } = _testing;
 
 // ---- Tests ----
+
+describe('buildBoundaryQuery', () => {
+    const bbox = '49.48,11.20,49.62,11.50';
+
+    it('gibt bei Zoom < 14 einen leeren String zurück', () => {
+        expect(buildBoundaryQuery(13, bbox)).toBe('');
+        expect(buildBoundaryQuery(10, bbox)).toBe('');
+        expect(buildBoundaryQuery(0, bbox)).toBe('');
+    });
+
+    it('erzeugt bei Zoom >= 14 Overpass-Abfrage über Relationen mit expliziter bbox auf Mitglieds-Wege', () => {
+        const query14 = buildBoundaryQuery(14, bbox);
+        expect(query14).toContain('rel["boundary"="administrative"]["admin_level"="8"]');
+        expect(query14).toContain('way(r.');
+        expect(query14).toContain(`(${bbox})`);
+        expect(query14).toContain('.boundaries out geom;');
+
+        const query16 = buildBoundaryQuery(16, bbox);
+        expect(query16).toBe(query14);
+    });
+});
 
 describe('snapToGrid', () => {
     it('rundet auf 0.005-Raster', () => {

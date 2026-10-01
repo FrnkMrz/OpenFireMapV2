@@ -17,7 +17,7 @@ Die maschinenlesbare Liste aller ausgewerteten Tags liegt unter [`openfiremap.or
 | Württembergischer Schachthydrant | `fire_hydrant:type=underground` + `fire_hydrant:style=wsh` | eigenes Symbol mit Hinweis |
 | Löschwasserentnahme | `emergency=water_tank`, `suction_point`, `fire_water_pond`, `cistern` | ab Zoom 15, blaues Symbol |
 | Defibrillator | `emergency=defibrillator` | ab Zoom 15 |
-| Gemeindegrenze | `boundary=administrative` + `admin_level=8` | Overlay ab Zoom 14 |
+| Gemeindegrenze | Relationen `boundary=administrative` + `admin_level=8` (inkl. Mitglieds-Wege) | Overlay ab Zoom 14 |
 
 Im Tooltip werden alle Tags eines Objekts angezeigt. Der CSV-Export übernimmt zusätzlich `name`, `ref`, `operator`, `addr:*` sowie `fire_hydrant:diameter`, `fire_hydrant:pressure` und `fire_hydrant:flow` (ersatzweise `diameter`, `pressure`, `flow`).
 

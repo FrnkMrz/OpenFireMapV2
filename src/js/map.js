@@ -1334,7 +1334,7 @@ export function renderBoundaries(elements, zoom) {
     const bWeight = isSat ? 3 : 1;
 
     for (const el of elements) {
-        if (el?.tags?.boundary !== 'administrative' || !Array.isArray(el.geometry)) continue;
+        if (!Array.isArray(el?.geometry) || el.geometry.length === 0) continue;
 
         const latlngs = el.geometry.map(p => [p.lat, p.lon]);
         L.polyline(latlngs, {

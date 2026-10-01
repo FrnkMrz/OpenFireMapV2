@@ -111,15 +111,17 @@ FEATURE_CONFIGS = [
     },
     {
         "name": "boundaries",
-        "filter": ["w/boundary=administrative"],
+        "filter": ["r/boundary=administrative"],
         # tags-filter verknüpft Ausdrücke nur mit ODER. Die zweite Stufe schränkt auf
-        # Gemeindeebene ein (UND), passend zur Overpass-Abfrage im Frontend.
-        "refine_filter": ["w/admin_level=8"],
+        # Gemeinde-Relationen ein (UND), passend zur Overpass-Abfrage im Frontend.
+        # osmium tags-filter übernimmt referenzierte Mitglieds-Wege und -Knoten automatisch.
+        "refine_filter": ["r/admin_level=8"],
+        "keep_untagged": True,
         # Nur diese Tags exportieren: Grenzwege tragen oft Straßen-Tags, die das Frontend nicht braucht.
         "include_tags": ["boundary", "admin_level"],
         "geom_types": ["linestring"],
         "output": "boundaries.geojson",
-        "description": "Gemeindegrenzen (admin_level=8)"
+        "description": "Gemeindegrenzen (über Gemeinde-Relationen admin_level=8)"
     }
 ]
 
@@ -609,8 +611,11 @@ def build_export_cmd(item, source_pbf, output_file, work_dir):
     """
     Baut den osmium-export-Befehl für ein Feature. Mit include_tags wird eine
     Export-Konfiguration geschrieben, die nur die genannten Tags übernimmt.
+    Mit keep_untagged werden auch Mitglieds-Wege ohne eigene Tags exportiert.
     """
     cmd = ["osmium", "export", source_pbf, "--add-unique-id=type_id", "-o", output_file, "--overwrite"]
+    if item.get("keep_untagged"):
+        cmd.append("--keep-untagged")
     if item.get("geom_types"):
         cmd.extend(["--geometry-types", ",".join(item["geom_types"])])
     if item.get("include_tags"):

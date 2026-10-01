@@ -17,6 +17,11 @@ All notable changes to this project will be documented in this file.
   - Cache-Einstellung „Aus“ liest und schreibt IndexedDB nicht mehr und löscht vorhandene Einträge.
 
 ### Behoben
+- **Gemeindegrenzen ohne Lücken (Auswahl über Relationen statt Weg-Tags)**:
+  - Gemeindegrenzen werden über `admin_level=8`-Relationen statt über Tags am einzelnen OSM-Weg ausgewählt (Overpass + Pipeline). Wege, deren Gemeindegrenze mit einer höheren Grenze (Landkreis, Bezirk, Land, Staat) zusammenfällt oder die kein `boundary`-Tag am Weg tragen, werden vollständig erfasst.
+  - Frontend-Overpass-Abfragen (`src/js/api.js` für Karte und Export) auf `rel["boundary"="administrative"]["admin_level"="8"]->.r; way(r.r)(${bbox})->.boundaries;` umgestellt mit expliziter Bounding-Box auf Mitglieds-Wege.
+  - Cache-Schlüssel für Grenzen versioniert (`overpass:v4:boundaries` und `export_v3`), um lückenhafte Daten aus IndexedDB zu invalidieren.
+  - Pipeline: Filterung auf Relationen umgestellt (`r/boundary=administrative`, `r/admin_level=8`) und `osmium export` mit `--keep-untagged` ergänzt, sodass referenzierte Mitglieds-Wege auch ohne eigene Tags als Linestrings exportiert werden.
 - **Leere Karte in Safari nach Deploys**: Der Service Worker lieferte `index.html` cache-first aus; nach einem Deploy verwies die alte Seite auf gelöschte gehashte Bundles (404, keine Karte). Seitenaufrufe laufen jetzt network-first (Cache nur offline), Cache-Name auf `ofm-v15-static` erhöht. Als Offline-Fallback wird nur die App-Hülle (`/`, `/index.html`) abgelegt, damit z. B. ein Aufruf von `/taginfo.json` sie nicht überschreibt; Cache-Name auf `ofm-v16-static` erhöht.
 - **OSM-Standardkarte ohne Subdomains** (#20, danieldegroot2): Kacheln kommen von `tile.openstreetmap.org` statt `{s}.tile.openstreetmap.org`, wie es die OSM Foundation empfiehlt; CSP `img-src` entsprechend angepasst.
 - **CSV-Export: Untertyp von Feuerwachen** (#25): Gelesen wurde `tags.fire_station?.type`, das war immer leer. Jetzt `fire_station:type` über `getCsvSubtype()`, mit Tests.
