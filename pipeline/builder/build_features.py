@@ -41,6 +41,13 @@ FORCE_DOWNLOAD = os.getenv("FORCE_DOWNLOAD", "false").lower() in ("true", "1", "
 FORCE_BUILD = os.getenv("FORCE_BUILD", "false").lower() in ("true", "1", "yes")
 MAX_FALLBACK_AGE_HOURS = int(os.getenv("MAX_FALLBACK_AGE_HOURS", "72"))
 CURL_MAX_TIME = int(os.getenv("CURL_MAX_TIME", "5400"))
+# Mindestrate: Fällt die Übertragung CURL_SPEED_TIME Sekunden lang unter CURL_SPEED_LIMIT Bytes/s,
+# bricht curl ab und der nächste Versuch setzt auf einer neuen Verbindung fort. Geofabrik verteilt
+# Downloads auf mehrere Server, von denen einzelne zeitweise nur wenige hundert KB/s liefern.
+CURL_SPEED_LIMIT = int(os.getenv("CURL_SPEED_LIMIT", str(1024 * 1024)))
+CURL_SPEED_TIME = int(os.getenv("CURL_SPEED_TIME", "60"))
+CURL_ATTEMPTS = int(os.getenv("CURL_ATTEMPTS", "6"))
+CURL_RETRY_DELAY = int(os.getenv("CURL_RETRY_DELAY", "3"))
 
 BUILD_FINGERPRINT_FILE = os.path.join(RAW_DIR, "build_fingerprint.json")
 
@@ -457,18 +464,30 @@ def _download_and_replace(download_url, target_path, status_label="fresh_downloa
         "curl", "-sS", "-f", "-L", "-C", "-",
         "-R",  # Übernimmt den Last-Modified-Zeitstempel des Servers auf die lokale Datei
         "--max-redirs", "5",  # Verhindert Weiterleitungsschleifen (z. B. Geofabrik Fehler 47)
-        "--retry", "5",
-        "--retry-delay", "3",
-        "--retry-all-errors",  # Wiederholt auch bei Verbindungsproblemen und Proxy-Fehlern
         "--connect-timeout", "30",
-        "--max-time", str(CURL_MAX_TIME),  # Konfigurierbar, Standard 5400s (90 Minuten)
+        "--speed-limit", str(CURL_SPEED_LIMIT),  # Zu langsame Verbindung abbrechen ...
+        "--speed-time", str(CURL_SPEED_TIME),  # ... wenn sie so viele Sekunden darunter bleibt
+        "--max-time", str(CURL_MAX_TIME),  # Konfigurierbar, Standard 5400s (90 Minuten) je Versuch
         "-o", tmp_download,
         download_url
     ]
 
-    # Bei curl-Abbruch oder Timeout bleiben .download und Herkunftsmarker liegen,
-    # damit der nächste Versuch mit curl -C - fortsetzen kann (siehe _prepare_resume).
-    run_cmd(curl_cmd)
+    # Neuversuche als eigene curl-Aufrufe: curls eigenes --retry beginnt nach einem Abbruch wieder
+    # bei Byte 0, nur ein neuer Aufruf mit -C - setzt am Ende der Teildatei fort (HTTP 206).
+    # Scheitern alle Versuche, bleiben .download und Herkunftsmarker liegen, damit der nächste
+    # Lauf fortsetzen kann (siehe _prepare_resume).
+    for attempt in range(1, CURL_ATTEMPTS + 1):
+        try:
+            run_cmd(curl_cmd)
+            break
+        except RuntimeError as err:
+            if attempt == CURL_ATTEMPTS:
+                raise
+            have_mb = os.path.getsize(tmp_download) / (1024 * 1024) if os.path.exists(tmp_download) else 0.0
+            reason = str(err).strip().splitlines()[-1] if str(err).strip() else "unbekannt"
+            log(f"curl-Versuch {attempt}/{CURL_ATTEMPTS} abgebrochen ({reason}); {have_mb:.1f} MB vorhanden, "
+                f"setze in {CURL_RETRY_DELAY}s auf neuer Verbindung fort...")
+            time.sleep(CURL_RETRY_DELAY)
 
     try:
         validate_pbf_file(tmp_download)

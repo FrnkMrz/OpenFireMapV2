@@ -19,6 +19,9 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "builder")))
 import build_features
 
+# Keine Wartezeit zwischen curl-Versuchen in Tests
+build_features.CURL_RETRY_DELAY = 0
+
 
 class TestBuildFeatures(unittest.TestCase):
     def setUp(self):
@@ -513,7 +516,7 @@ class TestBuildFeatures(unittest.TestCase):
         """
         -latest ist nicht erreichbar (Weiterleitungsschleife), alle drei datierten Kandidaten liefern HTTP 200.
         outcomes: je Kandidat "ok" (gültige PBF), "curl_error", "too_small" (unvollständig) oder "osmium_error".
-        Gibt (Ergebnis bzw. Exception, curl-URLs in Aufrufreihenfolge, HEAD-URLs, lokaler Pfad) zurück.
+        Gibt (Ergebnis bzw. Exception, versuchte Kandidaten in Reihenfolge, HEAD-URLs, lokaler Pfad) zurück.
         """
         tmpdir = tempfile.mkdtemp(dir=self.test_dir.name)
         local_pbf = os.path.join(tmpdir, "liechtenstein-latest.osm.pbf")
@@ -558,7 +561,8 @@ class TestBuildFeatures(unittest.TestCase):
                 result = build_features.download_extract(latest_url, local_pbf)
             except RuntimeError as err:
                 result = err
-        return result, curl_calls, head_calls, local_pbf
+        # Je Kandidat können mehrere curl-Versuche laufen; geprüft wird die Reihenfolge der Kandidaten
+        return result, list(dict.fromkeys(curl_calls)), head_calls, local_pbf
 
     def test_dated_fallback_first_candidate_curl_error_second_succeeds(self):
         """Datierter Kandidat von heute bricht im curl ab -> Kandidat von gestern wird geladen."""
@@ -1279,6 +1283,67 @@ class TestDownloadResume(unittest.TestCase):
         self.assertFalse(os.path.exists(self.partial))
         self.assertFalse(os.path.exists(self.marker))
         self.assertTrue(os.path.exists(self.target))
+
+
+class TestCurlAttempts(unittest.TestCase):
+    """Neuversuche laufen als eigene curl-Aufrufe mit -C -, damit sie am Ende der Teildatei fortsetzen."""
+
+    URL = "https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf"
+    INFO = {"status": 200, "url": URL, "last_modified": "Thu, 01 Oct 2026 01:02:00 GMT", "content_length": 3500000}
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.target = os.path.join(self.tmpdir.name, "liechtenstein-latest.osm.pbf")
+        self.partial = self.target + ".download"
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def _fake_curl(self, failures):
+        """Jeder Aufruf hängt 120 KB an die Teildatei an; die ersten `failures` Aufrufe brechen danach ab."""
+        calls = []
+
+        def run(cmd):
+            calls.append((list(cmd), os.path.getsize(self.partial) if os.path.exists(self.partial) else 0))
+            with open(cmd[cmd.index("-o") + 1], "ab") as f:
+                f.write(b"p" * (120 * 1024))
+            if len(calls) <= failures:
+                raise RuntimeError("Befehl fehlgeschlagen: curl ...\ncurl: (28) Operation too slow.")
+            return ""
+        return run, calls
+
+    def test_resumes_in_new_curl_call_after_abort(self):
+        run, calls = self._fake_curl(failures=2)
+        with patch("build_features.run_cmd", side_effect=run), patch("shutil.which", return_value=None):
+            _, _, was_dl, status = build_features._download_and_replace(self.URL, self.target, remote_info=self.INFO)
+        self.assertTrue(was_dl)
+        self.assertEqual(status, "fresh_download")
+        self.assertEqual(len(calls), 3)
+        # Jeder Folgeaufruf startet auf der bereits vorhandenen Teildatei (curl -C - setzt dort fort)
+        self.assertEqual([size for _, size in calls], [0, 120 * 1024, 240 * 1024])
+        self.assertEqual(os.path.getsize(self.target), 360 * 1024)
+        self.assertFalse(os.path.exists(self.partial))
+
+    def test_all_attempts_fail_keeps_partial_for_next_run(self):
+        run, calls = self._fake_curl(failures=build_features.CURL_ATTEMPTS)
+        with patch("build_features.run_cmd", side_effect=run):
+            with self.assertRaises(RuntimeError):
+                build_features._download_and_replace(self.URL, self.target, remote_info=self.INFO)
+        self.assertEqual(len(calls), build_features.CURL_ATTEMPTS)
+        self.assertTrue(os.path.exists(self.partial))
+        self.assertTrue(os.path.exists(self.partial + ".source.json"))
+        self.assertFalse(os.path.exists(self.target))
+
+    def test_curl_command_resumes_and_aborts_slow_connections(self):
+        run, calls = self._fake_curl(failures=0)
+        with patch("build_features.run_cmd", side_effect=run), patch("shutil.which", return_value=None):
+            build_features._download_and_replace(self.URL, self.target, remote_info=self.INFO)
+        cmd = calls[0][0]
+        self.assertEqual(cmd[cmd.index("-C") + 1], "-")
+        self.assertEqual(cmd[cmd.index("--speed-limit") + 1], str(build_features.CURL_SPEED_LIMIT))
+        self.assertEqual(cmd[cmd.index("--speed-time") + 1], str(build_features.CURL_SPEED_TIME))
+        # curls eigenes --retry würde nach einem Abbruch wieder bei Byte 0 beginnen
+        self.assertNotIn("--retry", cmd)
 
 
 if __name__ == "__main__":
