@@ -9,7 +9,9 @@ const {
     epMarkOk,
     epMarkFail,
     EP,
-    buildBoundaryQuery
+    buildBoundaryQuery,
+    buildPoiQuery,
+    buildExportQuery
 } = _testing;
 
 // ---- Tests ----
@@ -32,6 +34,30 @@ describe('buildBoundaryQuery', () => {
 
         const query16 = buildBoundaryQuery(16, bbox);
         expect(query16).toBe(query14);
+    });
+});
+
+describe('Overpass-Ausgabeformate (Grundlage für isBoundaryElement)', () => {
+    const bbox = '49.48,11.20,49.62,11.50';
+
+    it('POI-Abfragen liefern nur Mittelpunkte (out center), keine Linien-Geometrie', () => {
+        for (const zoom of [12, 15, 18]) {
+            const { query } = buildPoiQuery(zoom, bbox);
+            expect(query).toContain('.pois out center;');
+            expect(query).not.toContain('out geom');
+        }
+    });
+
+    it('Export-Abfrage: POIs mit out center, nur Grenzen mit out geom', () => {
+        const q14 = buildExportQuery(14, bbox);
+        expect(q14).toContain('.pois out center;');
+        expect(q14.match(/out geom/g)).toEqual(['out geom']);
+        expect(q14).toContain('.boundaries out geom;');
+        expect(q14).toContain(`way(r.r)(${bbox})`);
+
+        const q13 = buildExportQuery(13, bbox);
+        expect(q13).not.toContain('out geom');
+        expect(q13).toContain('fire_hydrant');
     });
 });
 

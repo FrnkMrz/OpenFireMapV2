@@ -275,9 +275,31 @@ function buildPoiQuery(zoom, bbox) {
   };
 }
 
+// Gemeinde-Relationen im Ausschnitt und ihre Mitglieds-Wege. Das globale [bbox:] gilt nicht für
+// die Rekursion way(r.r) (sonst kämen alle Wege der Relationen), daher die explizite bbox.
+// Nur Grenzen werden mit `out geom` ausgegeben, POIs mit `out center` (siehe isBoundaryElement).
+function buildBoundaryStatements(bbox) {
+  return `rel["boundary"="administrative"]["admin_level"="8"]->.r; way(r.r)(${bbox})->.boundaries; .boundaries out geom;`;
+}
+
 function buildBoundaryQuery(zoom, bbox) {
   if (zoom < 14) return '';
-  return `[out:json][timeout:25][bbox:${bbox}];rel["boundary"="administrative"]["admin_level"="8"]->.r; way(r.r)(${bbox})->.boundaries; .boundaries out geom;`;
+  return `[out:json][timeout:25][bbox:${bbox}];${buildBoundaryStatements(bbox)}`;
+}
+
+function buildExportQuery(zoom, bbox) {
+  const queryParts = [];
+  if (zoom >= 12) {
+    queryParts.push(`nwr["amenity"="fire_station"];`);
+    queryParts.push(`nwr["building"="fire_station"];`);
+  }
+  // Exporte sollen IMMER Detaildaten (Hydranten) enthalten, 
+  // selbst wenn der Nutzer sagt "Exportiere auf Zoom 14".
+  queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
+  queryParts.push(`node["emergency"="defibrillator"];`);
+  const boundaryQuery = (zoom >= 14) ? buildBoundaryStatements(bbox) : '';
+
+  return `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 }
 
 function stableObjectEntries(obj) {
@@ -1054,20 +1076,7 @@ export async function fetchDataForExport(bounds, zoom, signal) {
   const e = bounds.getEast();
   const bbox = `${s},${w},${n},${e}`;
 
-  const queryParts = [];
-  if (zoom >= 12) {
-    queryParts.push(`nwr["amenity"="fire_station"];`);
-    queryParts.push(`nwr["building"="fire_station"];`);
-  }
-  // Exporte sollen IMMER Detaildaten (Hydranten) enthalten, 
-  // selbst wenn der Nutzer sagt "Exportiere auf Zoom 14".
-  queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
-  queryParts.push(`node["emergency"="defibrillator"];`);
-  const boundaryQuery = (zoom >= 14)
-    ? `rel["boundary"="administrative"]["admin_level"="8"]->.r; way(r.r)(${bbox})->.boundaries; .boundaries out geom;`
-    : '';
-
-  const q = `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
+  const q = buildExportQuery(zoom, bbox);
 
   // Wir nutzen v3 als Prefix, um fehlerhafte Caches der alten Version aus der lokalen DB zu umgehen.
   const cacheKey = `export_v3:${zoom}:${bbox}`;
@@ -1091,5 +1100,7 @@ export const _testing = {
   epMarkFail,
   EP,
   countHydrants,
-  buildBoundaryQuery
+  buildBoundaryQuery,
+  buildPoiQuery,
+  buildExportQuery
 };

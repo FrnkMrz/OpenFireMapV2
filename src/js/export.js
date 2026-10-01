@@ -13,7 +13,7 @@
 import { State } from "./state.js";
 import { Config } from "./config.js";
 import { fetchDataForExport } from "./api.js";
-import { waitForPendingBuffers } from "./pipeline.js";
+import { waitForPendingBuffers, isBoundaryElement } from "./pipeline.js";
 import { t, getLang } from "./i18n.js";
 import { showNotification, toggleExportMenu } from "./ui.js";
 import { jsPDF } from "jspdf";
@@ -951,8 +951,7 @@ async function generateMapCanvas() {
 
   // Boundaries zeichnen (z.B. Gemeindegrenzen)
   for (const el of elementsForExport) {
-    const isBoundary = el.tags?.boundary === 'administrative' || (el.type === 'way' && Array.isArray(el.geometry));
-    if (isBoundary && Array.isArray(el.geometry) && el.geometry.length > 0) {
+    if (isBoundaryElement(el)) {
       // Linie zeichnen
       const coords = el.geometry.map(p => {
         const px = (lon2tile(p.lon, targetZoom) - originTileX) * 256 + margin;
@@ -974,8 +973,7 @@ async function generateMapCanvas() {
   // Marker zeichnen
   // ... (Code bleibt gleich, nur Kontext ist ctx)
   for (const el of elementsForExport) {
-    const isBoundary = el.tags?.boundary === 'administrative' || (el.type === 'way' && Array.isArray(el.geometry));
-    if (isBoundary) continue; // Schon gemalt
+    if (isBoundaryElement(el)) continue; // Schon gemalt
 
     const lat = el.lat || el.center?.lat;
     const lon = el.lon || el.center?.lon;

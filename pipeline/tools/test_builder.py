@@ -103,50 +103,53 @@ class TestBuildFeatures(unittest.TestCase):
         self.assertNotIn("--keep-untagged", h_cmd)
 
     def test_segmented_export_uses_build_export_cmd_options(self):
-        """Der segmentierte Exportpfad nutzt build_export_cmd mit denselben Optionen (--keep-untagged, -c)."""
+        """Doppelte IDs nach osmium merge -> Export pro Land mit denselben Optionen (--keep-untagged, -c), dann Deduplizierung."""
         boundaries = next(f for f in build_features.FEATURE_CONFIGS if f["name"] == "boundaries")
+        work_dir = self.test_dir.name
+        existing_parts = [os.path.join(work_dir, "de_boundaries.pbf"), os.path.join(work_dir, "at_boundaries.pbf")]
+        output_file = os.path.join(work_dir, "boundaries.geojson")
+        # Grenzweg w1 liegt in beiden Länderauszügen (Grenze DE/AT)
+        part_features = {
+            "de_boundaries.pbf": [{"type": "Feature", "id": "w1", "properties": {}, "geometry": None},
+                                  {"type": "Feature", "id": "w2", "properties": {}, "geometry": None}],
+            "at_boundaries.pbf": [{"type": "Feature", "id": "w1", "properties": {}, "geometry": None},
+                                  {"type": "Feature", "id": "w3", "properties": {}, "geometry": None}],
+        }
         calls = []
 
         def fake_run_cmd(cmd):
             calls.append(cmd)
-            # Schreibe Fake-GeoJSON bei Ausführung
-            if "-o" in cmd:
-                out_path = cmd[cmd.index("-o") + 1]
-                with open(out_path, "w", encoding="utf-8") as f:
-                    json.dump({"type": "FeatureCollection", "features": []}, f)
-            if "merged_boundaries.pbf" in cmd:
-                raise RuntimeError("osmium export: ID appears twice in input")
+            if cmd[1] == "merge":
+                return ""
+            source = os.path.basename(cmd[2])
+            if source == "merged_boundaries.pbf":
+                raise RuntimeError("osmium export: Node ID 1 appears twice in input")
+            with open(cmd[cmd.index("-o") + 1], "w", encoding="utf-8") as f:
+                json.dump({"type": "FeatureCollection", "features": part_features[source]}, f)
+            return ""
 
-        work_dir = self.test_dir.name
-        existing_parts = [
-            os.path.join(work_dir, "de_boundaries.pbf"),
-            os.path.join(work_dir, "at_boundaries.pbf")
-        ]
-        for p in existing_parts:
-            with open(p, "wb") as f:
-                f.write(b"part")
-
-        # Ausführung des Export-Blocks inkl. Segmentierungs-Fallback
-        output_file = os.path.join(self.test_dir.name, "boundaries.geojson")
         with patch("build_features.run_cmd", side_effect=fake_run_cmd):
-            try:
-                build_features.run_cmd(build_features.build_export_cmd(boundaries, "merged_boundaries.pbf", output_file, work_dir))
-            except RuntimeError as ex:
-                if ("twice in input" in str(ex) or "Duplicate" in str(ex)) and len(existing_parts) > 1:
-                    part_geojsons = []
-                    for idx, part_pbf in enumerate(existing_parts):
-                        part_json = os.path.join(work_dir, f"boundaries_part_{idx}.geojson")
-                        build_features.run_cmd(build_features.build_export_cmd(boundaries, part_pbf, part_json, work_dir))
-                        part_geojsons.append(part_json)
-                    build_features.merge_geojson_files(part_geojsons, output_file)
+            build_features.export_feature_geojson(boundaries, existing_parts, output_file, work_dir)
 
-        part_calls = [c for c in calls if "boundaries_part_" in " ".join(c)]
-        self.assertEqual(len(part_calls), 2)
-        for c in part_calls:
+        self.assertEqual(calls[0][:2], ["osmium", "merge"])
+        export_calls = [c for c in calls if c[1] == "export"]
+        self.assertEqual([os.path.basename(c[2]) for c in export_calls],
+                         ["merged_boundaries.pbf", "de_boundaries.pbf", "at_boundaries.pbf"])
+        for c in export_calls:
             self.assertIn("--keep-untagged", c)
             self.assertIn("-c", c)
-            self.assertIn("--geometry-types", c)
-            self.assertIn("linestring", c)
+            self.assertEqual(c[c.index("--geometry-types") + 1], "linestring")
+        with open(output_file, encoding="utf-8") as f:
+            self.assertEqual(sorted(feat["id"] for feat in json.load(f)["features"]), ["w1", "w2", "w3"])
+        self.assertFalse(any(name.startswith("boundaries_part_") for name in os.listdir(work_dir)))
+
+    def test_export_feature_geojson_reraises_other_errors(self):
+        """Andere Exportfehler als doppelte IDs werden nicht verschluckt."""
+        boundaries = next(f for f in build_features.FEATURE_CONFIGS if f["name"] == "boundaries")
+        with patch("build_features.run_cmd", side_effect=RuntimeError("osmium export: out of memory")):
+            with self.assertRaises(RuntimeError):
+                build_features.export_feature_geojson(
+                    boundaries, ["de.pbf"], os.path.join(self.test_dir.name, "b.geojson"), self.test_dir.name)
 
     @unittest.skipUnless(shutil.which("osmium"), "osmium nicht installiert")
     def test_boundaries_osmium_end_to_end(self):
