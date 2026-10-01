@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
   - Für die Grenzen werden nur noch `boundary` und `admin_level` exportiert (`osmium export -c` mit `include_tags`); Grenzwege trugen oft komplette Straßen-Tags.
 
 ### Performance
+- **curl-Zeitlimit je Versuch 20 statt 90 Minuten** (`CURL_MAX_TIME`, Standard 1200 s): Seit Neuversuche fortsetzen statt neu zu beginnen, kostet ein Abbruch nichts mehr. Eine Verbindung knapp über der Mindestrate wird so nach 20 Minuten gegen eine neue getauscht; der ungünstigste Fall eines Laufs (6 Versuche) sinkt von 9 auf 2 Stunden.
 - **Vorfilterung in einem Durchlauf je Land**: `osmium tags-filter` las jeden Länderauszug einmal je Ebene (5×, für Deutschland ~17 von 23 Minuten Vorfilterung auf VM 102). Jetzt filtert ein Durchlauf mit allen Filtern in eine kleine Zwischendatei (Schweiz: 8,8 MB aus 522 MB), die Ebenen werden daraus getrennt. Ergebnis für Liechtenstein, Luxemburg und Schweiz objektgenau identisch geprüft; lokal Schweiz 10,5 s → 4,0 s.
 
 ### Behoben & Resilienz

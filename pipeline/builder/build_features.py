@@ -40,7 +40,9 @@ OSM_EXTRACT_URL = os.getenv("OSM_EXTRACT_URL", "").strip()
 FORCE_DOWNLOAD = os.getenv("FORCE_DOWNLOAD", "false").lower() in ("true", "1", "yes")
 FORCE_BUILD = os.getenv("FORCE_BUILD", "false").lower() in ("true", "1", "yes")
 MAX_FALLBACK_AGE_HOURS = int(os.getenv("MAX_FALLBACK_AGE_HOURS", "72"))
-CURL_MAX_TIME = int(os.getenv("CURL_MAX_TIME", "5400"))
+# Zeitlimit je curl-Versuch. Neuversuche setzen fort (If-Range, -C -), daher kurz genug, um eine
+# knapp über CURL_SPEED_LIMIT dahinkriechende Verbindung gegen eine neue zu tauschen (Standard 20 min).
+CURL_MAX_TIME = int(os.getenv("CURL_MAX_TIME", "1200"))
 # Mindestrate: Fällt die Übertragung CURL_SPEED_TIME Sekunden lang unter CURL_SPEED_LIMIT Bytes/s,
 # bricht curl ab und der nächste Versuch setzt auf einer neuen Verbindung fort. Geofabrik verteilt
 # Downloads auf mehrere Server, von denen einzelne zeitweise nur wenige hundert KB/s liefern.
@@ -466,7 +468,7 @@ def _build_curl_cmd(download_url, tmp_download, remote_info):
         "--connect-timeout", "30",
         "--speed-limit", str(CURL_SPEED_LIMIT),  # Zu langsame Verbindung abbrechen ...
         "--speed-time", str(CURL_SPEED_TIME),  # ... wenn sie so viele Sekunden darunter bleibt
-        "--max-time", str(CURL_MAX_TIME),  # Konfigurierbar, Standard 5400s (90 Minuten) je Versuch
+        "--max-time", str(CURL_MAX_TIME),  # Konfigurierbar, Standard 1200s (20 Minuten) je Versuch
     ]
     if remote_info and remote_info.get("last_modified"):
         cmd.extend(["-H", f"If-Range: {remote_info['last_modified']}"])
