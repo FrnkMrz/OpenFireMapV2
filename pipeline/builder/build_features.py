@@ -110,9 +110,14 @@ FEATURE_CONFIGS = [
     {
         "name": "boundaries",
         "filter": ["w/boundary=administrative"],
+        # tags-filter verknüpft Ausdrücke nur mit ODER. Die zweite Stufe schränkt auf
+        # Gemeindeebene ein (UND), passend zur Overpass-Abfrage im Frontend.
+        "refine_filter": ["w/admin_level=8"],
+        # Nur diese Tags exportieren: Grenzwege tragen oft Straßen-Tags, die das Frontend nicht braucht.
+        "include_tags": ["boundary", "admin_level"],
         "geom_types": ["linestring"],
         "output": "boundaries.geojson",
-        "description": "Gemeindegrenzen und Verwaltungsgrenzen"
+        "description": "Gemeindegrenzen (admin_level=8)"
     }
 ]
 
@@ -430,6 +435,40 @@ def run_cmd(cmd):
     return res.stdout
 
 
+def prefilter_feature(item, pbf_path, out_pbf):
+    """
+    Filtert einen Länderauszug auf ein Feature. Mit refine_filter folgt eine zweite
+    tags-filter-Stufe, damit beide Bedingungen gelten (tags-filter selbst kennt nur ODER).
+    """
+    if not item.get("refine_filter"):
+        run_cmd(["osmium", "tags-filter", pbf_path, *item["filter"], "-o", out_pbf, "--overwrite"])
+        return
+
+    stage_pbf = f"{out_pbf}.stage1.pbf"
+    try:
+        run_cmd(["osmium", "tags-filter", pbf_path, *item["filter"], "-o", stage_pbf, "--overwrite"])
+        run_cmd(["osmium", "tags-filter", stage_pbf, *item["refine_filter"], "-o", out_pbf, "--overwrite"])
+    finally:
+        if os.path.exists(stage_pbf):
+            os.remove(stage_pbf)
+
+
+def build_export_cmd(item, source_pbf, output_file, work_dir):
+    """
+    Baut den osmium-export-Befehl für ein Feature. Mit include_tags wird eine
+    Export-Konfiguration geschrieben, die nur die genannten Tags übernimmt.
+    """
+    cmd = ["osmium", "export", source_pbf, "--add-unique-id=type_id", "-o", output_file, "--overwrite"]
+    if item.get("geom_types"):
+        cmd.extend(["--geometry-types", ",".join(item["geom_types"])])
+    if item.get("include_tags"):
+        config_path = os.path.join(work_dir, f"export_config_{item['name']}.json")
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump({"include_tags": item["include_tags"]}, f)
+        cmd.extend(["-c", config_path])
+    return cmd
+
+
 def compute_builder_hash(targets=None, script_content=None):
     """
     Berechnet einen stabilen SHA-256-Fingerprint über den Builder-Code und
@@ -464,6 +503,8 @@ def compute_builder_hash(targets=None, script_content=None):
                 "filter": it.get("filter"),
                 "geom_types": it.get("geom_types"),
                 "output": it.get("output"),
+                "refine_filter": it.get("refine_filter"),
+                "include_tags": it.get("include_tags"),
             }
             for it in FEATURE_CONFIGS
         ]
@@ -630,8 +671,7 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None, extract
             for item in FEATURE_CONFIGS:
                 fname = item["name"]
                 out_part_pbf = os.path.join(work_dir, f"{cid}_{fname}.pbf")
-                filter_args = item["filter"]
-                run_cmd(["osmium", "tags-filter", pbf_path, *filter_args, "-o", out_part_pbf, "--overwrite"])
+                prefilter_feature(item, pbf_path, out_part_pbf)
 
             log(f"Land {cname} erfolgreich vorgefiltert in {time.time() - t_country:.1f}s.")
 
@@ -658,10 +698,7 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None, extract
                 source_pbf = existing_parts[0]
 
             log(f"Exportiere GeoJSON: {item['output']}...")
-            export_cmd = ["osmium", "export", source_pbf, "--add-unique-id=type_id", "-o", output_file, "--overwrite"]
-            if item.get("geom_types"):
-                export_cmd.extend(["--geometry-types", ",".join(item["geom_types"])])
-            run_cmd(export_cmd)
+            run_cmd(build_export_cmd(item, source_pbf, output_file, work_dir))
 
             count = count_geojson_features(output_file)
             file_size_kb = os.path.getsize(output_file) / 1024
