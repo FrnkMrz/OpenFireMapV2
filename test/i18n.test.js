@@ -62,5 +62,15 @@ describe('i18n.js', () => {
             await i18n.setLang('fr');
             expect(visible()).toEqual(['en']);
         });
+
+        it('shows the English privacy text for unsupported languages (UI falls back to German)', async () => {
+            localStorage.removeItem('ofm_lang');
+            window.history.replaceState(null, '', '/?lang=el');
+            await i18n.initI18n();
+            i18n.updatePageLanguage();
+            window.history.replaceState(null, '', '/');
+            expect(i18n.getLang()).toBe('de');
+            expect(visible()).toEqual(['en']);
+        });
     });
 });
