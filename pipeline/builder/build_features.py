@@ -647,6 +647,25 @@ def prefilter_feature(item, pbf_path, out_pbf):
             os.remove(stage_pbf)
 
 
+def prefilter_country(pbf_path, cid, work_dir, features=None):
+    """
+    Filtert einen Länderauszug in EINEM tags-filter-Durchlauf auf die Filter aller Features und teilt
+    die kleine Zwischendatei danach je Feature auf (prefilter_feature). Die große Länderdatei wird so
+    nur einmal gelesen statt einmal je Feature. Das Ergebnis je Feature ist identisch: Die Zwischendatei
+    enthält alle Treffer samt der referenzierten Knoten, Wege und Relationsmitglieder.
+    """
+    features = features if features is not None else FEATURE_CONFIGS
+    combined_pbf = os.path.join(work_dir, f"{cid}__all_features.pbf")
+    all_filters = list(dict.fromkeys(expr for item in features for expr in item["filter"]))
+    try:
+        run_cmd(["osmium", "tags-filter", pbf_path, *all_filters, "-o", combined_pbf, "--overwrite"])
+        log(f"Gemeinsame Vorfilterung: {os.path.getsize(combined_pbf) / (1024 * 1024):.1f} MB Zwischendatei.")
+        for item in features:
+            prefilter_feature(item, combined_pbf, os.path.join(work_dir, f"{cid}_{item['name']}.pbf"))
+    finally:
+        _remove_quietly(combined_pbf)
+
+
 def build_export_cmd(item, source_pbf, output_file, work_dir):
     """
     Baut den osmium-export-Befehl für ein Feature. Mit include_tags wird eine
@@ -933,10 +952,7 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None, extract
             log(f"--- Vorfilterung {cname} ({cid}, {c_size_mb:.1f} MB) ---")
             t_country = time.time()
 
-            for item in FEATURE_CONFIGS:
-                fname = item["name"]
-                out_part_pbf = os.path.join(work_dir, f"{cid}_{fname}.pbf")
-                prefilter_feature(item, pbf_path, out_part_pbf)
+            prefilter_country(pbf_path, cid, work_dir)
 
             log(f"Land {cname} erfolgreich vorgefiltert in {time.time() - t_country:.1f}s.")
 

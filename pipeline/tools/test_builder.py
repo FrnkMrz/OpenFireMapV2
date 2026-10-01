@@ -82,6 +82,70 @@ class TestBuildFeatures(unittest.TestCase):
         self.assertEqual(calls[1][calls[1].index("-o") + 1], out_pbf)
         self.assertFalse(os.path.exists(f"{out_pbf}.stage1.pbf"))
 
+    def test_prefilter_country_reads_country_file_once(self):
+        """Ein tags-filter-Lauf über die Länderdatei mit allen Filtern, danach je Feature auf der Zwischendatei."""
+        calls = []
+
+        def fake_run_cmd(cmd):
+            calls.append(cmd)
+            with open(cmd[cmd.index("-o") + 1], "wb") as f:
+                f.write(b"pbf")
+            return ""
+
+        with patch("build_features.run_cmd", side_effect=fake_run_cmd):
+            build_features.prefilter_country("de.pbf", "germany", self.test_dir.name)
+
+        combined = os.path.join(self.test_dir.name, "germany__all_features.pbf")
+        self.assertEqual(calls[0][2], "de.pbf")
+        self.assertEqual(calls[0][calls[0].index("-o") + 1], combined)
+        all_filters = [e for item in build_features.FEATURE_CONFIGS for e in item["filter"]]
+        self.assertEqual(sorted(calls[0][3:calls[0].index("-o")]), sorted(set(all_filters)))
+        # Alle weiteren Läufe lesen nur die Zwischendatei (bzw. die Stufe-1-Datei von boundaries)
+        self.assertEqual([c for c in calls[1:] if c[2] == "de.pbf"], [])
+        self.assertEqual(sum(1 for c in calls if c[2] == combined), len(build_features.FEATURE_CONFIGS))
+        for item in build_features.FEATURE_CONFIGS:
+            self.assertTrue(os.path.exists(os.path.join(self.test_dir.name, f"germany_{item['name']}.pbf")))
+        self.assertFalse(os.path.exists(combined))
+
+    @unittest.skipUnless(shutil.which("osmium"), "osmium nicht installiert")
+    def test_prefilter_country_matches_per_feature_filtering(self):
+        """Echter osmium-Lauf: Gemeinsame Vorfilterung liefert je Feature dieselben Objekte wie Einzelfilter."""
+        osm_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="test">
+ <node id="1" version="1" lat="49.0" lon="11.0"><tag k="emergency" v="fire_hydrant"/></node>
+ <node id="2" version="1" lat="49.1" lon="11.1"/><node id="3" version="1" lat="49.2" lon="11.0"/>
+ <node id="4" version="1" lat="49.0" lon="11.2"><tag k="emergency" v="defibrillator"/></node>
+ <node id="5" version="1" lat="49.3" lon="11.3"><tag k="highway" v="bus_stop"/></node>
+ <way id="10" version="1"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="1"/><tag k="amenity" v="fire_station"/></way>
+ <way id="11" version="1"><nd ref="2"/><nd ref="3"/></way>
+ <way id="12" version="1"><nd ref="3"/><nd ref="4"/><tag k="highway" v="residential"/></way>
+ <way id="13" version="1"><nd ref="4"/><nd ref="5"/><tag k="emergency" v="cistern"/></way>
+ <relation id="100" version="1"><member type="way" ref="11" role="outer"/><member type="way" ref="12" role="outer"/>
+  <tag k="boundary" v="administrative"/><tag k="admin_level" v="8"/></relation>
+ <relation id="200" version="1"><member type="way" ref="12" role="outer"/>
+  <tag k="boundary" v="administrative"/><tag k="admin_level" v="6"/></relation>
+</osm>"""
+        src = os.path.join(self.test_dir.name, "in.osm")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(osm_xml)
+        old_dir = os.path.join(self.test_dir.name, "old")
+        new_dir = os.path.join(self.test_dir.name, "new")
+        os.makedirs(old_dir)
+        os.makedirs(new_dir)
+
+        for item in build_features.FEATURE_CONFIGS:
+            build_features.prefilter_feature(item, src, os.path.join(old_dir, f"xx_{item['name']}.pbf"))
+        build_features.prefilter_country(src, "xx", new_dir)
+
+        def opl(path):
+            return subprocess.run(["osmium", "cat", "-f", "opl", path], capture_output=True, text=True, check=True).stdout
+
+        for item in build_features.FEATURE_CONFIGS:
+            name = f"xx_{item['name']}.pbf"
+            self.assertEqual(opl(os.path.join(new_dir, name)), opl(os.path.join(old_dir, name)), item["name"])
+        self.assertIn("r100", opl(os.path.join(new_dir, "xx_boundaries.pbf")))
+        self.assertNotIn("r200", opl(os.path.join(new_dir, "xx_boundaries.pbf")))
+
     def test_prefilter_feature_single_stage(self):
         """Ohne refine_filter bleibt es bei einem tags-filter-Aufruf."""
         item = {"name": "hydrants", "filter": ["nwr/emergency=fire_hydrant"]}
