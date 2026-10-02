@@ -883,5 +883,37 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       expect(third.marker).not.toBe(second.marker);
       expect(third.lat).toBe(49.451);
     });
+
+    it('zeichnet einen Hydranten-Cluster neu, wenn sich nur ein Mitglied ändert', async () => {
+      const { renderMarkers } = await import('../src/js/map.js');
+      State.markerCache = new Map();
+      vi.spyOn(globalThis.L, 'marker').mockImplementation(() => {
+        const marker = {};
+        for (const m of ['addTo', 'on', 'off', 'bindTooltip', 'unbindTooltip', 'openTooltip', 'closeTooltip', 'bindPopup', 'setZIndexOffset', 'setIcon', 'setLatLng']) {
+          marker[m] = () => marker;
+        }
+        return marker;
+      });
+      // Zwei Hydranten ~1 m auseinander: auf Zoom 17 ein Cluster mit Hauptobjekt node:100
+      const pair = (refB) => [
+        { type: 'node', id: 100, lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant', ref: 'A' } },
+        { type: 'node', id: 200, lat: 49.45001, lon: 11.07, tags: { emergency: 'fire_hydrant', ref: refB } },
+      ];
+
+      renderMarkers(pair('B'), 17);
+      const masterKey = [...State.markerCache.keys()].find((k) => State.markerCache.get(k).isHydrantCluster);
+      expect(masterKey).toBeDefined();
+      const first = State.markerCache.get(masterKey);
+
+      // Gleicher Inhalt: Marker bleibt
+      renderMarkers(pair('B'), 17);
+      expect(State.markerCache.get(masterKey).marker).toBe(first.marker);
+
+      // Nur das zweite Mitglied ändert sich (Delta): Cluster-Marker neu zeichnen
+      renderMarkers(pair('B-neu'), 17);
+      const second = State.markerCache.get(masterKey);
+      expect(second.marker).not.toBe(first.marker);
+      expect(second.clusterMembers.map((m) => m.tags.ref)).toContain('B-neu');
+    });
   });
 });

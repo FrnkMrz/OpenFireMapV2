@@ -853,6 +853,20 @@ function sameTags(a, b) {
     return aKeys.length === bKeys.length && aKeys.every((k) => a[k] === b?.[k]);
 }
 
+// Gleiche Cluster-Mitglieder (OSM-ID, Position, Tags): Der Tooltip eines Clusters entsteht aus allen
+// Mitgliedern, nicht nur aus dem Hauptobjekt.
+function sameClusterMembers(a, b) {
+    if (a === b) return true;
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((m, i) => {
+        const n = b[i];
+        return osmKey(m) === osmKey(n) &&
+            (m.lat ?? m.center?.lat) === (n.lat ?? n.center?.lat) &&
+            (m.lon ?? m.center?.lon) === (n.lon ?? n.center?.lon) &&
+            sameTags(m.tags, n.tags);
+    });
+}
+
 function countTags(tags) {
     if (!tags) return 0;
     // Nur eigene Keys zählen, keine Prototyp-Spielereien.
@@ -1307,7 +1321,8 @@ export function renderMarkers(elements, zoom, { isPartial = false } = {}) {
 
         // Position und Tags gehören zum Marker (Lage, Symbol, Tooltip). Ändert ein Overpass-Delta
         // ein Objekt mit gleicher OSM-ID, muss der Marker neu gezeichnet werden.
-        const sameContent = cached && cached.lat === lat && cached.lon === lon && sameTags(cached.tags, tags);
+        const sameContent = cached && cached.lat === lat && cached.lon === lon && sameTags(cached.tags, tags) &&
+            sameClusterMembers(cached.clusterMembers, el.isHydrantCluster ? el.clusterMembers : undefined);
 
         // Fall 1: Marker existiert UND Modus (Dot vs SVG), Cluster-Status und Inhalt sind unverändert
         if (cached &&
@@ -1581,7 +1596,8 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             isStation,
             isDefib,
             isHydrantCluster,
-            clusterCount
+            clusterCount,
+            clusterMembers: isHydrantCluster ? clusterMembers : undefined
         });
     }
 }
