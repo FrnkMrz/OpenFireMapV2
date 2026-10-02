@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/taginfo/taginfo-projects/master/taginfo-project-schema.json",
   "data_format": 1,
   "data_url": "https://openfiremap.org/taginfo.json",
-  "data_updated": "20261001T120000Z",
+  "data_updated": "20261002T115655Z",
   "project": {
     "name": "OpenFireMap",
     "description": "Interactive web map of fire-service-related objects: fire stations, fire hydrants, firefighting water supplies and defibrillators.",
@@ -135,14 +135,14 @@
     {
       "key": "boundary",
       "value": "administrative",
-      "object_types": ["way", "relation"],
-      "description": "Municipality boundaries drawn as overlay from zoom 14 and in map exports."
+      "object_types": ["relation"],
+      "description": "Together with admin_level=8: municipality relations whose member ways are drawn as boundary overlay from zoom 14 and in map exports. Tags on the member ways themselves are not evaluated."
     },
     {
       "key": "admin_level",
       "value": "8",
-      "object_types": ["way", "relation"],
-      "description": "Restricts the boundary overlay to municipality level."
+      "object_types": ["relation"],
+      "description": "Selects municipality-level boundary relations for the overlay."
     },
     {
       "key": "name",
