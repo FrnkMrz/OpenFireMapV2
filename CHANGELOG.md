@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
   - Cache-Einstellung „Aus“ liest und schreibt IndexedDB nicht mehr und löscht vorhandene Einträge.
 
 ### Behoben
+- **Overpass: hängender Server führt jetzt zum nächsten Server**: `fetchJson` brach eine Zeitüberschreitung über denselben Mechanismus ab wie einen Nutzerabbruch (`AbortError`); `fetchWithRetry` reichte den Fehler deshalb sofort weiter, statt den nächsten Overpass-Server zu versuchen. Zeitüberschreitungen sind jetzt ein eigener `TimeoutError` und werden wie ein Serverfehler behandelt (Server 20 s gesperrt, nächster Server). Aufgefallen beim Live-Delta, betraf aber alle Overpass-Abfragen.
 - **Gemeindegrenzen ohne Lücken (Auswahl über Relationen statt Weg-Tags)**:
   - Gemeindegrenzen werden über `admin_level=8`-Relationen statt über Tags am einzelnen OSM-Weg ausgewählt (Overpass + Pipeline). Wege, deren Gemeindegrenze mit einer höheren Grenze (Landkreis, Bezirk, Land, Staat) zusammenfällt oder die kein `boundary`-Tag am Weg tragen, werden vollständig erfasst.
   - Frontend-Overpass-Abfragen (`src/js/api.js` für Karte und Export) auf `rel["boundary"="administrative"]["admin_level"="8"]->.r; way(r.r)(${bbox})->.boundaries;` umgestellt mit expliziter Bounding-Box auf Mitglieds-Wege.

@@ -1170,5 +1170,6 @@ export const _testing = {
   buildPoiQuery,
   buildExportQuery,
   buildPoiDeltaQuery,
-  mergePoiDelta
+  mergePoiDelta,
+  fetchWithRetry
 };
