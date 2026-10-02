@@ -2,6 +2,7 @@
 """Tests für check_ha_entities.py (Entitäts-IDs aus name, default_entity_id, command_line)."""
 
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -10,6 +11,10 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import check_ha_entities as checker
 
+# Private IPv4-Adressen (RFC 1918) und persönliche Benachrichtigungsdienste dürfen nicht ins Repo
+LAN_DETAILS_RE = re.compile(
+    r"\b(?:192\.168|10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b|mobile_app_[a-z0-9]"
+)
 REPO_PACKAGE = Path(__file__).resolve().parents[1] / "monitoring" / "homeassistant" / "openfiremap.yaml"
 
 SAMPLE = """\
@@ -74,7 +79,14 @@ class TestCheckHaEntities(unittest.TestCase):
 
     def test_repo_package_contains_no_lan_details(self):
         text = REPO_PACKAGE.read_text(encoding="utf-8")
-        self.assertNotRegex(text, r"192\\.168\\.|10\\.\\d+\\.\\d+\\.\\d+|mobile_app_[a-z0-9]")
+        self.assertIsNone(LAN_DETAILS_RE.search(text), LAN_DETAILS_RE.findall(text))
+
+    def test_lan_details_pattern_detects_private_addresses_and_notify_targets(self):
+        for leaked in ("http://192.168.1.20:8080", "frank@10.1.2.3", "172.16.0.5", "172.31.255.1",
+                       "notify.mobile_app_iphone_16pro"):
+            self.assertIsNotNone(LAN_DETAILS_RE.search(leaked), leaked)
+        for harmless in ("<PIPELINE_LAN_URL>", "<NOTIFY_SERVICE>", "172.32.0.1", "version 110.2.3"):
+            self.assertIsNone(LAN_DETAILS_RE.search(harmless), harmless)
 
 
 if __name__ == "__main__":
