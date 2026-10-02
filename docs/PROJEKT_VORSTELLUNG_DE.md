@@ -31,7 +31,7 @@ Die R2-Synchronisation überträgt PMTiles zuerst, GeoJSON mit kürzerer Cache-D
 
 ## Aktuelle Messwerte und Funktionen
 
-- Version **v0.8.3**
+- Version **v0.8.4**
 - rund **1,25 Millionen** feuerwehrrelevante Objekte in der DACHLiLu-Pipeline
 - PMTiles-Datei mit etwa **182,3 MiB** (**191.103.472 Bytes**)
 - Cloudflare R2 als primäre öffentliche Pipeline-Quelle
