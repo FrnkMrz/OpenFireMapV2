@@ -31,7 +31,7 @@ The R2 publication flow uploads PMTiles first, GeoJSON with a shorter cache life
 
 ## Current facts and features
 
-- version **v0.8.3**
+- version **v0.8.4**
 - approximately **1.25 million** fire-service-related objects in the DACHLiLu pipeline
 - PMTiles archive of approximately **182.3 MiB** (**191,103,472 bytes**)
 - Cloudflare R2 as the primary public pipeline source

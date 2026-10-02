@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.8.4] - 2026-10-02
+
 ### Neu
 - **Live-Änderungen per Overpass auf den PMTiles**: Nach dem Laden aus den Kacheln holt das Frontend im Hintergrund die seit dem OSM-Datenstand (`osm_data_until`) geänderten Feuerwachen, Hydranten, Löschwasserstellen und Defibrillatoren im Ausschnitt (`newer:`) und ersetzt bzw. ergänzt die Kachel-Objekte per `type:id`. So erscheinen frisch gemappte Objekte, auch wenn Geofabrik – wie am 01./02.10. für Europa – keine neuen Auszüge liefert. Gelöschte Objekte bleiben bis zum nächsten Build sichtbar. Abschaltbar über `Config.pipeline.liveDelta`.
   - Nachbesserungen nach Review (#40): Das Delta deckt den ganzen geladenen Bereich inklusive Pufferring ab (vorher nur den Bildausschnitt, eine kleine Bewegung in den Puffer lud nichts nach); nach dem Pufferring wird die Liste inklusive Delta gezeichnet (vorher verschwanden Delta-Marker bis zum nächsten Rendern); der Delta-Cache-Schlüssel stammt aus dem abgefragten Bereich statt aus dem Overpass-Gitter; der Marker-Cache zeichnet Marker neu, wenn sich Position oder Tags eines Objekts ändern (vorher blieben verschobene oder umgetaggte Hydranten mit altem Stand stehen). Hintergrund-Abfragen zeigen bei globalem Backoff keine Warte-Meldung mehr.
