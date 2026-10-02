@@ -30,7 +30,7 @@ Die geografische Nutzung bleibt weltweit möglich. Die PMTiles-Pipeline ist eine
 
 Die Pipeline stellt vorberechnete Vektorkacheln in einer PMTiles-Datei bereit. Der Browser lädt nicht die gesamte Datei, sondern fordert per HTTP-Range-Request nur die Bytebereiche an, die für die sichtbaren Kacheln benötigt werden. Das reduziert Datenmenge und Wartezeit besonders bei großen Gebieten.
 
-Die aktuelle DACHLiLu-Datei ist ungefähr **192,5 MiB** groß (**201.892.499 Bytes**) und enthält Daten für rund **1,25 Millionen feuerwehrrelevante Objekte**. Der Build verwendet für die relevanten Layer MaxZoom 14. Dadurch bleibt die Datei unter dem Cloudflare-Free-Cache-Limit von **512 MiB**, während der Browser weiterhin nur benötigte Bytebereiche abruft. Die exakten Build-Zeitpunkte, Dateigröße und Statistiken werden über `metadata.json` der Pipeline veröffentlicht.
+Die aktuelle DACHLiLu-Datei ist ungefähr **182,3 MiB** groß (**191.103.472 Bytes**, inklusive OSM-Typ und -ID je POI) und enthält Daten für rund **1,25 Millionen feuerwehrrelevante Objekte**. Der Build verwendet für die relevanten Layer MaxZoom 14. Dadurch bleibt die Datei unter dem Cloudflare-Free-Cache-Limit von **512 MiB**, während der Browser weiterhin nur benötigte Bytebereiche abruft. Die exakten Build-Zeitpunkte, Dateigröße und Statistiken werden über `metadata.json` der Pipeline veröffentlicht.
 
 ## Cloudflare R2
 

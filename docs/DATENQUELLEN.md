@@ -41,7 +41,7 @@ Overpass ist ein gemeinsamer öffentlicher Dienst. Große oder sehr häufige Abf
 
 ## Datenaktualität
 
-Overpass-Abfragen greifen auf den aktuellen Stand zu, den der jeweilige Overpass-Dienst bereitstellt. PMTiles sind vorberechnete Stände: Sie werden mit einem Pipeline-Build erzeugt und über `metadata.json` mit einem Build-Zeitstempel versehen. Zwischen zwei Builds können Änderungen in OSM daher zuerst über Overpass sichtbar sein.
+Overpass-Abfragen greifen auf den aktuellen Stand zu, den der jeweilige Overpass-Dienst bereitstellt. PMTiles sind vorberechnete Stände: Sie werden mit einem Pipeline-Build erzeugt; `metadata.json` nennt den Build-Zeitpunkt (`generated_at`) und den OSM-Datenstand der Quellauszüge (`osm_data_until`). Nach dem Laden der PMTiles fragt die Anwendung Overpass nach Objekten, die seit diesem Datenstand neu angelegt oder geändert wurden (`newer:`), und ergänzt bzw. ersetzt die Kachel-Objekte anhand ihrer OSM-ID. Gelöschte oder umgetaggte Objekte erfasst diese Abfrage nicht; sie bleiben bis zum nächsten Build sichtbar.
 
 Die Pipeline prüft ihre Versionskennung und erkennt widersprüchliche oder veraltete Abdeckung. In solchen Fällen fällt die Anwendung auf Overpass zurück, statt eine nicht passende PMTiles-Datei als aktuell auszugeben.
 

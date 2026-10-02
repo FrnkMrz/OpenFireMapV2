@@ -19,7 +19,7 @@ This repository builds and serves optimized static GeoJSON datasets of fire-serv
 1. **No heavy databases**: Do NOT introduce PostGIS or a full Overpass API instance. The 8 GB RAM of VM 102 (shared with the web container and the OS page cache for the PBF extracts) must be respected.
 2. **Static-First**: The web container only serves pre-built static GeoJSON and metadata JSON files.
 3. **High Performance**: Use `osmium-tool` for filtering and geometry generation.
-4. **CORS & Compression**: All endpoints must allow cross-origin requests (`Access-Control-Allow-Origin: *`) and have gzip enabled.
+4. **CORS & Compression**: The Nginx endpoints on VM 102 allow cross-origin requests (`Access-Control-Allow-Origin: *`) and use gzip (not for PMTiles, to keep HTTP 206 range responses intact). The public R2 bucket behind `pipeline.openfiremap.org` only allows `https://openfiremap.org` and `http://localhost:5173`.
 5. **No Breaking Changes**: Output formats must strictly follow GeoJSON RFC 7946 specifications.
 6. **Logging Limits**: Keep Docker container logging capped at 3 files of 10 MB each.
 

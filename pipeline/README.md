@@ -26,7 +26,7 @@ Für den internen Betrieb steht außerdem ein Home-Assistant-Package zur Verfüg
 ## Aktueller Stand
 
 - ungefähr **1,25 Millionen** feuerwehrrelevante Objekte
-- PMTiles-Datei von ungefähr **192,5 MiB** (**201.892.499 Bytes**) durch optimierten MaxZoom-14-Build
+- PMTiles-Datei von ungefähr **182,3 MiB** (**191.103.472 Bytes**, inkl. OSM-Typ/-ID je POI) durch optimierten MaxZoom-14-Build
 - unter dem Cloudflare-Free-Cache-Limit von **512 MiB**
 - Skip-if-unchanged: Builder und Upload laufen nur bei echten Quelldaten- oder Codeänderungen (`built`, `upload_only`, `skipped_no_changes`), wodurch `?v=` stabil bleibt und der Cloudflare Edge Cache (`HIT`) geschont wird
 - HTTP-Range-Requests und CORS

@@ -14,7 +14,7 @@ Nein, nicht vollständig. Neue Kartenausschnitte, Suche und aktuelle Daten benö
 
 ## Wie aktuell sind die Daten?
 
-Overpass liefert Daten aus dem Stand, den der verwendete Dienst aktuell bereitstellt. PMTiles sind vorberechnete Datenstände. Der Build-Zeitpunkt ist in den Pipeline-Metadaten enthalten. Änderungen in OSM können daher je nach Datenpfad und nächstem Pipeline-Build unterschiedlich schnell sichtbar werden.
+Overpass liefert Daten aus dem Stand, den der verwendete Dienst aktuell bereitstellt. PMTiles sind vorberechnete Datenstände; ihr OSM-Datenstand steht in den Pipeline-Metadaten (`osm_data_until`). In DACHLiLu lädt OpenFireMap nach den PMTiles im Hintergrund über Overpass alle seitdem neuen oder geänderten Feuerwachen, Hydranten, Löschwasserstellen und Defibrillatoren im Ausschnitt nach. Neu eingetragene Objekte erscheinen so meist nach wenigen Sekunden. Gelöschte Objekte erkennt dieses Nachladen nicht; sie verschwinden erst mit dem nächsten Pipeline-Build.
 
 ## Wie können Fehler in OSM korrigiert werden?
 
@@ -26,7 +26,7 @@ Overpass ist ein öffentlicher Gemeinschaftsdienst und kann Abfragen bei hoher L
 
 ## Was wurde an der R2-Auslieferung optimiert?
 
-Der DACHLiLu-Pipeline-Build verwendet MaxZoom 14 und ist aktuell etwa 192,5 MiB groß. PMTiles werden per HTTP-Range-Requests ohne Gzip-Transformation ausgeliefert; ETags, CORS und abgestimmte Cache-Zeiten unterstützen die Wiederverwendung bereits geladener Daten. Nach einem Upload wird der öffentliche Stand anhand von Build-Zeitstempel und Dateigröße verifiziert. So wird `metadata.json` erst dann als neue Version veröffentlicht, wenn die eigentlichen Daten vollständig in R2 angekommen sind.
+Der DACHLiLu-Pipeline-Build verwendet MaxZoom 14 und ist aktuell etwa 182,3 MiB groß. PMTiles werden per HTTP-Range-Requests ohne Gzip-Transformation ausgeliefert; ETags, CORS und abgestimmte Cache-Zeiten unterstützen die Wiederverwendung bereits geladener Daten. Nach einem Upload wird der öffentliche Stand anhand von Build-Zeitstempel und Dateigröße verifiziert. So wird `metadata.json` erst dann als neue Version veröffentlicht, wenn die eigentlichen Daten vollständig in R2 angekommen sind.
 
 ## Sind die Daten für einen Feuerwehreinsatz verbindlich?
 
