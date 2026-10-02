@@ -11,7 +11,9 @@ const {
     EP,
     buildBoundaryQuery,
     buildPoiQuery,
-    buildExportQuery
+    buildExportQuery,
+    buildPoiDeltaQuery,
+    mergePoiDelta
 } = _testing;
 
 // ---- Tests ----
@@ -58,6 +60,50 @@ describe('Overpass-Ausgabeformate (Grundlage für isBoundaryElement)', () => {
         const q13 = buildExportQuery(13, bbox);
         expect(q13).not.toContain('out geom');
         expect(q13).toContain('fire_hydrant');
+    });
+});
+
+describe('Overpass-Änderungen zum Pipeline-Stand', () => {
+    const bbox = '49.48,11.20,49.62,11.50';
+    const since = '2026-09-30T20:22:42Z';
+
+    it('hängt an jeden POI-Filter (newer:"…") an und gibt nur Mittelpunkte aus', () => {
+        const q = buildPoiDeltaQuery(15, bbox, since);
+        const filters = q.match(/(nwr|node|way|rel)\[[^;]*;/g);
+        expect(filters).toHaveLength(4);
+        for (const f of filters) expect(f.endsWith(`(newer:"${since}");`)).toBe(true);
+        expect(q).toContain(`[bbox:${bbox}]`);
+        expect(q).toContain('.pois out center;');
+        expect(q).not.toContain('out geom');
+    });
+
+    it('nutzt dieselben Filter wie die Vollabfrage je Zoomstufe', () => {
+        for (const zoom of [12, 14, 15, 18]) {
+            const full = buildPoiQuery(zoom, bbox).query;
+            const delta = buildPoiDeltaQuery(zoom, bbox, since);
+            expect(delta.replaceAll(`(newer:"${since}")`, '')).toBe(full);
+        }
+        expect(buildPoiDeltaQuery(11, bbox, since)).toBe('');
+    });
+
+    it('ersetzt Objekte gleicher OSM-ID, trennt Typen und ergänzt neue', () => {
+        const base = [
+            { type: 'node', id: 1, lat: 49.5, lon: 11.3, tags: { emergency: 'fire_hydrant', ref: 'alt' } },
+            { type: 'way', id: 1, lat: 49.6, lon: 11.4, tags: { amenity: 'fire_station' } },
+            { type: 'node', id: 2, lat: 49.7, lon: 11.5, tags: { emergency: 'fire_hydrant' } },
+        ];
+        base.loadedBounds = { south: 49, north: 50, west: 11, east: 12 };
+        const delta = [
+            { type: 'node', id: 1, lat: 49.51, lon: 11.31, tags: { emergency: 'fire_hydrant', ref: 'neu' } },
+            { type: 'node', id: 3, lat: 49.8, lon: 11.6, tags: { emergency: 'fire_hydrant' } },
+        ];
+        const merged = mergePoiDelta(base, delta);
+        expect(merged.map((el) => `${el.type}:${el.id}`)).toEqual(['node:1', 'way:1', 'node:2', 'node:3']);
+        expect(merged[0].tags.ref).toBe('neu');
+        expect(merged[1].tags.amenity).toBe('fire_station');
+        expect(merged.loadedBounds).toBe(base.loadedBounds);
+        expect(base[0].tags.ref).toBe('alt'); // Eingabe bleibt unverändert
+        expect(mergePoiDelta(base, [])).toBe(base);
     });
 });
 

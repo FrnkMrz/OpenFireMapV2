@@ -35,6 +35,7 @@ let _pmtilesInstance = null;
 let _pmtilesUrl = null;
 let _pmtilesHeader = null;
 let _pipelineVersion = null;
+let _pipelineOsmDataUntil = null; // OSM-Datenstand der Pipeline (metadata.json: osm_data_until)
 let _lastMetadataFetchTime = 0;
 let _pendingMetadataPromise = null;
 const METADATA_CACHE_TTL_MS = 10 * 60 * 1000; // 10 Minuten
@@ -212,6 +213,17 @@ async function processTilesWithPool(tiles, workerFn, concurrency = 10, signal = 
  * @param {Object} [options]
  * @returns {Promise<string|null>}
  */
+const OSM_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+
+/**
+ * OSM-Datenstand der zuletzt geladenen metadata.json (z. B. "2026-09-30T20:22:42Z") oder null,
+ * wenn der Build ihn nicht kennt (ältere Builds ohne OSM-IDs in den Kacheln).
+ * @returns {string|null}
+ */
+export function getPipelineOsmDataUntil() {
+  return _pipelineOsmDataUntil;
+}
+
 export async function getPipelineVersion(baseUrl, { signal, forceRefresh = false } = {}) {
   const now = Date.now();
   if (!forceRefresh && _lastMetadataFetchTime > 0 && (now - _lastMetadataFetchTime < METADATA_CACHE_TTL_MS)) {
@@ -246,6 +258,8 @@ export async function getPipelineVersion(baseUrl, { signal, forceRefresh = false
       if (res.ok) {
         const data = await res.json();
         const newVersion = data?.generated_at ? String(data.generated_at) : null;
+        // Nur ein exakt formatierter Zeitstempel landet später in einer Overpass-Abfrage
+        _pipelineOsmDataUntil = OSM_TIMESTAMP_RE.test(String(data?.osm_data_until ?? '')) ? data.osm_data_until : null;
         if (newVersion && _pipelineVersion && newVersion !== _pipelineVersion) {
           console.warn(`[Pipeline] Neue Pipeline-Version erkannt: ${newVersion} (vorher: ${_pipelineVersion}). Verwerfe PMTiles-Instanz und Header.`);
           _pmtilesInstance = null;
@@ -735,6 +749,7 @@ export async function ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile,
   _pmtilesHeader = null;
   _pmtilesInstance = null;
   _pipelineVersion = null;
+  _pipelineOsmDataUntil = null;
   _lastMetadataFetchTime = 0;
   clearTileCache();
 
@@ -1334,6 +1349,7 @@ export function clearPipelineCache() {
   _pmtilesUrl = null;
   _pmtilesHeader = null;
   _pipelineVersion = null;
+  _pipelineOsmDataUntil = null;
   _lastMetadataFetchTime = 0;
   _pendingMetadataPromise = null;
   clearTileCache();

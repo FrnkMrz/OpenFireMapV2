@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Neu
+- **Live-Änderungen per Overpass auf den PMTiles**: Nach dem Laden aus den Kacheln holt das Frontend im Hintergrund die seit dem OSM-Datenstand (`osm_data_until`) geänderten Feuerwachen, Hydranten, Löschwasserstellen und Defibrillatoren im Ausschnitt (`newer:`) und ersetzt bzw. ergänzt die Kachel-Objekte per `type:id`. So erscheinen frisch gemappte Objekte, auch wenn Geofabrik – wie am 01./02.10. für Europa – keine neuen Auszüge liefert. Gelöschte Objekte bleiben bis zum nächsten Build sichtbar. Abschaltbar über `Config.pipeline.liveDelta`.
 - **OSM-Datenstand und OSM-IDs in der Pipeline** (Vorbereitung für das Nachladen von Änderungen per Overpass):
   - `metadata.json` enthält je Auszug `osm_data_timestamp` aus dem PBF-Header und gemeinsam `osm_data_until` (ältester Stand; leer, wenn einer fehlt). `generated_at` ist nur der Build-Zeitpunkt – am 01./02.10. lagen Datenstand (30.09. 20:22 UTC) und Build fast einen Tag auseinander.
   - Hydranten, Feuerwachen, Löschwasserstellen und Defibrillatoren tragen in GeoJSON und PMTiles `@type`/`@id` (`osmium export -a type,id`); bisher stand dort nur eine tippecanoe-Laufnummer. Geschätzt +10 MB PMTiles.
