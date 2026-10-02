@@ -12,6 +12,25 @@ const builderSource = readFileSync(resolve(root, 'pipeline/builder/build_feature
 
 const hasTag = (key, value) => taginfo.tags.some((t) => t.key === key && t.value === value);
 
+// Objekttypen, die eine Abfrage erfasst. 'area' steht in Taginfo für geschlossene Wege und
+// Multipolygon-Relationen und ist daher bei Weg- und Relationsabfragen möglich.
+const OVERPASS_TYPES = {
+  nwr: ['node', 'way', 'relation', 'area'],
+  node: ['node'],
+  way: ['way', 'area'],
+  rel: ['relation', 'area'],
+};
+const OSMIUM_TYPES = { n: ['node'], w: ['way', 'area'], r: ['relation', 'area'] };
+
+// Jeder in taginfo.json genannte Objekttyp muss von der Abfrage tatsächlich erfasst werden.
+// Engere Angaben (z. B. Hydranten nur als node trotz nwr-Abfrage) sind erlaubt.
+const expectTypesCovered = (key, value, selectable, source) => {
+  const tag = taginfo.tags.find((t) => t.key === key && t.value === value);
+  for (const type of tag?.object_types || []) {
+    expect(selectable.includes(type), `${key}=${value}: object_types enthält ${type}, ${source} erfasst nur ${selectable.join('/')}`).toBe(true);
+  }
+};
+
 describe('taginfo.json', () => {
   it('erfüllt die Pflichtfelder des Taginfo-Schemas', () => {
     expect(taginfo.data_format).toBe(1);
@@ -48,6 +67,37 @@ describe('taginfo.json', () => {
   it('deckt alle Tags der Pipeline-Filter ab', () => {
     for (const [, key, values] of builderSource.matchAll(/"[nwr]+\/([\w:]+)=([^"]+)"/g)) {
       for (const value of values.split(',')) expect(hasTag(key, value), `${key}=${value} fehlt`).toBe(true);
+    }
+  });
+  it('nennt nur Objekttypen, die die Overpass-Abfragen erfassen', () => {
+    const statements = apiSource.matchAll(/\b(nwr|node|way|rel)((?:\["[\w:]+"(?:=|~)"[^"]+"\])+)/g);
+    let checked = 0;
+    for (const [, type, filters] of statements) {
+      for (const [, key, op, values] of filters.matchAll(/\["([\w:]+)"(=|~)"([^"]+)"\]/g)) {
+        for (const value of op === '~' ? values.split('|') : [values]) {
+          expectTypesCovered(key, value, OVERPASS_TYPES[type], `Overpass ${type}[...]`);
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('nennt nur Objekttypen, die die Pipeline-Filter erfassen', () => {
+    let checked = 0;
+    for (const [, letters, key, values] of builderSource.matchAll(/"([nwr]+)\/([\w:]+)=([^"]+)"/g)) {
+      const selectable = [...new Set([...letters].flatMap((l) => OSMIUM_TYPES[l]))];
+      for (const value of values.split(',')) {
+        expectTypesCovered(key, value, selectable, `osmium ${letters}/`);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('Gemeindegrenzen: boundary/admin_level nur als Relation (Auswahl über Gemeinde-Relationen)', () => {
+    for (const [key, value] of [['boundary', 'administrative'], ['admin_level', '8']]) {
+      expect(taginfo.tags.find((t) => t.key === key && t.value === value)?.object_types).toEqual(['relation']);
     }
   });
 });
