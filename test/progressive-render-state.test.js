@@ -776,4 +776,112 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       pipelineModule.fetchPipelineBoundaries.mockRestore();
     });
   });
+  // =========================================================================
+  // 11. Overpass-Änderungen (Delta) zum Pipeline-Stand
+  // =========================================================================
+  describe('11. Overpass-Delta auf den Pipeline-Daten', () => {
+    beforeEach(async () => {
+      // Laufende Pufferringe aus vorherigen Tests abwarten und Zustand zurücksetzen
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      State.controllers.fetch?.abort?.();
+      State.controllers.fetch = null;
+      State.cachedPoiElements = [];
+      State.pendingBufferFetches = new Set();
+      State.activeFetchBounds = null;
+      const { _testing } = await import('../src/js/api.js');
+      _testing.resetOverpassState();
+    });
+
+    it('fragt den ganzen Pufferbereich ab und zeichnet nach dem Pufferring die Liste inklusive Delta', async () => {
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+      vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue('2026-09-30T20:22:42Z');
+
+      let bufferComplete = null;
+      vi.spyOn(pipelineModule, 'fetchPipelineData').mockImplementation(async (bounds, mode, options) => {
+        bufferComplete = options.onBufferComplete;
+        const visible = [{ type: 'node', id: 1, lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+        visible.loadedBounds = { id: 'visible_bounds' };
+        visible.bufferBounds = { south: 49.4, west: 11.0, north: 49.5, east: 11.1 };
+        return visible;
+      });
+
+      const overpassBodies = [];
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options) => {
+        overpassBodies.push(decodeURIComponent(String(options?.body || '').replace(/\+/g, ' ')));
+        return { ok: true, json: async () => ({ elements: [
+          { type: 'node', id: 2, lat: 49.451, lon: 11.071, tags: { emergency: 'fire_hydrant', ref: 'neu' } }
+        ] }) };
+      });
+
+      const rendered = [];
+      await fetchOSMData((items, isPartial) => rendered.push({ ids: items.map((e) => `${e.type}:${e.id}`), isPartial }));
+      await vi.waitFor(() => expect(State.cachedPoiElements.map((e) => e.id)).toContain(2));
+
+      // Abgefragt wurde der Pufferbereich, nicht nur der Bildausschnitt
+      expect(overpassBodies).toHaveLength(1);
+      expect(overpassBodies[0]).toContain('[bbox:49.40000,11.00000,49.50000,11.10000]');
+      expect(overpassBodies[0]).toContain('(newer:"2026-09-30T20:22:42Z")');
+
+      // Pufferring kommt nach dem Delta: gezeichnet wird die Liste MIT Delta
+      bufferComplete([
+        { type: 'node', id: 1, lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } },
+        { type: 'node', id: 3, lat: 49.41, lon: 11.01, tags: { emergency: 'fire_hydrant' } }
+      ], { id: 'full_bounds' });
+      const last = rendered[rendered.length - 1];
+      expect(last.isPartial).toBe(false);
+      expect(last.ids).toEqual(['node:1', 'node:3', 'node:2']);
+      expect(State.cachedPoiElements.map((e) => e.id)).toEqual([1, 3, 2]);
+    });
+
+    it('nutzt den Pufferbereich auch dann, wenn State.queryMeta noch aus dem Overpass-Pfad stammt', async () => {
+      const { _testing } = await import('../src/js/api.js');
+      State.queryMeta = { bbox: '48.00000,11.00000,48.10000,11.10000' }; // veraltet
+      const els = [];
+      els.bufferBounds = { south: 49.4, west: 11.0, north: 49.5, east: 11.1 };
+      expect(_testing.deltaBBoxForPipeline(els, null)).toBe('49.40000,11.00000,49.50000,11.10000');
+      const onlyVisible = [];
+      onlyVisible.loadedBounds = { getSouth: () => 49.44, getWest: () => 11.06, getNorth: () => 49.46, getEast: () => 11.08 };
+      expect(_testing.deltaBBoxForPipeline(onlyVisible, null)).toBe('49.44000,11.06000,49.46000,11.08000');
+      expect(_testing.deltaBBoxForPipeline([], null)).toBeNull();
+    });
+  });
+
+  // =========================================================================
+  // 12. Marker-Cache: geänderte Objekte gleicher OSM-ID werden neu gezeichnet
+  // =========================================================================
+  describe('12. Marker-Cache bei geänderten Objekten', () => {
+    it('zeichnet Marker neu, wenn sich Position oder Tags ändern, sonst nicht', async () => {
+      const { renderMarkers } = await import('../src/js/map.js');
+      State.markerCache = new Map();
+      // Vollständiger Marker-Ersatz: jede Methode gibt den Marker zurück (Leaflet-Verkettung)
+      vi.spyOn(globalThis.L, 'marker').mockImplementation(() => {
+        const marker = {};
+        for (const m of ['addTo', 'on', 'off', 'bindTooltip', 'unbindTooltip', 'openTooltip', 'closeTooltip', 'bindPopup', 'setZIndexOffset', 'setIcon', 'setLatLng']) {
+          marker[m] = () => marker;
+        }
+        return marker;
+      });
+      const hydrant = (lat, tags) => ({ type: 'node', id: 4711, lat, lon: 11.07, tags });
+
+      renderMarkers([hydrant(49.45, { emergency: 'fire_hydrant', ref: 'A' })], 17);
+      const first = State.markerCache.get('node:4711');
+      expect(first).toBeDefined();
+
+      // Neues Objekt mit gleichem Inhalt (wie nach jedem Kachelabruf): Marker bleibt
+      renderMarkers([hydrant(49.45, { emergency: 'fire_hydrant', ref: 'A' })], 17);
+      expect(State.markerCache.get('node:4711').marker).toBe(first.marker);
+
+      // Tag geändert (Delta): neu zeichnen
+      renderMarkers([hydrant(49.45, { emergency: 'fire_hydrant', ref: 'B' })], 17);
+      const second = State.markerCache.get('node:4711');
+      expect(second.marker).not.toBe(first.marker);
+      expect(second.tags.ref).toBe('B');
+
+      // Verschoben (Delta): neu zeichnen
+      renderMarkers([hydrant(49.451, { emergency: 'fire_hydrant', ref: 'B' })], 17);
+      const third = State.markerCache.get('node:4711');
+      expect(third.marker).not.toBe(second.marker);
+      expect(third.lat).toBe(49.451);
+    });
+  });
 });

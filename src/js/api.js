@@ -81,15 +81,17 @@ function sleep(ms, signal = null) {
   });
 }
 
-async function maybeGlobalBackoff(reqId, signal = null) {
+async function maybeGlobalBackoff(reqId, signal = null, silent = false) {
   const now = Date.now();
   if (GLOBAL_BACKOFF_UNTIL > now) {
     const waitMs = GLOBAL_BACKOFF_UNTIL - now;
     emit({ phase: 'backoff_wait', reqId, ms: waitMs });
 
-    // Visuelles Feedback: Zeige dem User, dass wir aufgrund Überlastung warten
-    const waitSec = Math.ceil(waitMs / 1000);
-    showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000), 'warning');
+    // Visuelles Feedback: Zeige dem User, dass wir aufgrund Überlastung warten (nicht bei Hintergrund-Abfragen)
+    if (!silent) {
+      const waitSec = Math.ceil(waitMs / 1000);
+      showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000), 'warning');
+    }
 
     await sleep(waitMs, signal);
   }
@@ -295,6 +297,17 @@ function osmKey(el) {
   return `${el.type || 'node'}:${el.id}`;
 }
 
+// Bereich für das Delta: der ganze von der Pipeline geladene Bereich inklusive Pufferring. Danach gilt
+// er als abgedeckt (loadedPoiBounds) und eine kleine Bewegung löst keine neue Abfrage aus.
+function deltaBBoxForPipeline(pipelineElements, viewBounds) {
+  const b = pipelineElements?.bufferBounds || pipelineElements?.loadedBounds || viewBounds;
+  if (!b) return null;
+  const val = (getter, key) => (typeof b[getter] === 'function' ? b[getter]() : b[key]);
+  const parts = [val('getSouth', 'south'), val('getWest', 'west'), val('getNorth', 'north'), val('getEast', 'east')];
+  if (!parts.every((v) => Number.isFinite(v))) return null;
+  return parts.map((v) => v.toFixed(5)).join(',');
+}
+
 // Overpass-Änderungen ersetzen Kachel-Objekte gleicher OSM-ID oder kommen neu hinzu
 function mergePoiDelta(baseElements, deltaElements) {
   if (!Array.isArray(deltaElements) || deltaElements.length === 0) return baseElements;
@@ -440,7 +453,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
   const endpoints = epHealthyOrder(Config.overpassEndpoints || []);
   if (endpoints.length === 0) throw new Error('err_generic');
 
-  await maybeGlobalBackoff(reqId, signal);
+  await maybeGlobalBackoff(reqId, signal, silent);
 
   let lastErr = null;
 
@@ -606,12 +619,13 @@ function reportHydrantDownload(onStatus, state, elements = []) {
 
 // Lädt die Overpass-Änderungen zum Pipeline-Stand für den Ausschnitt (kurz gecacht).
 // Gibt null zurück, wenn kein Datenstand bekannt ist (ältere Builds ohne OSM-IDs) oder das Nachladen aus ist.
-async function loadPoiDelta({ zoom, bbox, bboxKey, queryKind, reqId, signal }) {
+async function loadPoiDelta({ zoom, bbox, queryKind, reqId, signal }) {
   const since = getPipelineOsmDataUntil();
-  if (!Config.pipeline?.liveDelta || !since || !navigator.onLine) return null;
+  if (!Config.pipeline?.liveDelta || !since || !bbox || !navigator.onLine) return null;
   const query = buildPoiDeltaQuery(zoom, bbox, since);
   if (!query) return null;
-  const key = `${since}|${queryKind}|${bboxKey}`;
+  // Schlüssel aus genau dem abgefragten Bereich (State.queryMeta gehört zum Overpass-Pfad und kann veraltet sein)
+  const key = `${since}|${queryKind}|${bbox}`;
   const data = await fetchWithRetry(query, {
     cacheKey: `overpass:delta:v1:${key}`,
     cacheTtlMs: Config.pipeline.liveDeltaCacheTtlMs,
@@ -701,16 +715,17 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
         const onBufferComplete = (bufferedElements, fullBounds) => {
           if (!isCurrentRequest()) return;
           // Der Pufferring ersetzt die Liste; bereits geladene Overpass-Änderungen erneut anwenden
-          State.cachedPoiElements = _poiDelta?.key === deltaKey ? mergePoiDelta(bufferedElements, _poiDelta.elements) : bufferedElements;
+          const mergedElements = _poiDelta?.key === deltaKey ? mergePoiDelta(bufferedElements, _poiDelta.elements) : bufferedElements;
+          State.cachedPoiElements = mergedElements;
           State.loadedPoiBounds = fullBounds;
           syncCombinedCachedElements();
           if ((!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) && !State.isFetchingBoundaries) {
             State.activeFetchBounds = null;
           }
-          reportHydrantDownload(hydrantStatus, 'success', bufferedElements);
+          reportHydrantDownload(hydrantStatus, 'success', mergedElements);
           if (typeof onProgressData === 'function') {
             try {
-              onProgressData(bufferedElements, false);
+              onProgressData(mergedElements, false);
             } catch (renderErr) {
               console.warn('[API] Fehler beim Rendern nach Pufferabschluss:', renderErr);
             }
@@ -750,7 +765,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           }
 
           // Änderungen seit dem Pipeline-Stand per Overpass nachladen (Hintergrund, Fehler sind unkritisch)
-          loadPoiDelta({ zoom, bbox, bboxKey, queryKind, reqId, signal: controller.signal })
+          loadPoiDelta({ zoom, bbox: deltaBBoxForPipeline(pipelineElements, viewBounds), queryKind, reqId, signal: controller.signal })
             .then((delta) => {
               if (!delta || !isCurrentRequest()) return;
               deltaKey = delta.key;
@@ -1171,5 +1186,12 @@ export const _testing = {
   buildExportQuery,
   buildPoiDeltaQuery,
   mergePoiDelta,
-  fetchWithRetry
+  deltaBBoxForPipeline,
+  fetchWithRetry,
+  // Server-Sperren und globalen Backoff zwischen Tests zurücksetzen
+  resetOverpassState() {
+    EP.clear();
+    GLOBAL_BACKOFF_MS = 0;
+    GLOBAL_BACKOFF_UNTIL = 0;
+  }
 };
