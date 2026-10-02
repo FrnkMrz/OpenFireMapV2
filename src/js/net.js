@@ -13,6 +13,17 @@ export class HttpError extends Error {
   }
 }
 
+// Zeitüberschreitung eines einzelnen Requests. Bewusst kein AbortError: Aufrufer behandeln
+// AbortError als Abbruch durch den Nutzer und versuchen dann keinen anderen Server.
+export class TimeoutError extends Error {
+  constructor(message, { url, timeoutMs } = {}) {
+    super(message);
+    this.name = "TimeoutError";
+    this.url = url;
+    this.timeoutMs = timeoutMs;
+  }
+}
+
 export async function fetchJson(url, {
   method = "GET",
   headers = {},
@@ -29,7 +40,11 @@ export async function fetchJson(url, {
     else signal.addEventListener("abort", abort, { once: true });
   }
 
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
 
   try {
     const res = await fetch(url, {
@@ -49,6 +64,11 @@ export async function fetchJson(url, {
     }
 
     return await res.json();
+  } catch (err) {
+    if (timedOut && !signal?.aborted) {
+      throw new TimeoutError(`Timeout nach ${timeoutMs} ms`, { url, timeoutMs });
+    }
+    throw err;
   } finally {
     clearTimeout(timer);
     if (signal) signal.removeEventListener?.("abort", abort);

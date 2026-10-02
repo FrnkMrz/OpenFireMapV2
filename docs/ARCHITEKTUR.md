@@ -61,6 +61,8 @@ Die PMTiles-URL erhält automatisch einen Versionsparameter (`?v=`). Ändert sic
 
 `generated_at` ist der Build-Zeitpunkt, nicht der Datenstand. Den OSM-Datenstand liest der Builder aus dem PBF-Header jedes Auszugs (`extracts.<land>.osm_data_timestamp`, bei Geofabrik der Stand der letzten eingespielten Replikation); `osm_data_until` ist der älteste davon und bleibt leer, wenn er bei einem Land fehlt. Ab diesem Zeitpunkt können Änderungen per Overpass (`newer:`) nachgeladen werden. Damit Overpass-Treffer den Kachel-Objekten zugeordnet werden können, tragen Hydranten, Feuerwachen, Löschwasserstellen und Defibrillatoren in den PMTiles ihren OSM-Typ und ihre OSM-ID (`@type`, `@id`); das Frontend übernimmt sie als `type`/`id` und zeigt sie nicht als Tags an.
 
+Nach dem Laden aus den PMTiles fragt das Frontend im Hintergrund Overpass nach Änderungen im sichtbaren Ausschnitt: dieselben POI-Filter wie bei der Vollabfrage, ergänzt um `(newer:"<osm_data_until>")`. Treffer ersetzen Kachel-Objekte mit gleichem `type:id` oder kommen hinzu; das gilt auch, wenn danach der Pufferring nachgeladen wird. Das Ergebnis wird je Ausschnitt 10 Minuten gecacht (`Config.pipeline.liveDeltaCacheTtlMs`), Fehler bleiben ohne Meldung. Gelöschte oder umgetaggte Objekte erkennt `newer:` nicht; sie verschwinden erst mit dem nächsten Build. Ohne `osm_data_until` (ältere Builds) oder mit `Config.pipeline.liveDelta = false` bleibt das Nachladen aus.
+
 ## Fallback-Logik
 
 1. Liegt der sichtbare Ausschnitt in der validierten DACHLiLu-Abdeckung, versucht der Browser PMTiles über R2 zu laden.

@@ -17,7 +17,7 @@ import { t } from './i18n.js';
 import { showNotification, hideNotification } from './ui.js';
 
 import { fetchJson, HttpError } from './net.js';
-import { isPipelineEligible, fetchPipelineData, fetchPipelineBoundaries } from './pipeline.js';
+import { isPipelineEligible, fetchPipelineData, fetchPipelineBoundaries, getPipelineOsmDataUntil } from './pipeline.js';
 import {
   getCache,
   getCacheEntry,
@@ -46,6 +46,7 @@ let _bgPoiRefresh = null; // { controller: AbortController, cacheKey: string } |
 let _bgPoiGen = 0;        // Hochzählen = alle laufenden Callbacks ungültig machen
 let _bgBoundaryRefresh = null;
 let _bgBoundaryGen = 0;
+let _poiDelta = null;      // { key, elements } – zuletzt geladene Overpass-Änderungen zum Pipeline-Stand
 
 /** ---- Globaler Backoff (429/Server-Überlast) ----------------------------- */
 let GLOBAL_BACKOFF_MS = 0;
@@ -254,7 +255,8 @@ function getViewQueryMeta() {
   };
 }
 
-function buildPoiQuery(zoom, bbox) {
+// POI-Filter je Zoomstufe, gemeinsam für die Voll- und die Delta-Abfrage
+function buildPoiStatements(zoom) {
   const queryParts = [];
   if (zoom >= 12) {
     queryParts.push(`nwr["amenity"="fire_station"];`);
@@ -264,6 +266,11 @@ function buildPoiQuery(zoom, bbox) {
     queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
     queryParts.push(`node["emergency"="defibrillator"];`);
   }
+  return queryParts;
+}
+
+function buildPoiQuery(zoom, bbox) {
+  const queryParts = buildPoiStatements(zoom);
   if (queryParts.length === 0) return { query: '', queryKind: 'none', dataClass: 'default' };
 
   const queryKind = zoom >= 15 ? 'pois' : 'stations';
@@ -273,6 +280,29 @@ function buildPoiQuery(zoom, bbox) {
     queryKind,
     dataClass
   };
+}
+
+// Änderungen seit dem OSM-Datenstand der Pipeline: dieselben Filter mit (newer:"…").
+// Liefert neue und geänderte Objekte, aber keine gelöschten.
+function buildPoiDeltaQuery(zoom, bbox, since) {
+  const queryParts = buildPoiStatements(zoom).map((stmt) => stmt.replace(/;$/, `(newer:"${since}");`));
+  if (queryParts.length === 0) return '';
+  return `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;`;
+}
+
+// OSM-Typ und -ID gemeinsam: node, way und relation können dieselbe ID haben
+function osmKey(el) {
+  return `${el.type || 'node'}:${el.id}`;
+}
+
+// Overpass-Änderungen ersetzen Kachel-Objekte gleicher OSM-ID oder kommen neu hinzu
+function mergePoiDelta(baseElements, deltaElements) {
+  if (!Array.isArray(deltaElements) || deltaElements.length === 0) return baseElements;
+  const byKey = new Map((baseElements || []).map((el) => [osmKey(el), el]));
+  for (const el of deltaElements) byKey.set(osmKey(el), el);
+  const merged = Array.from(byKey.values());
+  if (baseElements?.loadedBounds) merged.loadedBounds = baseElements.loadedBounds;
+  return merged;
 }
 
 // Gemeinde-Relationen im Ausschnitt und ihre Mitglieds-Wege. Das globale [bbox:] gilt nicht für
@@ -574,6 +604,24 @@ function reportHydrantDownload(onStatus, state, elements = []) {
   onStatus({ state, count: countHydrants(elements) });
 }
 
+// Lädt die Overpass-Änderungen zum Pipeline-Stand für den Ausschnitt (kurz gecacht).
+// Gibt null zurück, wenn kein Datenstand bekannt ist (ältere Builds ohne OSM-IDs) oder das Nachladen aus ist.
+async function loadPoiDelta({ zoom, bbox, bboxKey, queryKind, reqId, signal }) {
+  const since = getPipelineOsmDataUntil();
+  if (!Config.pipeline?.liveDelta || !since || !navigator.onLine) return null;
+  const query = buildPoiDeltaQuery(zoom, bbox, since);
+  if (!query) return null;
+  const key = `${since}|${queryKind}|${bboxKey}`;
+  const data = await fetchWithRetry(query, {
+    cacheKey: `overpass:delta:v1:${key}`,
+    cacheTtlMs: Config.pipeline.liveDeltaCacheTtlMs,
+    reqId: reqId + '_delta',
+    signal,
+    silent: true
+  });
+  return { key, since, elements: Array.isArray(data?.elements) ? data.elements : [] };
+}
+
 export async function fetchOSMData(onProgressData = null, onStatus = null) {
   const reqId = Math.random().toString(36).substring(2, 7);
   const zoom = State.map.getZoom();
@@ -635,6 +683,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
       try {
         console.log('[API] Verwende lokale Pipeline für DACHLiLu...');
         let hasReportedSuccess = false;
+        let deltaKey = null;
         const onPoiProgress = (progressElements, isPartial = true, meta = {}) => {
           if (!isCurrentRequest()) return;
           if (meta?.phase !== 'buffer' && !hasReportedSuccess) {
@@ -651,7 +700,8 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
         const onBufferComplete = (bufferedElements, fullBounds) => {
           if (!isCurrentRequest()) return;
-          State.cachedPoiElements = bufferedElements;
+          // Der Pufferring ersetzt die Liste; bereits geladene Overpass-Änderungen erneut anwenden
+          State.cachedPoiElements = _poiDelta?.key === deltaKey ? mergePoiDelta(bufferedElements, _poiDelta.elements) : bufferedElements;
           State.loadedPoiBounds = fullBounds;
           syncCombinedCachedElements();
           if ((!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) && !State.isFetchingBoundaries) {
@@ -698,6 +748,22 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
             dataStatus.innerText = `${t('status_current')} (Lokal)`;
             dataStatus.className = 'text-green-400 font-bold';
           }
+
+          // Änderungen seit dem Pipeline-Stand per Overpass nachladen (Hintergrund, Fehler sind unkritisch)
+          loadPoiDelta({ zoom, bbox, bboxKey, queryKind, reqId, signal: controller.signal })
+            .then((delta) => {
+              if (!delta || !isCurrentRequest()) return;
+              deltaKey = delta.key;
+              _poiDelta = { key: delta.key, elements: delta.elements };
+              emit({ phase: 'pipeline_delta', reqId, since: delta.since, dataset: 'poi', elements: delta.elements.length });
+              if (delta.elements.length === 0) return;
+              State.cachedPoiElements = mergePoiDelta(State.cachedPoiElements, delta.elements);
+              syncCombinedCachedElements();
+              if (typeof onProgressData === 'function') onProgressData(State.cachedPoiElements, false);
+            })
+            .catch((err) => {
+              if (err?.name !== 'AbortError') console.warn('[API] Overpass-Änderungen konnten nicht geladen werden (nicht kritisch):', err?.message);
+            });
 
           return pipelineElements;
         }
@@ -1102,5 +1168,8 @@ export const _testing = {
   countHydrants,
   buildBoundaryQuery,
   buildPoiQuery,
-  buildExportQuery
+  buildExportQuery,
+  buildPoiDeltaQuery,
+  mergePoiDelta,
+  fetchWithRetry
 };

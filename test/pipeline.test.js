@@ -19,7 +19,8 @@ import {
   warmupPipeline,
   computeQueryZoom,
   isBoundaryElement,
-  boundaryGeometryToElements
+  boundaryGeometryToElements,
+  getPipelineOsmDataUntil
 } from '../src/js/pipeline.js';
 import { Config } from '../src/js/config.js';
 import { PMTiles } from 'pmtiles';
@@ -1497,6 +1498,30 @@ describe('pipeline.js', () => {
       expect(keys.has('node:4711')).toBe(true);
       expect(keys.has('way:4711')).toBe(true);
       expect(elements.every((el) => !('@id' in el.tags) && !('@type' in el.tags))).toBe(true);
+    });
+  });
+
+  describe('OSM-Datenstand aus metadata.json', () => {
+    const loadMetadata = async (metadata) => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => metadata });
+      await getPipelineVersion('https://pipeline.example.com', { forceRefresh: true });
+    };
+
+    it('übernimmt osm_data_until aus metadata.json', async () => {
+      await loadMetadata({ generated_at: '2026-10-02T12:30:00Z', osm_data_until: '2026-09-30T20:22:42Z' });
+      expect(getPipelineOsmDataUntil()).toBe('2026-09-30T20:22:42Z');
+    });
+
+    it('ist null bei älteren Builds ohne Datenstand', async () => {
+      await loadMetadata({ generated_at: '2026-10-01T20:14:39Z' });
+      expect(getPipelineOsmDataUntil()).toBeNull();
+      await loadMetadata({ generated_at: '2026-10-01T20:14:40Z', osm_data_until: null });
+      expect(getPipelineOsmDataUntil()).toBeNull();
+    });
+
+    it('lässt nur exakt formatierte Zeitstempel in Overpass-Abfragen gelangen', async () => {
+      await loadMetadata({ generated_at: '2026-10-02T12:31:00Z', osm_data_until: '2026-09-30T20:22:42Z"); node(1); ("' });
+      expect(getPipelineOsmDataUntil()).toBeNull();
     });
   });
 });

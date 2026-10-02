@@ -69,6 +69,11 @@ export const Config = {
     pmtilesFile: "openfiremap.pmtiles",
     // GeoJSON-Fallback für POIs und Grenzen (Default: false, um MB-Downloads auf Mobilgeräten zu verhindern)
     geojsonFallback: false,
+    // Änderungen seit dem OSM-Datenstand der Pipeline (metadata.json: osm_data_until) per Overpass
+    // `newer:` für den sichtbaren Ausschnitt nachladen. Findet neue und geänderte Objekte, keine gelöschten.
+    liveDelta: true,
+    // Cache-Dauer für das Delta je Ausschnitt (kurz, damit frisch gemappte Objekte bald erscheinen)
+    liveDeltaCacheTtlMs: 10 * 60 * 1000,
     // Abdeckungsbereich DACHLiLu (Deutschland, Österreich, Schweiz, Luxemburg, Liechtenstein)
     // Äußere Bounding-Box für schnelle Vorfilterung (O(1))
     bounds: {

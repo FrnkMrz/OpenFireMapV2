@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchJson, HttpError } from '../src/js/net.js';
+import { fetchJson, HttpError, TimeoutError } from '../src/js/net.js';
 
 describe('net.js', () => {
     let fetchMock;
@@ -55,26 +55,30 @@ describe('net.js', () => {
         await expect(fetchJson('https://example.com/500')).rejects.toThrow(HttpError);
     });
 
-    it('fetchJson supports timeout (aborts request)', async () => {
+    // fetch-Mock, der wie der Browser auf das Abort-Signal mit einem AbortError reagiert
+    const hangingFetch = (url, options) => new Promise((_, reject) => {
+        options.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+    });
+
+    it('fetchJson meldet eine Zeitüberschreitung als TimeoutError, nicht als AbortError', async () => {
         vi.useFakeTimers();
-        fetchMock.mockImplementation(() => new Promise(() => { })); // Never resolves
+        try {
+            fetchMock.mockImplementation(hangingFetch);
+            const promise = fetchJson('https://example.com/timeout', { timeoutMs: 1000 });
+            const assertion = expect(promise).rejects.toBeInstanceOf(TimeoutError);
+            await vi.advanceTimersByTimeAsync(1100);
+            await assertion;
+        } finally {
+            vi.useRealTimers();
+        }
+    });
 
-        const promise = fetchJson('https://example.com/timeout', { timeoutMs: 1000 });
-
-        vi.advanceTimersByTime(1100);
-
-        // Expect the fetch signal to be aborted. 
-        // Note: checking if promise rejects with AbortError depends on fetch implementation mocking.
-        // In our mock, we can check if the signal passed to fetch was aborted.
-
-        // Since we can't easily inspect the signal inside the promise race without a better mock execution,
-        // let's verify the AbortController logic by checking if the signal passed to fetch acts up.
-
-        // Actually, the simplest way with real fetch/timer logic in `net.js` is that `controller.abort()` 
-        // is called. `fetch` would then normally throw AbortError.
-        // We can simulate this:
-
-        // But `net.js` uses `setTimeout` internally.
+    it('fetchJson meldet einen Abbruch von außen weiterhin als AbortError', async () => {
+        fetchMock.mockImplementation(hangingFetch);
+        const controller = new AbortController();
+        const promise = fetchJson('https://example.com/abort', { timeoutMs: 60000, signal: controller.signal });
+        controller.abort();
+        await expect(promise).rejects.toMatchObject({ name: 'AbortError' });
     });
 
     // Re-implementing timeout test with more realistic mock

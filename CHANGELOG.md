@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Neu
+- **Live-Änderungen per Overpass auf den PMTiles**: Nach dem Laden aus den Kacheln holt das Frontend im Hintergrund die seit dem OSM-Datenstand (`osm_data_until`) geänderten Feuerwachen, Hydranten, Löschwasserstellen und Defibrillatoren im Ausschnitt (`newer:`) und ersetzt bzw. ergänzt die Kachel-Objekte per `type:id`. So erscheinen frisch gemappte Objekte, auch wenn Geofabrik – wie am 01./02.10. für Europa – keine neuen Auszüge liefert. Gelöschte Objekte bleiben bis zum nächsten Build sichtbar. Abschaltbar über `Config.pipeline.liveDelta`.
 - **OSM-Datenstand und OSM-IDs in der Pipeline** (Vorbereitung für das Nachladen von Änderungen per Overpass):
   - `metadata.json` enthält je Auszug `osm_data_timestamp` aus dem PBF-Header und gemeinsam `osm_data_until` (ältester Stand; leer, wenn einer fehlt). `generated_at` ist nur der Build-Zeitpunkt – am 01./02.10. lagen Datenstand (30.09. 20:22 UTC) und Build fast einen Tag auseinander.
   - Hydranten, Feuerwachen, Löschwasserstellen und Defibrillatoren tragen in GeoJSON und PMTiles `@type`/`@id` (`osmium export -a type,id`); bisher stand dort nur eine tippecanoe-Laufnummer. Geschätzt +10 MB PMTiles.
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
   - Cache-Einstellung „Aus“ liest und schreibt IndexedDB nicht mehr und löscht vorhandene Einträge.
 
 ### Behoben
+- **Overpass: hängender Server führt jetzt zum nächsten Server**: `fetchJson` brach eine Zeitüberschreitung über denselben Mechanismus ab wie einen Nutzerabbruch (`AbortError`); `fetchWithRetry` reichte den Fehler deshalb sofort weiter, statt den nächsten Overpass-Server zu versuchen. Zeitüberschreitungen sind jetzt ein eigener `TimeoutError` und werden wie ein Serverfehler behandelt (Server 20 s gesperrt, nächster Server). Aufgefallen beim Live-Delta, betraf aber alle Overpass-Abfragen.
 - **Gemeindegrenzen ohne Lücken (Auswahl über Relationen statt Weg-Tags)**:
   - Gemeindegrenzen werden über `admin_level=8`-Relationen statt über Tags am einzelnen OSM-Weg ausgewählt (Overpass + Pipeline). Wege, deren Gemeindegrenze mit einer höheren Grenze (Landkreis, Bezirk, Land, Staat) zusammenfällt oder die kein `boundary`-Tag am Weg tragen, werden vollständig erfasst.
   - Frontend-Overpass-Abfragen (`src/js/api.js` für Karte und Export) auf `rel["boundary"="administrative"]["admin_level"="8"]->.r; way(r.r)(${bbox})->.boundaries;` umgestellt mit expliziter Bounding-Box auf Mitglieds-Wege.
