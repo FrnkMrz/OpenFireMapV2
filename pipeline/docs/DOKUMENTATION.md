@@ -48,66 +48,51 @@ Die DACHLiLu-Ausgabe umfasst rund 1,25 Millionen feuerwehrrelevante Objekte. Das
 
 ## Home-Assistant-Überwachung
 
-Die Pipeline lässt sich über das vorgefertigte Home-Assistant-Package unter `pipeline/monitoring/homeassistant/openfiremap.yaml` überwachen.
+Die Pipeline lässt sich über das Home-Assistant-Package `pipeline/monitoring/homeassistant/openfiremap.yaml` überwachen. Es entspricht dem produktiv laufenden Paket; LAN-Adressen, SSH-Ziel und Benachrichtigungsdienst sind durch Platzhalter ersetzt.
 
-### Überwachte Metriken:
-- **Öffentlicher CDN-Status (R2):** Erreichbarkeit, Datenalter in Stunden, Versions-Zeitstempel (`generated_at`), Extrakt-Alter in Stunden (`extracts_oldest_age_hours`), Objektzahlen (Hydranten, Wachen, Wasserstellen, Defis, Grenzen), PMTiles-Größe und MaxZoom.
-- **Lokaler VM-Status:** Lokale Version auf VM 102, Festplattenbelegung (`/internal/system_stats.json`).
-- **Synchronisations-Status:** Automatische Erkennung von Diskrepanzen zwischen lokalem Build und öffentlichem R2-Stand (`/internal/sync_status.json`) sowie Build-Warnungen.
+### Überwachte Metriken
+- **Öffentlicher Stand (R2, `metadata.json`):** Status und Erreichbarkeit, Zusammenfassung, `generated_at`, Objektzahlen je Ebene (mit `previous_count`/`diff_text` als Attribute), Build-, Download-, Extraktions- und PMTiles-Dauer, PMTiles-Größe.
+- **Lokaler Stand auf VM 102 (`<PIPELINE_LAN_URL>/metadata.json`):** Status und `generated_at`; daraus der Publish-Verzug zwischen lokalem und öffentlichem Stand.
+- **R2-Sync (`<PIPELINE_LAN_URL>/internal/sync_status.json`):** Ergebnis des letzten Laufs, letzte Prüfung (Heartbeat), letzter Fehler, Upload erfolgreich, in Sync.
+- **Speicher der VM:** freier und belegter Speicher per SSH (siehe unten); `system_stats.json` bleibt dafür absichtlich nicht öffentlich.
 
-### Einbindung der Vorlage:
-1. In Home Assistant Packages aktivieren (in `/config/configuration.yaml`):
+Schwellenwerte (Publish-Verzug, Objekt-Einbruch, Build-Dauer, freier Speicher) sind als `input_number` in der Oberfläche einstellbar. Eine Automation meldet Eintritt und Entwarnung jeder Warnung; der Objekt-Einbruch wird nur bewertet, solange die Region gleich bleibt (`input_text.openfiremap_current_region`/`_previous_region`).
+
+### Einbindung
+1. Packages in `/config/configuration.yaml` aktivieren:
    ```yaml
    homeassistant:
      packages: !include_dir_named packages
    ```
-2. Datei `openfiremap.yaml` in den Home-Assistant-Ordner `/config/packages/` kopieren.
-3. Platzhalter konfigurieren:
-   - **Standardweg (Suchen & Ersetzen):**
-     - `<PIPELINE_PUBLIC_URL>`: Öffentliche URL, z. B. `https://pipeline.openfiremap.org`
-     - `<PIPELINE_LAN_URL>`: LAN-URL des Nginx-Servers, z. B. `http://<PIPELINE_LAN_IP>:8080` (Muster)
-     - `<NOTIFY_SERVICE>`: Benachrichtigungsdienst, z. B. `notify.persistent_notification` oder `notify.mobile_app_smartphone` (muss direkt als Dienstname im YAML stehen; Home Assistant unterstützt kein `!secret` für Service-Namen).
-   - **Alternative via `secrets.yaml`:**
-     Home Assistant erlaubt kein Ersetzen von Teil-Strings innerhalb von URLs via `!secret`. Daher müssen vollständige URLs in `secrets.yaml` hinterlegt und die `resource:`-Zeilen in `openfiremap.yaml` angepasst werden:
-     ```yaml
-     # in /config/secrets.yaml
-     openfiremap_public_metadata_url: "https://pipeline.openfiremap.org/metadata.json"
-     openfiremap_lan_metadata_url: "http://<PIPELINE_LAN_IP>:8080/metadata.json"
-     openfiremap_lan_system_stats_url: "http://<PIPELINE_LAN_IP>:8080/internal/system_stats.json"
-     openfiremap_lan_sync_status_url: "http://<PIPELINE_LAN_IP>:8080/internal/sync_status.json"
-
-     # in /config/packages/openfiremap.yaml
-     rest:
-       - resource: !secret openfiremap_public_metadata_url
-         ...
+2. `openfiremap.yaml` nach `/config/packages/` kopieren und die Platzhalter direkt ersetzen (Home Assistant erlaubt kein `!secret` in Dienstnamen oder innerhalb von Zeichenketten):
+   - `<PIPELINE_PUBLIC_URL>`: z. B. `https://pipeline.openfiremap.org`
+   - `<PIPELINE_LAN_URL>`: `http://<PIPELINE_LAN_IP>:8080`
+   - `<PIPELINE_SSH_TARGET>`: `<benutzer>@<PIPELINE_LAN_IP>`
+   - `<NOTIFY_SERVICE>`: z. B. `notify.mobile_app_<geraet>`
+3. SSH-Zugang für die Speicherwerte einrichten:
+   - Skript `pipeline/monitoring/openfiremap-stats` auf der VM nach `/usr/local/bin/openfiremap-stats` kopieren (ausführbar). Es gibt `system_stats.json` plus aktuelle `df`-Werte von `/srv/docker/data` als JSON aus.
+   - In Home Assistant einen eigenen Schlüssel erzeugen (`/config/.ssh/openfiremap_stats`) und den Host-Schlüssel der VM in `/config/.ssh/known_hosts` eintragen.
+   - Auf der VM in `~/.ssh/authorized_keys` des Benutzers den öffentlichen Schlüssel eingeschränkt freigeben:
+     ```text
+     from="<HA_LAN_IP>",command="/usr/local/bin/openfiremap-stats",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-ed25519 <SCHLÜSSEL> openfiremap-stats-ha
      ```
-     Auch bei dieser Variante muss `<NOTIFY_SERVICE>` in den Automationen direkt ersetzt werden.
-4. **Hinweis zum Initialstatus:**
-   Die Entitäten aus `sync_status.json` (`sensor.openfiremap_sync_*`, `binary_sensor.openfiremap_upload_erfolgreich`, `binary_sensor.openfiremap_in_sync`) zeigen bis zum ersten erfolgreichen nächtlichen `update.sh`-Lauf den Status `unavailable`. Dies ist normales Verhalten, da die Statusdatei erst beim Build erzeugt wird.
-5. Konfigurationsprüfung in Home Assistant durchführen und YAML neu laden (bei neuen `rest:`-Sensoren wie in v0.8.2 ist ein Neustart von Home Assistant erforderlich).
-6. Vor dem Einbinden die Entitätsreferenzen prüfen:
+     Der Schlüssel kann so nur dieses Skript ausführen und nur von Home Assistant aus.
+4. Entitäts-IDs prüfen:
    ```bash
    python3 pipeline/tools/check_ha_entities.py pipeline/monitoring/homeassistant/openfiremap.yaml
    ```
-   Das Skript leitet die Entity-ID aus dem Anzeigenamen (nicht aus `unique_id`) ab,
-   berücksichtigt die Home-Assistant-Slugifizierung einschließlich Umlauten und `ß`
-   und meldet fehlende oder doppelte Referenzen. HA-Tags wie `!secret` und `!include`
-   müssen dafür nicht aufgelöst werden.
+   Automationen und Dashboards nutzen feste IDs wie `sensor.openfiremap_hydrants`. REST- und `command_line`-Sensoren bilden ihre ID aus `name`, deshalb sind diese Namen englisch; die deutschen Anzeigenamen setzt `homeassistant: customize` am Ende der Datei. Template-Entitäten legen ihre ID mit `default_entity_id` fest. Das Skript berücksichtigt beides sowie die Home-Assistant-Slugifizierung (Umlaute, `ß`) und meldet fehlende oder doppelte IDs.
+5. Konfiguration in Home Assistant prüfen und neu laden; neue `rest:`- oder `command_line:`-Sensoren erfordern einen Neustart.
+
+Die Sensoren aus `sync_status.json` sind bis zum ersten Lauf von `update.sh` `unavailable`, weil die Datei erst dabei entsteht.
 
 ### Ausfall- und Alarmverhalten
 
-- Ein fehlgeschlagener öffentlicher REST-Abruf ergibt `unavailable`; der öffentliche
-  Endpunkt-Alarm reagiert darauf nach 10 Minuten.
-- `OpenFireMap Datenalter Stunden` und `OpenFireMap Daten Synchron` werden bei
-  fehlenden Versionsdaten ebenfalls `unavailable`. Dadurch erzeugen sie während
-  eines Endpunktausfalls keinen zweiten Alarm.
-- `OpenFireMap Sync Alter Stunden` überwacht als Heartbeat den Zeitpunkt der letzten
-  Prüfung (`checked_at`). Bei Überschreitung von 30 Stunden schlägt die Automation
-  `openfiremap_heartbeat_missing` Alarm (entkoppelt vom tatsächlichen Alter der OSM-Daten).
-- `OpenFireMap Sync Ergebnis` spiegelt den Ausgang des letzten Update-Laufs (`built`,
-  `upload_only`, `skipped_no_changes`, `skipped_stale_source`, `failed`).
-- Ein echter `upload_ok: false`-Status löst den Sync-Alarm nach 15 Minuten aus.
-- Ein Hydranten-REST-Ausfall wird nicht als Bestandseinbruch auf null interpretiert.
+- Ein fehlgeschlagener öffentlicher REST-Abruf macht die Sensoren `unavailable`; `OpenFireMap Warnung Öffentlicher Endpunkt` meldet nach 60 Minuten. Ein Status ungleich `ok` meldet nach 30 Minuten.
+- `OpenFireMap Sync Alter Stunden` ist der Heartbeat (Zeit seit `checked_at`). Über 30 Stunden meldet `openfiremap_heartbeat_missing` – unabhängig vom Alter der OSM-Daten.
+- `OpenFireMap Sync Ergebnis` spiegelt den letzten Lauf (`built`, `upload_only`, `skipped_no_changes`, `skipped_stale_source`, `failed`). `upload_ok: false` meldet nach 15 Minuten, eine Sync-Diskrepanz nach 2 Stunden.
+- Lokaler Endpunkt oder SSH-Speicherabfrage nicht erreichbar: Meldung nach 60 Minuten; freier Speicher unter der Schwelle: nach 30 Minuten.
+- Ein REST-Ausfall wird nicht als Bestandseinbruch auf null gewertet.
 
 ## Rolle des Cloudflare-Tunnels vs. Cloudflare R2
 
