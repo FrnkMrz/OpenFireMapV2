@@ -900,6 +900,8 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   const activeNorth = tile2lat(bufMinY, queryZoom);
   const activeWest = tile2lon(bufMinX, queryZoom);
   const activeEast = tile2lon(bufMaxX + 1, queryZoom);
+  // Bereich inklusive Pufferring: so groß wird loadedPoiBounds nach dem Nachladen (z. B. für das Overpass-Delta)
+  elements.bufferBounds = { south: activeSouth, west: activeWest, north: activeNorth, east: activeEast };
   State.activeFetchBounds = (typeof L !== 'undefined' && L.latLngBounds)
     ? L.latLngBounds([activeSouth, activeWest], [activeNorth, activeEast])
     : {

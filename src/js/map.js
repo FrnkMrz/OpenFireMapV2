@@ -844,6 +844,15 @@ function osmKey(el) {
     return `${el.type || 'node'}:${el.id}`;
 }
 
+// Gleiche Tags (Schlüssel und Werte), unabhängig von der Objektidentität: Kachel- und
+// Overpass-Objekte werden bei jedem Abruf neu erzeugt.
+function sameTags(a, b) {
+    if (a === b) return true;
+    const aKeys = Object.keys(a || {});
+    const bKeys = Object.keys(b || {});
+    return aKeys.length === bKeys.length && aKeys.every((k) => a[k] === b?.[k]);
+}
+
 function countTags(tags) {
     if (!tags) return 0;
     // Nur eigene Keys zählen, keine Prototyp-Spielereien.
@@ -1296,8 +1305,13 @@ export function renderMarkers(elements, zoom, { isPartial = false } = {}) {
         // Prüfen, ob wir den Marker schon haben
         const cached = State.markerCache.get(id);
 
-        // Fall 1: Marker existiert UND Modus (Dot vs SVG) ist gleich geblieben, sowie Cluster-Status ist identisch
+        // Position und Tags gehören zum Marker (Lage, Symbol, Tooltip). Ändert ein Overpass-Delta
+        // ein Objekt mit gleicher OSM-ID, muss der Marker neu gezeichnet werden.
+        const sameContent = cached && cached.lat === lat && cached.lon === lon && sameTags(cached.tags, tags);
+
+        // Fall 1: Marker existiert UND Modus (Dot vs SVG), Cluster-Status und Inhalt sind unverändert
         if (cached &&
+            sameContent &&
             cached.mode === mode &&
             cached.isHydrantCluster === el.isHydrantCluster &&
             cached.clusterCount === el.clusterCount) {
@@ -1306,8 +1320,8 @@ export function renderMarkers(elements, zoom, { isPartial = false } = {}) {
             return;
         }
 
-        // Fall 2: Marker existiert, aber Modus oder Cluster-Status hat sich geändert
-        if (cached && (cached.mode !== mode || cached.isHydrantCluster !== el.isHydrantCluster || cached.clusterCount !== el.clusterCount)) {
+        // Fall 2: Marker existiert, aber Modus, Cluster-Status oder Inhalt hat sich geändert
+        if (cached) {
             // Alten Marker entfernen, da er neu gezeichnet werden muss
             State.markerLayer.removeLayer(cached.marker);
             State.markerCache.delete(id);
