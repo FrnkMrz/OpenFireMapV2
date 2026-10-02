@@ -92,6 +92,8 @@ DACHLILU_COUNTRIES = [
 FEATURE_CONFIGS = [
     {
         "name": "hydrants",
+        # @type/@id: OSM-Objekt, damit das Frontend Overpass-Änderungen den Kachel-Objekten zuordnen kann
+        "attributes": ["type", "id"],
         "filter": ["nwr/emergency=fire_hydrant"],
         "geom_types": ["point"],
         "output": "hydrants.geojson",
@@ -99,6 +101,8 @@ FEATURE_CONFIGS = [
     },
     {
         "name": "fire_stations",
+        # @type/@id: OSM-Objekt, damit das Frontend Overpass-Änderungen den Kachel-Objekten zuordnen kann
+        "attributes": ["type", "id"],
         "filter": ["nwr/amenity=fire_station", "nwr/building=fire_station"],
         "geom_types": ["point", "polygon"],
         "output": "fire_stations.geojson",
@@ -106,6 +110,8 @@ FEATURE_CONFIGS = [
     },
     {
         "name": "water_points",
+        # @type/@id: OSM-Objekt, damit das Frontend Overpass-Änderungen den Kachel-Objekten zuordnen kann
+        "attributes": ["type", "id"],
         "filter": ["nwr/emergency=water_tank,suction_point,fire_water_pond,cistern"],
         "geom_types": ["point", "polygon"],
         "output": "water_points.geojson",
@@ -113,6 +119,8 @@ FEATURE_CONFIGS = [
     },
     {
         "name": "defibrillators",
+        # @type/@id: OSM-Objekt, damit das Frontend Overpass-Änderungen den Kachel-Objekten zuordnen kann
+        "attributes": ["type", "id"],
         "filter": ["n/emergency=defibrillator"],
         "geom_types": ["point"],
         "output": "defibrillators.geojson",
@@ -668,15 +676,51 @@ def prefilter_country(pbf_path, cid, work_dir, features=None):
         _remove_quietly(combined_pbf)
 
 
+def read_osm_data_timestamp(pbf_path):
+    """
+    Liest den Datenstand eines OSM-Auszugs aus dem PBF-Header (header.option.timestamp, bei
+    Geofabrik der Stand der letzten eingespielten Replikation, z. B. 2026-09-30T20:22:42Z).
+    Gibt None zurück, wenn osmium fehlt, die Datei nicht lesbar ist oder der Header keinen Stand hat.
+    """
+    osmium_bin = shutil.which("osmium")
+    if not osmium_bin or not os.path.exists(pbf_path):
+        return None
+    try:
+        res = subprocess.run([osmium_bin, "fileinfo", "-g", "header.option.timestamp", pbf_path],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    value = res.stdout.strip() if res.returncode == 0 else ""
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    return parsed.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def combined_osm_data_until(extracts_meta):
+    """
+    Gemeinsamer Datenstand aller Auszüge: der älteste Stand. Fehlt er bei einem Auszug, ist der
+    gemeinsame Stand unbekannt (None), damit ein Delta-Abgleich nie bei einem zu späten Zeitpunkt beginnt.
+    """
+    stamps = [meta.get("osm_data_timestamp") for meta in (extracts_meta or {}).values()]
+    if not stamps or not all(stamps):
+        return None
+    return min(stamps)
+
+
 def build_export_cmd(item, source_pbf, output_file, work_dir):
     """
     Baut den osmium-export-Befehl für ein Feature. Mit include_tags wird eine
     Export-Konfiguration geschrieben, die nur die genannten Tags übernimmt.
     Mit keep_untagged werden auch Mitglieds-Wege ohne eigene Tags exportiert.
+    Mit attributes werden OSM-Attribute als Eigenschaften übernommen (z. B. type,id -> @type, @id).
     """
     cmd = ["osmium", "export", source_pbf, "--add-unique-id=type_id", "-o", output_file, "--overwrite"]
     if item.get("keep_untagged"):
         cmd.append("--keep-untagged")
+    if item.get("attributes"):
+        cmd.extend(["-a", ",".join(item["attributes"])])
     if item.get("geom_types"):
         cmd.extend(["--geometry-types", ",".join(item["geom_types"])])
     if item.get("include_tags"):
@@ -1096,6 +1140,7 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None, extract
                     "size_mb": round(os.path.getsize(c_pbf) / (1024 * 1024), 2),
                     "mtime": datetime.fromtimestamp(c_mtime, timezone.utc).isoformat(),
                     "age_hours": c_age,
+                    "osm_data_timestamp": read_osm_data_timestamp(c_pbf),
                     "status": "cached_head_ok"
                 }
 
@@ -1113,6 +1158,8 @@ def process_features(mode, targets, download_duration=0, raw_sizes=None, extract
         "summary": summary_text,
         "countries": country_names,
         "extracts_oldest_age_hours": oldest_extract_age_hours,
+        # OSM-Datenstand (ältester Auszug): Ab hier lädt das Frontend Änderungen per Overpass nach
+        "osm_data_until": combined_osm_data_until(extracts_meta),
         "extracts": extracts_meta,
         "source_extract": f"{mode} ({', '.join(country_names)})" if mode != "single" else targets[0]["filename"],
         "source_extract_size_mb": total_raw_mb,
@@ -1168,6 +1215,7 @@ def main():
                 "size_mb": round(pbf_size_b / (1024 * 1024), 2),
                 "mtime": datetime.fromtimestamp(pbf_mtime, timezone.utc).isoformat(),
                 "age_hours": pbf_age_h,
+                "osm_data_timestamp": read_osm_data_timestamp(local_pbf),
                 "status": status
             }
         else:
@@ -1179,6 +1227,7 @@ def main():
                 "size_mb": 0.0,
                 "mtime": "",
                 "age_hours": 0.0,
+                "osm_data_timestamp": None,
                 "status": status
             }
 
