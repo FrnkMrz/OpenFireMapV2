@@ -6,7 +6,8 @@ packages may contain tags such as ``!secret`` and ``!include`` that are not
 valid for a generic YAML loader, so the checker performs a small structural
 scan of the package instead of resolving those tags or executing templates.
 
-Entity IDs are derived from the YAML ``name`` field, not ``unique_id``.  The
+Entity IDs are derived from the YAML ``name`` field, not ``unique_id``, unless a
+template entity sets ``default_entity_id``, which then wins.  The
 slugification mirrors Home Assistant's ``homeassistant.util.slugify`` with
 ``separator="_"``: Unicode is transliterated to ASCII, umlauts are reduced to
 their base letter, ``ß`` becomes ``ss``, non-alphanumeric runs become one
@@ -26,7 +27,9 @@ from pathlib import Path
 ENTITY_REFERENCE_RE = re.compile(r"\b(sensor|binary_sensor)\.([a-z0-9_]+)\b")
 # REST packages use ``sensor:`` while template packages use ``- sensor:``.
 SECTION_RE = re.compile(r"^(?:-\s+)?(sensor|binary_sensor):\s*(?:#.*)?$")
-NAME_RE = re.compile(r"^-\s+name:\s*(.+?)\s*$")
+# REST/template list items use ``- name:``; command_line uses ``- sensor:`` with ``name:``.
+NAME_RE = re.compile(r"^(?:-\s+)?name:\s*(.+?)\s*$")
+DEFAULT_ID_RE = re.compile(r"^default_entity_id:\s*(sensor|binary_sensor)\.([a-z0-9_]+)\s*(?:#.*)?$")
 
 
 def yaml_scalar(raw: str) -> str:
@@ -90,6 +93,13 @@ def find_definitions(lines: list[str]) -> list[tuple[int, str, str]]:
             name = yaml_scalar(name_match.group(1))
             entity_id = f"{active_domain}.{slugify(name)}"
             definitions.append((line_number, name, entity_id))
+            continue
+
+        # default_entity_id legt die ID der zuletzt definierten Template-Entität fest
+        default_match = DEFAULT_ID_RE.match(stripped)
+        if default_match and definitions:
+            line_no, name, _ = definitions[-1]
+            definitions[-1] = (line_no, name, f"{default_match.group(1)}.{default_match.group(2)}")
 
     return definitions
 

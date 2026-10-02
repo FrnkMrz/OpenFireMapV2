@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Restricted SSH forced command for OpenFireMap VM statistics."""
+
+from __future__ import annotations
+
+import datetime as dt
+import json
+import subprocess
+from pathlib import Path
+
+
+STATS_PATH = Path("/srv/docker/data/openfiremap/raw/system_stats.json")
+DATA_PATH = "/srv/docker/data"
+
+
+def read_build_stats() -> dict:
+    try:
+        value = json.loads(STATS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def read_live_stats() -> dict:
+    try:
+        lines = subprocess.check_output(
+            ["/bin/df", "-Pk", DATA_PATH], text=True, stderr=subprocess.DEVNULL
+        ).splitlines()
+        fields = lines[-1].split()
+        total_kib, used_kib, free_kib = (int(fields[index]) for index in (1, 2, 3))
+        used_percent = float(fields[4].rstrip("%"))
+    except (OSError, ValueError, IndexError, subprocess.CalledProcessError):
+        return {}
+
+    kib_to_gb = 1 / 1024 / 1024
+    return {
+        "disk_total_gb": round(total_kib * kib_to_gb, 1),
+        "disk_used_gb": round(used_kib * kib_to_gb, 1),
+        "disk_free_gb": round(free_kib * kib_to_gb, 1),
+        "disk_used_percent": used_percent,
+        "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+
+
+payload = read_build_stats()
+live_stats = read_live_stats()
+payload.update(live_stats)
+if live_stats:
+    system_stats = payload.get("system")
+    if not isinstance(system_stats, dict):
+        system_stats = {}
+    system_stats.update(live_stats)
+    payload["system"] = system_stats
+print(json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True))
