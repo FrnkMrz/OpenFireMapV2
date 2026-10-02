@@ -28,6 +28,6 @@ Mit OpenFireMapV2 begann 2025/2026 ein technischer Neuaufbau. Die neue clientsei
 
 Die Pipeline erweitert nicht die geografische Abdeckung. OpenFireMap bleibt weltweit nutzbar: Außerhalb der vorbereiteten DACHLiLu-Gebiete und bei Pipeline-Fehlern verwendet die Anwendung Overpass.
 
-## Aktueller Stand – v0.7.2
+## Aktueller Stand – v0.8.3
 
-OpenFireMapV2 steht aktuell bei **v0.7.2**. Die DACHLiLu-Pipeline versorgt rund **1,25 Millionen Objekte** aus einer durch MaxZoom 14 optimierten, etwa **192,5 MiB** großen PMTiles-Datei. Die Anwendung umfasst mehr als 30 Sprachen, IndexedDB-Caching, Exporte als PNG/PDF/GPX/CSV und responsive Nutzung auf Desktop und Mobilgeräten.
+OpenFireMapV2 steht aktuell bei **v0.8.3**. Die DACHLiLu-Pipeline versorgt rund **1,25 Millionen Objekte** aus einer durch MaxZoom 14 optimierten, etwa **182,3 MiB** großen PMTiles-Datei; seit Oktober 2026 ergänzt die Anwendung sie per Overpass um alle seit dem Datenstand neu angelegten oder geänderten Objekte. Die Anwendung umfasst mehr als 30 Sprachen, IndexedDB-Caching, Exporte als PNG/PDF/GPX/CSV und responsive Nutzung auf Desktop und Mobilgeräten.

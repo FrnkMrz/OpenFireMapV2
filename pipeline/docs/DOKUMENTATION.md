@@ -44,7 +44,7 @@ Um unnötige CPU-Last (25–30 min Buildzeit), Bandbreite und vor allem Kachel-I
 
 ## Aktuelle Größenordnung
 
-Die DACHLiLu-Ausgabe umfasst rund 1,25 Millionen feuerwehrrelevante Objekte. Das PMTiles-Archiv ist dank optimiertem Zoom-Level 14 etwa **192,5 MB** groß (201.892.499 Bytes) und liegt damit weit unter dem Cloudflare Free-Cache-Limit von 512 MiB. Diese Werte sind Momentaufnahmen; der aktuelle Build-Zeitstempel und detaillierte Statistiken stehen in `metadata.json`.
+Die DACHLiLu-Ausgabe umfasst rund 1,25 Millionen feuerwehrrelevante Objekte. Das PMTiles-Archiv ist dank optimiertem Zoom-Level 14 etwa **182,3 MiB** groß (191.103.472 Bytes) und liegt damit weit unter dem Cloudflare Free-Cache-Limit von 512 MiB. Diese Werte sind Momentaufnahmen; der aktuelle Build-Zeitstempel und detaillierte Statistiken stehen in `metadata.json`.
 
 ## Home-Assistant-Überwachung
 

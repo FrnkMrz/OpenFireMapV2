@@ -17,7 +17,7 @@ Overpass ermöglicht weltweit gezielte Abfragen auf OSM-Daten. Große Kartenauss
 
 ## Die technische Lösung
 
-Für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein (DACHLiLu) werden relevante OSM-Objekte regelmäßig in PMTiles-Vektorkacheln vorbereitet. Ein auf MaxZoom 14 optimierter Build hält die aktuelle Datei bei etwa **192,5 MiB (201.892.499 Bytes)**. Cloudflare R2 liefert sie aus; der Browser lädt per HTTP-Range-Requests nur die Kachelbereiche, die im sichtbaren Ausschnitt benötigt werden.
+Für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein (DACHLiLu) werden relevante OSM-Objekte regelmäßig in PMTiles-Vektorkacheln vorbereitet. Ein auf MaxZoom 14 optimierter Build hält die aktuelle Datei bei etwa **182,3 MiB (191.103.472 Bytes)**. Nach dem Zeichnen fragt die Anwendung Overpass nach Objekten, die seit dem OSM-Datenstand der Kacheln neu angelegt oder geändert wurden, und gleicht sie über die OSM-ID ab. Cloudflare R2 liefert sie aus; der Browser lädt per HTTP-Range-Requests nur die Kachelbereiche, die im sichtbaren Ausschnitt benötigt werden.
 
 Die Pipeline ist eine Beschleunigung, keine neue geografische Abdeckung. OpenFireMap war von Anfang an weltweit nutzbar. Außerhalb DACHLiLu und bei fehlenden, veralteten oder nicht erreichbaren Pipeline-Daten greift die Anwendung auf Overpass zurück.
 
@@ -31,11 +31,11 @@ Die R2-Synchronisation überträgt PMTiles zuerst, GeoJSON mit kürzerer Cache-D
 
 ## Aktuelle Messwerte und Funktionen
 
-- Version **v0.7.2**
+- Version **v0.8.3**
 - rund **1,25 Millionen** feuerwehrrelevante Objekte in der DACHLiLu-Pipeline
-- PMTiles-Datei mit etwa **192,5 MiB** (**201.892.499 Bytes**)
+- PMTiles-Datei mit etwa **182,3 MiB** (**191.103.472 Bytes**)
 - Cloudflare R2 als primäre öffentliche Pipeline-Quelle
-- 99 erfolgreiche Vitest-Tests sowie ein Playwright-Performance-Test
+- 167 Vitest-Tests, Playwright-End-to-End-Tests und Python-Tests für den Pipeline-Builder
 - Exporte als PNG, PDF, GPX und CSV
 - mehr als 30 Sprachen
 - IndexedDB-Cache und responsive Nutzung auf Desktop und Mobilgeräten
