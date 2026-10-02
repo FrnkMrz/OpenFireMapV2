@@ -379,6 +379,19 @@ describe('pipeline.js', () => {
   });
 
   describe('geoJsonFeatureToElement', () => {
+    it('übernimmt @type/@id als OSM-Typ und -ID und entfernt sie aus den Tags', () => {
+      const feature = {
+        id: 56881, // tippecanoe --generate-ids
+        geometry: { type: 'Point', coordinates: [11.35, 49.55] },
+        properties: { '@type': 'way', '@id': 408720722, amenity: 'fire_station', name: 'FF Test' }
+      };
+      const el = geoJsonFeatureToElement(feature, 'fire_stations');
+      expect(el.type).toBe('way');
+      expect(el.id).toBe(408720722);
+      expect(el.tags).toEqual({ amenity: 'fire_station', name: 'FF Test' });
+      expect(feature.properties['@id']).toBe(408720722); // Eingabe bleibt unverändert
+    });
+
     it('sollte ein Point-Feature korrekt in ein OSM-Element konvertieren', () => {
       const feature = {
         id: 12345,
@@ -1448,6 +1461,42 @@ describe('pipeline.js', () => {
       expect(tilesX.has('8704')).toBe(true);
       expect(elements.every(el => String(el.id).startsWith('7@14/'))).toBe(true);
       expect(new Set(elements.map(el => el.geometry[0].lon)).size).toBe(elements.length);
+    });
+  });
+
+  describe('OSM-IDs aus der Pipeline', () => {
+    it('fetchPipelinePmtiles behält Knoten und Weg mit gleicher OSM-ID aus verschiedenen Ebenen', async () => {
+      Config.pipeline.enabled = true;
+      Config.pipeline.usePmtiles = true;
+      Config.pipeline.url = 'https://pipeline.example.com';
+      clearTileCache();
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return { ok: true, json: async () => ({ generated_at: '2026-10-02T12:00:00Z' }) };
+        }
+        return { ok: false, status: 404 };
+      });
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minZoom: 12, maxZoom: 14, minLat: 45.8, maxLat: 55.1, minLon: 5.7, maxLon: 17.2
+      });
+      vi.spyOn(PMTiles.prototype, 'getZxy').mockResolvedValue({ data: new Uint8Array([1, 2, 3]) });
+
+      const layer = (props, coords) => ({
+        length: 1,
+        feature: () => ({ id: 1, toGeoJSON: () => ({ type: 'Feature', id: 1, geometry: { type: 'Point', coordinates: coords }, properties: props }) })
+      });
+      mockVectorTileLayers = {
+        hydrants: layer({ '@type': 'node', '@id': 4711, emergency: 'fire_hydrant' }, [11.35, 49.55]),
+        fire_stations: layer({ '@type': 'way', '@id': 4711, amenity: 'fire_station' }, [11.351, 49.551]),
+      };
+
+      const bounds = { getSouth: () => 49.549, getNorth: () => 49.552, getWest: () => 11.349, getEast: () => 11.352 };
+      const elements = await fetchPipelinePmtiles(bounds, 'all', { zoom: 15 });
+      const keys = new Set(elements.map((el) => `${el.type}:${el.id}`));
+      expect(keys.has('node:4711')).toBe(true);
+      expect(keys.has('way:4711')).toBe(true);
+      expect(elements.every((el) => !('@id' in el.tags) && !('@type' in el.tags))).toBe(true);
     });
   });
 });

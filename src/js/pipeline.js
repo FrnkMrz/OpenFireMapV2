@@ -644,15 +644,17 @@ export function geoJsonFeatureToElement(feature, layerName) {
   if (!coords) return null;
 
   const { lat, lon } = coords;
-  const tags = feature.properties || {};
+  // @type/@id (osmium export -a type,id) sind OSM-Typ und -ID, keine Tags: herausnehmen, damit
+  // Tooltip und GPX-Export sie nicht als Tags anzeigen.
+  const { '@type': osmType, '@id': osmId, ...tags } = feature.properties || {};
 
   // Stabiler, eindeutiger Identifikator:
-  // 1. Nativer OSM-ID (z. B. aus --add-unique-id oder Overpass)
-  // 2. Fallback: Räumliche Koordinate mit 6 Nachkommastellen (~10 cm Genauigkeit)
-  // Damit haben Features über alle Kacheln und Zooms hinweg stabile, kollisionsfreie IDs!
+  // 1. OSM-Typ und -ID aus der Pipeline – gleiche Form wie Overpass-Elemente ({ type, id })
+  // 2. Kachel-ID (tippecanoe --generate-ids) bzw. id-Eigenschaft für ältere Builds
+  // 3. Fallback: Räumliche Koordinate mit 6 Nachkommastellen (~10 cm Genauigkeit)
   const coordKey = `${Math.round(lat * 1e6)}_${Math.round(lon * 1e6)}`;
-  const id = feature.id ?? tags['@id'] ?? tags.id ?? `${layerName}_${coordKey}`;
-  const type = tags['@type'] || (feature.geometry.type === 'Point' ? 'node' : 'way');
+  const id = osmId ?? feature.id ?? tags.id ?? `${layerName}_${coordKey}`;
+  const type = osmType || (feature.geometry.type === 'Point' ? 'node' : 'way');
 
   return {
     id,
@@ -844,7 +846,8 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
         const el = geoJsonFeatureToElement(gj, layerName);
         if (!el) continue;
 
-        const idKey = String(el.id);
+        // OSM-Typ und -ID gemeinsam: ein Knoten und ein Weg können dieselbe ID haben
+        const idKey = `${el.type}:${el.id}`;
         if (!elementsMap.has(idKey)) {
           elementsMap.set(idKey, el);
           newCount++;

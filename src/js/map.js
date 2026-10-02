@@ -839,6 +839,11 @@ function distanceMeters(a, b) {
     return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+// OSM-Typ und -ID gemeinsam: node, way und relation können dieselbe ID haben.
+function osmKey(el) {
+    return `${el.type || 'node'}:${el.id}`;
+}
+
 function countTags(tags) {
     if (!tags) return 0;
     // Nur eigene Keys zählen, keine Prototyp-Spielereien.
@@ -872,13 +877,13 @@ function clusterFireStations(rawElements, radiusMeters = 150) {
     const clustered = [];
 
     for (const master of fireStations) {
-        if (!master || processed.has(master.id)) continue;
+        if (!master || processed.has(osmKey(master))) continue;
 
         const masterPos = getElementLatLon(master);
         if (!masterPos) {
             // Wenn wir keine Koordinate haben, können wir nicht sinnvoll clustern.
             clustered.push(master);
-            processed.add(master.id);
+            processed.add(osmKey(master));
             continue;
         }
 
@@ -892,14 +897,14 @@ function clusterFireStations(rawElements, radiusMeters = 150) {
 
         // Kandidaten durchsuchen (nur die übrigen Wachen)
         for (const cand of fireStations) {
-            if (!cand || cand.id === master.id || processed.has(cand.id)) continue;
+            if (!cand || cand === master || processed.has(osmKey(cand))) continue;
 
             const candPos = getElementLatLon(cand);
             if (!candPos) continue;
 
             if (distanceMeters(masterPos, candPos) < radiusMeters) {
                 // Kandidat gehört zum Cluster -> wird nicht als eigener Marker gerendert
-                processed.add(cand.id);
+                processed.add(osmKey(cand));
 
                 // Merge: Fehlende Tags in den Master kopieren
                 if (cand.tags) {
@@ -934,7 +939,7 @@ function clusterFireStations(rawElements, radiusMeters = 150) {
         }
 
         // Master als verarbeitet markieren (Kandidaten sind es schon).
-        processed.add(master.id);
+        processed.add(osmKey(master));
         clustered.push(master);
     }
 
@@ -979,7 +984,7 @@ function clusterPOIs(rawElements, zoom, radiusMeters = 5) {
     });
 
     for (const rawMaster of pois) {
-        if (processed.has(rawMaster.id)) continue;
+        if (processed.has(osmKey(rawMaster))) continue;
 
         const masterPos = getElementLatLon(rawMaster);
         let sumLat = masterPos.lat;
@@ -988,11 +993,11 @@ function clusterPOIs(rawElements, zoom, radiusMeters = 5) {
         const clusterMembers = [rawMaster];
 
         for (const cand of pois) {
-            if (cand.id === rawMaster.id || processed.has(cand.id)) continue;
+            if (cand === rawMaster || processed.has(osmKey(cand))) continue;
 
             const candPos = getElementLatLon(cand);
             if (distanceMeters(masterPos, candPos) < radiusMeters) {
-                processed.add(cand.id);
+                processed.add(osmKey(cand));
                 clusterMembers.push(cand);
                 sumLat += candPos.lat;
                 sumLon += candPos.lon;
@@ -1020,7 +1025,7 @@ function clusterPOIs(rawElements, zoom, radiusMeters = 5) {
             clustered.push({ ...rawMaster, isHydrantCluster: false, clusterCount: 1, clusterMembers: [] });
         }
 
-        processed.add(rawMaster.id);
+        processed.add(osmKey(rawMaster));
     }
 
     return clustered.concat(others);
@@ -1222,7 +1227,7 @@ export function renderMarkers(elements, zoom, { isPartial = false } = {}) {
 
     displayElements.forEach(el => {
         const tags = el.tags || {};
-        const id = `${el.type || 'node'}:${el.id}`; // Stabiler Key: type:id (node/way/relation können gleiche id haben)
+        const id = osmKey(el); // Stabiler Key: type:id
 
         // --- A. Datenvalidierung ---
         const lat = el.lat || el.center?.lat;

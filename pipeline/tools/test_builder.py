@@ -775,6 +775,7 @@ class TestBuildFeatures(unittest.TestCase):
                 "size_mb": 0.95,
                 "mtime": "2026-09-30T02:00:00Z",
                 "age_hours": 4.5,
+                "osm_data_timestamp": "2026-09-30T20:22:42Z",
                 "status": "fresh_download"
             },
             "austria": {
@@ -784,6 +785,7 @@ class TestBuildFeatures(unittest.TestCase):
                 "size_mb": 0.48,
                 "mtime": "2026-09-29T22:00:00Z",
                 "age_hours": 8.5,
+                "osm_data_timestamp": "2026-09-29T20:21:00Z",
                 "status": "cached_head_ok"
             }
         }
@@ -828,6 +830,8 @@ class TestBuildFeatures(unittest.TestCase):
                 self.assertIn("extracts", metadata)
                 self.assertIn("extracts_oldest_age_hours", metadata)
                 self.assertEqual(metadata["extracts_oldest_age_hours"], 8.5)
+                # Gemeinsamer OSM-Datenstand = ältester Auszug (Startpunkt für das Delta-Nachladen)
+                self.assertEqual(metadata["osm_data_until"], "2026-09-29T20:21:00Z")
 
                 # Prüfe auf Sicherheit: Keine internen Pfade oder IPs
                 meta_str = json.dumps(metadata)
@@ -840,6 +844,69 @@ class TestBuildFeatures(unittest.TestCase):
                     self.assertNotIn("/", ext_info["filename"])
                     self.assertNotIn("\\", ext_info["filename"])
                     self.assertIn(ext_info["status"], ["fresh_download", "downloaded_dated", "cached_head_ok", "cached_head_failed", "fallback_after_error"])
+
+    def test_build_export_cmd_osm_ids_for_poi_layers(self):
+        """POI-Ebenen exportieren @type/@id (Abgleich mit Overpass), Grenzen nicht (Kachelgröße)."""
+        for item in build_features.FEATURE_CONFIGS:
+            cmd = build_features.build_export_cmd(item, "src.pbf", "out.geojson", self.test_dir.name)
+            if item["name"] == "boundaries":
+                self.assertNotIn("-a", cmd)
+            else:
+                self.assertEqual(cmd[cmd.index("-a") + 1], "type,id", item["name"])
+
+    @unittest.skipUnless(shutil.which("osmium"), "osmium nicht installiert")
+    def test_osm_ids_and_data_timestamp_end_to_end(self):
+        """Echter osmium-Lauf: @type/@id an Punkten und Flächen; Datenstand aus dem PBF-Header."""
+        osm_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="test">
+ <node id="1" version="1" lat="49.0" lon="11.0"><tag k="emergency" v="fire_hydrant"/></node>
+ <node id="2" version="1" lat="49.1" lon="11.1"/><node id="3" version="1" lat="49.1" lon="11.0"/>
+ <way id="10" version="1"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="1"/><tag k="amenity" v="fire_station"/></way>
+</osm>"""
+        src = os.path.join(self.test_dir.name, "in.osm")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(osm_xml)
+        # Geofabrik schreibt den Replikationsstand in den PBF-Header; osmium liest ihn als header.option.timestamp
+        pbf = os.path.join(self.test_dir.name, "in.osm.pbf")
+        subprocess.run(["osmium", "cat", src, "-o", pbf, "--overwrite",
+                        "--output-header=osmosis_replication_timestamp=2026-09-30T20:22:42Z"], check=True)
+
+        self.assertEqual(build_features.read_osm_data_timestamp(pbf), "2026-09-30T20:22:42Z")
+
+        stations = next(f for f in build_features.FEATURE_CONFIGS if f["name"] == "fire_stations")
+        hydrants = next(f for f in build_features.FEATURE_CONFIGS if f["name"] == "hydrants")
+        props = {}
+        for item in (hydrants, stations):
+            out = os.path.join(self.test_dir.name, f"{item['name']}.geojson")
+            subprocess.run(build_features.build_export_cmd(item, pbf, out, self.test_dir.name),
+                           check=True, capture_output=True)
+            with open(out, encoding="utf-8") as f:
+                for feat in json.load(f)["features"]:
+                    props[(item["name"], feat["geometry"]["type"])] = feat["properties"]
+        self.assertEqual(props[("hydrants", "Point")]["@type"], "node")
+        self.assertEqual(props[("hydrants", "Point")]["@id"], 1)
+        # Fläche aus einem Weg (osmium: MultiPolygon): echte Weg-ID, nicht die interne Flächen-ID
+        self.assertEqual(props[("fire_stations", "MultiPolygon")]["@type"], "way")
+        self.assertEqual(props[("fire_stations", "MultiPolygon")]["@id"], 10)
+
+    @unittest.skipUnless(shutil.which("osmium"), "osmium nicht installiert")
+    def test_read_osm_data_timestamp_without_header_or_file(self):
+        src = os.path.join(self.test_dir.name, "plain.osm")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write("<?xml version='1.0'?><osm version=\"0.6\"><node id=\"1\" version=\"1\" lat=\"1\" lon=\"1\"/></osm>")
+        pbf = os.path.join(self.test_dir.name, "plain.osm.pbf")
+        subprocess.run(["osmium", "cat", src, "-o", pbf, "--overwrite"], check=True)
+        self.assertIsNone(build_features.read_osm_data_timestamp(pbf))
+        self.assertIsNone(build_features.read_osm_data_timestamp(os.path.join(self.test_dir.name, "fehlt.pbf")))
+
+    def test_combined_osm_data_until(self):
+        """Ältester Stand aller Auszüge; fehlt einer, ist der gemeinsame Stand unbekannt."""
+        meta = {"de": {"osm_data_timestamp": "2026-09-30T20:22:42Z"},
+                "at": {"osm_data_timestamp": "2026-10-01T20:22:06Z"}}
+        self.assertEqual(build_features.combined_osm_data_until(meta), "2026-09-30T20:22:42Z")
+        meta["li"] = {"osm_data_timestamp": None}
+        self.assertIsNone(build_features.combined_osm_data_until(meta))
+        self.assertIsNone(build_features.combined_osm_data_until({}))
 
     def test_validate_pbf_file(self):
         """PBF-Validierung: Dateien < 100 KB müssen fehlschlagen."""

@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Neu
+- **OSM-Datenstand und OSM-IDs in der Pipeline** (Vorbereitung für das Nachladen von Änderungen per Overpass):
+  - `metadata.json` enthält je Auszug `osm_data_timestamp` aus dem PBF-Header und gemeinsam `osm_data_until` (ältester Stand; leer, wenn einer fehlt). `generated_at` ist nur der Build-Zeitpunkt – am 01./02.10. lagen Datenstand (30.09. 20:22 UTC) und Build fast einen Tag auseinander.
+  - Hydranten, Feuerwachen, Löschwasserstellen und Defibrillatoren tragen in GeoJSON und PMTiles `@type`/`@id` (`osmium export -a type,id`); bisher stand dort nur eine tippecanoe-Laufnummer. Geschätzt +10 MB PMTiles.
+  - Frontend: `geoJsonFeatureToElement()` übernimmt `@type`/`@id` als `type`/`id` und entfernt sie aus den Tags (Tooltip, GPX). Kachel-Deduplizierung und Wachen-/Hydranten-Clustering nutzen `type:id`, da Knoten und Wege dieselbe ID haben können.
 - **Taginfo-Projektdatei** (#24, Issue #21):
   - `public/taginfo.json` listet alle ausgewerteten OSM-Tags mit Beschreibung und ist unter https://openfiremap.org/taginfo.json abrufbar. Aufnahme in die [Taginfo-Projektliste](https://taginfo.openstreetmap.org/projects) ist beantragt (taginfo/taginfo-projects#293).
   - Neuer Abschnitt „Verwendete OSM-Tags“ in `docs/DATENQUELLEN.md`.

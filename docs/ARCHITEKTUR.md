@@ -59,6 +59,8 @@ Es gibt mehrere Cache-Ebenen:
 
 Die PMTiles-URL erhält automatisch einen Versionsparameter (`?v=`). Ändert sich die Pipeline-Version, werden die PMTiles-Instanz, der Header und der Kachel-Cache verworfen. So wird verhindert, dass ein alter Browser- oder CDN-Cache eine neue Abdeckung verdeckt. Dank der Skip-if-unchanged-Logik der Pipeline (`built`, `upload_only`, `skipped_no_changes`) wird `generated_at` nur aktualisiert, wenn Geofabrik tatsächlich veränderte Daten bereitgestellt hat oder der Builder-Code angepasst wurde. Unveränderte Quelldaten erzeugen keinen neuen Versionsparameter, sodass der Cloudflare Edge Cache Kacheln stabil mit Cache-Hits ausliefert.
 
+`generated_at` ist der Build-Zeitpunkt, nicht der Datenstand. Den OSM-Datenstand liest der Builder aus dem PBF-Header jedes Auszugs (`extracts.<land>.osm_data_timestamp`, bei Geofabrik der Stand der letzten eingespielten Replikation); `osm_data_until` ist der älteste davon und bleibt leer, wenn er bei einem Land fehlt. Ab diesem Zeitpunkt können Änderungen per Overpass (`newer:`) nachgeladen werden. Damit Overpass-Treffer den Kachel-Objekten zugeordnet werden können, tragen Hydranten, Feuerwachen, Löschwasserstellen und Defibrillatoren in den PMTiles ihren OSM-Typ und ihre OSM-ID (`@type`, `@id`); das Frontend übernimmt sie als `type`/`id` und zeigt sie nicht als Tags an.
+
 ## Fallback-Logik
 
 1. Liegt der sichtbare Ausschnitt in der validierten DACHLiLu-Abdeckung, versucht der Browser PMTiles über R2 zu laden.
