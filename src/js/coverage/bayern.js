@@ -11,7 +11,7 @@
  * Randverlust:      ca. 1129.0 km² (bewusst an Overpass übergeben)
  *
  * Lizenz & Daten:   © OpenStreetMap contributors (ODbL)
- * Generator-Skript: pipeline/tools/build_coverage_polygon.py
+ * Generator-Skript: tools/build_coverage_polygon.py (Pipeline-Repo)
  * ==========================================================================================
  */
 

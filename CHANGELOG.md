@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Geändert
+- **Pipeline in eigenes privates Repo ausgelagert**: `pipeline/` (Builder, Nginx, Update-Skript, Monitoring, Betriebsdokumentation) ist mit vollständiger Historie nach `FrnkMrz/openfiremap-dach-pipeline` umgezogen und liegt nicht mehr in diesem öffentlichen Repo. Dieses Repo enthält nur noch die Client-Seite. Die Taginfo-Tests gegen die Pipeline-Filter laufen, wenn ein Checkout daneben liegt (`../openfiremap-dach-pipeline`) oder `PIPELINE_BUILDER` gesetzt ist, sonst werden sie übersprungen.
+
 ## [v0.8.4] - 2026-10-02
 
 ### Neu

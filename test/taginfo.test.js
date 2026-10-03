@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // Prüft public/taginfo.json (Taginfo-Projektdatei, siehe https://taginfo.openstreetmap.org/projects)
@@ -8,7 +8,13 @@ import { resolve } from 'node:path';
 const root = resolve(__dirname, '..');
 const taginfo = JSON.parse(readFileSync(resolve(root, 'public/taginfo.json'), 'utf8'));
 const apiSource = readFileSync(resolve(root, 'src/js/api.js'), 'utf8');
-const builderSource = readFileSync(resolve(root, 'pipeline/builder/build_features.py'), 'utf8');
+// Der Builder liegt im privaten Pipeline-Repo (FrnkMrz/openfiremap-dach-pipeline). Die Pipeline-Tests laufen,
+// wenn ein Checkout daneben liegt (../openfiremap-dach-pipeline) oder PIPELINE_BUILDER auf die Datei zeigt;
+// andernfalls (z. B. in der CI) werden sie übersprungen.
+const builderPath = [process.env.PIPELINE_BUILDER, resolve(root, '../openfiremap-dach-pipeline/builder/build_features.py')]
+  .find((p) => p && existsSync(p));
+const builderSource = builderPath ? readFileSync(builderPath, 'utf8') : '';
+const itPipeline = it.skipIf(!builderPath);
 
 const hasTag = (key, value) => taginfo.tags.some((t) => t.key === key && t.value === value);
 
@@ -64,7 +70,7 @@ describe('taginfo.json', () => {
     }
   });
 
-  it('deckt alle Tags der Pipeline-Filter ab', () => {
+  itPipeline('deckt alle Tags der Pipeline-Filter ab', () => {
     for (const [, key, values] of builderSource.matchAll(/"[nwr]+\/([\w:]+)=([^"]+)"/g)) {
       for (const value of values.split(',')) expect(hasTag(key, value), `${key}=${value} fehlt`).toBe(true);
     }
@@ -83,7 +89,7 @@ describe('taginfo.json', () => {
     expect(checked).toBeGreaterThan(0);
   });
 
-  it('nennt nur Objekttypen, die die Pipeline-Filter erfassen', () => {
+  itPipeline('nennt nur Objekttypen, die die Pipeline-Filter erfassen', () => {
     let checked = 0;
     for (const [, letters, key, values] of builderSource.matchAll(/"([nwr]+)\/([\w:]+)=([^"]+)"/g)) {
       const selectable = [...new Set([...letters].flatMap((l) => OSMIUM_TYPES[l]))];
