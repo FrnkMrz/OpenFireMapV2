@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="520" viewBox="0 0 680 520" role="img">
+<title>Aufbau der VM 102</title>
+<desc>Die VM enthält einen Cron-Job, zwei Docker-Container (Builder nur beim Update, nginx dauerhaft) und einen gemeinsamen Datenordner. Der Builder lädt Daten nach Cloudflare R2, Home Assistant liest den Status von nginx.</desc>
+<style>
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+.h{font-size:14px;font-weight:500}.s{font-size:12px}
+.gh{fill:#444441}.gs{fill:#5F5E5A}.th{fill:#085041}.ts{fill:#0F6E56}.ch{fill:#712B13}.cs{fill:#993C1D}
+.g{fill:#F1EFE8;stroke:#5F5E5A;stroke-width:1}.tl{fill:#E1F5EE;stroke:#0F6E56;stroke-width:1}.co{fill:#FAECE7;stroke:#993C1D;stroke-width:1}
+.box{fill:none;stroke:#888780;stroke-width:1;stroke-dasharray:6 4}
+.arr{stroke:#5F5E5A;stroke-width:1.5;fill:none}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="680" height="520" fill="#FFFFFF"/>
+
+<rect class="g" x="225" y="30" width="170" height="50" rx="8"/>
+<text class="h gh" x="310" y="50" text-anchor="middle">Cloudflare R2</text>
+<text class="s gs" x="310" y="68" text-anchor="middle">Besucher laden hier</text>
+
+<rect class="g" x="445" y="30" width="170" height="50" rx="8"/>
+<text class="h gh" x="530" y="50" text-anchor="middle">Home Assistant</text>
+<text class="s gs" x="530" y="68" text-anchor="middle">Smart-Home-Zentrale</text>
+
+<rect class="box" x="20" y="130" width="640" height="320" rx="12"/>
+<text class="h gh" x="36" y="154">VM 102 (Debian-Server in Proxmox)</text>
+
+<rect class="g" x="36" y="215" width="120" height="60" rx="8"/>
+<text class="h gh" x="96" y="240" text-anchor="middle">Cron-Job</text>
+<text class="s gs" x="96" y="258" text-anchor="middle">täglich 05:43 UTC</text>
+
+<rect class="box" x="200" y="175" width="445" height="155" rx="8" stroke-dasharray="4 3"/>
+<text class="s gs" x="214" y="194">Docker</text>
+
+<rect class="co" x="225" y="210" width="170" height="80" rx="8"/>
+<text class="h ch" x="310" y="236" text-anchor="middle">Builder</text>
+<text class="s cs" x="310" y="256" text-anchor="middle">baut Karten-Daten</text>
+<text class="s cs" x="310" y="274" text-anchor="middle">nur beim Update</text>
+
+<rect class="tl" x="445" y="210" width="170" height="80" rx="8"/>
+<text class="h th" x="530" y="236" text-anchor="middle">nginx (Webserver)</text>
+<text class="s ts" x="530" y="256" text-anchor="middle">liefert Dateien aus</text>
+<text class="s ts" x="530" y="274" text-anchor="middle">läuft dauerhaft</text>
+
+<rect class="g" x="225" y="380" width="390" height="50" rx="8"/>
+<text class="h gh" x="420" y="400" text-anchor="middle">Datenordner auf der VM</text>
+<text class="s gs" x="420" y="418" text-anchor="middle">PMTiles, GeoJSON, Status</text>
+
+<line class="arr" x1="156" y1="245" x2="223" y2="245" marker-end="url(#arrow)"/>
+<line class="arr" x1="310" y1="210" x2="310" y2="82" marker-end="url(#arrow)"/>
+<text class="s gs" x="318" y="118">lädt hoch (R2)</text>
+<line class="arr" x1="530" y1="82" x2="530" y2="208" marker-end="url(#arrow)"/>
+<text class="s gs" x="538" y="118">fragt Status ab</text>
+<line class="arr" x1="310" y1="290" x2="310" y2="378" marker-end="url(#arrow)"/>
+<text class="s gs" x="318" y="355">schreibt</text>
+<line class="arr" x1="530" y1="378" x2="530" y2="292" marker-end="url(#arrow)"/>
+<text class="s gs" x="538" y="355">liest</text>
+
+<rect class="tl" x="40" y="478" width="14" height="14" rx="3"/>
+<text class="s gs" x="62" y="490">Läuft dauerhaft</text>
+<rect class="co" x="200" y="478" width="14" height="14" rx="3"/>
+<text class="s gs" x="222" y="490">Läuft nur kurz, dann weg</text>
+</svg>
