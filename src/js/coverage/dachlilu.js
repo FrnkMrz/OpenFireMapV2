@@ -12,7 +12,7 @@
  * Randverlust:      ca. 3020.1 km² (bewusst an Overpass übergeben)
  *
  * Lizenz & Daten:   © OpenStreetMap contributors (ODbL)
- * Generator-Skript: pipeline/tools/build_dachlilu_coverage.py
+ * Generator-Skript: tools/build_dachlilu_coverage.py (Pipeline-Repo)
  * ==========================================================================================
  */
 
