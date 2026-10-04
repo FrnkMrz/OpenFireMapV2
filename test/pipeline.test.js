@@ -472,6 +472,39 @@ describe('pipeline.js', () => {
       expect(el.tags.name).toBe('Freiwillige Feuerwehr Schnaittach');
     });
 
+    describe('Schutzfilter für die Wachen-Ebene', () => {
+      const point = [11.35, 49.55];
+      const feature = (properties) => ({ id: 1, geometry: { type: 'Point', coordinates: point }, properties });
+
+      it('ignoriert Referenzobjekte (Tor, Eingang, Tür, Laterne) in fire_stations', () => {
+        [
+          { '@type': 'node', '@id': 167034570, barrier: 'gate', access: 'private' },
+          { '@type': 'node', '@id': 2, entrance: 'garage' },
+          { '@type': 'node', '@id': 3, door: 'overhead' },
+          { '@type': 'node', '@id': 4, highway: 'street_lamp' },
+          { '@type': 'way', '@id': 5, 'building:part': 'yes' },
+          { '@type': 'way', '@id': 6, building: 'yes' }
+        ].forEach((props) => {
+          expect(geoJsonFeatureToElement(feature(props), 'fire_stations')).toBeNull();
+        });
+      });
+
+      it('behält Wachen mit amenity=fire_station und building=fire_station', () => {
+        const a = geoJsonFeatureToElement(feature({ '@type': 'way', '@id': 10, amenity: 'fire_station' }), 'fire_stations');
+        const b = geoJsonFeatureToElement(feature({ '@type': 'way', '@id': 11, building: 'fire_station' }), 'fire_stations');
+        expect(a).not.toBeNull();
+        expect(a.tags.amenity).toBe('fire_station');
+        expect(b).not.toBeNull();
+        expect(b.tags.building).toBe('fire_station');
+      });
+
+      it('wirkt nur auf die Wachen-Ebene, andere Ebenen bleiben unverändert', () => {
+        expect(geoJsonFeatureToElement(feature({ emergency: 'fire_hydrant' }), 'hydrants')).not.toBeNull();
+        expect(geoJsonFeatureToElement(feature({ emergency: 'defibrillator' }), 'defibrillators')).not.toBeNull();
+        expect(geoJsonFeatureToElement(feature({ emergency: 'water_tank' }), 'water_points')).not.toBeNull();
+      });
+    });
+
     it('sollte ungültige Geometrien sicher abfangen und null zurückgeben', () => {
       expect(geoJsonFeatureToElement(null, 'hydrants', 0)).toBeNull();
       expect(geoJsonFeatureToElement({}, 'hydrants', 0)).toBeNull();
@@ -816,6 +849,50 @@ describe('pipeline.js', () => {
       expect(station.lat).toBe(52.520);
       expect(station.lon).toBe(13.405);
       expect(station.tags.name).toBe('Feuerwache Berlin Mitte');
+    });
+
+    it('Test 2b: Kachel mit Wache und Referenzobjekten (Tor, Eingang) -> nur die Wache wird geliefert', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.includes('metadata.json')) {
+          return { ok: true, json: async () => ({ generated_at: '2026-09-29T10:00:00Z' }) };
+        }
+        return { ok: false, status: 404 };
+      });
+
+      const berlinBounds = {
+        getSouth: () => 52.50,
+        getNorth: () => 52.54,
+        getWest: () => 13.38,
+        getEast: () => 13.43
+      };
+      vi.spyOn(PMTiles.prototype, 'getHeader').mockResolvedValue({
+        minLat: 45.8, maxLat: 55.1, minLon: 5.7, maxLon: 17.2, minZoom: 12, maxZoom: 16
+      });
+      vi.spyOn(PMTiles.prototype, 'getZxy').mockResolvedValue({ data: new Uint8Array([1, 2, 3]) });
+
+      const features = [
+        { id: 1, properties: { '@type': 'way', '@id': 4711, amenity: 'fire_station', name: 'Wache Mitte' } },
+        { id: 2, properties: { '@type': 'node', '@id': 4712, barrier: 'gate', access: 'private' } },
+        { id: 3, properties: { '@type': 'node', '@id': 4713, entrance: 'garage' } }
+      ];
+      mockVectorTileLayers = {
+        fire_stations: {
+          length: features.length,
+          feature: (i) => ({
+            toGeoJSON: () => ({
+              type: 'Feature',
+              id: features[i].id,
+              geometry: { type: 'Point', coordinates: [13.405 + i * 0.0001, 52.520] },
+              properties: features[i].properties
+            })
+          })
+        }
+      };
+
+      const elements = await fetchPipelineData(berlinBounds, 'stations', { zoom: 14 });
+
+      expect(elements.map(el => el.id)).toEqual([4711]);
+      expect(elements[0].tags.name).toBe('Wache Mitte');
     });
 
     it('Test 3: Versionswechsel in metadata.json -> verwirft Singleton-Instanz, holt Header neu', async () => {

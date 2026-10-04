@@ -646,6 +646,20 @@ export function boundaryGeometryToElements(geometry, properties, keyPrefix) {
 }
 
 /**
+ * Schutzfilter je Pipeline-Ebene: Welche Tags ein Objekt tragen muss, um in dieser Ebene zu gelten.
+ *
+ * Hintergrund: Pipeline-Builds bis zum 04.10.2026 enthielten in fire_stations.geojson/PMTiles neben den
+ * Wachen auch Referenzobjekte (Tore, Eingänge, Türen, Laternen, Gebäudeteile), die osmium nur wegen der
+ * Geometrie mitgeführt hat: 11 % der Einträge. Die Karte hätte jedes davon ab Zoom 15 als Hydranten-Punkt
+ * gezeichnet. Der Builder entfernt sie inzwischen selbst (tags-filter --remove-tags); dieser Filter
+ * schützt in der Übergangszeit mit älteren Kacheln und gegen künftige Regressionen. Entspricht dem
+ * Filter der Ebene im Builder (nwr/amenity=fire_station, nwr/building=fire_station).
+ */
+const LAYER_TAG_GUARDS = {
+  fire_stations: (tags) => tags.amenity === 'fire_station' || tags.building === 'fire_station'
+};
+
+/**
  * Konvertiert ein GeoJSON Feature in das OpenFireMap-Elementformat.
  * @param {Object} feature 
  * @param {string} layerName 
@@ -661,6 +675,10 @@ export function geoJsonFeatureToElement(feature, layerName) {
   // @type/@id (osmium export -a type,id) sind OSM-Typ und -ID, keine Tags: herausnehmen, damit
   // Tooltip und GPX-Export sie nicht als Tags anzeigen.
   const { '@type': osmType, '@id': osmId, ...tags } = feature.properties || {};
+
+  // Schutzfilter: Nur Objekte übernehmen, die zur Ebene gehören (siehe LAYER_TAG_GUARDS).
+  const guard = LAYER_TAG_GUARDS[layerName];
+  if (guard && !guard(tags)) return null;
 
   // Stabiler, eindeutiger Identifikator:
   // 1. OSM-Typ und -ID aus der Pipeline – gleiche Form wie Overpass-Elemente ({ type, id })
