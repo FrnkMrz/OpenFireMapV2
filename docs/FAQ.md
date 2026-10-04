@@ -26,7 +26,7 @@ Overpass ist ein öffentlicher Gemeinschaftsdienst und kann Abfragen bei hoher L
 
 ## Was wurde an der R2-Auslieferung optimiert?
 
-Der DACHLiLu-Pipeline-Build verwendet MaxZoom 14 und ist aktuell etwa 182,3 MiB groß. PMTiles werden per HTTP-Range-Requests ohne Gzip-Transformation ausgeliefert; ETags, CORS und abgestimmte Cache-Zeiten unterstützen die Wiederverwendung bereits geladener Daten. Nach einem Upload wird der öffentliche Stand anhand von Build-Zeitstempel und Dateigröße verifiziert. So wird `metadata.json` erst dann als neue Version veröffentlicht, wenn die eigentlichen Daten vollständig in R2 angekommen sind.
+Der DACHLiLu-Pipeline-Build verwendet MaxZoom 14 und ist aktuell etwa 182,4 MiB groß. PMTiles werden per HTTP-Range-Requests ohne Gzip-Transformation ausgeliefert; ETags, CORS und abgestimmte Cache-Zeiten unterstützen die Wiederverwendung bereits geladener Daten. Nach einem Upload wird der öffentliche Stand anhand von Build-Zeitstempel und Dateigröße verifiziert. So wird `metadata.json` erst dann als neue Version veröffentlicht, wenn die eigentlichen Daten vollständig in R2 angekommen sind.
 
 ## Sind die Daten für einen Feuerwehreinsatz verbindlich?
 

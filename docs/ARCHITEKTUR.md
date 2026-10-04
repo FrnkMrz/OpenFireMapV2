@@ -30,7 +30,13 @@ Die geografische Nutzung bleibt weltweit möglich. Die PMTiles-Pipeline ist eine
 
 Die Pipeline stellt vorberechnete Vektorkacheln in einer PMTiles-Datei bereit. Der Browser lädt nicht die gesamte Datei, sondern fordert per HTTP-Range-Request nur die Bytebereiche an, die für die sichtbaren Kacheln benötigt werden. Das reduziert Datenmenge und Wartezeit besonders bei großen Gebieten.
 
-Die aktuelle DACHLiLu-Datei ist ungefähr **182,3 MiB** groß (**191.103.472 Bytes**, inklusive OSM-Typ und -ID je POI) und enthält Daten für rund **1,25 Millionen feuerwehrrelevante Objekte**. Der Build verwendet für die relevanten Layer MaxZoom 14. Dadurch bleibt die Datei unter dem Cloudflare-Free-Cache-Limit von **512 MiB**, während der Browser weiterhin nur benötigte Bytebereiche abruft. Die exakten Build-Zeitpunkte, Dateigröße und Statistiken werden über `metadata.json` der Pipeline veröffentlicht.
+Die aktuelle DACHLiLu-Datei ist ungefähr **182,4 MiB** groß (**191.243.978 Bytes**, inklusive OSM-Typ und -ID je POI) und enthält Daten für rund **1,2 Millionen feuerwehrrelevante Objekte**. Der Build verwendet für die relevanten Layer MaxZoom 14. Dadurch bleibt die Datei unter dem Cloudflare-Free-Cache-Limit von **512 MiB**, während der Browser weiterhin nur benötigte Bytebereiche abruft. Die exakten Build-Zeitpunkte, Dateigröße und Statistiken werden über `metadata.json` der Pipeline veröffentlicht.
+
+### Datenqualität und Veröffentlichung
+
+- **Nur passende Objekte je Ebene.** Beim Filtern bringt osmium zu einer Feuerwache auch Referenzobjekte mit (Knoten und Mitgliedswege für die Geometrie, etwa Tore, Eingänge, Türen, Gebäudeteile). Der Builder entfernt deren Tags (`osmium tags-filter --remove-tags`), damit sie nicht als eigene Objekte exportiert werden. Am 04.10.2026 waren es 5.421 von 47.392 Einträgen der Wachen-Ebene (11,4 %), die als falsche Hydranten-Punkte gezeichnet wurden. Zusätzlich ignoriert der Client in der Wachen-Ebene Objekte ohne `amenity=fire_station` oder `building=fire_station` (`LAYER_TAG_GUARDS` in `pipeline.js`), auch mit noch gecachten älteren Kacheln.
+- **Veröffentlichung nur vollständig.** Der Builder erzeugt GeoJSON, PMTiles und `metadata.json` zunächst in einem Zwischenordner, prüft sie (GeoJSON lesbar, PMTiles-Header und Länge) und schaltet sie erst dann um, `metadata.json` zuletzt. Ein abgebrochener Build ändert den veröffentlichten Stand nicht. Ein Build wird nur übersprungen, wenn die veröffentlichten Dateien vollständig und stimmig sind.
+- **Quellen.** Zeigt `-latest` bei Geofabrik auf einen hinterherhinkenden Spiegel, nutzt der Builder einen neueren datierten Tagesauszug. Heruntergeladene Auszüge werden vollständig auf Struktur geprüft, und ein älterer Quellstand überschreibt nie einen neueren lokalen.
 
 ## Cloudflare R2
 
@@ -45,7 +51,7 @@ Die Veröffentlichung ist auf die unterschiedlichen Datenrollen abgestimmt:
 3. `metadata.json` wird zuletzt und mit `no-cache` veröffentlicht. Dadurch markiert es erst dann eine neue Pipeline-Version, wenn die Datenartefakte bereits übertragen wurden.
 4. Anschließend prüft der Update-Lauf den öffentlichen `generated_at`-Wert und ermittelt die PMTiles-Gesamtgröße über einen HTTP-Range-Request. Bei Abweichungen wird der Lauf mit Fehler beendet; ein optionaler Cloudflare-Cache-Purge erfolgt nur nach erfolgreicher Synchronisation.
 
-Für PMTiles ist die Nginx-Kompression deaktiviert, damit HTTP-206-Range-Responses und `Content-Range` zuverlässig funktionieren. ETags, CORS und die exponierten Range-Header unterstützen Browser- und R2-Kompatibilität. Der aktuelle MaxZoom-14-Build bleibt mit rund 182,3 MiB unter dem 512-MiB-Free-Cache-Limit.
+Für PMTiles ist die Nginx-Kompression deaktiviert, damit HTTP-206-Range-Responses und `Content-Range` zuverlässig funktionieren. ETags, CORS und die exponierten Range-Header unterstützen Browser- und R2-Kompatibilität. Der aktuelle MaxZoom-14-Build bleibt mit rund 182,4 MiB unter dem 512-MiB-Free-Cache-Limit.
 
 Die lokale Umgebung stellt zusätzlich interne Statusdateien für Monitoring bereit. Sie sind nicht öffentlich erreichbar (nur Heimnetz); öffentliche Projektseiten dokumentieren nur den technischen Zweck, nicht private Netzwerkadressen oder Zugangsdaten.
 
