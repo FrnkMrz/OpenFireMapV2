@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.8.5] - 2026-10-04
+
+### Neu
+- **Schutzfilter für die Wachen-Ebene**: `geoJsonFeatureToElement()` ignoriert in der Ebene `fire_stations` Objekte ohne `amenity=fire_station` oder `building=fire_station` (`LAYER_TAG_GUARDS` in `pipeline.js`, gilt für PMTiles und GeoJSON-Rückfall). Schutz auch mit noch gecachten älteren Kacheln und gegen künftige Rückfälle.
+
+### Behoben
+- **Falsche Hydranten-Punkte an Feuerwachen**: Die Pipeline lieferte in der Wachen-Ebene neben den Wachen auch deren Referenzobjekte (Tore, Eingänge, Türen, Parkplatzzufahrten, Laternen, Gebäudeteile): am 04.10.2026 5.421 von 47.392 Einträgen (11,4 %). `renderMarkers` zeichnete jedes Objekt, das weder Wache noch Defibrillator ist, ab Zoom 15 als Hydranten-Punkt. Der Builder entfernt die Tags solcher Referenzobjekte jetzt (`osmium tags-filter --remove-tags`), sie werden nicht mehr exportiert. Die Zahl der Wachen sinkt dadurch einmalig um etwa 11 % (auf rund 42.000).
+
+### Pipeline (Datenqualität und Zuverlässigkeit, Betrieb im privaten Pipeline-Repo)
+- **Veröffentlichung nur vollständig**: GeoJSON, PMTiles und `metadata.json` entstehen in einem Zwischenordner, werden geprüft (GeoJSON lesbar und vollständig, PMTiles-Header und Länge) und erst dann umgeschaltet, `metadata.json` zuletzt. Ein abgebrochener Build lässt den veröffentlichten Stand unberührt. Ein Build wird nur übersprungen, wenn die veröffentlichten Dateien vollständig und stimmig sind; parallele Builder-Läufe werden gesperrt.
+- **Quellen**: Zeigt `-latest` auf einen veralteten Geofabrik-Spiegel, wird ein neuerer datierter Tagesauszug verwendet. Heruntergeladene Auszüge werden vollständig auf Struktur geprüft (`osmium fileinfo -e`), nicht nur im Header. Ein älterer Quellstand überschreibt nie einen neueren lokalen Auszug; die Fallback-Reihenfolge versucht neuere datierte Kandidaten vor einem veralteten `-latest`.
+- **Upload**: Reste eines abgebrochenen Builds werden nicht nach R2 übertragen (geordnete rclone-Filter); der optionale Cache-Purge hat Zeitlimits und kann Folgeläufe nicht mehr blockieren.
+- **Monitoring**: Alarme für das Alter der OSM-Daten (`osm_data_until`), unbekannten Datenstand und Quellenwarnungen; Sync- und Upload-Alarme sind neustartfest.
+
 ### Geändert
 - **Pipeline in eigenes privates Repo ausgelagert**: `pipeline/` (Builder, Nginx, Update-Skript, Monitoring, Betriebsdokumentation) ist mit vollständiger Historie nach `FrnkMrz/openfiremap-dach-pipeline` umgezogen und liegt nicht mehr in diesem öffentlichen Repo. Dieses Repo enthält nur noch die Client-Seite. Die Taginfo-Tests gegen die Pipeline-Filter laufen, wenn ein Checkout daneben liegt (`../openfiremap-dach-pipeline`) oder `PIPELINE_BUILDER` gesetzt ist, sonst werden sie übersprungen.
 
