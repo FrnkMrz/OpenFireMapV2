@@ -53,8 +53,8 @@
       So bleibt die Reihenfolge stabil (Leaflet -> config -> app),
       ohne Timing-Probleme mit defer/module.
     -->
-  <script type="module" crossorigin src="./assets/index-DBupnoi8.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DABQ46Si.css">
+  <script type="module" crossorigin src="./assets/index-CGfv4Gyw.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DtHH3ZSA.css">
 </head>
 
 <body>
@@ -213,71 +213,74 @@
             </button>
         </div>
 
-        <div id="status-box"
-            class="absolute bottom-10 right-10 z-[1000] glass-panel p-4 rounded-2xl text-[10px] text-slate-400 font-mono border border-white/5">
-            <div class="flex justify-between gap-4"><span data-i18n="zoom_info">ZOOM</span><span id="zoom-val"
-                    class="text-white font-bold">14.0</span></div>
-            <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status"
-                    class="text-green-400 transition-colors duration-200">AKTUELL</span></div>
-            <div id="data-info-row" class="hidden md:flex justify-between items-center gap-2 pt-1.5 mt-1.5 border-t border-white/5 font-sans">
-                <button id="data-info-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="data-info-popover"
-                    class="text-[9px] text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 focus:outline-none focus:underline cursor-pointer">
-                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span data-i18n="data_info_details">Datenstand-Details</span>
-                </button>
+        <!-- Status-Dock unten rechts (Desktop: vertikale Stapelung ohne Überlappung; Mobile: display: contents via CSS) -->
+        <div id="desktop-status-dock">
+            <div id="status-box"
+                class="glass-panel p-4 rounded-2xl text-[10px] text-slate-400 font-mono border border-white/5">
+                <div class="flex justify-between gap-4"><span data-i18n="zoom_info">ZOOM</span><span id="zoom-val"
+                        class="text-white font-bold">14.0</span></div>
+                <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status"
+                        class="text-green-400 transition-colors duration-200">AKTUELL</span></div>
+                <div id="data-info-row" class="hidden md:flex justify-between items-center gap-2 pt-1.5 mt-1.5 border-t border-white/5 font-sans">
+                    <button id="data-info-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="data-info-popover"
+                        class="text-[9px] text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 focus:outline-none focus:underline cursor-pointer">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span data-i18n="data_info_details">Datenstand-Details</span>
+                    </button>
+                </div>
             </div>
+
+            <!-- Detail-Popover für Datenstand & Herkunft (Desktop) -->
+            <div id="data-info-popover" role="dialog" aria-modal="false" aria-labelledby="data-info-popover-title"
+                class="hidden w-80 glass-panel rounded-2xl p-4 text-xs text-slate-300 border border-white/10 shadow-2xl space-y-3 font-sans">
+                <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                    <h4 id="data-info-popover-title" class="font-bold text-white flex items-center gap-1.5 text-sm">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span data-i18n="data_info_title">Datenstand & Herkunft</span>
+                    </h4>
+                    <button id="data-info-close-btn" type="button" aria-label="Schließen"
+                        class="text-slate-400 hover:text-white p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">✕</button>
+                </div>
+
+                <div class="space-y-2.5 text-[11px] leading-relaxed">
+                    <div>
+                        <div class="text-slate-400 font-semibold" data-i18n="data_source_label">Quelle</div>
+                        <div id="data-info-source-val" class="text-white font-medium">–</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-400 font-semibold" data-i18n="data_base_date_label">Basis-Datenstand (Geofabrik)</div>
+                        <div id="data-info-base-val" class="text-white font-medium">–</div>
+                        <div id="data-info-base-sub" class="text-slate-500 text-[10px]" data-i18n="data_base_sub_geofabrik">Täglicher Länderauszug</div>
+                    </div>
+
+                    <div>
+                        <div class="text-slate-400 font-semibold" data-i18n="data_live_sync_label">Live-Aktualisierung (Overpass)</div>
+                        <div id="data-info-delta-val" class="text-green-400 font-medium">–</div>
+                        <div id="data-info-delta-sub" class="text-slate-500 text-[10px]">–</div>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-white/10 text-[10px] text-slate-400 leading-normal">
+                    <p data-i18n="data_info_hint">
+                        Tägliche Geofabrik-Auszüge bilden die Basis. Neu erfasste oder bearbeitete Hydranten und Wachen werden im Bildausschnitt automatisch live nachgeladen.
+                    </p>
+                </div>
+
+                <div class="pt-1 flex justify-end">
+                    <button id="data-info-legal-link" type="button"
+                        class="text-[10px] text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 focus:outline-none cursor-pointer">
+                        <span data-i18n="data_info_more_link">Mehr in Info & Recht →</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="hydrant-download-status" class="max-w-[min(22rem,calc(100vw-2.5rem))]"></div>
         </div>
-
-        <!-- Detail-Popover für Datenstand & Herkunft (Desktop) -->
-        <div id="data-info-popover" role="dialog" aria-modal="false" aria-labelledby="data-info-popover-title"
-            class="hidden absolute bottom-28 right-10 z-[2000] w-80 glass-panel rounded-2xl p-4 text-xs text-slate-300 border border-white/10 shadow-2xl space-y-3 font-sans">
-            <div class="flex items-center justify-between border-b border-white/10 pb-2">
-                <h4 id="data-info-popover-title" class="font-bold text-white flex items-center gap-1.5 text-sm">
-                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span data-i18n="data_info_title">Datenstand & Herkunft</span>
-                </h4>
-                <button id="data-info-close-btn" type="button" aria-label="Schließen"
-                    class="text-slate-400 hover:text-white p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">✕</button>
-            </div>
-
-            <div class="space-y-2.5 text-[11px] leading-relaxed">
-                <div>
-                    <div class="text-slate-400 font-semibold" data-i18n="data_source_label">Quelle</div>
-                    <div id="data-info-source-val" class="text-white font-medium">–</div>
-                </div>
-
-                <div>
-                    <div class="text-slate-400 font-semibold" data-i18n="data_base_date_label">Basis-Datenstand (Geofabrik)</div>
-                    <div id="data-info-base-val" class="text-white font-medium">–</div>
-                    <div id="data-info-base-sub" class="text-slate-500 text-[10px]" data-i18n="data_base_sub_geofabrik">Täglicher Länderauszug</div>
-                </div>
-
-                <div>
-                    <div class="text-slate-400 font-semibold" data-i18n="data_live_sync_label">Live-Aktualisierung (Overpass)</div>
-                    <div id="data-info-delta-val" class="text-green-400 font-medium">–</div>
-                    <div id="data-info-delta-sub" class="text-slate-500 text-[10px]">–</div>
-                </div>
-            </div>
-
-            <div class="pt-2 border-t border-white/10 text-[10px] text-slate-400 leading-normal">
-                <p data-i18n="data_info_hint">
-                    Tägliche Geofabrik-Auszüge bilden die Basis. Neu erfasste oder bearbeitete Hydranten und Wachen werden im Bildausschnitt automatisch live nachgeladen.
-                </p>
-            </div>
-
-            <div class="pt-1 flex justify-end">
-                <button id="data-info-legal-link" type="button"
-                    class="text-[10px] text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 focus:outline-none cursor-pointer">
-                    <span data-i18n="data_info_more_link">Mehr in Info & Recht →</span>
-                </button>
-            </div>
-        </div>
-
-        <div id="hydrant-download-status" class="absolute bottom-28 right-10 z-[1000] max-w-[min(22rem,calc(100vw-2.5rem))]"></div>
 
 
         <!-- Mobile Search Modal -->
