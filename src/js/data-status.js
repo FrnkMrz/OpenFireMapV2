@@ -38,7 +38,7 @@ export function formatRelativeAge(isoOrTimestamp) {
 }
 
 // App-Sprachcode -> BCP-47-Locale (nur dort, wo beide voneinander abweichen)
-const LOCALE_BY_LANG = { fl: 'fil', tw: 'zh-TW', yue: 'zh-HK', zh: 'zh-CN', no: 'nb' };
+const LOCALE_BY_LANG = { fl: 'nl-BE', tw: 'zh-TW', yue: 'zh-HK', zh: 'zh-CN', no: 'nb' };
 
 /**
  * Formatiert einen UTC-Zeitstempel (z. B. "2026-10-08T20:20:21Z") lokalisiert als Datum + Uhrzeit in UTC

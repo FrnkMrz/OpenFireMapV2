@@ -122,6 +122,9 @@ describe('data-status.js', () => {
       expect(formatAbsoluteUtc('2026-10-08T20:20:21Z')).toBe('10/08/2026, 20:20 UTC');
       await setLang('ja');
       expect(formatAbsoluteUtc('2026-10-08T20:20:21Z')).toBe('2026/10/08 20:20 UTC');
+      // "fl" ist Flämisch (nicht Filipino): Belgisch-niederländisches Format
+      await setLang('fl');
+      expect(formatAbsoluteUtc('2026-10-08T20:20:21Z')).toBe('08/10/2026, 20:20 UTC');
       await setLang('de');
     });
   });
