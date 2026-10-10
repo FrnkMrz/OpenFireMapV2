@@ -652,6 +652,7 @@ export function initMapLogic() {
         } // end doFetch
     }
     _testing.onViewChange = onViewChange;
+    _testing.poiCoverageMatchesMode = poiCoverageMatchesMode;
     State.map.on('moveend zoomend', onViewChange);
 
     State.map.on('click', () => {
@@ -1614,5 +1615,6 @@ export const _testing = {
     countTags,
     clusterPOIs,
     clusterFireStations,
-    onViewChange: null
+    onViewChange: null,
+    poiCoverageMatchesMode: null
 };
