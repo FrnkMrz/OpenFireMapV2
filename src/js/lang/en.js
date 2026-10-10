@@ -135,6 +135,8 @@ export const strings = {
     time_hours_ago: "{n}h ago",
     time_days_ago: "{n}d ago",
     status_base_prefix: "As of:",
+    status_sync_done: "+Sync",
+    status_sync_running: "Sync…",
     status_live_sync: "LIVE (Sync)",
     status_live: "LIVE",
     data_sync_delta_updated: "+{count} objects updated",
