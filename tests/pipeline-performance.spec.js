@@ -59,9 +59,11 @@ test.describe('Pipeline E2E Performance & Deduplication', () => {
     // 2. PMTiles Range-Requests dürfen den sichtbaren Kachel-Grid nicht überschreiten (<= 45 Kacheln)
     expect(rangeRequests.length).toBeLessThanOrEqual(45);
 
-    // 3. Status-Indikator muss grün sein und 'Lokal' enthalten
+    // 3. Status-Indikator muss Datenstatus der Pipeline anzeigen (Quelle: pipeline)
     const statusText = await page.textContent('#data-status');
-    expect(statusText).toContain('Lokal');
+    expect(statusText).toMatch(/Sync/);
+    const dataSource = await page.evaluate(() => window.State?.dataStatus?.source);
+    expect(dataSource).toBe('pipeline');
   });
 
   test('Zoom 15 -> 16 nutzt Kacheln aus RAM-Cache ohne überflüssige Netzwerkanfragen', async ({ page }) => {
@@ -107,6 +109,8 @@ test.describe('Pipeline E2E Performance & Deduplication', () => {
     expect(callsAfterZ17 - callsAfterZ16).toBe(0);
 
     const statusText = await page.textContent('#data-status');
-    expect(statusText).toContain('Lokal');
+    expect(statusText).toMatch(/Sync/);
+    const dataSource = await page.evaluate(() => window.State?.dataStatus?.source);
+    expect(dataSource).toBe('pipeline');
   });
 });
