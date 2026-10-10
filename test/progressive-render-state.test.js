@@ -39,6 +39,7 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
     State.loadedPoiBounds = null;
     State.loadedBoundaryBounds = null;
     State.loadedPoiMode = null;
+    State.loadedPoiSource = null;
     State.isFetchingData = false;
     State.pendingBufferFetch = null;
     State.controllers = {
@@ -641,6 +642,65 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       expect(State.markerCache.has('node:h_A')).toBe(true);
 
       clearBoundariesSpy.mockRestore();
+    });
+  });
+
+  // =========================================================================
+  // 9b. Abdeckung hängt von der Datenquelle ab (Pipeline-Gebiet <-> Overpass)
+  // =========================================================================
+  describe('9b. Geladene Daten decken nur bei passender Quelle ab', () => {
+    // Liefert, ob onViewChange den Ausschnitt als "bereits geladen" behandelt hat
+    const coveredAfterViewChange = async (source) => {
+      const mapModule = await import('../src/js/map.js');
+      mapModule.initMapLogic();
+
+      const bounds = State.map.getBounds();
+      State.cachedPoiElements = [{ id: 'h1', lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+      State.loadedPoiBounds = bounds;
+      State.loadedPoiMode = 'all';
+      State.loadedPoiSource = source;
+      State.loadedBoundaryBounds = bounds;
+      State.isFetchingData = false;
+      State.isFetchingBoundaries = false;
+      State.controllers.fetch = null;
+      State.controllers.boundaryFetch = null;
+      // Keine Reste aus Vortests: sonst gilt der Ausschnitt über einen "laufenden Abruf" als abgedeckt
+      State.pendingBufferFetches.clear();
+      State.activeFetchBounds = null;
+
+      const covered = vi.fn();
+      const listener = (e) => { if (e.detail?.phase === 'covered_by_loaded_bounds') covered(); };
+      window.addEventListener('ofm:overpass', listener);
+      try {
+        mapModule._testing.onViewChange();
+      } finally {
+        window.removeEventListener('ofm:overpass', listener);
+        // evtl. gestarteten Abruf nicht weiterlaufen lassen
+        State.controllers.fetch?.abort();
+        State.controllers.boundaryFetch?.abort();
+      }
+      return covered.mock.calls.length > 0;
+    };
+
+    it('Pipeline-Daten decken einen Ausschnitt im Pipeline-Gebiet ab', async () => {
+      expect(await coveredAfterViewChange('pipeline')).toBe(true);
+    });
+
+    it('Overpass-Daten decken einen Ausschnitt im Pipeline-Gebiet NICHT ab (Grenzbereich -> Cloudflare)', async () => {
+      expect(await coveredAfterViewChange('overpass')).toBe(false);
+    });
+
+    it('Ist die Pipeline ausgefallen (Overpass-Ersatz), wird nicht bei jeder Bewegung neu versucht', async () => {
+      expect(await coveredAfterViewChange('overpass-fallback')).toBe(true);
+    });
+
+    it('Pipeline-Daten decken einen Ausschnitt außerhalb des Pipeline-Gebiets NICHT ab', async () => {
+      Config.pipeline.enabled = false; // Ausschnitt gilt als nicht im Pipeline-Gebiet
+      expect(await coveredAfterViewChange('pipeline')).toBe(false);
+    });
+
+    it('Ohne bekannte Quelle bleibt das bisherige Verhalten (nur Bounds zählen)', async () => {
+      expect(await coveredAfterViewChange(null)).toBe(true);
     });
   });
 
