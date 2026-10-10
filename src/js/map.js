@@ -271,6 +271,14 @@ export function initMapLogic() {
         if (!State.loadedPoiBounds || !State.map) return false;
         const viewBounds = State.map.getBounds();
         if (!State.loadedPoiBounds.contains(viewBounds)) return false;
+        // Die Datenquelle muss zum Ausschnitt passen: Liegt er komplett im Pipeline-Gebiet, zählen nur Pipeline-Daten
+        // (sonst bliebe ein Grenzbereich, der per Overpass geladen wurde, bei Overpass hängen). Liegt er (teilweise)
+        // außerhalb, reichen Pipeline-Daten nicht, denn sie kennen dort nichts.
+        if (State.loadedPoiSource) {
+            const wantsPipeline = isPipelineEligible(viewBounds, State.map.getZoom());
+            const hasPipelineData = State.loadedPoiSource !== 'overpass';
+            if (wantsPipeline !== hasPipelineData) return false;
+        }
         if (mode === 'all') return State.loadedPoiMode === 'all';
         if (mode === 'stations') return State.loadedPoiMode === 'stations' || State.loadedPoiMode === 'all';
         return false;
@@ -425,6 +433,7 @@ export function initMapLogic() {
             State.cachedBoundaryElements = [];
             State.cachedElements = [];
             State.loadedPoiBounds = null;
+            State.loadedPoiSource = null;
             State.loadedBoundaryBounds = null;
             State.loadedPoiMode = null;
             return;

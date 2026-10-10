@@ -668,6 +668,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
     State.cachedPoiElements = [];
     State.loadedPoiBounds = null;
     State.loadedPoiMode = null;
+    State.loadedPoiSource = null;
     syncCombinedCachedElements();
     emit({ phase: 'skip', reqId, reason: 'zoom<12', zoom });
     return [];
@@ -708,6 +709,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
   console.log('[API] Cache Key:', cacheKey);
   console.log('[API] queryKind:', queryKind, '| zoom:', zoom, '| bboxKey:', bboxKey);
   let hasCachedData = false;
+  let pipelineFailed = false; // Pipeline war zuständig, ist aber ausgefallen -> Overpass-Ersatz
 
   try {
     // Für die lokale Pipeline das tatsächliche sichtbare Kartenfenster nutzen
@@ -737,6 +739,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           const mergedElements = _poiDelta?.key === deltaKey ? mergePoiDelta(bufferedElements, _poiDelta.elements) : bufferedElements;
           State.cachedPoiElements = mergedElements;
           State.loadedPoiBounds = fullBounds;
+          State.loadedPoiSource = 'pipeline';
           syncCombinedCachedElements();
           if ((!State.pendingBufferFetches || State.pendingBufferFetches.size === 0) && !State.isFetchingBoundaries) {
             State.activeFetchBounds = null;
@@ -763,6 +766,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           hasReportedSuccess = true;
           State.cachedPoiElements = pipelineElements;
           State.loadedPoiBounds = pipelineElements.loadedBounds || viewBounds;
+          State.loadedPoiSource = 'pipeline';
           State.loadedPoiMode = requestedMode;
           syncCombinedCachedElements();
 
@@ -821,6 +825,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
       } catch (err) {
         if (err.name === 'AbortError') throw err;
         console.warn('[API] Pipeline-Abruf fehlgeschlagen, wechsle auf Overpass-Fallback:', err.message);
+        pipelineFailed = true;
         emit({ phase: 'pipeline_fallback_to_overpass', reqId, error: err.message });
       }
     }
@@ -834,6 +839,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
         const isFresh = Boolean(freshData);
         State.cachedPoiElements = cached.elements || [];
         State.loadedPoiBounds = requestedBounds;
+        State.loadedPoiSource = pipelineFailed ? 'overpass-fallback' : 'overpass';
         State.loadedPoiMode = requestedMode;
         syncCombinedCachedElements();
         updateDataStatus({
@@ -891,6 +897,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
               if (changed) {
                 State.cachedPoiElements = freshElements;
                 State.loadedPoiBounds = requestedBounds;
+                State.loadedPoiSource = pipelineFailed ? 'overpass-fallback' : 'overpass';
                 State.loadedPoiMode = requestedMode;
                 syncCombinedCachedElements();
                 updateDataStatus({
@@ -934,6 +941,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
       State.cachedPoiElements = data.elements || [];
       State.loadedPoiBounds = requestedBounds;
+      State.loadedPoiSource = pipelineFailed ? 'overpass-fallback' : 'overpass';
       State.loadedPoiMode = requestedMode;
       syncCombinedCachedElements();
       updateDataStatus({
