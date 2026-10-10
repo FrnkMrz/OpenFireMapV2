@@ -3,7 +3,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Overpass-Hinweise: fetchWithRetry darf nur Meldungen schließen, die der Request selbst gezeigt hat.
 // Fremde Meldungen ("Link kopiert", Export, Warnung "zeige Cache") dürfen nicht verschwinden.
-const showNotification = vi.fn();
+// Wie ui.js: die Meldung landet in #notification-box > .notification-text
+const showNotification = vi.fn((msg) => {
+    let box = document.getElementById('notification-box');
+    if (!box) { box = document.createElement('div'); box.id = 'notification-box'; document.body.appendChild(box); }
+    box.innerHTML = '<span class="notification-text"></span>';
+    box.querySelector('.notification-text').textContent = msg;
+});
 const hideNotification = vi.fn();
 vi.mock('../src/js/ui.js', () => ({ showNotification, hideNotification }));
 
@@ -18,6 +24,7 @@ describe('fetchWithRetry: Benachrichtigungen gehören dem Request', () => {
         vi.resetModules();
         showNotification.mockClear();
         hideNotification.mockClear();
+        document.body.innerHTML = '';
         vi.useFakeTimers();
         vi.stubGlobal('navigator', { ...globalThis.navigator, onLine: true });
         ({ _testing: { fetchWithRetry } } = await import('../src/js/api.js'));
@@ -68,6 +75,30 @@ describe('fetchWithRetry: Benachrichtigungen gehören dem Request', () => {
         globalThis.fetch = vi.fn(() => Promise.reject(new DOMException('aborted', 'AbortError')));
         const without = await run({ reqId: 'test2' });
         expect(without.err?.name).toBe('AbortError');
+        expect(hideNotification).not.toHaveBeenCalled();
+    });
+
+    it('räumt eine Meldung nicht weg, die inzwischen ein anderer Ablauf angezeigt hat (Erfolg und Abbruch)', async () => {
+        const replaceNotification = () => showNotification('Link kopiert!');
+
+        // Erfolg: Nach dem eigenen Hinweis ersetzt jemand die Meldung, dann klappt der Neuversuch
+        globalThis.fetch = vi.fn().mockImplementationOnce(serverError).mockImplementationOnce(() => {
+            replaceNotification();
+            return okResponse();
+        });
+        const ok = await run({});
+        expect(ok.err).toBeUndefined();
+        expect(hideNotification).not.toHaveBeenCalled();
+        expect(document.querySelector('#notification-box .notification-text').textContent).toBe('Link kopiert!');
+
+        // Abbruch: dasselbe, aber der zweite Versuch wird abgebrochen
+        showNotification.mockClear();
+        globalThis.fetch = vi.fn().mockImplementationOnce(serverError).mockImplementationOnce(() => {
+            replaceNotification();
+            return Promise.reject(new DOMException('aborted', 'AbortError'));
+        });
+        const aborted = await run({ reqId: 'test2' });
+        expect(aborted.err?.name).toBe('AbortError');
         expect(hideNotification).not.toHaveBeenCalled();
     });
 });

@@ -83,7 +83,7 @@ function sleep(ms, signal = null) {
 }
 
 async function maybeGlobalBackoff(reqId, signal = null, silent = false) {
-  let notified = false;
+  let shownMsg = null;
   const now = Date.now();
   if (GLOBAL_BACKOFF_UNTIL > now) {
     const waitMs = GLOBAL_BACKOFF_UNTIL - now;
@@ -92,13 +92,13 @@ async function maybeGlobalBackoff(reqId, signal = null, silent = false) {
     // Visuelles Feedback: Zeige dem User, dass wir aufgrund Überlastung warten (nicht bei Hintergrund-Abfragen)
     if (!silent) {
       const waitSec = Math.ceil(waitMs / 1000);
-      showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000), 'warning');
-      notified = true;
+      shownMsg = `${t('status_waiting')} (${waitSec}${t('seconds_short')})...`;
+      showNotification(shownMsg, Math.min(waitMs, 5000), 'warning');
     }
 
     await sleep(waitMs, signal);
   }
-  return notified;
+  return shownMsg;
 }
 
 function bumpGlobalBackoff({ minMs, maxMs }) {
@@ -440,15 +440,27 @@ function epHealthyOrder(endpoints) {
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
+/**
+ * Schließt den zuletzt von diesem Request gezeigten Hinweis, aber nur solange er noch sichtbar ist.
+ * Hat inzwischen ein anderer Ablauf die Box mit einer neuen Meldung ersetzt, bleibt diese stehen.
+ */
+function hideOwnNotification(ctx) {
+  const msg = ctx.msg;
+  ctx.msg = null;
+  if (!msg) return;
+  const current = document.querySelector('#notification-box .notification-text')?.textContent;
+  if (current === msg) hideNotification();
+}
+
 async function fetchWithRetry(overpassQueryString, opts) {
-  // ctx.own: Hat dieser Request (inkl. Neuversuch nach Cooldown) selbst einen Hinweis gezeigt?
-  // Nur solche Hinweise werden von hier aus wieder geschlossen (bei Erfolg oder Abbruch),
+  // ctx.msg: Letzter Hinweis, den dieser Request (inkl. Neuversuch nach Cooldown) selbst gezeigt hat.
+  // Nur ein solcher Hinweis wird von hier aus wieder geschlossen (bei Erfolg oder Abbruch),
   // nie fremde wie "Link kopiert", Export- oder Fehlermeldungen anderer Abläufe.
-  const ctx = { own: false };
+  const ctx = { msg: null };
   try {
     return await fetchWithRetryAttempt(overpassQueryString, opts, ctx);
   } catch (err) {
-    if (err?.name === 'AbortError' && ctx.own) hideNotification();
+    if (err?.name === 'AbortError') hideOwnNotification(ctx);
     throw err;
   }
 }
@@ -456,7 +468,7 @@ async function fetchWithRetry(overpassQueryString, opts) {
 async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false }, ctx) {
   throwIfAborted(signal);
 
-  const notify = (...args) => { ctx.own = true; showNotification(...args); };
+  const notify = (msg, ...rest) => { ctx.msg = msg; showNotification(msg, ...rest); };
   if (!navigator.onLine) throw new Error('err_offline');
 
   // Cache lesen (nur wenn nicht übersprungen)
@@ -472,7 +484,8 @@ async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs
   const endpoints = epHealthyOrder(Config.overpassEndpoints || []);
   if (endpoints.length === 0) throw new Error('err_generic');
 
-  if (await maybeGlobalBackoff(reqId, signal, silent)) ctx.own = true;
+  const backoffMsg = await maybeGlobalBackoff(reqId, signal, silent);
+  if (backoffMsg) ctx.msg = backoffMsg;
 
   let lastErr = null;
 
@@ -537,7 +550,7 @@ async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs
       // Erfolg -> globalen Backoff resetten und temporäre Server-Meldungen schließen
       GLOBAL_BACKOFF_MS = 0;
       GLOBAL_BACKOFF_UNTIL = 0;
-      if (ctx.own) hideNotification();
+      hideOwnNotification(ctx);
 
       return json;
 

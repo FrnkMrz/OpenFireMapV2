@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Behoben
+- **Abgebrochene Overpass-Requests räumen keine fremden Meldungen weg**: `fetchWithRetry` schließt seinen Hinweis bei Erfolg oder Abbruch nur noch, solange genau dieser Text in `#notification-box` steht. Ersetzt zwischenzeitlich ein anderer Ablauf die Meldung (Codex-Review zu #54), bleibt sie stehen.
+
+### Behoben
 - **Warnung "zeige Cache" blieb nicht stehen**: Nach einem fehlgeschlagenen Hintergrundabruf gibt `fetchOSMData` die gecachten Daten zurück, und `map.js` schloss danach pauschal jede Benachrichtigung, also auch genau diese Warnung sowie fremde Meldungen wie "Link kopiert". Das pauschale `hideNotification()` ist entfernt. `fetchWithRetry` schließt seine eigenen Hinweise (Wartezeit, Serverwechsel) bei Erfolg und bei Abbruch selbst; Abbrüche beim Verschieben der Karte lassen also keinen "Versuche Server …"-Hinweis stehen.
 
 ### Behoben
