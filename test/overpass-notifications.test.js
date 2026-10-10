@@ -3,14 +3,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Overpass-Hinweise: fetchWithRetry darf nur Meldungen schließen, die der Request selbst gezeigt hat.
 // Fremde Meldungen ("Link kopiert", Export, Warnung "zeige Cache") dürfen nicht verschwinden.
-// Wie ui.js: die Meldung landet in #notification-box > .notification-text
+
+// Wie ui.js: Meldung in #notification-box, jede mit eigener ID; hideNotification(id) schließt nur die passende
+let seq = 0;
 const showNotification = vi.fn((msg) => {
     let box = document.getElementById('notification-box');
     if (!box) { box = document.createElement('div'); box.id = 'notification-box'; document.body.appendChild(box); }
     box.innerHTML = '<span class="notification-text"></span>';
     box.querySelector('.notification-text').textContent = msg;
+    box.dataset.notificationId = String(++seq);
+    return seq;
 });
-const hideNotification = vi.fn();
+const hideNotification = vi.fn((id = null) => {
+    const box = document.getElementById('notification-box');
+    if (box && (id === null || box.dataset.notificationId === String(id))) box.dataset.hidden = '1';
+});
 vi.mock('../src/js/ui.js', () => ({ showNotification, hideNotification }));
 
 const okResponse = () => Promise.resolve({ ok: true, json: async () => ({ elements: [{ type: 'node', id: 1 }] }) });
@@ -78,27 +85,41 @@ describe('fetchWithRetry: Benachrichtigungen gehören dem Request', () => {
         expect(hideNotification).not.toHaveBeenCalled();
     });
 
-    it('räumt eine Meldung nicht weg, die inzwischen ein anderer Ablauf angezeigt hat (Erfolg und Abbruch)', async () => {
-        const replaceNotification = () => showNotification('Link kopiert!');
+    const box = () => document.getElementById('notification-box');
+    const boxText = () => box().querySelector('.notification-text').textContent;
 
+    it('räumt eine Meldung nicht weg, die inzwischen ein anderer Ablauf angezeigt hat (Erfolg und Abbruch)', async () => {
         // Erfolg: Nach dem eigenen Hinweis ersetzt jemand die Meldung, dann klappt der Neuversuch
         globalThis.fetch = vi.fn().mockImplementationOnce(serverError).mockImplementationOnce(() => {
-            replaceNotification();
+            showNotification('Link kopiert!');
             return okResponse();
         });
         const ok = await run({});
         expect(ok.err).toBeUndefined();
-        expect(hideNotification).not.toHaveBeenCalled();
-        expect(document.querySelector('#notification-box .notification-text').textContent).toBe('Link kopiert!');
+        expect(boxText()).toBe('Link kopiert!');
+        expect(box().dataset.hidden).toBeUndefined();
 
         // Abbruch: dasselbe, aber der zweite Versuch wird abgebrochen
-        showNotification.mockClear();
         globalThis.fetch = vi.fn().mockImplementationOnce(serverError).mockImplementationOnce(() => {
-            replaceNotification();
+            showNotification('Link kopiert!');
             return Promise.reject(new DOMException('aborted', 'AbortError'));
         });
         const aborted = await run({ reqId: 'test2' });
         expect(aborted.err?.name).toBe('AbortError');
-        expect(hideNotification).not.toHaveBeenCalled();
+        expect(boxText()).toBe('Link kopiert!');
+        expect(box().dataset.hidden).toBeUndefined();
+    });
+
+    it('räumt auch dann nichts weg, wenn der andere Ablauf exakt denselben Text zeigt (zwei überlappende Requests)', async () => {
+        // Zweiter Vordergrund-Request (z. B. Export) zeigt während des Neuversuchs denselben Hinweistext
+        globalThis.fetch = vi.fn().mockImplementationOnce(serverError).mockImplementationOnce(() => {
+            showNotification(boxText());
+            return okResponse();
+        });
+        const before = seq;
+        const ok = await run({});
+        expect(ok.err).toBeUndefined();
+        expect(seq).toBeGreaterThan(before + 1); // Hinweise des Requests + die zweite, textgleiche Meldung
+        expect(box().dataset.hidden).toBeUndefined();
     });
 });

@@ -80,4 +80,28 @@ describe('showNotification & hideNotification', () => {
         expect(box.querySelector('img')).toBeNull();
         expect(box.querySelector('.notification-text').textContent).toBe('<img src=x onerror=alert(1)>');
     });
+
+    it('hideNotification(id) schließt nur die Meldung mit dieser ID, eine neuere bleibt stehen', () => {
+        const first = showNotification('Erste', 5000);
+        const second = showNotification('Zweite', 5000);
+        expect(second).toBeGreaterThan(first);
+
+        hideNotification(first);
+        expect(box.classList.contains('is-visible')).toBe(true);
+        expect(box.textContent).toContain('Zweite');
+
+        hideNotification(second);
+        expect(box.classList.contains('is-visible')).toBe(false);
+    });
+
+    it('hideNotification() ohne ID schließt wie bisher immer', () => {
+        showNotification('Egal', 5000);
+        hideNotification();
+        expect(box.classList.contains('is-visible')).toBe(false);
+    });
+
+    it('showNotification gibt ohne #notification-box null zurück', () => {
+        document.body.replaceChildren();
+        expect(showNotification('Nirgends')).toBeNull();
+    });
 });

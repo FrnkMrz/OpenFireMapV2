@@ -83,7 +83,7 @@ function sleep(ms, signal = null) {
 }
 
 async function maybeGlobalBackoff(reqId, signal = null, silent = false) {
-  let shownMsg = null;
+  let shownId = null;
   const now = Date.now();
   if (GLOBAL_BACKOFF_UNTIL > now) {
     const waitMs = GLOBAL_BACKOFF_UNTIL - now;
@@ -92,13 +92,12 @@ async function maybeGlobalBackoff(reqId, signal = null, silent = false) {
     // Visuelles Feedback: Zeige dem User, dass wir aufgrund Überlastung warten (nicht bei Hintergrund-Abfragen)
     if (!silent) {
       const waitSec = Math.ceil(waitMs / 1000);
-      shownMsg = `${t('status_waiting')} (${waitSec}${t('seconds_short')})...`;
-      showNotification(shownMsg, Math.min(waitMs, 5000), 'warning');
+      shownId = showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000), 'warning');
     }
 
     await sleep(waitMs, signal);
   }
-  return shownMsg;
+  return shownId;
 }
 
 function bumpGlobalBackoff({ minMs, maxMs }) {
@@ -441,22 +440,21 @@ function epHealthyOrder(endpoints) {
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /**
- * Schließt den zuletzt von diesem Request gezeigten Hinweis, aber nur solange er noch sichtbar ist.
- * Hat inzwischen ein anderer Ablauf die Box mit einer neuen Meldung ersetzt, bleibt diese stehen.
+ * Schließt den zuletzt von diesem Request gezeigten Hinweis, aber nur solange genau dieser noch angezeigt wird.
+ * Hat inzwischen ein anderer Ablauf (auch ein zweiter Overpass-Request mit gleichem Text) die Box ersetzt,
+ * bleibt dessen Meldung stehen: verglichen wird die ID aus showNotification(), nicht der Text.
  */
 function hideOwnNotification(ctx) {
-  const msg = ctx.msg;
-  ctx.msg = null;
-  if (!msg) return;
-  const current = document.querySelector('#notification-box .notification-text')?.textContent;
-  if (current === msg) hideNotification();
+  const id = ctx.id;
+  ctx.id = null;
+  if (id != null) hideNotification(id);
 }
 
 async function fetchWithRetry(overpassQueryString, opts) {
-  // ctx.msg: Letzter Hinweis, den dieser Request (inkl. Neuversuch nach Cooldown) selbst gezeigt hat.
+  // ctx.id: ID des letzten Hinweises, den dieser Request (inkl. Neuversuch nach Cooldown) selbst gezeigt hat.
   // Nur ein solcher Hinweis wird von hier aus wieder geschlossen (bei Erfolg oder Abbruch),
   // nie fremde wie "Link kopiert", Export- oder Fehlermeldungen anderer Abläufe.
-  const ctx = { msg: null };
+  const ctx = { id: null };
   try {
     return await fetchWithRetryAttempt(overpassQueryString, opts, ctx);
   } catch (err) {
@@ -468,7 +466,7 @@ async function fetchWithRetry(overpassQueryString, opts) {
 async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false }, ctx) {
   throwIfAborted(signal);
 
-  const notify = (msg, ...rest) => { ctx.msg = msg; showNotification(msg, ...rest); };
+  const notify = (...args) => { ctx.id = showNotification(...args) ?? ctx.id; };
   if (!navigator.onLine) throw new Error('err_offline');
 
   // Cache lesen (nur wenn nicht übersprungen)
@@ -484,8 +482,8 @@ async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs
   const endpoints = epHealthyOrder(Config.overpassEndpoints || []);
   if (endpoints.length === 0) throw new Error('err_generic');
 
-  const backoffMsg = await maybeGlobalBackoff(reqId, signal, silent);
-  if (backoffMsg) ctx.msg = backoffMsg;
+  const backoffId = await maybeGlobalBackoff(reqId, signal, silent);
+  if (backoffId != null) ctx.id = backoffId;
 
   let lastErr = null;
 
