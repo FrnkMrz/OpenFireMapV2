@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Behoben
+- **Warnung "zeige Cache" blieb nicht stehen**: Nach einem fehlgeschlagenen Hintergrundabruf gibt `fetchOSMData` die gecachten Daten zurück, und `map.js` schloss danach pauschal jede Benachrichtigung, also auch genau diese Warnung sowie fremde Meldungen wie "Link kopiert". Das pauschale `hideNotification()` ist entfernt. `fetchWithRetry` schließt seine eigenen Hinweise (Wartezeit, Serverwechsel) bei Erfolg und bei Abbruch selbst; Abbrüche beim Verschieben der Karte lassen also keinen "Versuche Server …"-Hinweis stehen.
+
+### Behoben
 - **Overpass-Hinweise wieder da**: #52 hatte die Meldungen bei Überlastung, Rate-Limit, Serverfehler und Serverwechsel entfernt. Sie erscheinen wieder oben mittig in `#notification-box` (`api.js` auf dem Stand vor #52); das Dock unten rechts kollidiert nicht damit.
 - **Datenstand-Details bei 768 px (iPad hochkant)**: Tailwind-`md` (ab 768 px) und die Dock-CSS (ab 769 px) liefen auseinander, das Info-Icon ragte aus der Status-Box. Die Zeile wird jetzt allein per CSS ab 769 px eingeblendet. Im Mobile-UI-Modus (Touch oder Fenster < 1370 px) hängt das Popover unter der Status-Box oben rechts statt im Dock.
 - **`State.queryBounds` nicht mehr im Getter**: `getTileBBoxKey` setzt keinen State mehr. Beim Wechsel Overpass → Pipeline werden veraltete Overpass-Bounds im Gate zurückgesetzt. Die Export-Cache-Prüfung nutzt `State.loadedPoiBounds` (tatsächlich geladener Bereich inkl. Pufferring).
