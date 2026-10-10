@@ -137,6 +137,12 @@ export const strings = {
     time_days_ago: "{n}d ago",
     status_base_prefix: "As of:",
     status_live_sync: "LIVE (Sync)",
-    status_live: "LIVE"
+    status_live: "LIVE",
+    data_sync_delta_updated: "+{count} kohdetta päivitetty",
+    data_sync_delta_none: "Ajan tasalla (ei muutoksia viennin jälkeen)",
+    data_sync_checking: "Tarkistetaan uusia kohteita Overpassin kautta …",
+    data_sync_offline_or_failed: "Overpass-palvelin ei tavoitettavissa tai offline",
+    data_sync_disabled_hint: "Pois käytöstä asetuksissa",
+    data_sync_osm_direct: "Suoraan OSM-palvelimilta"
 };
 export default strings;

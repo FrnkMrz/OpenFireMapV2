@@ -135,6 +135,12 @@ export const strings = {
     time_days_ago: "{n}d ago",
     status_base_prefix: "As of:",
     status_live_sync: "LIVE (Sync)",
-    status_live: "LIVE"
+    status_live: "LIVE",
+    data_sync_delta_updated: "+{count}টি অবজেক্ট আপডেট হয়েছে",
+    data_sync_delta_none: "হালনাগাদ (রপ্তানির পর কোনো পরিবর্তন হয়নি)",
+    data_sync_checking: "Overpass-এর মাধ্যমে নতুন অবজেক্ট পরীক্ষা করা হচ্ছে …",
+    data_sync_offline_or_failed: "Overpass সার্ভার অনুপলব্ধ বা অফলাইন",
+    data_sync_disabled_hint: "সেটিংসে নিষ্ক্রিয় করা হয়েছে",
+    data_sync_osm_direct: "সরাসরি OSM সার্ভার থেকে"
 };
 export default strings;

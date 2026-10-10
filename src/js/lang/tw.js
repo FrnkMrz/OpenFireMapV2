@@ -137,6 +137,12 @@ export const strings = {
     time_days_ago: "{n}d ago",
     status_base_prefix: "As of:",
     status_live_sync: "LIVE (Sync)",
-    status_live: "LIVE"
+    status_live: "LIVE",
+    data_sync_delta_updated: "+{count} 個物件已更新",
+    data_sync_delta_none: "最新（自匯出以來無變更）",
+    data_sync_checking: "正在透過 Overpass 檢查新物件…",
+    data_sync_offline_or_failed: "Overpass 伺服器無法連線或離線",
+    data_sync_disabled_hint: "已在設定中停用",
+    data_sync_osm_direct: "直接來自 OSM 伺服器"
 };
 export default strings;

@@ -137,6 +137,12 @@ export const strings = {
     time_days_ago: "{n}d ago",
     status_base_prefix: "As of:",
     status_live_sync: "LIVE (Sync)",
-    status_live: "LIVE"
+    status_live: "LIVE",
+    data_sync_delta_updated: "+{count} objekter oppdatert",
+    data_sync_delta_none: "Oppdatert (ingen endringer siden eksport)",
+    data_sync_checking: "Sjekker nye objekter via Overpass …",
+    data_sync_offline_or_failed: "Overpass-server utilgjengelig eller frakoblet",
+    data_sync_disabled_hint: "Deaktivert i innstillinger",
+    data_sync_osm_direct: "Direkte fra OSM-servere"
 };
 export default strings;

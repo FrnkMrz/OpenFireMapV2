@@ -41,6 +41,11 @@ describe('data-status.js', () => {
         <button id="data-info-legal-link">Mehr</button>
       </div>
 
+      <div id="layer-menu" class="hidden"></div>
+      <button id="layer-btn-trigger" aria-expanded="false" aria-label="Ebenen öffnen"></button>
+      <div id="export-menu" class="hidden"></div>
+      <button id="export-btn-trigger" aria-expanded="false" aria-label="Exportieren"></button>
+
       <button id="btn-legal-trigger"></button>
     `;
 
@@ -135,7 +140,7 @@ describe('data-status.js', () => {
       expect(el.className).toContain('text-blue-400');
     });
 
-    it('zeigt LIVE (Sync) bei erfolgreichem Pipeline-Delta', () => {
+    it('zeigt Basis-Stand mit (+Sync) bei erfolgreichem Pipeline-Delta', () => {
       updateDataStatus({
         source: 'pipeline',
         baseTimestamp: '2026-10-09T12:00:00Z',
@@ -144,14 +149,44 @@ describe('data-status.js', () => {
         loadPhase: 'ready'
       });
       const el = document.getElementById('data-status');
-      expect(el.innerText).toBe('LIVE (Sync)');
+      expect(el.innerText).toBe('Stand: vor 1 T. (+Sync)');
       expect(el.className).toContain('text-green-400');
 
       // Popover-Felder prüfen
       expect(document.getElementById('data-info-source-val').textContent).toContain('Cloudflare Edge');
       expect(document.getElementById('data-info-base-val').textContent).toContain('09.10.2026, 12:00 UTC (vor 1 T.)');
       expect(document.getElementById('data-info-delta-val').textContent).toContain('Aktiv');
-      expect(document.getElementById('data-info-delta-sub').textContent).toContain('+3 Objekte aktualisiert');
+      expect(document.getElementById('data-info-delta-sub').textContent).toBe('+3 Objekte aktualisiert');
+    });
+
+    it('zeigt Basis-Stand mit (Sync...) während Delta lädt', () => {
+      updateDataStatus({
+        source: 'pipeline',
+        baseTimestamp: '2026-10-09T12:00:00Z',
+        deltaStatus: 'loading',
+        loadPhase: 'ready'
+      });
+      const el = document.getElementById('data-status');
+      expect(el.innerText).toBe('Stand: vor 1 T. (Sync...)');
+      expect(el.className).toContain('text-blue-400');
+      expect(document.getElementById('data-info-delta-sub').textContent).toBe('Prüfe neue Objekte per Overpass …');
+    });
+
+    it('übersetzt dynamische Meldungen auch bei Sprache Englisch', async () => {
+      updateDataStatus({
+        source: 'pipeline',
+        baseTimestamp: '2026-10-09T12:00:00Z',
+        deltaStatus: 'success',
+        deltaCount: 0,
+        loadPhase: 'ready'
+      });
+      expect(document.getElementById('data-info-delta-sub').textContent).toBe('Aktuell (keine Änderungen seit Export)');
+
+      await setLang('en');
+      renderDataStatus();
+      expect(document.getElementById('data-info-delta-sub').textContent).toBe('Up to date (no changes since export)');
+
+      await setLang('de');
     });
 
     it('zeigt Stand des Basis-Auszugs, wenn kein Delta geladen wurde oder fehlgeschlagen ist', () => {
@@ -166,6 +201,7 @@ describe('data-status.js', () => {
       expect(el.className).toContain('text-green-400');
 
       expect(document.getElementById('data-info-delta-val').textContent).toContain('Nicht verfügbar');
+      expect(document.getElementById('data-info-delta-sub').textContent).toBe('Overpass-Server nicht erreichbar oder offline');
     });
 
     it('zeigt LIVE bei direkter Overpass-Abfrage', () => {
@@ -177,6 +213,7 @@ describe('data-status.js', () => {
       expect(el.innerText).toBe('LIVE');
       expect(el.className).toContain('text-green-400');
       expect(document.getElementById('data-info-source-val').textContent).toContain('Overpass API');
+      expect(document.getElementById('data-info-delta-sub').textContent).toBe('Direkt von OSM-Servern');
     });
 
     it('zeigt Cache-Status bei IndexedDB-Treffer', () => {
@@ -207,6 +244,25 @@ describe('data-status.js', () => {
       closeDataInfoPopover();
       expect(popover.classList.contains('hidden')).toBe(true);
       expect(btn.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('setzt aria-expanded und Menüzustand von Layer- und Export-Buttons zurück', () => {
+      const layerMenu = document.getElementById('layer-menu');
+      const layerBtn = document.getElementById('layer-btn-trigger');
+      const exportMenu = document.getElementById('export-menu');
+      const exportBtn = document.getElementById('export-btn-trigger');
+
+      layerMenu.classList.remove('hidden');
+      layerBtn.setAttribute('aria-expanded', 'true');
+      exportMenu.classList.remove('hidden');
+      exportBtn.setAttribute('aria-expanded', 'true');
+
+      toggleDataInfoPopover(true);
+
+      expect(layerMenu.classList.contains('hidden')).toBe(true);
+      expect(layerBtn.getAttribute('aria-expanded')).toBe('false');
+      expect(exportMenu.classList.contains('hidden')).toBe(true);
+      expect(exportBtn.getAttribute('aria-expanded')).toBe('false');
     });
 
     it('initDataStatusUI bindet Klicks, Escape und Schließen korrekt ein', () => {

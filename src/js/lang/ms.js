@@ -137,6 +137,12 @@ export const strings = {
     time_days_ago: "{n}d ago",
     status_base_prefix: "As of:",
     status_live_sync: "LIVE (Sync)",
-    status_live: "LIVE"
+    status_live: "LIVE",
+    data_sync_delta_updated: "+{count} objek dikemas kini",
+    data_sync_delta_none: "Terkini (tiada perubahan sejak eksport)",
+    data_sync_checking: "Memeriksa objek baharu melalui Overpass …",
+    data_sync_offline_or_failed: "Pelayan Overpass tidak dapat dihubungi atau luar talian",
+    data_sync_disabled_hint: "Dinyahdayakan dalam tetapan",
+    data_sync_osm_direct: "Terus dari pelayan OSM"
 };
 export default strings;

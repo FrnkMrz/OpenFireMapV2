@@ -90,20 +90,24 @@ export function renderDataStatus() {
       statusEl.className = 'text-blue-400';
     } else if (ds.loadPhase === 'ready') {
       if (ds.source === 'pipeline') {
+        const baseAge = ds.baseTimestamp ? formatRelativeAge(ds.baseTimestamp) : '';
         if (ds.deltaStatus === 'success') {
-          statusEl.innerText = t('status_live_sync'); // "LIVE (Sync)"
+          statusEl.innerText = baseAge
+            ? `${t('status_base_prefix')} ${baseAge} (+Sync)`
+            : `${t('status_current')} (+Sync)`;
           statusEl.className = 'text-green-400 font-bold';
         } else if (ds.deltaStatus === 'loading') {
-          statusEl.innerText = `${t('status_current')} (Sync...)`;
+          statusEl.innerText = baseAge
+            ? `${t('status_base_prefix')} ${baseAge} (Sync...)`
+            : `${t('status_current')} (Sync...)`;
           statusEl.className = 'text-blue-400 font-bold';
         } else {
           // Delta nicht verfügbar / aus / fehlgeschlagen: Zeige Alter des Basis-Datenstands
-          if (ds.baseTimestamp) {
-            const age = formatRelativeAge(ds.baseTimestamp);
-            statusEl.innerText = `${t('status_base_prefix')} ${age}`; // "Stand: vor 1 T."
+          if (baseAge) {
+            statusEl.innerText = `${t('status_base_prefix')} ${baseAge}`; // "Stand: vor 1 T."
             statusEl.className = 'text-green-400 font-bold';
           } else {
-            statusEl.innerText = `${t('status_current')} (Lokal)`;
+            statusEl.innerText = t('status_current');
             statusEl.className = 'text-green-400 font-bold';
           }
         }
@@ -163,21 +167,23 @@ export function renderDataStatus() {
       if (ds.deltaStatus === 'success') {
         deltaValEl.textContent = `✅ ${t('data_sync_active')}`;
         deltaValEl.className = 'text-green-400 font-medium';
-        if (deltaSubEl) deltaSubEl.textContent = ds.deltaCount > 0
-          ? `+${ds.deltaCount} Objekte aktualisiert`
-          : 'Aktuell (keine Änderungen seit Export)';
+        if (deltaSubEl) {
+          deltaSubEl.textContent = ds.deltaCount > 0
+            ? t('data_sync_delta_updated').replace('{count}', String(ds.deltaCount))
+            : t('data_sync_delta_none');
+        }
       } else if (ds.deltaStatus === 'loading') {
         deltaValEl.textContent = `⏳ ${t('data_sync_loading')}`;
         deltaValEl.className = 'text-blue-400 font-medium';
-        if (deltaSubEl) deltaSubEl.textContent = 'Prüfe neue Objekte per Overpass …';
+        if (deltaSubEl) deltaSubEl.textContent = t('data_sync_checking');
       } else if (ds.deltaStatus === 'failed') {
         deltaValEl.textContent = `⚠️ ${t('data_sync_unavailable')}`;
         deltaValEl.className = 'text-amber-400 font-medium';
-        if (deltaSubEl) deltaSubEl.textContent = 'Overpass-Server nicht erreichbar oder Offline';
+        if (deltaSubEl) deltaSubEl.textContent = t('data_sync_offline_or_failed');
       } else if (ds.deltaStatus === 'disabled') {
         deltaValEl.textContent = `⚪ ${t('data_sync_disabled')}`;
         deltaValEl.className = 'text-slate-400 font-medium';
-        if (deltaSubEl) deltaSubEl.textContent = 'In den Einstellungen deaktiviert';
+        if (deltaSubEl) deltaSubEl.textContent = t('data_sync_disabled_hint');
       } else {
         deltaValEl.textContent = '–';
         deltaValEl.className = 'text-slate-400 font-medium';
@@ -186,7 +192,7 @@ export function renderDataStatus() {
     } else if (ds.source === 'overpass') {
       deltaValEl.textContent = `✅ ${t('data_sync_direct')}`;
       deltaValEl.className = 'text-green-400 font-medium';
-      if (deltaSubEl) deltaSubEl.textContent = 'Live von OSM-Servern';
+      if (deltaSubEl) deltaSubEl.textContent = t('data_sync_osm_direct');
     } else {
       deltaValEl.textContent = '–';
       deltaValEl.className = 'text-slate-400 font-medium';
@@ -218,10 +224,20 @@ export function toggleDataInfoPopover(show) {
   const willShow = (typeof show === 'boolean') ? show : isHidden;
 
   if (willShow) {
-    // Andere Menüs schließen
+    // Andere Menüs schließen und ARIA-Zustände sauber zurücksetzen
     ['layer-menu', 'export-menu'].forEach(id => {
       document.getElementById(id)?.classList.add('hidden');
     });
+    const layerBtn = document.getElementById('layer-btn-trigger');
+    if (layerBtn) {
+      layerBtn.setAttribute('aria-expanded', 'false');
+      layerBtn.setAttribute('aria-label', t('menu_layers_open'));
+    }
+    const exportBtn = document.getElementById('export-btn-trigger');
+    if (exportBtn) {
+      exportBtn.setAttribute('aria-expanded', 'false');
+      exportBtn.setAttribute('aria-label', t('menu_export_open'));
+    }
     const legal = document.getElementById('legal-modal');
     if (legal) legal.style.display = 'none';
 

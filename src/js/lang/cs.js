@@ -137,6 +137,12 @@ export const strings = {
     time_days_ago: "{n}d ago",
     status_base_prefix: "As of:",
     status_live_sync: "LIVE (Sync)",
-    status_live: "LIVE"
+    status_live: "LIVE",
+    data_sync_delta_updated: "+{count} aktualizovaných objektů",
+    data_sync_delta_none: "Aktuální (beze změn od exportu)",
+    data_sync_checking: "Kontrola nových objektů přes Overpass …",
+    data_sync_offline_or_failed: "Server Overpass nedostupný nebo offline",
+    data_sync_disabled_hint: "V nastavení zakázáno",
+    data_sync_osm_direct: "Přímo ze serverů OSM"
 };
 export default strings;

@@ -135,6 +135,12 @@ export const strings = {
     time_days_ago: "{n}d ago",
     status_base_prefix: "As of:",
     status_live_sync: "LIVE (Sync)",
-    status_live: "LIVE"
+    status_live: "LIVE",
+    data_sync_delta_updated: "+{count} đối tượng đã được cập nhật",
+    data_sync_delta_none: "Mới nhất (không có thay đổi kể từ khi xuất)",
+    data_sync_checking: "Đang kiểm tra đối tượng mới qua Overpass …",
+    data_sync_offline_or_failed: "Máy chủ Overpass không thể truy cập hoặc ngoại tuyến",
+    data_sync_disabled_hint: "Đã tắt trong cài đặt",
+    data_sync_osm_direct: "Trực tiếp từ máy chủ OSM"
 };
 export default strings;

@@ -137,6 +137,12 @@ export const strings = {
     time_days_ago: "{n}d ago",
     status_base_prefix: "As of:",
     status_live_sync: "LIVE (Sync)",
-    status_live: "LIVE"
+    status_live: "LIVE",
+    data_sync_delta_updated: "+{count} 个对象已更新",
+    data_sync_delta_none: "最新（自导出以来无更改）",
+    data_sync_checking: "正在通过 Overpass 检查新对象…",
+    data_sync_offline_or_failed: "Overpass 服务器不可用或离线",
+    data_sync_disabled_hint: "已在设置中禁用",
+    data_sync_osm_direct: "直接来自 OSM 服务器"
 };
 export default strings;

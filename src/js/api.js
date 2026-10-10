@@ -761,18 +761,23 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
           const baseTimestamp = getPipelineOsmDataUntil();
           const generatedAt = getPipelineGeneratedAt();
+          const canRunDelta = Boolean(Config.pipeline?.liveDelta && baseTimestamp && navigator.onLine);
           updateDataStatus({
             source: 'pipeline',
             baseTimestamp,
             generatedAt,
-            deltaStatus: Config.pipeline?.liveDelta ? 'loading' : 'disabled',
+            deltaStatus: canRunDelta ? 'loading' : 'disabled',
             loadPhase: 'ready'
           });
 
           // Änderungen seit dem Pipeline-Stand per Overpass nachladen (Hintergrund, Fehler sind unkritisch)
           loadPoiDelta({ zoom, bbox: deltaBBoxForPipeline(pipelineElements, viewBounds), queryKind, reqId, signal: controller.signal })
             .then((delta) => {
-              if (!delta || !isCurrentRequest()) return;
+              if (!isCurrentRequest()) return;
+              if (!delta) {
+                updateDataStatus({ deltaStatus: 'disabled' });
+                return;
+              }
               deltaKey = delta.key;
               _poiDelta = { key: delta.key, elements: delta.elements };
               emit({ phase: 'pipeline_delta', reqId, since: delta.since, dataset: 'poi', elements: delta.elements.length });
@@ -803,7 +808,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
     }
 
     try {
-      const { freshData, staleData } = await readDatasetCache(cacheKey, cachePolicy);
+      const { entry, freshData, staleData } = await readDatasetCache(cacheKey, cachePolicy);
       ensureCurrentRequest();
       const cached = freshData || staleData;
       if (cached?.elements) {
@@ -815,7 +820,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
         syncCombinedCachedElements();
         updateDataStatus({
           source: 'cache',
-          cacheTimestamp: cached.timestamp || Date.now(),
+          cacheTimestamp: entry?.createdAt || cached.timestamp || Date.now(),
           deltaStatus: 'none',
           loadPhase: 'ready'
         });
@@ -870,6 +875,11 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
                 State.loadedPoiBounds = requestedBounds;
                 State.loadedPoiMode = requestedMode;
                 syncCombinedCachedElements();
+                updateDataStatus({
+                  source: 'overpass',
+                  deltaStatus: 'none',
+                  loadPhase: 'ready'
+                });
                 if (typeof onProgressData === 'function') {
                   onProgressData(freshElements);
                 }
