@@ -357,9 +357,6 @@ export function initMapLogic() {
     const getTileBBoxKey = (zoom) => {
         if (!State.map) return '';
         const b = State.map.getBounds();
-        // Für api.js: bounds aktuell halten und queryMeta leeren, damit keine alten Overpass-Bounds (z. B. aus Tschechien) verbleiben
-        State.queryBounds = b;
-        State.queryMeta = null;
         const qZoom = computeQueryZoom(zoom);
         const minX = lon2tile(b.getWest(), qZoom);
         const maxX = lon2tile(b.getEast(), qZoom);
@@ -499,6 +496,12 @@ export function initMapLogic() {
 
         // 3) Request-Gating: nur neu laden, wenn sich Mode oder Viewport sinnvoll geändert hat
         const inPipeline = isPipelineEligible(State.map.getBounds(), zoom);
+        if (inPipeline) {
+            // Wechsel Overpass -> Pipeline: veraltete Overpass-Bounds (z. B. aus einem anderen Land) verwerfen,
+            // api.js fällt dann auf die aktuellen Kartengrenzen zurück.
+            State.queryBounds = null;
+            State.queryMeta = null;
+        }
         const bboxKey = inPipeline ? getTileBBoxKey(zoom) : getRoundedBBox();
         dbg('gate', { zoom, mode, bboxKey, queryMeta: State.queryMeta });
         const boundaryFlag = (zoom >= 14) ? 'b1' : 'b0';
