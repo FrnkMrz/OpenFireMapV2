@@ -83,6 +83,7 @@ function sleep(ms, signal = null) {
 }
 
 async function maybeGlobalBackoff(reqId, signal = null, silent = false) {
+  let notified = false;
   const now = Date.now();
   if (GLOBAL_BACKOFF_UNTIL > now) {
     const waitMs = GLOBAL_BACKOFF_UNTIL - now;
@@ -92,10 +93,12 @@ async function maybeGlobalBackoff(reqId, signal = null, silent = false) {
     if (!silent) {
       const waitSec = Math.ceil(waitMs / 1000);
       showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000), 'warning');
+      notified = true;
     }
 
     await sleep(waitMs, signal);
   }
+  return notified;
 }
 
 function bumpGlobalBackoff({ minMs, maxMs }) {
@@ -437,8 +440,12 @@ function epHealthyOrder(endpoints) {
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
-async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false }) {
+async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false, notified = false }) {
   throwIfAborted(signal);
+
+  // Nur Hinweise schließen, die dieser Request selbst gezeigt hat (nicht fremde, z. B. "Link kopiert" oder Export)
+  let ownNotification = notified;
+  const notify = (...args) => { ownNotification = true; showNotification(...args); };
   if (!navigator.onLine) throw new Error('err_offline');
 
   // Cache lesen (nur wenn nicht übersprungen)
@@ -454,7 +461,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
   const endpoints = epHealthyOrder(Config.overpassEndpoints || []);
   if (endpoints.length === 0) throw new Error('err_generic');
 
-  await maybeGlobalBackoff(reqId, signal, silent);
+  if (await maybeGlobalBackoff(reqId, signal, silent)) ownNotification = true;
 
   let lastErr = null;
 
@@ -470,7 +477,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
 
       // Zeige nur wenn es der letzte Endpoint ist (sonst zu viele Notifications)
       if (!silent && attemptNum === endpoints.length - 1) {
-        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, 3000, 'warning');
+        notify(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, 3000, 'warning');
       }
       continue;
     }
@@ -482,7 +489,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
           endpoint.includes('z.overpass-api.de') ? 'Server 2' :
             endpoint.includes('lz4.overpass-api.de') ? 'Server 3' : 'Alternativ-Server';
 
-        showNotification(`${t('trying_server')} ${serverName}...`, 60000, 'info');
+        notify(`${t('trying_server')} ${serverName}...`, 60000, 'info');
       }
 
       emit({ phase: 'try', reqId, endpoint, attemptNum });
@@ -519,7 +526,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       // Erfolg -> globalen Backoff resetten und temporäre Server-Meldungen schließen
       GLOBAL_BACKOFF_MS = 0;
       GLOBAL_BACKOFF_UNTIL = 0;
-      hideNotification();
+      if (ownNotification) hideNotification();
 
       return json;
 
@@ -540,9 +547,9 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
           // Visuelles Feedback: Rate Limit
           if (!silent) {
             if (attemptNum < endpoints.length - 1) {
-              showNotification(t('server_ratelimit_retry'), 4000, 'warning');
+              notify(t('server_ratelimit_retry'), 4000, 'warning');
             } else {
-              showNotification(t('all_servers_busy'), 6000, 'warning');
+              notify(t('all_servers_busy'), 6000, 'warning');
             }
           }
 
@@ -555,7 +562,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
 
           // Visuelles Feedback: Server Error
           if (!silent && attemptNum < endpoints.length - 1) {
-            showNotification(t('server_error_retry'), 4000, 'warning');
+            notify(t('server_error_retry'), 4000, 'warning');
           }
 
           await sleep(400, signal);
@@ -588,14 +595,14 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       const waitSec = Math.ceil(minCooldown / 1000);
       emit({ phase: 'wait_for_cooldown', reqId, waitMs: minCooldown });
       if (!silent) {
-        showNotification(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown, 'warning');
+        notify(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown, 'warning');
       }
 
       await sleep(minCooldown + 500, signal); // +500ms Puffer
 
       // Erneuter Versuch
       emit({ phase: 'retry_after_cooldown', reqId });
-      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta, reqId, skipCache, signal, minElementCount, silent });
+      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta, reqId, skipCache, signal, minElementCount, silent, notified: ownNotification });
     }
   }
 
