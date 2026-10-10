@@ -650,11 +650,10 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
   // =========================================================================
   describe('9b. Geladene Daten decken nur bei passender Quelle ab', () => {
     // Liefert, ob die geladenen Daten den aktuellen Ausschnitt abdecken. Ruft bewusst nur die Abdeckungsprüfung
-    // auf (nicht onViewChange): ein nicht abgedeckter Ausschnitt würde sonst echte Abrufe starten, die über das
-    // Testende hinaus weiterlaufen und in späteren Tests die globale fetch-Mock mitzählen.
+    // auf, ohne initMapLogic(): das feuert sofort 'moveend' und startet echte Abrufe, die über das Testende
+    // hinaus weiterlaufen und in späteren Tests die globale fetch-Mock mitzählen.
     const isCovered = async (source) => {
       const mapModule = await import('../src/js/map.js');
-      mapModule.initMapLogic();
 
       const bounds = State.map.getBounds();
       State.loadedPoiBounds = bounds;
