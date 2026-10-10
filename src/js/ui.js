@@ -146,12 +146,18 @@ const NOTIFICATION_ICONS = {
     info: `<svg class="w-4 h-4 shrink-0 text-blue-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.247.25v3.25a.75.75 0 001.5 0v-3.5A1.75 1.75 0 009.25 9H9z" clip-rule="evenodd" /></svg>`
 };
 
+// Laufende Nummer der zuletzt gezeigten Benachrichtigung (steht in #notification-box[data-notification-id])
+let notificationSeq = 0;
+
 /**
  * Blendet die Benachrichtigungs-Box sofort oder sanft aus.
+ * @param {number|null} [id] ID aus showNotification(). Ist sie angegeben, wird nur geschlossen, solange genau
+ *   diese Benachrichtigung noch angezeigt wird (eine neuere Meldung bleibt stehen). Ohne ID wird immer geschlossen.
  */
-export function hideNotification() {
+export function hideNotification(id = null) {
     const box = document.getElementById('notification-box');
     if (!box) return;
+    if (id !== null && box.dataset.notificationId !== String(id)) return;
     if (box.hideTimeout) {
         clearTimeout(box.hideTimeout);
         box.hideTimeout = null;
@@ -175,10 +181,11 @@ export function hideNotification() {
  *   showNotification(msg, type)
  *   showNotification(msg, duration, type)
  *   showNotification(msg, type, duration)
+ * Gibt eine ID zurück (oder null ohne #notification-box), mit der hideNotification(id) gezielt genau diese Meldung schließt.
  */
 export function showNotification(msg, durationOrType = 3000, explicitTypeOrDuration = null) {
     const box = document.getElementById('notification-box');
-    if (!box) return;
+    if (!box) return null;
 
     let duration = 3000;
     let type = 'info';
@@ -200,6 +207,9 @@ export function showNotification(msg, durationOrType = 3000, explicitTypeOrDurat
     }
 
     // ARIA für Screenreader passend konfigurieren
+    const id = ++notificationSeq;
+    box.dataset.notificationId = String(id);
+
     box.setAttribute('role', type === 'error' ? 'alert' : 'status');
     box.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
     box.dataset.type = type;
@@ -228,6 +238,8 @@ export function showNotification(msg, durationOrType = 3000, explicitTypeOrDurat
     box.hideTimeout = setTimeout(() => {
         hideNotification();
     }, duration);
+
+    return id;
 }
 
 /**
