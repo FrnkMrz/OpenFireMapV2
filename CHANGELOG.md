@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Behoben
+- **Rückkehr ins Pipeline-Gebiet nutzt wieder Cloudflare**: Die Abdeckungsprüfung in `map.js` prüfte nur, ob die geladenen Bounds den Ausschnitt enthalten, nicht woher die Daten stammen. Wurde ein Ausschnitt an der DACHLiLu-Grenze per Overpass geladen (mit Polsterung) und man zoomte/schob danach in einen Ausschnitt, der komplett im Pipeline-Gebiet liegt, aber noch innerhalb dieser Bounds, blieb die App bei Overpass ("LIVE") und fragte Cloudflare nie an. Umgekehrt konnten Pipeline-Daten einen über die Grenze ragenden Ausschnitt fälschlich als abgedeckt ausgeben. Neu: `State.loadedPoiSource` (`pipeline` | `overpass` | `overpass-fallback`). Ist die Pipeline ausgefallen (`overpass-fallback`), wird nicht bei jeder Bewegung neu versucht, sondern erst bei neuen Kacheln.
+
+### Behoben
 - **Warnung "zeige Cache" blieb nicht stehen**: Nach einem fehlgeschlagenen Hintergrundabruf gibt `fetchOSMData` die gecachten Daten zurück, und `map.js` schloss danach pauschal jede Benachrichtigung, also auch genau diese Warnung sowie fremde Meldungen wie "Link kopiert". Das pauschale `hideNotification()` ist entfernt. `fetchWithRetry` schließt seine eigenen Hinweise (Wartezeit, Serverwechsel) bei Erfolg und bei Abbruch selbst; Abbrüche beim Verschieben der Karte lassen also keinen "Versuche Server …"-Hinweis stehen.
 
 ### Behoben

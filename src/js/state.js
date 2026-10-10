@@ -33,6 +33,7 @@ export const State = {
     loadedPoiBounds: null,
     loadedBoundaryBounds: null,
     loadedPoiMode: null,
+    loadedPoiSource: null,  // Herkunft der geladenen POIs: 'pipeline' | 'overpass' | 'overpass-fallback' (Pipeline war zuständig, ist aber ausgefallen)
 
     // --- LADE-STATUS ---
     isFetchingData: false,        // Lädt die Map gerade im Hintergrund neue Hydranten/POIs?
