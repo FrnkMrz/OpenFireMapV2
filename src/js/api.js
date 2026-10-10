@@ -440,12 +440,23 @@ function epHealthyOrder(endpoints) {
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
-async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false, notified = false }) {
+async function fetchWithRetry(overpassQueryString, opts) {
+  // ctx.own: Hat dieser Request (inkl. Neuversuch nach Cooldown) selbst einen Hinweis gezeigt?
+  // Nur solche Hinweise werden von hier aus wieder geschlossen (bei Erfolg oder Abbruch),
+  // nie fremde wie "Link kopiert", Export- oder Fehlermeldungen anderer Abläufe.
+  const ctx = { own: false };
+  try {
+    return await fetchWithRetryAttempt(overpassQueryString, opts, ctx);
+  } catch (err) {
+    if (err?.name === 'AbortError' && ctx.own) hideNotification();
+    throw err;
+  }
+}
+
+async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false }, ctx) {
   throwIfAborted(signal);
 
-  // Nur Hinweise schließen, die dieser Request selbst gezeigt hat (nicht fremde, z. B. "Link kopiert" oder Export)
-  let ownNotification = notified;
-  const notify = (...args) => { ownNotification = true; showNotification(...args); };
+  const notify = (...args) => { ctx.own = true; showNotification(...args); };
   if (!navigator.onLine) throw new Error('err_offline');
 
   // Cache lesen (nur wenn nicht übersprungen)
@@ -461,7 +472,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
   const endpoints = epHealthyOrder(Config.overpassEndpoints || []);
   if (endpoints.length === 0) throw new Error('err_generic');
 
-  if (await maybeGlobalBackoff(reqId, signal, silent)) ownNotification = true;
+  if (await maybeGlobalBackoff(reqId, signal, silent)) ctx.own = true;
 
   let lastErr = null;
 
@@ -526,7 +537,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       // Erfolg -> globalen Backoff resetten und temporäre Server-Meldungen schließen
       GLOBAL_BACKOFF_MS = 0;
       GLOBAL_BACKOFF_UNTIL = 0;
-      if (ownNotification) hideNotification();
+      if (ctx.own) hideNotification();
 
       return json;
 
@@ -602,7 +613,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
 
       // Erneuter Versuch
       emit({ phase: 'retry_after_cooldown', reqId });
-      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta, reqId, skipCache, signal, minElementCount, silent, notified: ownNotification });
+      return fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta, reqId, skipCache, signal, minElementCount, silent }, ctx);
     }
   }
 

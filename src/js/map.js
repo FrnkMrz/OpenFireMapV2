@@ -10,7 +10,7 @@ import { Config } from './config.js';
 import { t } from './i18n.js';
 import { fetchBoundaryData, fetchOSMData } from './api.js';
 import { isPipelineEligible, lon2tile, lat2tile, computeQueryZoom, isBoundaryElement } from './pipeline.js';
-import { showNotification, hideNotification } from './ui.js';
+import { showNotification } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
 import { updateDataStatus } from './data-status.js';
 
@@ -607,8 +607,9 @@ export function initMapLogic() {
 
                     updateDataStatus({ loadPhase: 'ready' });
 
-                    // Falls vorher eine Server-Warnung (z.B. Wartezeit) angezeigt wurde, diese schließen
-                    hideNotification();
+                    // Kein hideNotification() hier: api.js schließt seine Server-Hinweise (Wartezeit, Serverwechsel)
+                    // selbst. Ein pauschales Schließen würde auch die Warnung "Verbindungsfehler – zeige Cache"
+                    // (Daten kommen dann trotzdem zurück) sowie fremde Meldungen wie "Link kopiert" wegräumen.
                 } else if (data === null) {
                     // Kein Fehler, aber leere Query (z.B. Zoom zu klein)
                     updateDataStatus({ loadPhase: 'waiting' });
