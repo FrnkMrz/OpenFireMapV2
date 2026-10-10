@@ -17,6 +17,9 @@
 
   if (!isMobile) return;
 
+  // Marker für CSS: Mobile-UI aktiv (z. B. blendet die Desktop-only Datenstand-Details aus)
+  document.documentElement.classList.add('ofm-mobile-ui');
+
   // ---------------------------
   // Helpers
   // ---------------------------
@@ -371,6 +374,7 @@
       window.innerWidth < 1370;
 
     if (!nowMobile) {
+      document.documentElement.classList.remove('ofm-mobile-ui');
       // Desktop wieder herstellen
       show(desktopControls);
       if (desktopLegalBtn) show(desktopLegalBtn.parentElement || desktopLegalBtn);
