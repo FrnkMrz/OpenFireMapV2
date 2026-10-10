@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Behoben
+- **Overpass-Hinweise wieder da**: #52 hatte die Meldungen bei Überlastung, Rate-Limit, Serverfehler und Serverwechsel entfernt. Sie erscheinen wieder oben mittig in `#notification-box` (`api.js` auf dem Stand vor #52); das Dock unten rechts kollidiert nicht damit.
+- **Datenstand-Details bei 768 px (iPad hochkant)**: Tailwind-`md` (ab 768 px) und die Dock-CSS (ab 769 px) liefen auseinander, das Info-Icon ragte aus der Status-Box. Die Zeile wird jetzt allein per CSS ab 769 px eingeblendet. Im Mobile-UI-Modus (Touch oder Fenster < 1370 px) hängt das Popover unter der Status-Box oben rechts statt im Dock.
+- **`State.queryBounds` nicht mehr im Getter**: `getTileBBoxKey` setzt keinen State mehr. Beim Wechsel Overpass → Pipeline werden veraltete Overpass-Bounds im Gate zurückgesetzt. Die Export-Cache-Prüfung nutzt `State.loadedPoiBounds` (tatsächlich geladener Bereich inkl. Pufferring).
+
+### Geändert
+- **Datenstand lokalisiert**: Die neuen Texte der Datenstand-Anzeige sind in allen 30 Sprachen übersetzt (bisher englische Kopien). `(+Sync)`/`(Sync…)` und das `aria-label` des Schließen-Buttons kommen aus der Übersetzung, das Datum folgt der Sprache (`Intl`, weiterhin UTC).
+- `npm run i18n:check` weist auf Werte hin, die dem englischen Text entsprechen (`--copies` listet die Schlüssel).
+
 ## [v0.8.5] - 2026-10-04
 
 ### Neu

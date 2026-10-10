@@ -709,7 +709,9 @@ async function generateMapCanvas() {
     // die die App zuletzt für die Darstellung geladen hat?
     const availableCachedElements = getCachedExportElements();
     if (availableCachedElements.length > 0) {
-      if (State.queryBounds && State.queryBounds.contains(bounds)) {
+      // loadedPoiBounds = tatsächlich geladener Bereich (Pipeline inkl. Pufferring, Overpass = Query-Bounds)
+      const loadedBounds = State.loadedPoiBounds || State.queryBounds;
+      if (loadedBounds && loadedBounds.contains(bounds)) {
         console.log("Export: Cache enthält Daten für diesen KOMPLETTEN Bereich -> Nutze Cache.");
         elementsForExport = preprocessElementsForExport(availableCachedElements);
       } else {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { State } from '../src/js/state.js';
-import { initI18n, setLang } from '../src/js/i18n.js';
+import { initI18n, setLang, t } from '../src/js/i18n.js';
 import {
   formatRelativeAge,
   formatAbsoluteUtc,
@@ -116,6 +116,17 @@ describe('data-status.js', () => {
       expect(formatAbsoluteUtc('')).toBe('');
       expect(formatAbsoluteUtc(null)).toBe('');
     });
+
+    it('folgt der Sprache: Englisch und Japanisch nutzen ihr eigenes Datumsformat (weiterhin UTC)', async () => {
+      await setLang('en');
+      expect(formatAbsoluteUtc('2026-10-08T20:20:21Z')).toBe('10/08/2026, 20:20 UTC');
+      await setLang('ja');
+      expect(formatAbsoluteUtc('2026-10-08T20:20:21Z')).toBe('2026/10/08 20:20 UTC');
+      // "fl" ist Flämisch (nicht Filipino): Belgisch-niederländisches Format
+      await setLang('fl');
+      expect(formatAbsoluteUtc('2026-10-08T20:20:21Z')).toBe('08/10/2026, 20:20 UTC');
+      await setLang('de');
+    });
   });
 
   describe('renderDataStatus & updateDataStatus', () => {
@@ -159,7 +170,7 @@ describe('data-status.js', () => {
       expect(document.getElementById('data-info-delta-sub').textContent).toBe('+3 Objekte aktualisiert');
     });
 
-    it('zeigt Basis-Stand mit (Sync...) während Delta lädt', () => {
+    it('zeigt Basis-Stand mit (Sync…) während Delta lädt', () => {
       updateDataStatus({
         source: 'pipeline',
         baseTimestamp: '2026-10-09T12:00:00Z',
@@ -167,7 +178,7 @@ describe('data-status.js', () => {
         loadPhase: 'ready'
       });
       const el = document.getElementById('data-status');
-      expect(el.innerText).toBe('Stand: vor 1 T. (Sync...)');
+      expect(el.innerText).toBe('Stand: vor 1 T. (Sync…)');
       expect(el.className).toContain('text-blue-400');
       expect(document.getElementById('data-info-delta-sub').textContent).toBe('Prüfe neue Objekte per Overpass …');
     });
@@ -185,6 +196,25 @@ describe('data-status.js', () => {
       await setLang('en');
       renderDataStatus();
       expect(document.getElementById('data-info-delta-sub').textContent).toBe('Up to date (no changes since export)');
+
+      await setLang('de');
+    });
+
+    it('übersetzt auch die Sync-Zusätze und den Schließen-Button', async () => {
+      document.getElementById('data-info-close-btn').setAttribute('aria-label', 'Schließen');
+      updateDataStatus({
+        source: 'pipeline',
+        baseTimestamp: '2026-10-09T12:00:00Z',
+        deltaStatus: 'success',
+        loadPhase: 'ready'
+      });
+      expect(document.getElementById('data-status').innerText).toBe('Stand: vor 1 T. (+Sync)');
+
+      await setLang('ja');
+      renderDataStatus();
+      expect(document.getElementById('data-status').innerText).toBe('状態： 1日前 (+同期)');
+      expect(document.getElementById('data-info-close-btn').getAttribute('aria-label')).toBe(t('menu_close'));
+      expect(t('menu_close')).not.toBe('Schließen');
 
       await setLang('de');
     });

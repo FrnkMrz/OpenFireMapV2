@@ -14,7 +14,7 @@
 import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
-import { showNotification } from './ui.js';
+import { showNotification, hideNotification } from './ui.js';
 
 import { fetchJson, HttpError } from './net.js';
 import { isPipelineEligible, fetchPipelineData, fetchPipelineBoundaries, getPipelineOsmDataUntil, getPipelineGeneratedAt } from './pipeline.js';
@@ -82,13 +82,23 @@ function sleep(ms, signal = null) {
   });
 }
 
-async function maybeGlobalBackoff(reqId, signal = null) {
+async function maybeGlobalBackoff(reqId, signal = null, silent = false) {
+  let notified = false;
   const now = Date.now();
   if (GLOBAL_BACKOFF_UNTIL > now) {
     const waitMs = GLOBAL_BACKOFF_UNTIL - now;
     emit({ phase: 'backoff_wait', reqId, ms: waitMs });
+
+    // Visuelles Feedback: Zeige dem User, dass wir aufgrund Überlastung warten (nicht bei Hintergrund-Abfragen)
+    if (!silent) {
+      const waitSec = Math.ceil(waitMs / 1000);
+      showNotification(`${t('status_waiting')} (${waitSec}${t('seconds_short')})...`, Math.min(waitMs, 5000), 'warning');
+      notified = true;
+    }
+
     await sleep(waitMs, signal);
   }
+  return notified;
 }
 
 function bumpGlobalBackoff({ minMs, maxMs }) {
@@ -430,8 +440,12 @@ function epHealthyOrder(endpoints) {
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
-async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false }) {
+async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false, notified = false }) {
   throwIfAborted(signal);
+
+  // Nur Hinweise schließen, die dieser Request selbst gezeigt hat (nicht fremde, z. B. "Link kopiert" oder Export)
+  let ownNotification = notified;
+  const notify = (...args) => { ownNotification = true; showNotification(...args); };
   if (!navigator.onLine) throw new Error('err_offline');
 
   // Cache lesen (nur wenn nicht übersprungen)
@@ -447,7 +461,7 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
   const endpoints = epHealthyOrder(Config.overpassEndpoints || []);
   if (endpoints.length === 0) throw new Error('err_generic');
 
-  await maybeGlobalBackoff(reqId, signal, silent);
+  if (await maybeGlobalBackoff(reqId, signal, silent)) ownNotification = true;
 
   let lastErr = null;
 
@@ -458,11 +472,26 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
     const now = Date.now();
 
     if (s.failUntil > now) {
+      const waitSec = Math.ceil((s.failUntil - now) / 1000);
       emit({ phase: 'skip_endpoint', reqId, endpoint, untilMs: s.failUntil - now, lastStatus: s.lastStatus });
+
+      // Zeige nur wenn es der letzte Endpoint ist (sonst zu viele Notifications)
+      if (!silent && attemptNum === endpoints.length - 1) {
+        notify(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, 3000, 'warning');
+      }
       continue;
     }
 
     try {
+      // Zeige bei Retry (nicht beim ersten Versuch) welcher Server probiert wird
+      if (!silent && attemptNum > 0) {
+        const serverName = endpoint.includes('overpass-api.de') ? 'Server 1' :
+          endpoint.includes('z.overpass-api.de') ? 'Server 2' :
+            endpoint.includes('lz4.overpass-api.de') ? 'Server 3' : 'Alternativ-Server';
+
+        notify(`${t('trying_server')} ${serverName}...`, 60000, 'info');
+      }
+
       emit({ phase: 'try', reqId, endpoint, attemptNum });
 
       const t0 = performance.now();
@@ -494,9 +523,10 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
       const elements = Array.isArray(json?.elements) ? json.elements.length : null;
       emit({ phase: 'net_ok', reqId, endpoint, ms, elements });
 
-      // Erfolg -> globalen Backoff resetten
+      // Erfolg -> globalen Backoff resetten und temporäre Server-Meldungen schließen
       GLOBAL_BACKOFF_MS = 0;
       GLOBAL_BACKOFF_UNTIL = 0;
+      if (ownNotification) hideNotification();
 
       return json;
 
@@ -513,12 +543,28 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
           epMarkFail(endpoint, 429, 90000); // 90s
           bumpGlobalBackoff({ minMs: 8000, maxMs: 30000 });
           emit({ phase: 'ratelimit', reqId, endpoint, backoffMs: GLOBAL_BACKOFF_MS });
+
+          // Visuelles Feedback: Rate Limit
+          if (!silent) {
+            if (attemptNum < endpoints.length - 1) {
+              notify(t('server_ratelimit_retry'), 4000, 'warning');
+            } else {
+              notify(t('all_servers_busy'), 6000, 'warning');
+            }
+          }
+
           await sleep(300, signal);
           continue;
         }
         if (err.status >= 500) {
           epMarkFail(endpoint, err.status, 30000); // 30s
           bumpGlobalBackoff({ minMs: 1200, maxMs: 8000 });
+
+          // Visuelles Feedback: Server Error
+          if (!silent && attemptNum < endpoints.length - 1) {
+            notify(t('server_error_retry'), 4000, 'warning');
+          }
+
           await sleep(400, signal);
           continue;
         }
@@ -546,12 +592,17 @@ async function fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cache
 
     if (minCooldown <= MAX_REASONABLE_WAIT) {
       // Lohnt sich zu warten!
+      const waitSec = Math.ceil(minCooldown / 1000);
       emit({ phase: 'wait_for_cooldown', reqId, waitMs: minCooldown });
+      if (!silent) {
+        notify(`${t('server_overloaded_wait')} ${waitSec}${t('seconds_short')}...`, minCooldown, 'warning');
+      }
+
       await sleep(minCooldown + 500, signal); // +500ms Puffer
 
       // Erneuter Versuch
       emit({ phase: 'retry_after_cooldown', reqId });
-      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta, reqId, skipCache, signal, minElementCount, silent });
+      return fetchWithRetry(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta, reqId, skipCache, signal, minElementCount, silent, notified: ownNotification });
     }
   }
 

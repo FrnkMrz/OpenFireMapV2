@@ -6,7 +6,7 @@
  */
 
 import { State } from './state.js';
-import { t } from './i18n.js';
+import { t, getLang } from './i18n.js';
 
 /**
  * Formatiert eine Zeitdifferenz in eine kompakte relative Angabe (z. B. "vor 1 T.", "vor 2 Std.").
@@ -37,24 +37,31 @@ export function formatRelativeAge(isoOrTimestamp) {
   return t('time_days_ago').replace('{n}', String(diffDays));
 }
 
+// App-Sprachcode -> BCP-47-Locale (nur dort, wo beide voneinander abweichen)
+const LOCALE_BY_LANG = { fl: 'nl-BE', tw: 'zh-TW', yue: 'zh-HK', zh: 'zh-CN', no: 'nb' };
+
 /**
- * Formatiert einen UTC-Zeitstempel (z. B. "2026-10-08T20:20:21Z") in ein lesbares UTC-Datum.
- * @param {string} isoString 
+ * Formatiert einen UTC-Zeitstempel (z. B. "2026-10-08T20:20:21Z") lokalisiert als Datum + Uhrzeit in UTC
+ * (z. B. "08.10.2026, 20:20 UTC").
+ * @param {string} isoString
  * @returns {string}
  */
 export function formatAbsoluteUtc(isoString) {
   if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return String(isoString);
+
+  const lang = getLang();
+  const options = {
+    timeZone: 'UTC',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  };
   try {
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return String(isoString);
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const year = d.getUTCFullYear();
-    const hours = String(d.getUTCHours()).padStart(2, '0');
-    const minutes = String(d.getUTCMinutes()).padStart(2, '0');
-    return `${day}.${month}.${year}, ${hours}:${minutes} UTC`;
+    return `${new Intl.DateTimeFormat(LOCALE_BY_LANG[lang] || lang, options).format(d)} UTC`;
   } catch {
-    return String(isoString);
+    // Unbekannte Locale: auf das deutsche Format zurückfallen
+    return `${new Intl.DateTimeFormat('de', options).format(d)} UTC`;
   }
 }
 
@@ -93,13 +100,13 @@ export function renderDataStatus() {
         const baseAge = ds.baseTimestamp ? formatRelativeAge(ds.baseTimestamp) : '';
         if (ds.deltaStatus === 'success') {
           statusEl.innerText = baseAge
-            ? `${t('status_base_prefix')} ${baseAge} (+Sync)`
-            : `${t('status_current')} (+Sync)`;
+            ? `${t('status_base_prefix')} ${baseAge} (${t('status_sync_done')})`
+            : `${t('status_current')} (${t('status_sync_done')})`;
           statusEl.className = 'text-green-400 font-bold';
         } else if (ds.deltaStatus === 'loading') {
           statusEl.innerText = baseAge
-            ? `${t('status_base_prefix')} ${baseAge} (Sync...)`
-            : `${t('status_current')} (Sync...)`;
+            ? `${t('status_base_prefix')} ${baseAge} (${t('status_sync_running')})`
+            : `${t('status_current')} (${t('status_sync_running')})`;
           statusEl.className = 'text-blue-400 font-bold';
         } else {
           // Delta nicht verfügbar / aus / fehlgeschlagen: Zeige Alter des Basis-Datenstands
@@ -124,6 +131,9 @@ export function renderDataStatus() {
       }
     }
   }
+
+  // Beschriftung des Schließen-Buttons folgt der Sprache
+  document.getElementById('data-info-close-btn')?.setAttribute('aria-label', t('menu_close'));
 
   // 2. Felder im Popover (#data-info-popover) aktualisieren
   const sourceValEl = document.getElementById('data-info-source-val');

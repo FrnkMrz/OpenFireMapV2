@@ -8,6 +8,9 @@ const langDir = path.join(root, "src", "js", "lang");
 const MASTER = "de";
 const FALLBACK = "en";
 
+// Mit --copies werden die möglicherweise unübersetzten Schlüssel einzeln aufgelistet
+const SHOW_COPIES = process.argv.includes("--copies");
+
 function loadLang(file) {
   // wir lesen als Text und parsen simpel, weil deine Dateien JS-Module sind
   // Erwartung: export default { ... } oder export const strings = { ... }
@@ -82,6 +85,18 @@ for (const f of files.sort()) {
     if (extra.length > 15) console.log(`    ... +${extra.length - 15} more`);
   } else {
     console.log(`  Extra: 0`);
+  }
+
+  // Hinweis (kein Fehler): Werte, die exakt dem englischen Text entsprechen, sind oft nur kopierte,
+  // unübersetzte Strings. Treffer können legitim sein (z. B. "Source" im Französischen, Markennamen).
+  const copies = Object.keys(fallbackObj).filter(k =>
+    typeof fallbackObj[k] === "string" &&
+    obj[k] === fallbackObj[k] &&
+    /[A-Za-z]{4,}/.test(fallbackObj[k])
+  );
+  if (copies.length) {
+    console.log(`  Identical to '${FALLBACK}' (possibly untranslated): ${copies.length}`);
+    if (SHOW_COPIES) for (const k of copies) console.log(`    ~ ${k}`);
   }
 }
 

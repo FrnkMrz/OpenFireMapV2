@@ -275,6 +275,11 @@ body {
 /* =========================
    Desktop Status Dock (unten rechts)
    ========================= */
+/* Auf Phones (<= 768 px) gibt es die Datenstand-Details nicht; ab 769 px wird die Zeile eingeblendet */
+#data-info-row {
+    display: none;
+}
+
 @media (min-width: 769px) {
     #desktop-status-dock {
         position: absolute;
@@ -295,6 +300,27 @@ body {
 
     #data-info-popover {
         z-index: 2000;
+    }
+
+    /* Datenstand-Details ab 769 px. Eine einzige Schwelle statt Tailwind-md (768 px), damit Zeile
+       und Dock-CSS nie auseinanderlaufen (iPad hochkant = genau 768 px). */
+    #data-info-row {
+        display: flex;
+    }
+
+    /* Mobile-UI-Modus (Touch oder Fenster < 1370 px, siehe mobile-ui.js) schiebt die Status-Box nach
+       oben rechts (fixed). Das Popover hängt dann unter der Box statt im Dock unten rechts. */
+    html.ofm-mobile-ui #data-info-popover {
+        position: fixed;
+        top: 5.75rem;
+        right: 18px;
+        z-index: 3600;
+    }
+}
+
+@media (max-width: 768px) {
+    #data-info-popover {
+        display: none !important;
     }
 }
 
