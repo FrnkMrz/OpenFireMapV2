@@ -93,6 +93,28 @@ export async function shareMap() {
     }
 }
 
+/**
+ * Decken die geladenen POIs den aktuellen Kartenausschnitt ab? Bounds, Modus und Datenquelle müssen passen.
+ * Liegt auf Modulebene (nur State + isPipelineEligible), damit Tests sie ohne initMapLogic() aufrufen können:
+ * initMapLogic() feuert sofort 'moveend' und startet damit echte Abrufe.
+ */
+function poiCoverageMatchesMode(mode) {
+    if (!State.loadedPoiBounds || !State.map) return false;
+    const viewBounds = State.map.getBounds();
+    if (!State.loadedPoiBounds.contains(viewBounds)) return false;
+    // Die Datenquelle muss zum Ausschnitt passen: Liegt er komplett im Pipeline-Gebiet, zählen nur Pipeline-Daten
+    // (sonst bliebe ein Grenzbereich, der per Overpass geladen wurde, bei Overpass hängen). Liegt er (teilweise)
+    // außerhalb, reichen Pipeline-Daten nicht, denn sie kennen dort nichts.
+    if (State.loadedPoiSource) {
+        const wantsPipeline = isPipelineEligible(viewBounds, State.map.getZoom());
+        const hasPipelineData = State.loadedPoiSource !== 'overpass';
+        if (wantsPipeline !== hasPipelineData) return false;
+    }
+    if (mode === 'all') return State.loadedPoiMode === 'all';
+    if (mode === 'stations') return State.loadedPoiMode === 'stations' || State.loadedPoiMode === 'all';
+    return false;
+}
+
 export function initMapLogic() {
     State.markerLayer = L.layerGroup();
     State.boundaryLayer = L.layerGroup();
@@ -265,23 +287,6 @@ export function initMapLogic() {
         if (zoom < 17) return 'z15-16';
         if (zoom < 18) return 'z17';
         return 'z18+';
-    };
-
-    const poiCoverageMatchesMode = (mode) => {
-        if (!State.loadedPoiBounds || !State.map) return false;
-        const viewBounds = State.map.getBounds();
-        if (!State.loadedPoiBounds.contains(viewBounds)) return false;
-        // Die Datenquelle muss zum Ausschnitt passen: Liegt er komplett im Pipeline-Gebiet, zählen nur Pipeline-Daten
-        // (sonst bliebe ein Grenzbereich, der per Overpass geladen wurde, bei Overpass hängen). Liegt er (teilweise)
-        // außerhalb, reichen Pipeline-Daten nicht, denn sie kennen dort nichts.
-        if (State.loadedPoiSource) {
-            const wantsPipeline = isPipelineEligible(viewBounds, State.map.getZoom());
-            const hasPipelineData = State.loadedPoiSource !== 'overpass';
-            if (wantsPipeline !== hasPipelineData) return false;
-        }
-        if (mode === 'all') return State.loadedPoiMode === 'all';
-        if (mode === 'stations') return State.loadedPoiMode === 'stations' || State.loadedPoiMode === 'all';
-        return false;
     };
 
     const boundaryCoverageMatchesView = (zoom) => {
@@ -1614,5 +1619,6 @@ export const _testing = {
     countTags,
     clusterPOIs,
     clusterFireStations,
-    onViewChange: null
+    onViewChange: null,
+    poiCoverageMatchesMode
 };
