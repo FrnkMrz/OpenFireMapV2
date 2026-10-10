@@ -157,6 +157,10 @@ export function updatePageLanguage() {
   document.querySelectorAll('[data-legal-lang]').forEach(el => {
     el.classList.toggle('hidden', el.getAttribute('data-legal-lang') !== legalLang);
   });
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ofm:langchange', { detail: { lang: currentLang } }));
+  }
 }
 
 /**

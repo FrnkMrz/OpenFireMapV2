@@ -49,6 +49,18 @@ export const State = {
     activeFetchBounds: null, // BoundingBox der aktuellen Pipeline/OSM-Anfrage inkl. Pufferring
     queryBounds: null,      // Welche Query-Bounds für den nächsten/aktuellen Fetch berechnet wurden?
 
+    // --- DATEN-STATUS & AKTUALITÄT (Desktop Info) ---
+    dataStatus: {
+        source: 'none',          // 'pipeline' | 'overpass' | 'cache' | 'none'
+        baseTimestamp: null,     // ISO-String osm_data_until (z. B. '2026-10-08T20:20:21Z')
+        generatedAt: null,       // Build-Zeitpunkt (z. B. '2026-10-09T06:10:08Z')
+        deltaStatus: 'none',     // 'loading' | 'success' | 'failed' | 'disabled' | 'none'
+        deltaTimestamp: null,    // Timestamp des letzten erfolgreichen Delta-Abrufs (Date.now())
+        deltaCount: 0,           // Anzahl geladener Delta-Objekte
+        cacheTimestamp: null,    // Alter des Cache-Eintrags bei Cache-Treffern
+        loadPhase: 'idle'        // 'idle' | 'waiting' | 'loading' | 'standby' | 'ready'
+    },
+
     // Welcher Hintergrund ist gerade an? (Startwert: 'voyager')
     activeLayerKey: 'voyager',
 

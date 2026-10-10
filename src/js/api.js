@@ -17,7 +17,8 @@ import { t } from './i18n.js';
 import { showNotification, hideNotification } from './ui.js';
 
 import { fetchJson, HttpError } from './net.js';
-import { isPipelineEligible, fetchPipelineData, fetchPipelineBoundaries, getPipelineOsmDataUntil } from './pipeline.js';
+import { isPipelineEligible, fetchPipelineData, fetchPipelineBoundaries, getPipelineOsmDataUntil, getPipelineGeneratedAt } from './pipeline.js';
+import { updateDataStatus } from './data-status.js';
 import {
   getCache,
   getCacheEntry,
@@ -758,11 +759,15 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
             }
           }
 
-          const dataStatus = document.getElementById('data-status');
-          if (dataStatus) {
-            dataStatus.innerText = `${t('status_current')} (Lokal)`;
-            dataStatus.className = 'text-green-400 font-bold';
-          }
+          const baseTimestamp = getPipelineOsmDataUntil();
+          const generatedAt = getPipelineGeneratedAt();
+          updateDataStatus({
+            source: 'pipeline',
+            baseTimestamp,
+            generatedAt,
+            deltaStatus: Config.pipeline?.liveDelta ? 'loading' : 'disabled',
+            loadPhase: 'ready'
+          });
 
           // Änderungen seit dem Pipeline-Stand per Overpass nachladen (Hintergrund, Fehler sind unkritisch)
           loadPoiDelta({ zoom, bbox: deltaBBoxForPipeline(pipelineElements, viewBounds), queryKind, reqId, signal: controller.signal })
@@ -771,13 +776,21 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
               deltaKey = delta.key;
               _poiDelta = { key: delta.key, elements: delta.elements };
               emit({ phase: 'pipeline_delta', reqId, since: delta.since, dataset: 'poi', elements: delta.elements.length });
+              updateDataStatus({
+                deltaStatus: 'success',
+                deltaTimestamp: Date.now(),
+                deltaCount: delta.elements.length
+              });
               if (delta.elements.length === 0) return;
               State.cachedPoiElements = mergePoiDelta(State.cachedPoiElements, delta.elements);
               syncCombinedCachedElements();
               if (typeof onProgressData === 'function') onProgressData(State.cachedPoiElements, false);
             })
             .catch((err) => {
-              if (err?.name !== 'AbortError') console.warn('[API] Overpass-Änderungen konnten nicht geladen werden (nicht kritisch):', err?.message);
+              if (err?.name !== 'AbortError') {
+                console.warn('[API] Overpass-Änderungen konnten nicht geladen werden (nicht kritisch):', err?.message);
+                updateDataStatus({ deltaStatus: 'failed' });
+              }
             });
 
           return pipelineElements;
@@ -800,6 +813,12 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
         State.loadedPoiBounds = requestedBounds;
         State.loadedPoiMode = requestedMode;
         syncCombinedCachedElements();
+        updateDataStatus({
+          source: 'cache',
+          cacheTimestamp: cached.timestamp || Date.now(),
+          deltaStatus: 'none',
+          loadPhase: 'ready'
+        });
         console.log('[API] CACHE HIT!', State.cachedPoiElements.length, 'elements');
         emit({ phase: isFresh ? 'swr_hit' : 'swr_stale_hit', reqId, cacheKey, dataset: 'poi', dataClass, elements: State.cachedPoiElements.length });
         reportHydrantDownload(hydrantStatus, 'refreshing', State.cachedPoiElements);
@@ -889,6 +908,11 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
       State.loadedPoiBounds = requestedBounds;
       State.loadedPoiMode = requestedMode;
       syncCombinedCachedElements();
+      updateDataStatus({
+        source: 'overpass',
+        deltaStatus: 'none',
+        loadPhase: 'ready'
+      });
       const totalMs = Math.round(performance.now() - tAll0);
       emit({ phase: 'load_ok', reqId, zoom, totalMs, dataset: 'poi', elements: State.cachedPoiElements.length, dataClass });
       reportHydrantDownload(hydrantStatus, 'success', State.cachedPoiElements);
