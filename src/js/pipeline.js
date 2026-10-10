@@ -224,6 +224,14 @@ export function getPipelineOsmDataUntil() {
   return _pipelineOsmDataUntil;
 }
 
+/**
+ * Zeitpunkt der Pipeline-Generierung (generated_at) aus metadata.json oder null.
+ * @returns {string|null}
+ */
+export function getPipelineGeneratedAt() {
+  return _pipelineVersion;
+}
+
 export async function getPipelineVersion(baseUrl, { signal, forceRefresh = false } = {}) {
   const now = Date.now();
   if (!forceRefresh && _lastMetadataFetchTime > 0 && (now - _lastMetadataFetchTime < METADATA_CACHE_TTL_MS)) {

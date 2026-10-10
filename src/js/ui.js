@@ -13,6 +13,7 @@ import { Config } from './config.js';
 import { t } from './i18n.js';
 import { APP_VERSION } from './version.js';
 import { clearCache, isCacheDisabled } from './cache.js';
+import { initDataStatusUI, closeDataInfoPopover } from './data-status.js';
 
 // Lazy-Loader: export.js (inkl. jspdf + html2canvas) wird erst bei Bedarf geladen.
 // Das spart ~70 KB gzipped bei jedem App-Start.
@@ -240,9 +241,10 @@ export function closeAllMenus() {
         if (el) el.classList.add('hidden'); // 'hidden' ist eine Tailwind-Klasse
     });
 
-    // 2. Info-Modal schließen (hat spezielles Display-Attribut)
+    // 2. Info-Modal und Datenstand-Popover schließen
     const legal = document.getElementById('legal-modal');
     if (legal) legal.style.display = 'none';
+    closeDataInfoPopover();
 
     // 3. Barrierefreiheit: Layer-Button zurücksetzen
     const layerBtn = document.getElementById('layer-btn-trigger');
@@ -500,6 +502,9 @@ export function setupUI() {
 
     // Cache-Dauer Einstellungen
     setupCacheDurationSelects();
+
+    // Datenstand-Popover & Status initialisieren (Desktop)
+    initDataStatusUI();
 
     // 2. Suche (Enter-Taste Unterstützung)
     const searchInp = document.getElementById('search-input');

@@ -12,6 +12,7 @@ import { fetchBoundaryData, fetchOSMData } from './api.js';
 import { isPipelineEligible, lon2tile, lat2tile, computeQueryZoom, isBoundaryElement } from './pipeline.js';
 import { showNotification, hideNotification } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
+import { updateDataStatus } from './data-status.js';
 
 // ---------------------------------------------------------------------------
 // Permalink — URL-Hash Hilfsfunktionen
@@ -417,11 +418,7 @@ export function initMapLogic() {
         if (mode === 'none') {
             // Unter Zoom 12 laden wir gar nichts. api.js räumt zusätzlich auf.
             // Wichtig: UI nicht im "Warten"-Status hängen lassen.
-            const statusEl = document.getElementById('data-status');
-            if (statusEl) {
-                statusEl.innerText = t('status_standby');
-                statusEl.className = 'text-green-400';
-            }
+            updateDataStatus({ loadPhase: 'standby' });
             State.markerLayer.clearLayers();
             State.boundaryLayer.clearLayers();
             State.cachedPoiElements = [];
@@ -485,12 +482,7 @@ export function initMapLogic() {
                 }
             }
 
-            const statusEl = document.getElementById('data-status');
-            if (statusEl) {
-                const inPl = isPipelineEligible(State.map.getBounds(), zoom);
-                statusEl.innerText = inPl ? `${t('status_current')} (Lokal)` : t('status_current');
-                statusEl.className = 'text-green-400 font-bold';
-            }
+            updateDataStatus({ loadPhase: 'ready' });
             window.dispatchEvent(new CustomEvent('ofm:overpass', {
                 detail: {
                     phase: 'covered_by_loaded_bounds',
@@ -533,24 +525,17 @@ export function initMapLogic() {
 
         async function doFetch() {
             currentFetchIntent = fetchIntent;
-            const statusEl = document.getElementById('data-status');
             const movingRecently = !inPipeline && (Date.now() - lastMotionAt) < RAPID_INTERACTION_MS;
             const hasStaleToKeep = (State.cachedPoiElements?.length || State.cachedBoundaryElements?.length);
 
             // Wenn sich seit dem letzten gestarteten Fetch nichts geändert hat UND der Bereich abgedeckt ist: skip.
             if (fetchKey === lastFetchKey && poiCoverageMatchesMode(mode)) {
-                if (statusEl) {
-                    statusEl.innerText = inPipeline ? `${t('status_current')} (Lokal)` : t('status_current');
-                    statusEl.className = 'text-green-400 font-bold';
-                }
+                updateDataStatus({ loadPhase: 'ready' });
                 return;
             }
 
             if (movingRecently && hasStaleToKeep) {
-                if (statusEl) {
-                    statusEl.innerText = t('status_current');
-                    statusEl.className = 'text-green-400';
-                }
+                updateDataStatus({ loadPhase: 'ready' });
                 window.dispatchEvent(new CustomEvent('ofm:overpass', {
                     detail: {
                         phase: 'hold_stale_while_moving',
@@ -567,10 +552,7 @@ export function initMapLogic() {
             }
 
             // Status "Warten" setzen
-            if (statusEl) {
-                statusEl.innerText = t('status_waiting');
-                statusEl.className = 'text-amber-400 font-bold';
-            }
+            updateDataStatus({ loadPhase: 'waiting' });
 
             lastFetchKey = fetchKey;
             dbg('fetchOSMData()', { fetchKey });
@@ -578,10 +560,7 @@ export function initMapLogic() {
 
             try {
                 // Status auf "Lädt" setzen (SWR Pattern: wir zeigen Cache, laden aber neu)
-                if (statusEl) {
-                    statusEl.innerText = t('status_loading');
-                    statusEl.className = 'text-blue-400';
-                }
+                updateDataStatus({ loadPhase: 'loading' });
 
                 // SWR: Wir geben renderMarkers als Callback mit, 
                 // damit Cache-Daten sofort gezeichnet werden.
@@ -620,20 +599,13 @@ export function initMapLogic() {
                 if (data) {
                     renderMarkers(data, zoom);
 
-                    const inPipelineArea = isPipelineEligible(State.map?.getBounds?.(), zoom);
-                    if (statusEl) {
-                        statusEl.innerText = inPipelineArea ? `${t('status_current')} (Lokal)` : t('status_current');
-                        statusEl.className = 'text-green-400 font-bold';
-                    }
+                    updateDataStatus({ loadPhase: 'ready' });
 
                     // Falls vorher eine Server-Warnung (z.B. Wartezeit) angezeigt wurde, diese schließen
                     hideNotification();
                 } else if (data === null) {
                     // Kein Fehler, aber leere Query (z.B. Zoom zu klein)
-                    if (statusEl) {
-                        statusEl.innerText = t('status_waiting');
-                        statusEl.className = 'text-amber-400 font-bold';
-                    }
+                    updateDataStatus({ loadPhase: 'waiting' });
                 }
             } catch (err) {
                 if (err?.name === 'AbortError') {
@@ -644,6 +616,7 @@ export function initMapLogic() {
                 if (fetchIntent < lastRenderedFetchIntent || fetchIntent !== currentFetchIntent) return;
 
                 // Fehlerbehandlung
+                const statusEl = document.getElementById('data-status');
                 if (statusEl) {
                     const msgKey = (err?.status === 429) ? 'err_ratelimit' :
                         (err?.status >= 500) ? 'err_server' : 'status_error';
