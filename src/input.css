@@ -273,11 +273,41 @@ body {
 
 
 /* =========================
+   Desktop Status Dock (unten rechts)
+   ========================= */
+@media (min-width: 769px) {
+    #desktop-status-dock {
+        position: absolute;
+        bottom: 2.5rem; /* 40px */
+        right: 2.5rem;  /* 40px */
+        z-index: 1000;
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: flex-end;
+        gap: 0.625rem; /* 10px vertikaler Abstand */
+        pointer-events: none;
+    }
+
+    #desktop-status-dock > * {
+        pointer-events: auto;
+        position: relative;
+    }
+
+    #data-info-popover {
+        z-index: 2000;
+    }
+}
+
+/* =========================
    Mobile Statusbox only
    ========================= */
 @media (max-width: 768px) {
+    #desktop-status-dock {
+        display: contents;
+    }
 
     #status-box {
+        position: absolute;
         top: 1rem;
         right: 1rem;
         bottom: auto;
@@ -341,6 +371,7 @@ body {
 
 @media (max-width: 768px) {
     #hydrant-download-status {
+        position: absolute;
         bottom: 92px; /* Oberhalb des zentrierten Locate-Buttons (bottom: 32px) */
         right: 16px;
         max-width: calc(100vw - 2rem);

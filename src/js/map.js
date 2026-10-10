@@ -357,6 +357,9 @@ export function initMapLogic() {
     const getTileBBoxKey = (zoom) => {
         if (!State.map) return '';
         const b = State.map.getBounds();
+        // Für api.js: bounds aktuell halten und queryMeta leeren, damit keine alten Overpass-Bounds (z. B. aus Tschechien) verbleiben
+        State.queryBounds = b;
+        State.queryMeta = null;
         const qZoom = computeQueryZoom(zoom);
         const minX = lon2tile(b.getWest(), qZoom);
         const maxX = lon2tile(b.getEast(), qZoom);
