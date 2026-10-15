@@ -43,7 +43,6 @@ let _pipelineVersion = null;
 let _pipelineOsmDataUntil = null; // OSM-Datenstand der Pipeline (metadata.json: osm_data_until)
 let _lastMetadataFetchTime = 0;
 let _pendingMetadataPromise = null;
-let _multiSourceMeta = null; // { osmDataUntil, generatedAt } der zuletzt über mehrere Quellen abgefragten Dateien, sonst null
 const METADATA_CACHE_TTL_MS = 10 * 60 * 1000; // 10 Minuten
 const METADATA_TIMEOUT_MS = 3000; // 3 Sekunden Timeout
 
@@ -233,17 +232,18 @@ const OSM_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
  * wenn der Build ihn nicht kennt (ältere Builds ohne OSM-IDs in den Kacheln).
  * @returns {string|null}
  */
-export function getPipelineOsmDataUntil() {
-  // Nach einer Abfrage über mehrere Quellen gilt der älteste Stand aller beteiligten Dateien
-  return _multiSourceMeta ? _multiSourceMeta.osmDataUntil : _pipelineOsmDataUntil;
+export function getPipelineOsmDataUntil(result = null) {
+  // Ein Ergebnis über mehrere Quellen trägt den ältesten Stand aller beteiligten Dateien selbst (je Anfrage,
+  // nicht global: eine überholte Anfrage darf den Stand einer neueren nicht überschreiben)
+  return result?.pipelineMeta ? result.pipelineMeta.osmDataUntil : _pipelineOsmDataUntil;
 }
 
 /**
  * Zeitpunkt der Pipeline-Generierung (generated_at) aus metadata.json oder null.
  * @returns {string|null}
  */
-export function getPipelineGeneratedAt() {
-  return _multiSourceMeta ? _multiSourceMeta.generatedAt : _pipelineVersion;
+export function getPipelineGeneratedAt(result = null) {
+  return result?.pipelineMeta ? result.pipelineMeta.generatedAt : _pipelineVersion;
 }
 
 export async function getPipelineVersion(baseUrl, { signal, forceRefresh = false } = {}) {
@@ -748,10 +748,20 @@ async function planPipelineSources(bounds, zoom, signal) {
     const url = await getPipelinePmtilesUrl(baseUrl, pmtilesFile, { signal });
     const pmtiles = getPMTilesInstance(url);
     const coverage = await ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile, bounds, { signal });
-    _multiSourceMeta = null;
     return [{ id: 'dachlilu', kind: 'dachlilu', pmtiles: coverage.pmtiles, header: coverage.header, scope: '' }];
   }
 
+  const { active, meta } = await openEuropeSources(eu, extractBoundsCoords(bounds), baseUrl, signal);
+  active.multi = true;
+  active.meta = meta;
+  return active;
+}
+
+/**
+ * Öffnet die Quellen einer Europa-Auflösung und behält die, deren Header das Rechteck berührt. Liefert auch den
+ * Datenstand dieser Abfrage (ältester aller beteiligten Dateien) als Wert statt als globalen Zustand.
+ */
+async function openEuropeSources(eu, rect, baseUrl, signal) {
   const manifest = getEuropeData().manifest;
   const opened = await Promise.all(eu.sources.map(async (src) => {
     if (src.kind === 'dachlilu') {
@@ -767,9 +777,10 @@ async function planPipelineSources(bounds, zoom, signal) {
     return { id: src.id, kind: 'europe', pmtiles: handle.pmtiles, header: handle.header,
       scope: `eu:${src.id}:${entry.generatedAt}|`, generatedAt: entry.generatedAt, osmDataUntil: entry.osmDataUntil };
   }));
+  // getHeader() kennt kein Signal: eine inzwischen überholte Anfrage bricht hier ab, statt weiterzumachen
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
-  const { south, north, west, east } = extractBoundsCoords(bounds);
-  const rect = { south, north, west, east };
+  const { south, north, west, east } = rect;
   const active = opened.filter((src) => headerIntersectsViewport(src.header, rect));
   if (active.length === 0) {
     throw new PmtilesCoverageMismatch(
@@ -783,8 +794,29 @@ async function planPipelineSources(bounds, zoom, signal) {
   let osmDataUntil = oldestTimestamp(active.map((s) => s.osmDataUntil));
   const maxAgeDays = Config.pipeline?.europe?.liveDeltaMaxAgeDays ?? 10;
   if (osmDataUntil && Date.now() - Date.parse(osmDataUntil) > maxAgeDays * 86400000) osmDataUntil = null;
-  _multiSourceMeta = { osmDataUntil, generatedAt: oldestTimestamp(active.map((s) => s.generatedAt)) };
-  return active;
+  return { active, meta: { osmDataUntil, generatedAt: oldestTimestamp(active.map((s) => s.generatedAt)) } };
+}
+
+/**
+ * Quellen für den Pufferring. Der Ring gilt nach dem Laden als abgedeckt (loadedBounds), also müssen alle Dateien
+ * dafür da sein: Ist der Ring nicht vollständig von veröffentlichten Ländern bedient (oder lässt sich eine Quelle
+ * nicht öffnen), gibt es keinen Ring (null) und die Abdeckung bleibt beim sichtbaren Ausschnitt.
+ * Der bisherige Einzelquellen-Weg bleibt unverändert (dieselben Quellen).
+ */
+async function planRingSources(sources, ringRect, zoom, signal) {
+  if (!sources.multi) return sources;
+  const eu = resolveEuropeForViewport(ringRect, typeof zoom === 'number' ? zoom : 14);
+  if (!eu.eligible) return null;
+  try {
+    const { active, meta } = await openEuropeSources(eu, ringRect, Config.pipeline?.url, signal);
+    active.multi = true;
+    active.meta = meta;
+    return active;
+  } catch (err) {
+    if (err?.name === 'AbortError' || signal?.aborted) throw err;
+    console.warn('[Pipeline] Pufferring nicht über alle Quellen ladbar, bleibe beim sichtbaren Ausschnitt:', err?.message || err);
+    return null;
+  }
 }
 
 /**
@@ -840,7 +872,18 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   let bufMinY = visMinY;
   let bufMaxY = visMaxY;
 
-  if (rawTileCount <= 20) {
+  // Mehrquellen-Weg: der Ring wird nur geladen (und als abgedeckt gemeldet), wenn alle seine Quellen da sind
+  let useBuffer = rawTileCount <= 20;
+  let ringSources = sources;
+  if (useBuffer && sources.multi) {
+    ringSources = await planRingSources(sources, {
+      south: tile2lat(visMaxY + 2, queryZoom), north: tile2lat(visMinY - 1, queryZoom),
+      west: tile2lon(visMinX - 1, queryZoom), east: tile2lon(visMaxX + 2, queryZoom)
+    }, zoom, signal);
+    if (!ringSources) { useBuffer = false; ringSources = sources; }
+  }
+
+  if (useBuffer) {
     bufMinX = visMinX - 1;
     bufMaxX = visMaxX + 1;
     bufMinY = visMinY - 1;
@@ -857,7 +900,7 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   // Kachelverarbeitung mit progressivem Rendern (Streaming)
   const processTile = async (x, y, phase = 'visible') => {
     if (signal?.aborted) return 0;
-    const vTiles = await getTilesFromSources(sources, queryZoom, x, y, signal);
+    const vTiles = await getTilesFromSources(phase === 'buffer' ? ringSources : sources, queryZoom, x, y, signal);
     if (signal?.aborted) return 0;
 
     let newCount = 0;
@@ -904,6 +947,8 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   const visEast = tile2lon(visMaxX + 1, queryZoom);
 
   const elements = Array.from(elementsMap.values());
+  // Datenstand dieser Abfrage (nur Mehrquellen-Weg), am Ergebnis statt global
+  if (sources.multi) elements.pipelineMeta = (useBuffer ? ringSources : sources).meta;
   elements.loadedBounds = (typeof L !== 'undefined' && L.latLngBounds)
     ? L.latLngBounds([visSouth, visWest], [visNorth, visEast])
     : { south: visSouth, north: visNorth, west: visWest, east: visEast };
@@ -1129,7 +1174,17 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       let bufMinY = visMinY;
       let bufMaxY = visMaxY;
 
-      if (rawTileCount <= 20) {
+      let useBuffer = rawTileCount <= 20;
+      let ringSources = sources;
+      if (useBuffer && sources.multi) {
+        ringSources = await planRingSources(sources, {
+          south: tile2lat(visMaxY + 2, queryZoom), north: tile2lat(visMinY - 1, queryZoom),
+          west: tile2lon(visMinX - 1, queryZoom), east: tile2lon(visMaxX + 2, queryZoom)
+        }, zoom, signal);
+        if (!ringSources) { useBuffer = false; ringSources = sources; }
+      }
+
+      if (useBuffer) {
         bufMinX -= 1;
         bufMaxX += 1;
         bufMinY -= 1;
@@ -1145,11 +1200,12 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
 
       const processBoundaryTile = async (x, y, phase = 'visible') => {
         if (signal?.aborted) return 0;
-        const vTiles = await getTilesFromSources(sources, queryZoom, x, y, signal);
+        const tileSources = phase === 'buffer' ? ringSources : sources;
+        const vTiles = await getTilesFromSources(tileSources, queryZoom, x, y, signal);
         if (signal?.aborted) return 0;
 
         let newCount = 0;
-        for (let s = 0; s < sources.length; s++) {
+        for (let s = 0; s < tileSources.length; s++) {
           const vTile = vTiles[s];
           if (!vTile || !vTile.layers) continue;
           const layer = vTile.layers['boundaries'];
@@ -1157,7 +1213,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
           // feat.id (--generate-ids) zählt je Datei von vorn: Länder-Dateien bekommen ihre Kennung davor, sonst
           // würden Grenzstücke verschiedener Dateien mit gleicher Nummer einander überschreiben.
           // DACHLiLu behält die bisherigen IDs.
-          const keyPrefix = sources[s].kind === 'europe' ? `${sources[s].id}:` : '';
+          const keyPrefix = tileSources[s].kind === 'europe' ? `${tileSources[s].id}:` : '';
           for (let i = 0; i < layer.length; i++) {
             const feat = layer.feature(i);
             const gj = feat.toGeoJSON(x, y, queryZoom);
@@ -1372,7 +1428,6 @@ export function clearPipelineCache() {
   _lastMetadataFetchTime = 0;
   _pendingMetadataPromise = null;
   _europeHandles.clear();
-  _multiSourceMeta = null;
   clearTileCache();
   if (State.pendingBufferFetches) {
     State.pendingBufferFetches.clear();

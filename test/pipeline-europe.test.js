@@ -37,6 +37,8 @@ let failing;        // URLs, für die getZxy fehlschlägt
 let headerFailing;  // URLs, für die getHeader fehlschlägt
 let headers;        // URL-Teil -> PMTiles-Header
 let dachOsmDaysAgo; // OSM-Datenstand von DACHLiLu (metadata.json), Tage vor jetzt
+let headerGate;     // wenn gesetzt: getHeader() der Länder-Dateien wartet darauf (Promise)
+let headerGateFor;  // Teil der URL, für den das Warten gilt
 
 function markerFor(key) {
   if (key.includes('openfiremap.pmtiles')) return MARKER.dach;
@@ -76,6 +78,8 @@ beforeEach(() => {
   headerFailing = new Set();
   headers = { dach: header(5.69, 45.79, 17.2, 55.06) };
   dachOsmDaysAgo = 3;
+  headerGate = null;
+  headerGateFor = '/eu/';
   clearPipelineCache();
   Config.pipeline = { ...SHIPPED_PIPELINE, europe: { ...SHIPPED_PIPELINE.europe }, bounds: { ...SHIPPED_PIPELINE.bounds }, enabled: true, usePmtiles: true, url: BASE };
   setEuropeStateForTests();
@@ -88,6 +92,7 @@ beforeEach(() => {
   });
   vi.spyOn(PMTiles.prototype, 'getHeader').mockImplementation(async function () {
     const key = this.source.getKey();
+    if (headerGate && key.includes(headerGateFor)) await headerGate;
     if (headerFailing.has(key) || [...headerFailing].some((f) => key.includes(f))) throw new Error(`Header nicht ladbar: ${key}`);
     if (key.includes('openfiremap.pmtiles')) return headers.dach;
     for (const id of Object.keys(MARKER)) if (key.includes(`/eu/${id}-`) && headers[id]) return headers[id];
@@ -263,9 +268,9 @@ describe('fetchPipelinePmtiles über mehrere Quellen', () => {
     useEurope({ netherlands: {} });
     dachOsmDaysAgo = 12;                                  // älter als die Obergrenze für Länder-Daten (10 Tage)
     layersByMarker[MARKER.dach] = poi(9);
-    await fetchPipelinePmtiles(MUNICH, 'all', { zoom: 16 });
-    expect(getPipelineOsmDataUntil()).not.toBeNull();
-    expect(Date.now() - Date.parse(getPipelineOsmDataUntil())).toBeGreaterThan(11.5 * DAY);
+    const els = await fetchPipelinePmtiles(MUNICH, 'all', { zoom: 16 });
+    expect(getPipelineOsmDataUntil(els)).not.toBeNull();
+    expect(Date.now() - Date.parse(getPipelineOsmDataUntil(els))).toBeGreaterThan(11.5 * DAY);
   });
 
   it('Schalter aus: Amsterdam wird wie bisher gegen den DACHLiLu-Header geprüft und scheitert mit PmtilesCoverageMismatch', async () => {
@@ -293,53 +298,145 @@ describe('Datenstand über mehrere Quellen', () => {
   it('der älteste Stand aller beteiligten Dateien gilt (DACHLiLu 3 Tage, NL 2 Tage, BE 5 Tage)', async () => {
     setup();
     const nlEntry = (await import('../src/js/europe.js')).getEuropeData().manifest.regions;
-    await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
-    expect(getPipelineOsmDataUntil()).toBe(nlEntry.belgium.osmDataUntil);
-    expect(getPipelineGeneratedAt()).toBe(nlEntry.belgium.generatedAt);
+    const els = await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
+    expect(getPipelineOsmDataUntil(els)).toBe(nlEntry.belgium.osmDataUntil);
+    expect(getPipelineGeneratedAt(els)).toBe(nlEntry.belgium.generatedAt);
   });
 
   it('nur ein Land: dessen Stand', async () => {
     setup();
-    await fetchPipelinePmtiles(AMSTERDAM, 'all', { zoom: 16 });
+    const els = await fetchPipelinePmtiles(AMSTERDAM, 'all', { zoom: 16 });
     const reg = (await import('../src/js/europe.js')).getEuropeData().manifest.regions;
-    expect(getPipelineOsmDataUntil()).toBe(reg.netherlands.osmDataUntil);
+    expect(getPipelineOsmDataUntil(els)).toBe(reg.netherlands.osmDataUntil);
   });
 
   it('kennt eine Quelle ihren OSM-Datenstand nicht, gibt es keinen (kein Overpass-Delta)', async () => {
     setup({ belgium: { osm_data_until: null } });
-    await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
-    expect(getPipelineOsmDataUntil()).toBeNull();
+    const els = await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
+    expect(getPipelineOsmDataUntil(els)).toBeNull();
   });
 
   it('ist der älteste Stand älter als die Obergrenze (Standard 10 Tage), gibt es keinen', async () => {
     setup({ belgium: { osm_data_until: iso(11) } });
-    await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
-    expect(getPipelineOsmDataUntil()).toBeNull();
+    const els = await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
+    expect(getPipelineOsmDataUntil(els)).toBeNull();
   });
 
   it('die Obergrenze ist einstellbar', async () => {
     setup({ belgium: { osm_data_until: iso(11) } });
     Config.pipeline.europe.liveDeltaMaxAgeDays = 14;
-    await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
-    expect(getPipelineOsmDataUntil()).not.toBeNull();
+    const els = await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
+    expect(getPipelineOsmDataUntil(els)).not.toBeNull();
   });
 
-  it('eine spätere Abfrage nur in DACHLiLu setzt den Stand zurück auf den von DACHLiLu', async () => {
+  it('ein Ergebnis nur aus DACHLiLu trägt keinen eigenen Stand: es gilt der von DACHLiLu', async () => {
     setup();
-    await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
-    expect(getPipelineOsmDataUntil()).not.toBeNull();
-    await fetchPipelinePmtiles(MUNICH, 'all', { zoom: 16 });
-    expect(getPipelineOsmDataUntil()).toMatch(/Z$/);
-    expect(Date.now() - Date.parse(getPipelineOsmDataUntil())).toBeGreaterThan(2.5 * DAY);   // DACHLiLu: vor 3 Tagen
+    const multi = await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
+    const dach = await fetchPipelinePmtiles(MUNICH, 'all', { zoom: 16 });
+    expect(dach.pipelineMeta).toBeUndefined();
+    expect(getPipelineOsmDataUntil(dach)).toMatch(/Z$/);
+    expect(Date.now() - Date.parse(getPipelineOsmDataUntil(dach))).toBeGreaterThan(2.5 * DAY);   // DACHLiLu: vor 3 Tagen
+    expect(Date.now() - Date.parse(getPipelineOsmDataUntil(dach))).toBeLessThan(3.5 * DAY);
+    // das frühere Mehrquellen-Ergebnis behält seinen eigenen Stand
+    expect(Date.parse(getPipelineOsmDataUntil(multi))).toBeLessThan(Date.parse(getPipelineOsmDataUntil(dach)));
+  });
+
+  it('der Stand hängt am Ergebnis der Anfrage, nicht an globalem Zustand: gleichzeitige Anfragen überschreiben einander nicht', async () => {
+    setup();
+    const [a, b] = await Promise.all([
+      fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 }),   // DACHLiLu + NL + BE: Belgien (5 Tage) ist der älteste
+      fetchPipelinePmtiles(AMSTERDAM, 'all', { zoom: 16 })     // nur NL (2 Tage)
+    ]);
+    const reg = (await import('../src/js/europe.js')).getEuropeData().manifest.regions;
+    expect(getPipelineOsmDataUntil(a)).toBe(reg.belgium.osmDataUntil);
+    expect(getPipelineOsmDataUntil(b)).toBe(reg.netherlands.osmDataUntil);
+    // ohne Ergebnis: weiterhin nur der Stand von DACHLiLu, kein Rest einer der beiden Anfragen
+    expect(Date.now() - Date.parse(getPipelineOsmDataUntil())).toBeGreaterThan(2.5 * DAY);
     expect(Date.now() - Date.parse(getPipelineOsmDataUntil())).toBeLessThan(3.5 * DAY);
   });
 
-  it('clearPipelineCache vergisst den Mehrquellen-Stand', async () => {
+  it('eine überholte (abgebrochene) Anfrage bricht ab, sobald die Header da sind, und liefert nichts', async () => {
     setup();
-    await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
-    clearPipelineCache();
-    expect(getPipelineOsmDataUntil()).toBeNull();
-    expect(getPipelineGeneratedAt()).toBeNull();
+    let release;
+    headerGate = new Promise((resolve) => { release = resolve; });
+    const controller = new AbortController();
+    const pending = fetchPipelinePmtiles(AMSTERDAM, 'all', { zoom: 16, signal: controller.signal });
+    const outcome = pending.then(() => 'fertig', (e) => e.name);
+    controller.abort();
+    release();
+    expect(await outcome).toBe('AbortError');
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('Pufferring über mehrere Quellen', () => {
+  // Landesgrenze Niederlande/Belgien bei Breda: Das Belgien-Rechteck endet knapp im Pufferring, nicht im Ausschnitt
+  const BREDA = vp(51.53, 4.47);
+  const BORDER_BOUNDS = { ...EUROPE_REGION_BOUNDS, belgium: [2.5, 49.4, 6.5, 51.515] };
+  const setupBorder = (entries) => {
+    Config.pipeline.europe.enabled = true;
+    setEuropeStateForTests({ manifest: manifestFor(entries), coverage: EUROPE_COVERAGE, regionBounds: BORDER_BOUNDS, loadedAt: Date.now() });
+    headers.netherlands = header(2.9, 50.7, 7.3, 54.0);
+    headers.belgium = header(2.5, 49.4, 6.5, 51.52);
+    layersByMarker[MARKER.netherlands] = poi(111);
+    layersByMarker[MARKER.belgium] = poi(222);
+  };
+  const sameRect = (a, b) => ['south', 'north', 'west', 'east'].every((k) => Math.abs(a[k] - b[k]) < 1e-9);
+
+  it('braucht der Ring eine weitere Quelle, wird sie nur für die Ring-Kacheln geöffnet und bestimmt den Datenstand', async () => {
+    setupBorder({ netherlands: {}, belgium: { osm_data_until: iso(6) } });
+    const els = await fetchPipelinePmtiles(BREDA, 'all', { zoom: 16 });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    const be = calls.filter((c) => c.key.includes('/eu/belgium-'));
+    const nl = calls.filter((c) => c.key.includes('/eu/netherlands-'));
+    expect(nl).toHaveLength(9);                                  // sichtbare Kachel plus acht Ring-Kacheln
+    expect(be).toHaveLength(8);                                  // nur Ring, die sichtbare Kachel nicht
+    expect(be.some((c) => nl[0].x === c.x && nl[0].y === c.y)).toBe(false);
+    const reg = (await import('../src/js/europe.js')).getEuropeData().manifest.regions;
+    expect(getPipelineOsmDataUntil(els)).toBe(reg.belgium.osmDataUntil);   // ältester Stand schließt den Ring ein
+  });
+
+  it('wird der Ring nicht von allen Quellen bedient (Belgien nicht veröffentlicht), gibt es keinen Ring und keine Abdeckungsmeldung dafür', async () => {
+    setupBorder({ netherlands: {} });
+    const onBufferComplete = vi.fn();
+    const els = await fetchPipelinePmtiles(BREDA, 'all', { zoom: 16, onBufferComplete });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(calls).toHaveLength(1);                               // nur die sichtbare Kachel
+    expect(onBufferComplete).not.toHaveBeenCalled();
+    expect(sameRect(els.loadedBounds, els.bufferBounds)).toBe(true);   // Abdeckung = sichtbarer Ausschnitt
+  });
+
+  it('eine überholte Anfrage bricht auch ab, während die Quellen des Rings geöffnet werden', async () => {
+    setupBorder({ netherlands: {}, belgium: {} });
+    let release;
+    headerGate = new Promise((resolve) => { release = resolve; });
+    headerGateFor = '/eu/belgium-';                              // Belgien wird erst für den Ring geöffnet
+    const controller = new AbortController();
+    const outcome = fetchPipelinePmtiles(BREDA, 'all', { zoom: 16, signal: controller.signal }).then(() => 'fertig', (e) => e.name);
+    await new Promise((resolve) => setTimeout(resolve, 20));    // Ausschnitt ist geplant, der Ring wartet auf Belgien
+    controller.abort();
+    release();
+    expect(await outcome).toBe('AbortError');
+  });
+
+  it('Gegenprobe: ist der Ring bedient, meldet der Pufferring seinen ganzen Bereich als abgedeckt', async () => {
+    setupBorder({ netherlands: {}, belgium: {} });
+    const onBufferComplete = vi.fn();
+    const els = await fetchPipelinePmtiles(BREDA, 'all', { zoom: 16, onBufferComplete });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(onBufferComplete).toHaveBeenCalledTimes(1);
+    expect(sameRect(onBufferComplete.mock.calls[0][1], els.bufferBounds)).toBe(true);
+  });
+
+  it('Grenzen: derselbe Ring-Test für fetchPipelineBoundaries (kein Ring ohne Belgien, Kachel nur der sichtbaren)', async () => {
+    setupBorder({ netherlands: {} });
+    layersByMarker[MARKER.netherlands] = {};
+    const onBufferComplete = vi.fn();
+    const els = await fetchPipelineBoundaries(BREDA, { zoom: 16, onBufferComplete });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(calls).toHaveLength(1);
+    expect(onBufferComplete).not.toHaveBeenCalled();
+    expect(sameRect(els.loadedBounds, els.bufferBounds ?? els.loadedBounds)).toBe(true);
   });
 });
 
@@ -379,5 +476,25 @@ describe('fetchPipelineBoundaries über mehrere Quellen', () => {
     expect(els.length).toBeGreaterThan(0);
     expect(els.every((e) => String(e.id).startsWith('netherlands:3@'))).toBe(true);
     expect(urlsUsed()).toEqual([`${BASE}/${regionFile('netherlands')}`]);
+  });
+
+  it('Ring mit Belgien: die Grenzstücke des Rings stammen aus der Belgien-Datei und tragen deren Kennung', async () => {
+    Config.pipeline.europe.enabled = true;
+    setEuropeStateForTests({ manifest: manifestFor({ netherlands: {}, belgium: {} }), coverage: EUROPE_COVERAGE,
+      regionBounds: { ...EUROPE_REGION_BOUNDS, belgium: [2.5, 49.4, 6.5, 51.515] }, loadedAt: Date.now() });
+    headers.netherlands = header(2.9, 50.7, 7.3, 54.0);
+    headers.belgium = header(2.5, 49.4, 6.5, 51.52);
+    layersByMarker[MARKER.belgium] = line(5);
+    const onBufferComplete = vi.fn();
+    await fetchPipelineBoundaries(vp(51.53, 4.47), { zoom: 16, onBufferComplete });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    const be = calls.filter((c) => c.key.includes('/eu/belgium-'));
+    const nl = calls.filter((c) => c.key.includes('/eu/netherlands-'));
+    expect(be).toHaveLength(8);                                              // nur Ring-Kacheln
+    expect(be.some((c) => nl[0].x === c.x && nl[0].y === c.y)).toBe(false);  // nicht die sichtbare
+    expect(onBufferComplete).toHaveBeenCalledTimes(1);
+    const ringIds = onBufferComplete.mock.calls[0][0].map((e) => String(e.id));
+    expect(ringIds).toHaveLength(8);
+    expect(ringIds.every((i) => i.startsWith('belgium:5@14/'))).toBe(true);
   });
 });
