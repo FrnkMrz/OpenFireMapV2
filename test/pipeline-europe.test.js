@@ -17,7 +17,7 @@ vi.mock('@mapbox/vector-tile', () => ({
 
 import { Config } from '../src/js/config.js';
 import {
-  isPipelineEligible, fetchPipelinePmtiles, fetchPipelineBoundaries, getVectorTile, getPipelineOsmDataUntil,
+  isPipelineEligible, fetchPipelinePmtiles, fetchPipelineBoundaries, fetchPipelineData, getVectorTile, getPipelineOsmDataUntil,
   getPipelineGeneratedAt, clearPipelineCache, waitForPendingBuffers, PmtilesCoverageMismatch
 } from '../src/js/pipeline.js';
 import { parseManifest, setEuropeStateForTests } from '../src/js/europe.js';
@@ -468,6 +468,34 @@ describe('Pufferring über mehrere Quellen', () => {
     expect(calls.filter((c) => c.key.includes('/eu/belgium-'))).toHaveLength(0);
   });
 
+  it('ein Manifest-Stand für Ausschnitt und Ring: eine Auffrischung mitten in der Abfrage ändert den Datenstand nicht', async () => {
+    setupBorder({ netherlands: {}, belgium: { osm_data_until: iso(6) } });
+    let release;
+    headerGate = new Promise((resolve) => { release = resolve; });
+    headerGateFor = '/eu/netherlands-';                          // der Ausschnitt öffnet noch, während das Manifest wechselt
+    const pending = fetchPipelinePmtiles(BREDA, 'all', { zoom: 16 });
+    setEuropeStateForTests({ manifest: manifestFor({ netherlands: { osm_data_until: iso(1) }, belgium: { osm_data_until: iso(1) } }),
+      coverage: EUROPE_COVERAGE, regionBounds: BORDER_BOUNDS, loadedAt: Date.now() });
+    release();
+    const els = await pending;
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    // Stand des alten Manifests (Belgien, vor 6 Tagen), nicht der neuere Stand des gewechselten
+    expect(Date.now() - Date.parse(getPipelineOsmDataUntil(els))).toBeGreaterThan(5.5 * DAY);
+  });
+
+  it('ein Manifest-Stand für Ausschnitt und Ring: fehlt ein Land erst im neuen Manifest, wird der Ring trotzdem nach dem alten Stand geladen', async () => {
+    setupBorder({ netherlands: {}, belgium: {} });
+    let release;
+    headerGate = new Promise((resolve) => { release = resolve; });
+    headerGateFor = '/eu/netherlands-';
+    const pending = fetchPipelinePmtiles(BREDA, 'all', { zoom: 16 });
+    setEuropeStateForTests({ manifest: manifestFor({ netherlands: {} }), coverage: EUROPE_COVERAGE, regionBounds: BORDER_BOUNDS, loadedAt: Date.now() });
+    release();
+    await pending;
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(calls.filter((c) => c.key.includes('/eu/belgium-'))).toHaveLength(8);
+  });
+
   it('Gegenprobe: ist der Ring bedient, meldet der Pufferring seinen ganzen Bereich als abgedeckt', async () => {
     setupBorder({ netherlands: {}, belgium: {} });
     const onBufferComplete = vi.fn();
@@ -545,5 +573,59 @@ describe('fetchPipelineBoundaries über mehrere Quellen', () => {
     const ringIds = onBufferComplete.mock.calls[0][0].map((e) => String(e.id));
     expect(ringIds).toHaveLength(8);
     expect(ringIds.every((i) => i.startsWith('belgium:5@14/'))).toBe(true);
+  });
+});
+
+describe('kein GeoJSON-Rückfall außerhalb von DACHLiLu', () => {
+  let fetched;
+  beforeEach(() => {
+    fetched = [];
+    Config.pipeline.geojsonFallback = true;
+    globalThis.fetch.mockImplementation(async (url) => {
+      fetched.push(String(url));
+      if (String(url).includes('metadata.json')) return { ok: true, json: async () => ({ generated_at: iso(0), osm_data_until: iso(3) }) };
+      if (String(url).includes('.geojson')) return { ok: true, json: async () => ({ features: [] }) };
+      return { ok: false, status: 404 };
+    });
+  });
+  const geojsonFetched = () => fetched.some((u) => u.includes('.geojson'));
+
+  it('Europa-Ausschnitt, Länder-Datei nicht ladbar: Fehler (api.js fällt auf Overpass zurück), keine leere DACHLiLu-Liste als Erfolg', async () => {
+    useEurope({ netherlands: {} });
+    headerFailing.add('/eu/netherlands-');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(fetchPipelineData(AMSTERDAM, 'all', { zoom: 16 })).rejects.toThrow(/PMTiles-Abruf fehlgeschlagen/);
+    expect(geojsonFetched()).toBe(false);
+  });
+
+  it('Europa-Ausschnitt, Grenzen: ebenfalls Fehler statt DACHLiLu-Grenzen', async () => {
+    useEurope({ netherlands: {} });
+    headerFailing.add('/eu/netherlands-');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(fetchPipelineBoundaries(AMSTERDAM, { zoom: 16 })).rejects.toThrow(/PMTiles-Boundary-Abruf fehlgeschlagen/);
+    expect(geojsonFetched()).toBe(false);
+  });
+
+  it('Gegenprobe: DACHLiLu-Ausschnitt fällt bei Ausfall von PMTiles weiter auf GeoJSON zurück (bisheriges Verhalten)', async () => {
+    useEurope({ netherlands: {} });
+    headerFailing.add('openfiremap.pmtiles');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const els = await fetchPipelineData(MUNICH, 'all', { zoom: 16 });
+    expect(els).toEqual([]);
+    expect(geojsonFetched()).toBe(true);
+  });
+
+  it('PMTiles aus (usePmtiles false): ein Europa-Ausschnitt ist nicht geeignet, München weiter', () => {
+    useEurope({ netherlands: {} });
+    Config.pipeline.usePmtiles = false;
+    expect(isPipelineEligible(AMSTERDAM, 15)).toBe(false);
+    expect(isPipelineEligible(MUNICH, 15)).toBe(true);
+  });
+  it('PMTiles aus und Europa-Ausschnitt direkt angefragt: Fehler statt leerer DACHLiLu-Liste (Daten und Grenzen)', async () => {
+    useEurope({ netherlands: {} });
+    Config.pipeline.usePmtiles = false;
+    await expect(fetchPipelineData(AMSTERDAM, 'all', { zoom: 16 })).rejects.toThrow();
+    await expect(fetchPipelineBoundaries(AMSTERDAM, { zoom: 16 })).rejects.toThrow();
+    expect(geojsonFetched()).toBe(false);
   });
 });

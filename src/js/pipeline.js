@@ -13,7 +13,7 @@ import { PbfReader } from 'pbf';
 import { Config } from './config.js';
 import { State } from './state.js';
 import { isPointInPolygon, isRectInPolygon } from './geometry.js';
-import { resolveEuropeForViewport, loadEuropeData, buildRegionUrl, getEuropeData } from './europe.js';
+import { resolveEuropeSources, loadEuropeData, buildRegionUrl, getEuropeData } from './europe.js';
 
 // Geometrie-Hilfen liegen in geometry.js; hier weiter exportiert, damit Aufrufer und Tests unverändert bleiben
 export { isPointInPolygon, isRectInPolygon };
@@ -402,7 +402,18 @@ export function isPipelineEligible(bounds, zoom) {
   if (isDachliluEligible(bounds, zoom)) return true;
   // Europa-Erweiterung (nur mit Schalter und geladenen Daten, sonst false wie bisher)
   if (!Config.pipeline?.enabled || !Config.pipeline?.url) return false;
-  return resolveEuropeForViewport(bounds, zoom).eligible;
+  // Länder-Dateien gibt es nur als PMTiles; der GeoJSON-Rückfall kennt nur DACHLiLu
+  if (!Config.pipeline?.usePmtiles) return false;
+  return resolveEuropeSources(bounds, zoom, getEuropeData()).eligible;
+}
+
+/**
+ * Liegt der Ausschnitt nur dank der Europa-Erweiterung in der Pipeline (Schalter an, nicht in DACHLiLu)? Dann darf
+ * kein GeoJSON-Rückfall greifen: Die GeoJSON-Dateien enthalten nur DACHLiLu und lieferten für ein anderes Land
+ * eine leere Liste als "Erfolg", statt dass api.js auf Overpass zurückfällt.
+ */
+function isEuropeOnlyViewport(bounds, zoom) {
+  return Boolean(Config.pipeline?.europe?.enabled) && !isDachliluEligible(bounds, typeof zoom === 'number' ? zoom : 14);
 }
 
 /**
@@ -740,8 +751,11 @@ async function planPipelineSources(bounds, zoom, signal) {
   const baseUrl = Config.pipeline?.url;
   const pmtilesFile = Config.pipeline?.pmtilesFile || 'openfiremap.pmtiles';
   const effectiveZoom = typeof zoom === 'number' ? zoom : 14;
+  // Ein Stand von Manifest und Abdeckung für die ganze Anfrage (Ausschnitt UND Ring): eine Auffrischung des Manifests
+  // mitten in der Abfrage darf den Ring nicht aus anderen Dateien/Ständen bestimmen als den Ausschnitt
+  const europeData = getEuropeData();
   const eu = Config.pipeline?.europe?.enabled && !isDachliluEligible(bounds, effectiveZoom)
-    ? resolveEuropeForViewport(bounds, effectiveZoom)
+    ? resolveEuropeSources(bounds, effectiveZoom, europeData)
     : null;
 
   if (!eu?.eligible) {
@@ -751,9 +765,10 @@ async function planPipelineSources(bounds, zoom, signal) {
     return [{ id: 'dachlilu', kind: 'dachlilu', pmtiles: coverage.pmtiles, header: coverage.header, scope: '' }];
   }
 
-  const { active, meta } = await openEuropeSources(eu, extractBoundsCoords(bounds), baseUrl, signal);
+  const { active, meta } = await openEuropeSources(eu, extractBoundsCoords(bounds), baseUrl, signal, europeData.manifest);
   active.multi = true;
   active.meta = meta;
+  active.europeData = europeData;
   return active;
 }
 
@@ -761,8 +776,7 @@ async function planPipelineSources(bounds, zoom, signal) {
  * Öffnet die Quellen einer Europa-Auflösung und behält die, deren Header das Rechteck berührt. Liefert auch den
  * Datenstand dieser Abfrage (ältester aller beteiligten Dateien) als Wert statt als globalen Zustand.
  */
-async function openEuropeSources(eu, rect, baseUrl, signal) {
-  const manifest = getEuropeData().manifest;
+async function openEuropeSources(eu, rect, baseUrl, signal, manifest) {
   const opened = await Promise.all(eu.sources.map(async (src) => {
     if (src.kind === 'dachlilu') {
       const url = await getPipelinePmtilesUrl(baseUrl, src.file, { signal });
@@ -805,12 +819,13 @@ async function openEuropeSources(eu, rect, baseUrl, signal) {
  */
 async function planRingSources(sources, ringRect, zoom, signal) {
   if (!sources.multi) return sources;
-  const eu = resolveEuropeForViewport(ringRect, typeof zoom === 'number' ? zoom : 14);
+  const eu = resolveEuropeSources(ringRect, typeof zoom === 'number' ? zoom : 14, sources.europeData);
   if (!eu.eligible) return null;
   try {
-    const { active, meta } = await openEuropeSources(eu, ringRect, Config.pipeline?.url, signal);
+    const { active, meta } = await openEuropeSources(eu, ringRect, Config.pipeline?.url, signal, sources.europeData.manifest);
     active.multi = true;
     active.meta = meta;
+    active.europeData = sources.europeData;
     return active;
   } catch (err) {
     if (err?.name === 'AbortError' || signal?.aborted) throw err;
@@ -1115,15 +1130,15 @@ export async function fetchPipelineData(bounds, mode, { signal, zoom, onProgress
       }
     } catch (err) {
       if (err?.name === 'AbortError') throw err;
-      if (!Config.pipeline?.geojsonFallback) {
-        throw new Error(`PMTiles-Abruf fehlgeschlagen (${err.message}). GeoJSON-Fallback ist deaktiviert.`, { cause: err });
+      if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
+        throw new Error(`PMTiles-Abruf fehlgeschlagen (${err.message}). GeoJSON-Fallback ist deaktiviert oder gilt nicht für diesen Ausschnitt.`, { cause: err });
       }
       console.warn('[Pipeline] PMTiles-Abruf fehlgeschlagen, wechsle auf GeoJSON-Fallback:', err.message);
     }
   }
 
   // 2. Optionaler Fallback: GeoJSON-Dataset mit 10-Minuten-In-Memory-Cache
-  if (!Config.pipeline?.geojsonFallback) {
+  if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
     throw new Error('PMTiles nicht aktiv oder fehlgeschlagen und GeoJSON-Fallback ist deaktiviert.');
   }
 
@@ -1367,7 +1382,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       return elements;
     } catch (pmErr) {
       if (pmErr?.name === 'AbortError') throw pmErr;
-      if (!Config.pipeline?.geojsonFallback) {
+      if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
         throw new Error(`PMTiles-Boundary-Abruf fehlgeschlagen (${pmErr.message}). GeoJSON-Fallback ist deaktiviert.`, { cause: pmErr });
       }
       console.warn('[Pipeline] PMTiles-Boundary-Abruf fehlgeschlagen, wechsle auf GeoJSON:', pmErr.message);
@@ -1375,7 +1390,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
   }
 
   // Stufe 2: Optionaler Fallback auf boundaries.geojson
-  if (!Config.pipeline?.geojsonFallback) {
+  if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
     throw new Error('PMTiles nicht aktiv oder fehlgeschlagen und GeoJSON-Fallback ist deaktiviert.');
   }
 
