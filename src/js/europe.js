@@ -4,9 +4,11 @@
  * ZWECK: Europa-Erweiterung der Pipeline: Manifest lesen, für einen Kartenausschnitt die nötigen
  *        Länder-Dateien bestimmen und prüfen, ob der Ausschnitt über die Pipeline bedient werden darf.
  *
- * STAND: GRUNDLAGE. Noch nicht in pipeline.js/api.js eingebunden, alles hinter
- *        Config.pipeline.europe.enabled (Standard: aus). Die bestehende DACHLiLu-Abfrage bleibt
- *        unverändert.
+ * STAND: In pipeline.js eingebunden (isPipelineEligible, fetchPipelinePmtiles, fetchPipelineBoundaries,
+ *        warmupPipeline), alles hinter Config.pipeline.europe.enabled (Standard: aus). Liegt ein Ausschnitt
+ *        in DACHLiLu oder ist Europa nicht bereit, bleibt es beim bisherigen Weg. api.js und map.js sind
+ *        unverändert und nutzen weiter isPipelineEligible/fetchPipelineData.
+ *        VOR DEM EINSCHALTEN: Text data_source_pipeline nennt noch "DACHLiLu" (Sprachdateien).
  *
  * DATENQUELLEN (beide stammen aus dem Pipeline-Repo):
  * - Manifest eu/regions.json (Cloudflare R2): welche Länder veröffentlicht sind, mit Dateiname,

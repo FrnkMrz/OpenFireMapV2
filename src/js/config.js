@@ -88,8 +88,8 @@ export const Config = {
     // über die Pipeline angefragt werden und leer bleiben.
     coveragePolygon: DACHLILU_COVERAGE,
     // Europa-Erweiterung: je Land eine PMTiles-Datei, verzeichnet im Manifest eu/regions.json (Pipeline-Repo).
-    // GRUNDLAGE: europe.js kann Manifest und Abdeckung lesen und Ausschnitte prüfen, ist aber noch NICHT in die
-    // Datenabfrage (pipeline.js/api.js) eingebunden. Standard aus, solange das so ist.
+    // pipeline.js nutzt europe.js für Eignung und Abfrage mehrerer Dateien (DACHLiLu plus Länder). Standard aus,
+    // bis die Anzeige (Datenquelle-Text) angepasst und das Ausrollen der Länder entschieden ist.
     europe: {
       enabled: false,
       manifestPath: "eu/regions.json",
