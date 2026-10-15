@@ -406,17 +406,66 @@ describe('Pufferring über mehrere Quellen', () => {
     expect(sameRect(els.loadedBounds, els.bufferBounds)).toBe(true);   // Abdeckung = sichtbarer Ausschnitt
   });
 
-  it('eine überholte Anfrage bricht auch ab, während die Quellen des Rings geöffnet werden', async () => {
+  it('der Erst-Render wartet nicht auf die Header der Ring-Quellen: die sichtbare Kachel wird gezeichnet, während Belgien noch öffnet', async () => {
     setupBorder({ netherlands: {}, belgium: {} });
     let release;
     headerGate = new Promise((resolve) => { release = resolve; });
-    headerGateFor = '/eu/belgium-';                              // Belgien wird erst für den Ring geöffnet
+    headerGateFor = '/eu/belgium-';
+    const onProgressData = vi.fn();
+    let settled = false;
+    const pending = fetchPipelinePmtiles(BREDA, 'all', { zoom: 16, onProgressData }).finally(() => { settled = true; });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(onProgressData).toHaveBeenCalledTimes(1);             // sichtbare Kachel (Niederlande) ist schon gezeichnet
+    expect(onProgressData.mock.calls[0][2]).toEqual({ phase: 'visible' });
+    expect(settled).toBe(false);                                  // die Abfrage wartet noch auf den Ring
+    release();
+    await pending;
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(calls.filter((c) => c.key.includes('/eu/belgium-'))).toHaveLength(8);   // danach ist der Ring da
+  });
+
+  it('antwortet eine Ring-Quelle nicht innerhalb von ringPlanTimeoutMs, gibt es keinen Ring (statt zu hängen)', async () => {
+    setupBorder({ netherlands: {}, belgium: {} });
+    Config.pipeline.europe.ringPlanTimeoutMs = 25;
+    let release;
+    headerGate = new Promise((resolve) => { release = resolve; });
+    headerGateFor = '/eu/belgium-';
+    const onBufferComplete = vi.fn();
+    const els = await fetchPipelinePmtiles(BREDA, 'all', { zoom: 16, onBufferComplete });
+    release();
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(calls.filter((c) => c.key.includes('/eu/belgium-'))).toHaveLength(0);
+    expect(calls).toHaveLength(1);
+    expect(onBufferComplete).not.toHaveBeenCalled();
+    expect(sameRect(els.loadedBounds, els.bufferBounds)).toBe(true);
+  });
+
+  it('lässt sich eine Ring-Quelle nicht öffnen, gibt es keinen Ring: der Ausschnitt selbst wird trotzdem geliefert', async () => {
+    setupBorder({ netherlands: {}, belgium: {} });
+    headerFailing.add('/eu/belgium-');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const onBufferComplete = vi.fn();
+    const els = await fetchPipelinePmtiles(BREDA, 'all', { zoom: 16, onBufferComplete });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(ids(els)).toEqual(['node:111']);
+    expect(calls).toHaveLength(1);                               // nur die sichtbare Kachel, kein Ring aus nur den Niederlanden
+    expect(onBufferComplete).not.toHaveBeenCalled();
+    expect(sameRect(els.loadedBounds, els.bufferBounds)).toBe(true);
+  });
+
+  it('eine überholte Anfrage lädt keinen Ring nach, wenn sie beim Öffnen der Ring-Quellen abgebrochen wird', async () => {
+    setupBorder({ netherlands: {}, belgium: {} });
+    let release;
+    headerGate = new Promise((resolve) => { release = resolve; });
+    headerGateFor = '/eu/belgium-';
     const controller = new AbortController();
-    const outcome = fetchPipelinePmtiles(BREDA, 'all', { zoom: 16, signal: controller.signal }).then(() => 'fertig', (e) => e.name);
-    await new Promise((resolve) => setTimeout(resolve, 20));    // Ausschnitt ist geplant, der Ring wartet auf Belgien
+    const pending = fetchPipelinePmtiles(BREDA, 'all', { zoom: 16, signal: controller.signal });
+    await new Promise((resolve) => setTimeout(resolve, 20));
     controller.abort();
     release();
-    expect(await outcome).toBe('AbortError');
+    await pending.catch(() => {});
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(calls.filter((c) => c.key.includes('/eu/belgium-'))).toHaveLength(0);
   });
 
   it('Gegenprobe: ist der Ring bedient, meldet der Pufferring seinen ganzen Bereich als abgedeckt', async () => {

@@ -820,6 +820,36 @@ async function planRingSources(sources, ringRect, zoom, signal) {
 }
 
 /**
+ * Startet die Planung der Ring-Quellen parallel zum Laden der sichtbaren Kacheln (ohne darauf zu warten: der
+ * Erst-Render soll nicht an einem langsamen Länder-Header hängen). Nur im Mehrquellen-Weg, sonst null.
+ */
+function startRingPlan(sources, vis, queryZoom, zoom, signal) {
+  if (!sources.multi) return null;
+  const ringRect = {
+    south: tile2lat(vis.maxY + 2, queryZoom), north: tile2lat(vis.minY - 1, queryZoom),
+    west: tile2lon(vis.minX - 1, queryZoom), east: tile2lon(vis.maxX + 2, queryZoom)
+  };
+  return planRingSources(sources, ringRect, zoom, signal).catch(() => null);   // Abbruch/Fehler: kein Ring
+}
+
+/**
+ * Wartet NACH dem Rendern der sichtbaren Kacheln auf die Ring-Planung, höchstens `ringPlanTimeoutMs`. Ergebnis:
+ * die Quellen für den Ring, oder null (kein Ring: Planung gescheitert, zu langsam oder Ring nicht bedient).
+ * Ohne Plan (bisheriger Einzelquellen-Weg) bleiben es die Quellen des Ausschnitts.
+ */
+async function resolveRingSources(sources, plan) {
+  if (!plan) return sources;
+  const ms = Config.pipeline?.europe?.ringPlanTimeoutMs ?? 1500;
+  let timer;
+  const timeout = new Promise((resolve) => { timer = setTimeout(() => resolve(null), ms); });
+  try {
+    return await Promise.race([plan, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Lädt Kacheln via PMTiles Range-Requests für den aktuellen Sichtbereich.
  * @param {L.LatLngBounds} bounds 
  * @param {string} mode 'stations' | 'all'
@@ -865,37 +895,10 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
     }
   }
 
-  // 2. Pufferring (nur wenn Kachelausschnitt <= 20)
-  const bufferTiles = [];
-  let bufMinX = visMinX;
-  let bufMaxX = visMaxX;
-  let bufMinY = visMinY;
-  let bufMaxY = visMaxY;
-
-  // Mehrquellen-Weg: der Ring wird nur geladen (und als abgedeckt gemeldet), wenn alle seine Quellen da sind
-  let useBuffer = rawTileCount <= 20;
-  let ringSources = sources;
-  if (useBuffer && sources.multi) {
-    ringSources = await planRingSources(sources, {
-      south: tile2lat(visMaxY + 2, queryZoom), north: tile2lat(visMinY - 1, queryZoom),
-      west: tile2lon(visMinX - 1, queryZoom), east: tile2lon(visMaxX + 2, queryZoom)
-    }, zoom, signal);
-    if (!ringSources) { useBuffer = false; ringSources = sources; }
-  }
-
-  if (useBuffer) {
-    bufMinX = visMinX - 1;
-    bufMaxX = visMaxX + 1;
-    bufMinY = visMinY - 1;
-    bufMaxY = visMaxY + 1;
-    for (let x = bufMinX; x <= bufMaxX; x++) {
-      for (let y = bufMinY; y <= bufMaxY; y++) {
-        if (x < visMinX || x > visMaxX || y < visMinY || y > visMaxY) {
-          bufferTiles.push({ x, y });
-        }
-      }
-    }
-  }
+  // 2. Pufferring (nur wenn Kachelausschnitt <= 20): die Quellen dafür werden schon jetzt parallel geplant
+  const ringPlan = rawTileCount <= 20
+    ? startRingPlan(sources, { minX: visMinX, maxX: visMaxX, minY: visMinY, maxY: visMaxY }, queryZoom, zoom, signal)
+    : null;
 
   // Kachelverarbeitung mit progressivem Rendern (Streaming)
   const processTile = async (x, y, phase = 'visible') => {
@@ -939,6 +942,33 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
 
   // Phase 1: Sichtbare Kacheln zuerst laden und sofort rendern
   await processTilesWithPool(visibleTiles, (x, y) => processTile(x, y, 'visible'), 10, signal);
+
+  // Pufferring festlegen: im Mehrquellen-Weg nur, wenn alle seine Quellen da sind (sonst bliebe ein Teil des Rings
+  // fälschlich als abgedeckt gemeldet); die Planung lief parallel zu den sichtbaren Kacheln
+  const bufferTiles = [];
+  let bufMinX = visMinX;
+  let bufMaxX = visMaxX;
+  let bufMinY = visMinY;
+  let bufMaxY = visMaxY;
+  let useBuffer = rawTileCount <= 20;
+  let ringSources = sources;
+  if (useBuffer && ringPlan) {
+    ringSources = await resolveRingSources(sources, ringPlan);
+    if (!ringSources) { useBuffer = false; ringSources = sources; }
+  }
+  if (useBuffer) {
+    bufMinX = visMinX - 1;
+    bufMaxX = visMaxX + 1;
+    bufMinY = visMinY - 1;
+    bufMaxY = visMaxY + 1;
+    for (let x = bufMinX; x <= bufMaxX; x++) {
+      for (let y = bufMinY; y <= bufMaxY; y++) {
+        if (x < visMinX || x > visMaxX || y < visMinY || y > visMaxY) {
+          bufferTiles.push({ x, y });
+        }
+      }
+    }
+  }
 
   // Grenzen der sichtbaren Kacheln
   const visSouth = tile2lat(visMaxY + 1, queryZoom);
@@ -1167,36 +1197,10 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         }
       }
 
-      // 2. Pufferring (nur wenn Kachelausschnitt <= 20)
-      const bufferTiles = [];
-      let bufMinX = visMinX;
-      let bufMaxX = visMaxX;
-      let bufMinY = visMinY;
-      let bufMaxY = visMaxY;
-
-      let useBuffer = rawTileCount <= 20;
-      let ringSources = sources;
-      if (useBuffer && sources.multi) {
-        ringSources = await planRingSources(sources, {
-          south: tile2lat(visMaxY + 2, queryZoom), north: tile2lat(visMinY - 1, queryZoom),
-          west: tile2lon(visMinX - 1, queryZoom), east: tile2lon(visMaxX + 2, queryZoom)
-        }, zoom, signal);
-        if (!ringSources) { useBuffer = false; ringSources = sources; }
-      }
-
-      if (useBuffer) {
-        bufMinX -= 1;
-        bufMaxX += 1;
-        bufMinY -= 1;
-        bufMaxY += 1;
-        for (let x = bufMinX; x <= bufMaxX; x++) {
-          for (let y = bufMinY; y <= bufMaxY; y++) {
-            if (x < visMinX || x > visMaxX || y < visMinY || y > visMaxY) {
-              bufferTiles.push({ x, y });
-            }
-          }
-        }
-      }
+      // 2. Pufferring (nur wenn Kachelausschnitt <= 20): die Quellen dafür werden schon jetzt parallel geplant
+      const ringPlan = rawTileCount <= 20
+        ? startRingPlan(sources, { minX: visMinX, maxX: visMaxX, minY: visMinY, maxY: visMaxY }, queryZoom, zoom, signal)
+        : null;
 
       const processBoundaryTile = async (x, y, phase = 'visible') => {
         if (signal?.aborted) return 0;
@@ -1252,6 +1256,32 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
 
       // Phase 1: Sichtbare Kacheln zuerst
       await processTilesWithPool(visibleTiles, (x, y) => processBoundaryTile(x, y, 'visible'), 10, signal);
+
+      // Pufferring festlegen (Quellen schon parallel geplant, siehe fetchPipelinePmtiles)
+      const bufferTiles = [];
+      let bufMinX = visMinX;
+      let bufMaxX = visMaxX;
+      let bufMinY = visMinY;
+      let bufMaxY = visMaxY;
+      let useBuffer = rawTileCount <= 20;
+      let ringSources = sources;
+      if (useBuffer && ringPlan) {
+        ringSources = await resolveRingSources(sources, ringPlan);
+        if (!ringSources) { useBuffer = false; ringSources = sources; }
+      }
+      if (useBuffer) {
+        bufMinX -= 1;
+        bufMaxX += 1;
+        bufMinY -= 1;
+        bufMaxY += 1;
+        for (let x = bufMinX; x <= bufMaxX; x++) {
+          for (let y = bufMinY; y <= bufMaxY; y++) {
+            if (x < visMinX || x > visMaxX || y < visMinY || y > visMaxY) {
+              bufferTiles.push({ x, y });
+            }
+          }
+        }
+      }
 
       const visSouth = tile2lat(visMaxY + 1, queryZoom);
       const visNorth = tile2lat(visMinY, queryZoom);
