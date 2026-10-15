@@ -86,7 +86,17 @@ export const Config = {
     // Verhindert zuverlässig, dass Grenzstädte in Nachbarländern außerhalb von DACHLiLu
     // (z. B. Frankreich, Italien, Tschechien, Polen, Dänemark) fälschlicherweise
     // über die Pipeline angefragt werden und leer bleiben.
-    coveragePolygon: DACHLILU_COVERAGE
+    coveragePolygon: DACHLILU_COVERAGE,
+    // Europa-Erweiterung: je Land eine PMTiles-Datei, verzeichnet im Manifest eu/regions.json (Pipeline-Repo).
+    // GRUNDLAGE: europe.js kann Manifest und Abdeckung lesen und Ausschnitte prüfen, ist aber noch NICHT in die
+    // Datenabfrage (pipeline.js/api.js) eingebunden. Standard aus, solange das so ist.
+    europe: {
+      enabled: false,
+      manifestPath: "eu/regions.json",
+      manifestTimeoutMs: 3000,
+      manifestTtlMs: 10 * 60 * 1000, // wie metadata.json: spätestens nach 10 Minuten neu prüfen
+      minZoom: 12                    // wie die DACHLiLu-Prüfung
+    }
   },
 
   // ----------------------------------------------------------------------------------------
