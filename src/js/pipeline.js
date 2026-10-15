@@ -13,6 +13,7 @@ import { PbfReader } from 'pbf';
 import { Config } from './config.js';
 import { State } from './state.js';
 import { isPointInPolygon, isRectInPolygon } from './geometry.js';
+import { resolveEuropeSources, loadEuropeData, buildRegionUrl, getEuropeData } from './europe.js';
 
 // Geometrie-Hilfen liegen in geometry.js; hier weiter exportiert, damit Aufrufer und Tests unverändert bleiben
 export { isPointInPolygon, isRectInPolygon };
@@ -61,6 +62,10 @@ const _inFlightTileRequests = new Map();
 export async function warmupPipeline() {
   try {
     if (!Config.pipeline?.enabled || !Config.pipeline?.url) return;
+
+    // Europa-Erweiterung: Manifest und Abdeckung schon beim Start laden (auch wenn die Startansicht außerhalb
+    // von DACHLiLu liegt). Blockiert nie; ohne Schalter passiert nichts.
+    loadEuropeData();
 
     // Start-Koordinaten ermitteln (Permalink > localStorage > Config)
     let lat = null;
@@ -143,10 +148,13 @@ export function clearTileCache() {
  * @param {number} x
  * @param {number} y
  * @param {AbortSignal} [signal]
+ * @param {string} [scope] Kennung der Quelle (leer = DACHLiLu)
  * @returns {Promise<VectorTile|null>}
  */
-export async function getVectorTile(pmtiles, z, x, y, signal) {
-  const versionPrefix = _pipelineVersion ? `${_pipelineVersion}|` : '';
+export async function getVectorTile(pmtiles, z, x, y, signal, scope = '') {
+  // scope trennt die Kacheln mehrerer Quellen (gleiche z/x/y in verschiedenen Dateien). DACHLiLu nutzt
+  // weiter den leeren Bereich und die Version aus metadata.json; Länder-Dateien tragen ihre Kennung selbst.
+  const versionPrefix = scope ? scope : (_pipelineVersion ? `${_pipelineVersion}|` : '');
   const cacheKey = `${versionPrefix}${z}/${x}/${y}`;
 
   if (_tileCache.has(cacheKey)) {
@@ -224,16 +232,18 @@ const OSM_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
  * wenn der Build ihn nicht kennt (ältere Builds ohne OSM-IDs in den Kacheln).
  * @returns {string|null}
  */
-export function getPipelineOsmDataUntil() {
-  return _pipelineOsmDataUntil;
+export function getPipelineOsmDataUntil(result = null) {
+  // Ein Ergebnis über mehrere Quellen trägt den ältesten Stand aller beteiligten Dateien selbst (je Anfrage,
+  // nicht global: eine überholte Anfrage darf den Stand einer neueren nicht überschreiben)
+  return result?.pipelineMeta ? result.pipelineMeta.osmDataUntil : _pipelineOsmDataUntil;
 }
 
 /**
  * Zeitpunkt der Pipeline-Generierung (generated_at) aus metadata.json oder null.
  * @returns {string|null}
  */
-export function getPipelineGeneratedAt() {
-  return _pipelineVersion;
+export function getPipelineGeneratedAt(result = null) {
+  return result?.pipelineMeta ? result.pipelineMeta.generatedAt : _pipelineVersion;
 }
 
 export async function getPipelineVersion(baseUrl, { signal, forceRefresh = false } = {}) {
@@ -389,6 +399,31 @@ export function getPMTilesInstance(url) {
  * @returns {boolean}
  */
 export function isPipelineEligible(bounds, zoom) {
+  if (isDachliluEligible(bounds, zoom)) return true;
+  // Europa-Erweiterung (nur mit Schalter und geladenen Daten, sonst false wie bisher)
+  if (!Config.pipeline?.enabled || !Config.pipeline?.url) return false;
+  // Länder-Dateien gibt es nur als PMTiles; der GeoJSON-Rückfall kennt nur DACHLiLu
+  if (!Config.pipeline?.usePmtiles) return false;
+  // Noch nicht geladen, abgelaufen oder zuvor gescheitert: im Hintergrund (neu) laden, ohne zu warten. Ein Fehler beim
+  // Start sperrt Europa so nicht für die ganze Sitzung; die nächste Prüfung (Kartenbewegung) sieht die Daten.
+  loadEuropeData();
+  return resolveEuropeSources(bounds, zoom, getEuropeData()).eligible;
+}
+
+/**
+ * Liegt der Ausschnitt nur dank der Europa-Erweiterung in der Pipeline (Schalter an, nicht in DACHLiLu)? Dann darf
+ * kein GeoJSON-Rückfall greifen: Die GeoJSON-Dateien enthalten nur DACHLiLu und lieferten für ein anderes Land
+ * eine leere Liste als "Erfolg", statt dass api.js auf Overpass zurückfällt.
+ */
+function isEuropeOnlyViewport(bounds, zoom) {
+  return Boolean(Config.pipeline?.europe?.enabled) && !isDachliluEligible(bounds, typeof zoom === 'number' ? zoom : 14);
+}
+
+/**
+ * Eignung allein für DACHLiLu (bisherige Prüfung, unverändert): Bounding-Box plus exakter
+ * Rechteck-in-Polygon-Test gegen das Abdeckungspolygon.
+ */
+function isDachliluEligible(bounds, zoom) {
   if (!Config.pipeline?.enabled || !Config.pipeline?.url) return false;
   if (!bounds || zoom < 12) return false;
 
@@ -655,6 +690,217 @@ export async function ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile,
   return { pmtiles: freshPmtiles, header: freshHeader };
 }
 
+// ------------------------------------------------------------------------------------------
+// Mehrere Quellen (Europa-Erweiterung): DACHLiLu plus Länder-Dateien
+// ------------------------------------------------------------------------------------------
+
+const MAX_EUROPE_HANDLES = 64;
+const _europeHandles = new Map(); // URL -> { pmtiles, header }; Länder-Dateien sind versioniert, die URL ändert sich mit jedem Stand
+
+function getEuropeHandle(url) {
+  let handle = _europeHandles.get(url);
+  if (!handle) {
+    if (_europeHandles.size >= MAX_EUROPE_HANDLES) {
+      _europeHandles.delete(_europeHandles.keys().next().value); // älteste (veraltete) Version zuerst
+    }
+    handle = { pmtiles: new PMTiles(url), header: null };
+    _europeHandles.set(url, handle);
+  }
+  return handle;
+}
+
+/** Überschneidet das Rechteck des PMTiles-Headers den Ausschnitt? (anders als isViewportInHeader: Schnitt statt Enthaltensein) */
+function headerIntersectsViewport(header, rect) {
+  if (!header) return false;
+  const minLat = header.minLat ?? -90;
+  const maxLat = header.maxLat ?? 90;
+  const minLon = header.minLon ?? -180;
+  const maxLon = header.maxLon ?? 180;
+  return rect.west <= maxLon && rect.east >= minLon && rect.south <= maxLat && rect.north >= minLat;
+}
+
+/**
+ * Decken die Header zusammen das ganze Rechteck ab? (Rasterzellen aus allen Kanten der Header innerhalb des Rechtecks;
+ * jede Zelle muss in mindestens einem Header liegen.) Schützt vor einer teilweise veröffentlichten Datei: ein Header,
+ * der den Ausschnitt nur anschneidet, darf ihn nicht als geladen erscheinen lassen.
+ */
+function headersCoverRect(headers, rect) {
+  const boxes = headers.map((h) => ({
+    minLat: h?.minLat ?? -90, maxLat: h?.maxLat ?? 90, minLon: h?.minLon ?? -180, maxLon: h?.maxLon ?? 180
+  }));
+  const cuts = (lo, hi, values) => [lo, hi, ...values.filter((v) => v > lo && v < hi)].sort((a, b) => a - b);
+  const xs = cuts(rect.west, rect.east, boxes.flatMap((b) => [b.minLon, b.maxLon]));
+  const ys = cuts(rect.south, rect.north, boxes.flatMap((b) => [b.minLat, b.maxLat]));
+  for (let i = 0; i < xs.length - 1; i++) {
+    for (let j = 0; j < ys.length - 1; j++) {
+      const cx = (xs[i] + xs[i + 1]) / 2;
+      const cy = (ys[j] + ys[j + 1]) / 2;
+      if (!boxes.some((b) => cx >= b.minLon && cx <= b.maxLon && cy >= b.minLat && cy <= b.maxLat)) return false;
+    }
+  }
+  return true;
+}
+
+/** Ältester Zeitstempel einer Liste (null, sobald einer fehlt oder ungültig ist: ein unbekannter Stand macht alles unbekannt). */
+function oldestTimestamp(values) {
+  const times = values.map((v) => (typeof v === 'string' ? Date.parse(v) : NaN));
+  if (times.length === 0 || times.some((t) => !Number.isFinite(t))) return null;
+  return values[times.indexOf(Math.min(...times))];
+}
+
+/**
+ * Lädt dieselbe Kachel aus allen Quellen. Ein Fehler in einer Quelle verwirft nur deren Kachel (Warnung, wie
+ * bisher bei einer einzelnen Quelle), nicht die der anderen. Ergebnis: eine Liste, Reihenfolge wie `sources`.
+ */
+async function getTilesFromSources(sources, z, x, y, signal) {
+  const results = await Promise.allSettled(sources.map((src) => getVectorTile(src.pmtiles, z, x, y, signal, src.scope)));
+  return results.map((r, i) => {
+    if (r.status === 'fulfilled') return r.value;
+    if (r.reason?.name !== 'AbortError' && !signal?.aborted) {
+      console.warn(`[Pipeline] Fehler bei Kachel ${x}/${y} (${sources[i].id}):`, r.reason?.message || r.reason);
+    }
+    return null;
+  });
+}
+
+/**
+ * Bestimmt die Quellen für einen Ausschnitt. Liegt er (nach der bisherigen Prüfung) in DACHLiLu, oder ist
+ * Europa aus bzw. nicht geeignet, bleibt es beim bisherigen Weg: genau eine Datei, Abdeckung gegen den Header
+ * geprüft, keine Änderung gegenüber früher. Nur wenn DACHLiLu allein nicht reicht UND Europa den Ausschnitt
+ * bedienen kann, werden mehrere Dateien geöffnet (DACHLiLu plus Länder aus dem Manifest). Jede Quelle, deren
+ * Header den Ausschnitt gar nicht berührt, entfällt. Schlägt das Öffnen einer Quelle fehl, wirft die Funktion:
+ * lieber Overpass als ein lückenhaftes Ergebnis.
+ * @returns {Promise<Array<{id:string, kind:string, pmtiles:PMTiles, header:Object, scope:string}>>}
+ */
+async function planPipelineSources(bounds, zoom, signal) {
+  const baseUrl = Config.pipeline?.url;
+  const pmtilesFile = Config.pipeline?.pmtilesFile || 'openfiremap.pmtiles';
+  const effectiveZoom = typeof zoom === 'number' ? zoom : 14;
+  // Ein Stand von Manifest und Abdeckung für die ganze Anfrage (Ausschnitt UND Ring): eine Auffrischung des Manifests
+  // mitten in der Abfrage darf den Ring nicht aus anderen Dateien/Ständen bestimmen als den Ausschnitt
+  const europeData = getEuropeData();
+  const eu = Config.pipeline?.europe?.enabled && !isDachliluEligible(bounds, effectiveZoom)
+    ? resolveEuropeSources(bounds, effectiveZoom, europeData)
+    : null;
+
+  if (!eu?.eligible) {
+    const url = await getPipelinePmtilesUrl(baseUrl, pmtilesFile, { signal });
+    const pmtiles = getPMTilesInstance(url);
+    const coverage = await ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile, bounds, { signal });
+    return [{ id: 'dachlilu', kind: 'dachlilu', pmtiles: coverage.pmtiles, header: coverage.header, scope: '' }];
+  }
+
+  const { active, meta } = await openEuropeSources(eu, extractBoundsCoords(bounds), baseUrl, signal, europeData.manifest);
+  active.multi = true;
+  active.meta = meta;
+  active.europeData = europeData;
+  return active;
+}
+
+/**
+ * Öffnet die Quellen einer Europa-Auflösung und behält die, deren Header das Rechteck berührt. Liefert auch den
+ * Datenstand dieser Abfrage (ältester aller beteiligten Dateien) als Wert statt als globalen Zustand.
+ */
+async function openEuropeSources(eu, rect, baseUrl, signal, manifest) {
+  const opened = await Promise.all(eu.sources.map(async (src) => {
+    if (src.kind === 'dachlilu') {
+      const url = await getPipelinePmtilesUrl(baseUrl, src.file, { signal });
+      const pmtiles = getPMTilesInstance(url);
+      if (!_pmtilesHeader) _pmtilesHeader = await pmtiles.getHeader();
+      return { id: src.id, kind: 'dachlilu', pmtiles, header: _pmtilesHeader, scope: '',
+        generatedAt: _pipelineVersion, osmDataUntil: _pipelineOsmDataUntil };
+    }
+    const entry = manifest.regions[src.id];
+    const handle = getEuropeHandle(buildRegionUrl(baseUrl, entry.file, src.id));
+    if (!handle.header) handle.header = await handle.pmtiles.getHeader();
+    return { id: src.id, kind: 'europe', pmtiles: handle.pmtiles, header: handle.header,
+      scope: `eu:${src.id}:${entry.generatedAt}|`, generatedAt: entry.generatedAt, osmDataUntil: entry.osmDataUntil };
+  }));
+  // getHeader() kennt kein Signal: eine inzwischen überholte Anfrage bricht hier ab, statt weiterzumachen
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+
+  const { south, north, west, east } = rect;
+  const active = opened.filter((src) => headerIntersectsViewport(src.header, rect));
+  if (active.length === 0) {
+    throw new PmtilesCoverageMismatch(
+      `Keine der Quellen (${eu.sources.map((s) => s.id).join(', ')}) enthält den Ausschnitt [s=${south}, w=${west}, n=${north}, e=${east}]`,
+      { viewport: rect, sources: eu.sources.map((s) => s.id) }
+    );
+  }
+
+  if (!headersCoverRect(active.map((s) => s.header), rect)) {
+    throw new PmtilesCoverageMismatch(
+      `Die Header der Quellen (${active.map((s) => s.id).join(', ')}) decken den Ausschnitt [s=${south}, w=${west}, n=${north}, e=${east}] nicht vollständig ab`,
+      { viewport: rect, sources: active.map((s) => s.id) }
+    );
+  }
+
+  // Datenstand der Abfrage: der älteste aller beteiligten Dateien. Ist er älter als die Obergrenze, wird kein
+  // Overpass-Delta versucht (null), sonst würden die Änderungs-Abfragen für alte Länderstände sehr groß.
+  let osmDataUntil = oldestTimestamp(active.map((s) => s.osmDataUntil));
+  const maxAgeDays = Config.pipeline?.europe?.liveDeltaMaxAgeDays ?? 10;
+  if (osmDataUntil && Date.now() - Date.parse(osmDataUntil) > maxAgeDays * 86400000) osmDataUntil = null;
+  return { active, meta: { osmDataUntil, generatedAt: oldestTimestamp(active.map((s) => s.generatedAt)) } };
+}
+
+/**
+ * Quellen für den Pufferring. Der Ring gilt nach dem Laden als abgedeckt (loadedBounds), also müssen alle Dateien
+ * dafür da sein: Ist der Ring nicht vollständig von veröffentlichten Ländern bedient (oder lässt sich eine Quelle
+ * nicht öffnen), gibt es keinen Ring (null) und die Abdeckung bleibt beim sichtbaren Ausschnitt.
+ * Der bisherige Einzelquellen-Weg bleibt unverändert (dieselben Quellen).
+ */
+async function planRingSources(sources, ringRect, zoom, signal) {
+  if (!sources.multi) {
+    // Bisheriger Weg: Der Ring bleibt, wo er schon immer war. Ist Europa an und ragt der Ring über DACHLiLu hinaus
+    // (Landesgrenze), wäre er sonst als abgedeckt gemeldet, obwohl das Nachbarland fehlt: dann kein Ring.
+    if (Config.pipeline?.europe?.enabled && !isDachliluEligible(ringRect, typeof zoom === 'number' ? zoom : 14)) return null;
+    return sources;
+  }
+  const eu = resolveEuropeSources(ringRect, typeof zoom === 'number' ? zoom : 14, sources.europeData);
+  if (!eu.eligible) return null;
+  try {
+    const { active, meta } = await openEuropeSources(eu, ringRect, Config.pipeline?.url, signal, sources.europeData.manifest);
+    active.multi = true;
+    active.meta = meta;
+    active.europeData = sources.europeData;
+    return active;
+  } catch (err) {
+    if (err?.name === 'AbortError' || signal?.aborted) throw err;
+    console.warn('[Pipeline] Pufferring nicht über alle Quellen ladbar, bleibe beim sichtbaren Ausschnitt:', err?.message || err);
+    return null;
+  }
+}
+
+/**
+ * Startet die Planung der Ring-Quellen parallel zum Laden der sichtbaren Kacheln (ohne darauf zu warten: der
+ * Erst-Render soll nicht an einem langsamen Länder-Header hängen). Nur im Mehrquellen-Weg, sonst null.
+ */
+function startRingPlan(sources, vis, queryZoom, zoom, signal) {
+  if (!sources.multi && !Config.pipeline?.europe?.enabled) return null;   // Europa aus: alles wie bisher
+  const ringRect = {
+    south: tile2lat(vis.maxY + 2, queryZoom), north: tile2lat(vis.minY - 1, queryZoom),
+    west: tile2lon(vis.minX - 1, queryZoom), east: tile2lon(vis.maxX + 2, queryZoom)
+  };
+  return planRingSources(sources, ringRect, zoom, signal).catch(() => null);   // Abbruch/Fehler: kein Ring
+}
+
+/**
+ * Wartet NACH dem Rendern der sichtbaren Kacheln auf die Ring-Planung, höchstens `ringPlanTimeoutMs`. Ergebnis:
+ * die Quellen für den Ring, oder null (kein Ring: Planung gescheitert, zu langsam oder Ring nicht bedient).
+ * Ohne Plan (bisheriger Einzelquellen-Weg) bleiben es die Quellen des Ausschnitts.
+ */
+async function resolveRingSources(sources, plan) {
+  if (!plan) return sources;
+  const ms = Config.pipeline?.europe?.ringPlanTimeoutMs ?? 1500;
+  let timer;
+  const timeout = new Promise((resolve) => { timer = setTimeout(() => resolve(null), ms); });
+  try {
+    return await Promise.race([plan, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Lädt Kacheln via PMTiles Range-Requests für den aktuellen Sichtbereich.
  * @param {L.LatLngBounds} bounds 
@@ -664,18 +910,13 @@ export async function ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile,
  */
 export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgressData, onBufferComplete } = {}) {
   const baseUrl = Config.pipeline?.url;
-  const pmtilesFile = Config.pipeline?.pmtilesFile || 'openfiremap.pmtiles';
   if (!baseUrl) throw new Error('Pipeline-URL ist nicht konfiguriert.');
 
-  const url = await getPipelinePmtilesUrl(baseUrl, pmtilesFile, { signal });
-  let pmtiles = getPMTilesInstance(url);
-
-  const coverage = await ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile, bounds, { signal });
-  pmtiles = coverage.pmtiles;
-  const header = coverage.header;
+  loadEuropeData(); // Manifest bei Bedarf auffrischen (blockiert und wirft nie; ohne Schalter sofort fertig)
+  const sources = await planPipelineSources(bounds, zoom, signal);
 
   const currentZoom = typeof zoom === 'number' ? zoom : 14;
-  const queryZoom = computeQueryZoom(currentZoom, header);
+  const queryZoom = computeQueryZoom(currentZoom, sources[0].header);
 
   const south = typeof bounds.getSouth === 'function' ? bounds.getSouth() : bounds.south;
   const north = typeof bounds.getNorth === 'function' ? bounds.getNorth() : bounds.north;
@@ -706,50 +947,38 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
     }
   }
 
-  // 2. Pufferring (nur wenn Kachelausschnitt <= 20)
-  const bufferTiles = [];
-  let bufMinX = visMinX;
-  let bufMaxX = visMaxX;
-  let bufMinY = visMinY;
-  let bufMaxY = visMaxY;
-
-  if (rawTileCount <= 20) {
-    bufMinX = visMinX - 1;
-    bufMaxX = visMaxX + 1;
-    bufMinY = visMinY - 1;
-    bufMaxY = visMaxY + 1;
-    for (let x = bufMinX; x <= bufMaxX; x++) {
-      for (let y = bufMinY; y <= bufMaxY; y++) {
-        if (x < visMinX || x > visMaxX || y < visMinY || y > visMaxY) {
-          bufferTiles.push({ x, y });
-        }
-      }
-    }
-  }
+  // 2. Pufferring (nur wenn Kachelausschnitt <= 20): die Quellen dafür werden schon jetzt parallel geplant
+  const ringPlan = rawTileCount <= 20
+    ? startRingPlan(sources, { minX: visMinX, maxX: visMaxX, minY: visMinY, maxY: visMaxY }, queryZoom, zoom, signal)
+    : null;
 
   // Kachelverarbeitung mit progressivem Rendern (Streaming)
-  const processTile = async (x, y, phase = 'visible') => {
+  const processTile = async (x, y, phase = 'visible', onlySources = null) => {
     if (signal?.aborted) return 0;
-    const vTile = await getVectorTile(pmtiles, queryZoom, x, y, signal);
-    if (!vTile || !vTile.layers || signal?.aborted) return 0;
+    const vTiles = await getTilesFromSources(onlySources || (phase === 'buffer' ? ringSources : sources), queryZoom, x, y, signal);
+    if (signal?.aborted) return 0;
 
     let newCount = 0;
-    for (const layerName of targetLayers) {
-      const layer = vTile.layers[layerName];
-      if (!layer) continue;
-      for (let i = 0; i < layer.length; i++) {
-        const feat = layer.feature(i);
-        const gj = feat.toGeoJSON(x, y, queryZoom);
-        const el = geoJsonFeatureToElement(gj, layerName);
-        if (!el) continue;
+    for (const vTile of vTiles) {
+      if (!vTile || !vTile.layers) continue;
+      for (const layerName of targetLayers) {
+        const layer = vTile.layers[layerName];
+        if (!layer) continue;
+        for (let i = 0; i < layer.length; i++) {
+          const feat = layer.feature(i);
+          const gj = feat.toGeoJSON(x, y, queryZoom);
+          const el = geoJsonFeatureToElement(gj, layerName);
+          if (!el) continue;
 
-        // OSM-Typ und -ID gemeinsam: ein Knoten und ein Weg können dieselbe ID haben
-        const idKey = `${el.type}:${el.id}`;
-        if (!elementsMap.has(idKey)) {
-          elementsMap.set(idKey, el);
-          newCount++;
+          // OSM-Typ und -ID gemeinsam: ein Knoten und ein Weg können dieselbe ID haben
+          const idKey = `${el.type}:${el.id}`;
+          if (!elementsMap.has(idKey)) {
+            elementsMap.set(idKey, el);
+            newCount++;
+          }
         }
       }
+
     }
 
     if (newCount > 0 && typeof onProgressData === 'function' && !signal?.aborted) {
@@ -766,22 +995,61 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   // Phase 1: Sichtbare Kacheln zuerst laden und sofort rendern
   await processTilesWithPool(visibleTiles, (x, y) => processTile(x, y, 'visible'), 10, signal);
 
+  // Pufferring festlegen: im Mehrquellen-Weg nur, wenn alle seine Quellen da sind (sonst bliebe ein Teil des Rings
+  // fälschlich als abgedeckt gemeldet); die Planung lief parallel zu den sichtbaren Kacheln
+  const bufferTiles = [];
+  let bufMinX = visMinX;
+  let bufMaxX = visMaxX;
+  let bufMinY = visMinY;
+  let bufMaxY = visMaxY;
+  let useBuffer = rawTileCount <= 20;
+  let ringSources = sources;
+  if (useBuffer && ringPlan) {
+    ringSources = await resolveRingSources(sources, ringPlan);
+    if (!ringSources) { useBuffer = false; ringSources = sources; }
+  }
+  // Länder, die nur der Ring berührt, können trotzdem in die sichtbaren Kacheln ragen (eine Kachel ist größer als
+  // der Ausschnitt): ihr Anteil an diesen Kacheln wird nachgeladen, denn die Kachelgrenzen gelten danach als abgedeckt
+  const visTilesRect = { south: tile2lat(visMaxY + 1, queryZoom), north: tile2lat(visMinY, queryZoom), west: tile2lon(visMinX, queryZoom), east: tile2lon(visMaxX + 1, queryZoom) };
+  const ringOnly = ringSources.filter((r) => !sources.some((s) => s.id === r.id) && headerIntersectsViewport(r.header, visTilesRect));
+  if (ringOnly.length > 0) {
+    await processTilesWithPool(visibleTiles, (x, y) => processTile(x, y, 'visible', ringOnly), 10, signal);
+  }
+  if (useBuffer) {
+    bufMinX = visMinX - 1;
+    bufMaxX = visMaxX + 1;
+    bufMinY = visMinY - 1;
+    bufMaxY = visMaxY + 1;
+    for (let x = bufMinX; x <= bufMaxX; x++) {
+      for (let y = bufMinY; y <= bufMaxY; y++) {
+        if (x < visMinX || x > visMaxX || y < visMinY || y > visMaxY) {
+          bufferTiles.push({ x, y });
+        }
+      }
+    }
+  }
+
   // Grenzen der sichtbaren Kacheln
-  const visSouth = tile2lat(visMaxY + 1, queryZoom);
-  const visNorth = tile2lat(visMinY, queryZoom);
-  const visWest = tile2lon(visMinX, queryZoom);
-  const visEast = tile2lon(visMaxX + 1, queryZoom);
+  // Ohne Ring (Mehrquellen-Weg) kennt niemand die Länder jenseits des Ausschnitts: als abgedeckt gilt nur der
+  // Ausschnitt selbst, nicht die ganze (größere) Kachel
+  const claimViewport = (sources.multi || Boolean(Config.pipeline?.europe?.enabled)) && !useBuffer;
+  const visSouth = claimViewport ? south : tile2lat(visMaxY + 1, queryZoom);
+  const visNorth = claimViewport ? north : tile2lat(visMinY, queryZoom);
+  const visWest = claimViewport ? west : tile2lon(visMinX, queryZoom);
+  const visEast = claimViewport ? east : tile2lon(visMaxX + 1, queryZoom);
 
   const elements = Array.from(elementsMap.values());
+  // Datenstand dieser Abfrage (nur Mehrquellen-Weg), am Ergebnis statt global
+  if (sources.multi) elements.pipelineMeta = (useBuffer ? ringSources : sources).meta;
   elements.loadedBounds = (typeof L !== 'undefined' && L.latLngBounds)
     ? L.latLngBounds([visSouth, visWest], [visNorth, visEast])
     : { south: visSouth, north: visNorth, west: visWest, east: visEast };
 
   // Grenzen der aktiven Anfrage inklusive Pufferring merken (verhindert vorzeitigen Abbruch bei kleinen Bewegungen)
-  const activeSouth = tile2lat(bufMaxY + 1, queryZoom);
-  const activeNorth = tile2lat(bufMinY, queryZoom);
-  const activeWest = tile2lon(bufMinX, queryZoom);
-  const activeEast = tile2lon(bufMaxX + 1, queryZoom);
+  const activeSouth = claimViewport ? south : tile2lat(bufMaxY + 1, queryZoom);
+  const activeNorth = claimViewport ? north : tile2lat(bufMinY, queryZoom);
+  const activeWest = claimViewport ? west : tile2lon(bufMinX, queryZoom);
+  const activeEast = claimViewport ? east : tile2lon(bufMaxX + 1, queryZoom);
   // Bereich inklusive Pufferring: so groß wird loadedPoiBounds nach dem Nachladen (z. B. für das Overpass-Delta)
   elements.bufferBounds = { south: activeSouth, west: activeWest, north: activeNorth, east: activeEast };
   State.activeFetchBounds = (typeof L !== 'undefined' && L.latLngBounds)
@@ -909,15 +1177,15 @@ export async function fetchPipelineData(bounds, mode, { signal, zoom, onProgress
       }
     } catch (err) {
       if (err?.name === 'AbortError') throw err;
-      if (!Config.pipeline?.geojsonFallback) {
-        throw new Error(`PMTiles-Abruf fehlgeschlagen (${err.message}). GeoJSON-Fallback ist deaktiviert.`, { cause: err });
+      if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
+        throw new Error(`PMTiles-Abruf fehlgeschlagen (${err.message}). GeoJSON-Fallback ist deaktiviert oder gilt nicht für diesen Ausschnitt.`, { cause: err });
       }
       console.warn('[Pipeline] PMTiles-Abruf fehlgeschlagen, wechsle auf GeoJSON-Fallback:', err.message);
     }
   }
 
   // 2. Optionaler Fallback: GeoJSON-Dataset mit 10-Minuten-In-Memory-Cache
-  if (!Config.pipeline?.geojsonFallback) {
+  if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
     throw new Error('PMTiles nicht aktiv oder fehlgeschlagen und GeoJSON-Fallback ist deaktiviert.');
   }
 
@@ -963,16 +1231,11 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
   // Stufe 1: PMTiles Vektor-Kacheln
   if (Config.pipeline?.usePmtiles) {
     try {
-      const pmtilesFile = Config.pipeline?.pmtilesFile || 'openfiremap.pmtiles';
-      const url = await getPipelinePmtilesUrl(baseUrl, pmtilesFile, { signal });
-      let pmtiles = getPMTilesInstance(url);
-
-      const coverage = await ensurePmtilesHeaderCoverage(pmtiles, baseUrl, pmtilesFile, bounds, { signal });
-      pmtiles = coverage.pmtiles;
-      const header = coverage.header;
+      loadEuropeData(); // Manifest bei Bedarf auffrischen (blockiert und wirft nie)
+      const sources = await planPipelineSources(bounds, zoom, signal);
 
       const currentZoom = typeof zoom === 'number' ? zoom : 14;
-      const queryZoom = computeQueryZoom(currentZoom, header);
+      const queryZoom = computeQueryZoom(currentZoom, sources[0].header);
 
       const south = typeof bounds.getSouth === 'function' ? bounds.getSouth() : bounds.south;
       const north = typeof bounds.getNorth === 'function' ? bounds.getNorth() : bounds.north;
@@ -996,56 +1259,50 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         }
       }
 
-      // 2. Pufferring (nur wenn Kachelausschnitt <= 20)
-      const bufferTiles = [];
-      let bufMinX = visMinX;
-      let bufMaxX = visMaxX;
-      let bufMinY = visMinY;
-      let bufMaxY = visMaxY;
+      // 2. Pufferring (nur wenn Kachelausschnitt <= 20): die Quellen dafür werden schon jetzt parallel geplant
+      const ringPlan = rawTileCount <= 20
+        ? startRingPlan(sources, { minX: visMinX, maxX: visMaxX, minY: visMinY, maxY: visMaxY }, queryZoom, zoom, signal)
+        : null;
 
-      if (rawTileCount <= 20) {
-        bufMinX -= 1;
-        bufMaxX += 1;
-        bufMinY -= 1;
-        bufMaxY += 1;
-        for (let x = bufMinX; x <= bufMaxX; x++) {
-          for (let y = bufMinY; y <= bufMaxY; y++) {
-            if (x < visMinX || x > visMaxX || y < visMinY || y > visMaxY) {
-              bufferTiles.push({ x, y });
-            }
-          }
-        }
-      }
-
-      const processBoundaryTile = async (x, y, phase = 'visible') => {
+      const processBoundaryTile = async (x, y, phase = 'visible', onlySources = null) => {
         if (signal?.aborted) return 0;
-        const vTile = await getVectorTile(pmtiles, queryZoom, x, y, signal);
-        if (!vTile || !vTile.layers || signal?.aborted) return 0;
-        const layer = vTile.layers['boundaries'];
-        if (!layer) return 0;
+        const tileSources = onlySources || (phase === 'buffer' ? ringSources : sources);
+        const vTiles = await getTilesFromSources(tileSources, queryZoom, x, y, signal);
+        if (signal?.aborted) return 0;
 
         let newCount = 0;
-        for (let i = 0; i < layer.length; i++) {
-          const feat = layer.feature(i);
-          const gj = feat.toGeoJSON(x, y, queryZoom);
-          const coords = gj.geometry?.coordinates;
-          if (!Array.isArray(coords) || coords.length === 0) continue;
+        for (let s = 0; s < tileSources.length; s++) {
+          const vTile = vTiles[s];
+          if (!vTile || !vTile.layers) continue;
+          const layer = vTile.layers['boundaries'];
+          if (!layer) continue;
+          // feat.id (--generate-ids) zählt je Datei von vorn: Länder-Dateien bekommen ihre Kennung davor, sonst
+          // würden Grenzstücke verschiedener Dateien mit gleicher Nummer einander überschreiben.
+          // DACHLiLu behält die bisherigen IDs.
+          const keyPrefix = tileSources[s].kind === 'europe' ? `${tileSources[s].id}:` : '';
+          for (let i = 0; i < layer.length; i++) {
+            const feat = layer.feature(i);
+            const gj = feat.toGeoJSON(x, y, queryZoom);
+            const coords = gj.geometry?.coordinates;
+            if (!Array.isArray(coords) || coords.length === 0) continue;
 
-          // Stabiler ID-Schlüssel je Kachel: tippecanoe (--generate-ids) vergibt allen
-          // zugeschnittenen Teilen eines Wegs dieselbe feat.id. Ohne Kachelbezug bliebe nur
-          // das Teilstück der zuerst geladenen Kachel übrig (Lücken an Kachelrändern).
-          const firstPt = gj.geometry.type === 'MultiLineString' ? coords[0]?.[0] : coords[0];
-          const lastLine = gj.geometry.type === 'MultiLineString' ? coords[coords.length - 1] : coords;
-          const lastPt = lastLine?.[lastLine.length - 1];
-          if (!firstPt || !lastPt) continue;
-          const featKey = feat.id ?? `${Math.round(firstPt[1] * 1e5)}_${Math.round(firstPt[0] * 1e5)}_${Math.round(lastPt[1] * 1e5)}_${Math.round(lastPt[0] * 1e5)}`;
+            // Stabiler ID-Schlüssel je Kachel: tippecanoe (--generate-ids) vergibt allen
+            // zugeschnittenen Teilen eines Wegs dieselbe feat.id. Ohne Kachelbezug bliebe nur
+            // das Teilstück der zuerst geladenen Kachel übrig (Lücken an Kachelrändern).
+            const firstPt = gj.geometry.type === 'MultiLineString' ? coords[0]?.[0] : coords[0];
+            const lastLine = gj.geometry.type === 'MultiLineString' ? coords[coords.length - 1] : coords;
+            const lastPt = lastLine?.[lastLine.length - 1];
+            if (!firstPt || !lastPt) continue;
+            const featKey = feat.id ?? `${Math.round(firstPt[1] * 1e5)}_${Math.round(firstPt[0] * 1e5)}_${Math.round(lastPt[1] * 1e5)}_${Math.round(lastPt[0] * 1e5)}`;
 
-          for (const el of boundaryGeometryToElements(gj.geometry, gj.properties, `${featKey}@${queryZoom}/${x}/${y}`)) {
-            if (!boundaryMap.has(el.id)) {
-              boundaryMap.set(el.id, el);
-              newCount++;
+            for (const el of boundaryGeometryToElements(gj.geometry, gj.properties, `${keyPrefix}${featKey}@${queryZoom}/${x}/${y}`)) {
+              if (!boundaryMap.has(el.id)) {
+                boundaryMap.set(el.id, el);
+                newCount++;
+              }
             }
           }
+
         }
 
         if (newCount > 0 && typeof onProgressData === 'function' && !signal?.aborted) {
@@ -1062,10 +1319,43 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       // Phase 1: Sichtbare Kacheln zuerst
       await processTilesWithPool(visibleTiles, (x, y) => processBoundaryTile(x, y, 'visible'), 10, signal);
 
-      const visSouth = tile2lat(visMaxY + 1, queryZoom);
-      const visNorth = tile2lat(visMinY, queryZoom);
-      const visWest = tile2lon(visMinX, queryZoom);
-      const visEast = tile2lon(visMaxX + 1, queryZoom);
+      // Pufferring festlegen (Quellen schon parallel geplant, siehe fetchPipelinePmtiles)
+      const bufferTiles = [];
+      let bufMinX = visMinX;
+      let bufMaxX = visMaxX;
+      let bufMinY = visMinY;
+      let bufMaxY = visMaxY;
+      let useBuffer = rawTileCount <= 20;
+      let ringSources = sources;
+      if (useBuffer && ringPlan) {
+        ringSources = await resolveRingSources(sources, ringPlan);
+        if (!ringSources) { useBuffer = false; ringSources = sources; }
+      }
+      // nur vom Ring berührte Länder ragen evtl. in die sichtbaren Kacheln (siehe fetchPipelinePmtiles)
+      const visTilesRect = { south: tile2lat(visMaxY + 1, queryZoom), north: tile2lat(visMinY, queryZoom), west: tile2lon(visMinX, queryZoom), east: tile2lon(visMaxX + 1, queryZoom) };
+      const ringOnly = ringSources.filter((r) => !sources.some((s) => s.id === r.id) && headerIntersectsViewport(r.header, visTilesRect));
+      if (ringOnly.length > 0) {
+        await processTilesWithPool(visibleTiles, (x, y) => processBoundaryTile(x, y, 'visible', ringOnly), 10, signal);
+      }
+      if (useBuffer) {
+        bufMinX -= 1;
+        bufMaxX += 1;
+        bufMinY -= 1;
+        bufMaxY += 1;
+        for (let x = bufMinX; x <= bufMaxX; x++) {
+          for (let y = bufMinY; y <= bufMaxY; y++) {
+            if (x < visMinX || x > visMaxX || y < visMinY || y > visMaxY) {
+              bufferTiles.push({ x, y });
+            }
+          }
+        }
+      }
+
+      const claimViewport = (sources.multi || Boolean(Config.pipeline?.europe?.enabled)) && !useBuffer;   // siehe fetchPipelinePmtiles
+      const visSouth = claimViewport ? south : tile2lat(visMaxY + 1, queryZoom);
+      const visNorth = claimViewport ? north : tile2lat(visMinY, queryZoom);
+      const visWest = claimViewport ? west : tile2lon(visMinX, queryZoom);
+      const visEast = claimViewport ? east : tile2lon(visMaxX + 1, queryZoom);
 
       const elements = Array.from(boundaryMap.values());
       elements.loadedBounds = (typeof L !== 'undefined' && L.latLngBounds)
@@ -1073,10 +1363,10 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         : { south: visSouth, north: visNorth, west: visWest, east: visEast };
 
       // Grenzen der aktiven Anfrage inklusive Pufferring merken (oder erweitern)
-      const activeBufSouth = tile2lat(bufMaxY + 1, queryZoom);
-      const activeBufNorth = tile2lat(bufMinY, queryZoom);
-      const activeBufWest = tile2lon(bufMinX, queryZoom);
-      const activeBufEast = tile2lon(bufMaxX + 1, queryZoom);
+      const activeBufSouth = claimViewport ? south : tile2lat(bufMaxY + 1, queryZoom);
+      const activeBufNorth = claimViewport ? north : tile2lat(bufMinY, queryZoom);
+      const activeBufWest = claimViewport ? west : tile2lon(bufMinX, queryZoom);
+      const activeBufEast = claimViewport ? east : tile2lon(bufMaxX + 1, queryZoom);
       const boundaryTotalBounds = (typeof L !== 'undefined' && L.latLngBounds)
         ? L.latLngBounds([activeBufSouth, activeBufWest], [activeBufNorth, activeBufEast])
         : {
@@ -1146,7 +1436,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       return elements;
     } catch (pmErr) {
       if (pmErr?.name === 'AbortError') throw pmErr;
-      if (!Config.pipeline?.geojsonFallback) {
+      if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
         throw new Error(`PMTiles-Boundary-Abruf fehlgeschlagen (${pmErr.message}). GeoJSON-Fallback ist deaktiviert.`, { cause: pmErr });
       }
       console.warn('[Pipeline] PMTiles-Boundary-Abruf fehlgeschlagen, wechsle auf GeoJSON:', pmErr.message);
@@ -1154,7 +1444,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
   }
 
   // Stufe 2: Optionaler Fallback auf boundaries.geojson
-  if (!Config.pipeline?.geojsonFallback) {
+  if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
     throw new Error('PMTiles nicht aktiv oder fehlgeschlagen und GeoJSON-Fallback ist deaktiviert.');
   }
 
@@ -1236,6 +1526,7 @@ export function clearPipelineCache() {
   _pipelineOsmDataUntil = null;
   _lastMetadataFetchTime = 0;
   _pendingMetadataPromise = null;
+  _europeHandles.clear();
   clearTileCache();
   if (State.pendingBufferFetches) {
     State.pendingBufferFetches.clear();

@@ -88,14 +88,16 @@ export const Config = {
     // über die Pipeline angefragt werden und leer bleiben.
     coveragePolygon: DACHLILU_COVERAGE,
     // Europa-Erweiterung: je Land eine PMTiles-Datei, verzeichnet im Manifest eu/regions.json (Pipeline-Repo).
-    // GRUNDLAGE: europe.js kann Manifest und Abdeckung lesen und Ausschnitte prüfen, ist aber noch NICHT in die
-    // Datenabfrage (pipeline.js/api.js) eingebunden. Standard aus, solange das so ist.
+    // pipeline.js nutzt europe.js für Eignung und Abfrage mehrerer Dateien (DACHLiLu plus Länder). Standard aus,
+    // bis die Anzeige (Datenquelle-Text) angepasst und das Ausrollen der Länder entschieden ist.
     europe: {
       enabled: false,
       manifestPath: "eu/regions.json",
       manifestTimeoutMs: 3000,
       manifestTtlMs: 10 * 60 * 1000, // wie metadata.json: spätestens nach 10 Minuten neu prüfen
-      minZoom: 12                    // wie die DACHLiLu-Prüfung
+      manifestRetryMs: 30 * 1000,    // nach einem Fehler frühestens nach 30 s erneut versuchen (nicht bei jeder Kartenbewegung)
+      minZoom: 12,                   // wie die DACHLiLu-Prüfung
+      ringPlanTimeoutMs: 1500        // so lange wartet der Pufferring nach dem Erst-Render auf die Header seiner Länder-Dateien
     }
   },
 

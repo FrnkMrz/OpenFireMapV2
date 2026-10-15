@@ -649,8 +649,7 @@ function reportHydrantDownload(onStatus, state, elements = []) {
 
 // Lädt die Overpass-Änderungen zum Pipeline-Stand für den Ausschnitt (kurz gecacht).
 // Gibt null zurück, wenn kein Datenstand bekannt ist (ältere Builds ohne OSM-IDs) oder das Nachladen aus ist.
-async function loadPoiDelta({ zoom, bbox, queryKind, reqId, signal }) {
-  const since = getPipelineOsmDataUntil();
+async function loadPoiDelta({ zoom, bbox, queryKind, reqId, signal, since }) {
   if (!Config.pipeline?.liveDelta || !since || !bbox || !navigator.onLine) return null;
   const query = buildPoiDeltaQuery(zoom, bbox, since);
   if (!query) return null;
@@ -792,8 +791,8 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
             }
           }
 
-          const baseTimestamp = getPipelineOsmDataUntil();
-          const generatedAt = getPipelineGeneratedAt();
+          const baseTimestamp = getPipelineOsmDataUntil(pipelineElements);
+          const generatedAt = getPipelineGeneratedAt(pipelineElements);
           const canRunDelta = Boolean(Config.pipeline?.liveDelta && baseTimestamp && navigator.onLine);
           updateDataStatus({
             source: 'pipeline',
@@ -804,7 +803,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           });
 
           // Änderungen seit dem Pipeline-Stand per Overpass nachladen (Hintergrund, Fehler sind unkritisch)
-          loadPoiDelta({ zoom, bbox: deltaBBoxForPipeline(pipelineElements, viewBounds), queryKind, reqId, signal: controller.signal })
+          loadPoiDelta({ zoom, bbox: deltaBBoxForPipeline(pipelineElements, viewBounds), queryKind, reqId, signal: controller.signal, since: baseTimestamp })
             .then((delta) => {
               if (!isCurrentRequest()) return;
               if (!delta) {
