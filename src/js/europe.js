@@ -197,7 +197,7 @@ export function resolveEuropeSources(bounds, zoom, data, config = Config.pipelin
 // Laden und Zustand
 // ------------------------------------------------------------------------------------------
 
-const _state = { manifest: null, coverage: null, regionBounds: null, loadedAt: 0, pending: null };
+const _state = { manifest: null, coverage: null, regionBounds: null, loadedAt: 0, pending: null, failedAt: 0 };
 
 /** Nur für Tests: Zustand setzen bzw. leeren. */
 export function setEuropeStateForTests(next = {}) {
@@ -206,6 +206,7 @@ export function setEuropeStateForTests(next = {}) {
   _state.regionBounds = next.regionBounds ?? null;
   _state.loadedAt = next.loadedAt ?? 0;
   _state.pending = null;
+  _state.failedAt = 0;
 }
 
 /** Aktuell geladene Daten (für die Eignungsprüfung); Felder sind null, solange nichts geladen ist. */
@@ -225,6 +226,8 @@ export async function loadEuropeData({ signal, force = false } = {}) {
   const fresh = Date.now() - _state.loadedAt < (eu.manifestTtlMs ?? 600000);
   if (!force && ready() && fresh) return true;
   if (_state.pending) return _state.pending;
+  // Nach einem Fehler nicht bei jeder Kartenbewegung neu anfragen (isPipelineEligible stößt das Laden an)
+  if (!force && _state.failedAt && Date.now() - _state.failedAt < (eu.manifestRetryMs ?? 30000)) return ready();
 
   _state.pending = (async () => {
     try {
@@ -242,8 +245,10 @@ export async function loadEuropeData({ signal, force = false } = {}) {
       }
       _state.manifest = manifest;
       _state.loadedAt = Date.now();
+      _state.failedAt = 0;
       return ready();
     } catch (err) {
+      _state.failedAt = Date.now();
       console.warn('[Europe] Manifest oder Abdeckung nicht verfügbar (nicht kritisch):', err?.message || err);
       return ready();
     } finally {

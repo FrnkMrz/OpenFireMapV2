@@ -404,6 +404,9 @@ export function isPipelineEligible(bounds, zoom) {
   if (!Config.pipeline?.enabled || !Config.pipeline?.url) return false;
   // Länder-Dateien gibt es nur als PMTiles; der GeoJSON-Rückfall kennt nur DACHLiLu
   if (!Config.pipeline?.usePmtiles) return false;
+  // Noch nicht geladen, abgelaufen oder zuvor gescheitert: im Hintergrund (neu) laden, ohne zu warten. Ein Fehler beim
+  // Start sperrt Europa so nicht für die ganze Sitzung; die nächste Prüfung (Kartenbewegung) sieht die Daten.
+  loadEuropeData();
   return resolveEuropeSources(bounds, zoom, getEuropeData()).eligible;
 }
 

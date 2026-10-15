@@ -20,7 +20,7 @@ import {
   isPipelineEligible, fetchPipelinePmtiles, fetchPipelineBoundaries, fetchPipelineData, getVectorTile, getPipelineOsmDataUntil,
   getPipelineGeneratedAt, clearPipelineCache, waitForPendingBuffers, PmtilesCoverageMismatch
 } from '../src/js/pipeline.js';
-import { parseManifest, setEuropeStateForTests } from '../src/js/europe.js';
+import { parseManifest, setEuropeStateForTests, loadEuropeData } from '../src/js/europe.js';
 import { EUROPE_COVERAGE, EUROPE_REGION_BOUNDS } from '../src/js/coverage/europe.js';
 
 const BASE = 'https://pipeline.example.com';
@@ -47,7 +47,7 @@ function markerFor(key) {
 }
 const header = (minLon, minLat, maxLon, maxLat) => ({ minZoom: 0, maxZoom: 14, minLon, minLat, maxLon, maxLat });
 
-function manifestFor(entries) {
+function rawManifestFor(entries) {
   const regions = {};
   for (const [id, over] of Object.entries(entries)) {
     regions[id] = {
@@ -55,8 +55,9 @@ function manifestFor(entries) {
       bounds: EUROPE_REGION_BOUNDS[id], minzoom: 0, maxzoom: 14, ...over
     };
   }
-  return parseManifest({ version: 1, updated_at: iso(0), regions });
+  return { version: 1, updated_at: iso(0), regions };
 }
+const manifestFor = (entries) => parseManifest(rawManifestFor(entries));
 function useEurope(entries) {
   Config.pipeline.europe.enabled = true;
   setEuropeStateForTests({ manifest: manifestFor(entries), coverage: EUROPE_COVERAGE, regionBounds: EUROPE_REGION_BOUNDS, loadedAt: Date.now() });
@@ -627,5 +628,78 @@ describe('kein GeoJSON-Rückfall außerhalb von DACHLiLu', () => {
     await expect(fetchPipelineData(AMSTERDAM, 'all', { zoom: 16 })).rejects.toThrow();
     await expect(fetchPipelineBoundaries(AMSTERDAM, { zoom: 16 })).rejects.toThrow();
     expect(geojsonFetched()).toBe(false);
+  });
+});
+
+describe('Daten nachladen über die Eignungsprüfung', () => {
+  let manifestRequests;
+  let manifestResponse;   // 'ok' | 'fail'
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 15));   // Zeit für das Laden im Hintergrund
+  beforeEach(() => {
+    manifestRequests = 0;
+    manifestResponse = 'ok';
+    Config.pipeline.europe.enabled = true;
+    const base = globalThis.fetch.getMockImplementation();
+    globalThis.fetch.mockImplementation(async (url, ...rest) => {
+      if (String(url).includes('/eu/regions.json')) {
+        manifestRequests++;
+        if (manifestResponse === 'fail') return { ok: false, status: 503 };
+        return { ok: true, status: 200, json: async () => rawManifestFor({ netherlands: {} }) };
+      }
+      return base(url, ...rest);
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  it('nicht geladen: die Prüfung ist zunächst false, stößt das Laden an, und die nächste Prüfung sieht die Daten', async () => {
+    expect(isPipelineEligible(AMSTERDAM, 16)).toBe(false);
+    await settle();                                      // teilt sich die laufende Anfrage
+    expect(manifestRequests).toBe(1);
+    expect(isPipelineEligible(AMSTERDAM, 16)).toBe(true);
+  });
+
+  it('ein Fehler beim Start sperrt Europa nicht dauerhaft: nach der Wartezeit lädt die nächste Prüfung erneut', async () => {
+    Config.pipeline.europe.manifestRetryMs = 0;
+    manifestResponse = 'fail';
+    expect(isPipelineEligible(AMSTERDAM, 16)).toBe(false);
+    await settle();
+    expect(isPipelineEligible(AMSTERDAM, 16)).toBe(false);
+    await settle();
+    manifestResponse = 'ok';
+    isPipelineEligible(AMSTERDAM, 16);
+    await settle();
+    expect(isPipelineEligible(AMSTERDAM, 16)).toBe(true);
+    expect(manifestRequests).toBeGreaterThanOrEqual(3);
+  });
+
+  it('nach einem Fehler wird innerhalb der Wartezeit nicht bei jeder Prüfung neu angefragt', async () => {
+    Config.pipeline.europe.manifestRetryMs = 60000;
+    manifestResponse = 'fail';
+    isPipelineEligible(AMSTERDAM, 16);
+    await settle();
+    for (let i = 0; i < 5; i++) { isPipelineEligible(AMSTERDAM, 16); await settle(); }
+    expect(manifestRequests).toBe(1);
+  });
+
+  it('DACHLiLu-Ausschnitte und ein ausgeschalteter Schalter lösen keine Anfrage aus', async () => {
+    isPipelineEligible(MUNICH, 16);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(manifestRequests).toBe(0);
+    Config.pipeline.europe.enabled = false;
+    isPipelineEligible(AMSTERDAM, 16);
+    expect(manifestRequests).toBe(0);
+  });
+  it('ein Erfolg hebt die Wartezeit nach einem früheren Fehler auf: abgelaufene Daten werden danach wieder aufgefrischt', async () => {
+    Config.pipeline.europe.manifestRetryMs = 60000;
+    Config.pipeline.europe.manifestTtlMs = 0;                    // jeder Stand gilt als abgelaufen
+    manifestResponse = 'fail';
+    isPipelineEligible(AMSTERDAM, 16);
+    await settle();
+    manifestResponse = 'ok';
+    await loadEuropeData({ force: true });                       // Erfolg
+    const before = manifestRequests;
+    isPipelineEligible(AMSTERDAM, 16);                           // abgelaufen: lädt neu, wenn kein Fehlervermerk mehr besteht
+    await settle();
+    expect(manifestRequests).toBe(before + 1);
   });
 });

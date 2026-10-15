@@ -95,6 +95,7 @@ export const Config = {
       manifestPath: "eu/regions.json",
       manifestTimeoutMs: 3000,
       manifestTtlMs: 10 * 60 * 1000, // wie metadata.json: spätestens nach 10 Minuten neu prüfen
+      manifestRetryMs: 30 * 1000,    // nach einem Fehler frühestens nach 30 s erneut versuchen (nicht bei jeder Kartenbewegung)
       minZoom: 12,                   // wie die DACHLiLu-Prüfung
       ringPlanTimeoutMs: 1500        // so lange wartet der Pufferring nach dem Erst-Render auf die Header seiner Länder-Dateien
     }
