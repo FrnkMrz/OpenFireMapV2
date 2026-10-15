@@ -821,7 +821,12 @@ async function openEuropeSources(eu, rect, baseUrl, signal, manifest) {
  * Der bisherige Einzelquellen-Weg bleibt unverändert (dieselben Quellen).
  */
 async function planRingSources(sources, ringRect, zoom, signal) {
-  if (!sources.multi) return sources;
+  if (!sources.multi) {
+    // Bisheriger Weg: Der Ring bleibt, wo er schon immer war. Ist Europa an und ragt der Ring über DACHLiLu hinaus
+    // (Landesgrenze), wäre er sonst als abgedeckt gemeldet, obwohl das Nachbarland fehlt: dann kein Ring.
+    if (Config.pipeline?.europe?.enabled && !isDachliluEligible(ringRect, typeof zoom === 'number' ? zoom : 14)) return null;
+    return sources;
+  }
   const eu = resolveEuropeSources(ringRect, typeof zoom === 'number' ? zoom : 14, sources.europeData);
   if (!eu.eligible) return null;
   try {
@@ -842,7 +847,7 @@ async function planRingSources(sources, ringRect, zoom, signal) {
  * Erst-Render soll nicht an einem langsamen Länder-Header hängen). Nur im Mehrquellen-Weg, sonst null.
  */
 function startRingPlan(sources, vis, queryZoom, zoom, signal) {
-  if (!sources.multi) return null;
+  if (!sources.multi && !Config.pipeline?.europe?.enabled) return null;   // Europa aus: alles wie bisher
   const ringRect = {
     south: tile2lat(vis.maxY + 2, queryZoom), north: tile2lat(vis.minY - 1, queryZoom),
     west: tile2lon(vis.minX - 1, queryZoom), east: tile2lon(vis.maxX + 2, queryZoom)
@@ -998,7 +1003,7 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   // Grenzen der sichtbaren Kacheln
   // Ohne Ring (Mehrquellen-Weg) kennt niemand die Länder jenseits des Ausschnitts: als abgedeckt gilt nur der
   // Ausschnitt selbst, nicht die ganze (größere) Kachel
-  const claimViewport = sources.multi && !useBuffer;
+  const claimViewport = (sources.multi || Boolean(Config.pipeline?.europe?.enabled)) && !useBuffer;
   const visSouth = claimViewport ? south : tile2lat(visMaxY + 1, queryZoom);
   const visNorth = claimViewport ? north : tile2lat(visMinY, queryZoom);
   const visWest = claimViewport ? west : tile2lon(visMinX, queryZoom);
@@ -1317,7 +1322,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         }
       }
 
-      const claimViewport = sources.multi && !useBuffer;   // siehe fetchPipelinePmtiles
+      const claimViewport = (sources.multi || Boolean(Config.pipeline?.europe?.enabled)) && !useBuffer;   // siehe fetchPipelinePmtiles
       const visSouth = claimViewport ? south : tile2lat(visMaxY + 1, queryZoom);
       const visNorth = claimViewport ? north : tile2lat(visMinY, queryZoom);
       const visWest = claimViewport ? west : tile2lon(visMinX, queryZoom);

@@ -744,3 +744,55 @@ describe('Daten nachladen über die Eignungsprüfung', () => {
     expect(manifestRequests).toBe(before + 1);
   });
 });
+
+describe('DACHLiLu-Ausschnitt an der Landesgrenze', () => {
+  // Kehl: Der Ausschnitt liegt in DACHLiLu, der Pufferring ragt nach Frankreich
+  const KEHL = vp(48.57, 7.812);
+  const sameRect = (a, b) => ['south', 'north', 'west', 'east'].every((k) => Math.abs(a[k] - b[k]) < 1e-9);
+
+  it('Europa an: der Ring über die Grenze wird weder geladen noch als abgedeckt gemeldet, nur der Ausschnitt', async () => {
+    useEurope({ netherlands: {}, france: {} });
+    headers.france = header(-5.2, 41.3, 8.3, 51.2);
+    layersByMarker[MARKER.dach] = poi(9);
+    const onBufferComplete = vi.fn();
+    const els = await fetchPipelinePmtiles(KEHL, 'all', { zoom: 16, onBufferComplete });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(urlsUsed().every((u) => u.includes('openfiremap.pmtiles'))).toBe(true);   // weiterhin der bisherige Einzelquellen-Weg
+    expect(calls).toHaveLength(1);
+    expect(onBufferComplete).not.toHaveBeenCalled();
+    expect(sameRect(els.loadedBounds, KEHL)).toBe(true);
+  });
+
+  it('Grenzen: ebenso', async () => {
+    useEurope({ netherlands: {}, france: {} });
+    headers.france = header(-5.2, 41.3, 8.3, 51.2);
+    const onBufferComplete = vi.fn();
+    const els = await fetchPipelineBoundaries(KEHL, { zoom: 16, onBufferComplete });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(calls).toHaveLength(1);
+    expect(onBufferComplete).not.toHaveBeenCalled();
+    expect(sameRect(els.loadedBounds, KEHL)).toBe(true);
+  });
+
+  it('Europa aus (Auslieferungszustand): wie bisher, mit Pufferring', async () => {
+    Config.pipeline.europe.enabled = false;
+    layersByMarker[MARKER.dach] = poi(9);
+    const onBufferComplete = vi.fn();
+    const els = await fetchPipelinePmtiles(KEHL, 'all', { zoom: 16, onBufferComplete });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(calls).toHaveLength(9);
+    expect(onBufferComplete).toHaveBeenCalledTimes(1);
+    expect(sameRect(els.loadedBounds, els.bufferBounds)).toBe(true);
+    expect(sameRect(els.loadedBounds, KEHL)).toBe(false);
+  });
+
+  it('Europa an, aber Ring ganz in DACHLiLu (München): Pufferring wie bisher', async () => {
+    useEurope({ netherlands: {} });
+    layersByMarker[MARKER.dach] = poi(9);
+    const onBufferComplete = vi.fn();
+    await fetchPipelinePmtiles(MUNICH, 'all', { zoom: 16, onBufferComplete });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(calls.length).toBeGreaterThan(9);                     // sichtbare Kacheln plus Ring
+    expect(onBufferComplete).toHaveBeenCalledTimes(1);
+  });
+});
