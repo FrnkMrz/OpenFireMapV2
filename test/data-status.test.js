@@ -38,6 +38,7 @@ describe('data-status.js', () => {
         <div id="data-info-base-sub"></div>
         <div id="data-info-delta-val"></div>
         <div id="data-info-delta-sub"></div>
+        <p id="data-info-hint" data-i18n="data_info_hint"></p>
         <button id="data-info-legal-link">Mehr</button>
       </div>
 
@@ -168,6 +169,48 @@ describe('data-status.js', () => {
       expect(document.getElementById('data-info-base-val').textContent).toContain('09.10.2026, 12:00 UTC (vor 1 T.)');
       expect(document.getElementById('data-info-delta-val').textContent).toContain('Aktiv');
       expect(document.getElementById('data-info-delta-sub').textContent).toBe('+3 Objekte aktualisiert');
+    });
+
+    it('DACHLiLu-Daten: Herkunft DACHLiLu, täglicher Auszug, bisheriger Hinweis', () => {
+      updateDataStatus({ source: 'pipeline', sourceScope: 'dachlilu', baseTimestamp: '2026-10-09T12:00:00Z', deltaStatus: 'success', loadPhase: 'ready' });
+      expect(document.getElementById('data-info-source-val').textContent).toBe(t('data_source_pipeline'));
+      expect(document.getElementById('data-info-source-val').textContent).toContain('DACHLiLu');
+      expect(document.getElementById('data-info-base-sub').textContent).toBe('Täglicher Länderauszug');
+      expect(document.getElementById('data-info-hint').getAttribute('data-i18n')).toBe('data_info_hint');
+      expect(document.getElementById('data-info-hint').textContent).toBe(t('data_info_hint'));
+    });
+
+    it('Länder-Dateien (Europa): Herkunft Europa, wöchentlicher Auszug, ältester Stand, passender Hinweis', () => {
+      updateDataStatus({ source: 'pipeline', sourceScope: 'europe', baseTimestamp: '2026-10-03T12:00:00Z', deltaStatus: 'disabled', loadPhase: 'ready' });
+      const source = document.getElementById('data-info-source-val').textContent;
+      expect(source).toBe('Europa-Vektorkacheln (Cloudflare Edge)');
+      expect(source).not.toContain('DACHLiLu');
+      expect(document.getElementById('data-info-base-val').textContent).toContain('03.10.2026, 12:00 UTC (vor 7 T.)');
+      expect(document.getElementById('data-info-base-sub').textContent).toBe('Wöchentlicher Länderauszug (ältester Stand der beteiligten Länder)');
+      const hint = document.getElementById('data-info-hint');
+      expect(hint.getAttribute('data-i18n')).toBe('data_info_hint_europe');
+      expect(hint.textContent).toContain('Wöchentliche');
+      expect(document.getElementById('data-status').innerText).toBe('Stand: vor 7 T.');
+    });
+
+    it('der Europa-Bereich gilt nur für Pipeline-Daten: Overpass und Cache zeigen weiter ihre eigenen Texte', () => {
+      updateDataStatus({ source: 'overpass', sourceScope: 'europe', loadPhase: 'ready' });
+      expect(document.getElementById('data-info-source-val').textContent).toBe(t('data_source_overpass'));
+      expect(document.getElementById('data-info-hint').getAttribute('data-i18n')).toBe('data_info_hint');
+      updateDataStatus({ source: 'cache', cacheTimestamp: Date.now() - 3600000, sourceScope: 'europe', loadPhase: 'ready' });
+      expect(document.getElementById('data-info-source-val').textContent).toBe(t('data_source_cache'));
+    });
+
+    it('Sprachwechsel: Europa-Texte folgen der Sprache (Englisch), danach wieder zurück zu DACHLiLu-Texten', async () => {
+      updateDataStatus({ source: 'pipeline', sourceScope: 'europe', baseTimestamp: '2026-10-03T12:00:00Z', deltaStatus: 'disabled', loadPhase: 'ready' });
+      await setLang('en');
+      renderDataStatus();
+      expect(document.getElementById('data-info-source-val').textContent).toBe('Europe vector tiles (Cloudflare Edge)');
+      expect(document.getElementById('data-info-base-sub').textContent).toBe('Weekly country extract (oldest state of the countries involved)');
+      expect(document.getElementById('data-info-hint').textContent).toContain('Weekly Geofabrik extracts per country');
+      updateDataStatus({ sourceScope: 'dachlilu' });
+      expect(document.getElementById('data-info-source-val').textContent).toBe('DACHLiLu vector tiles (Cloudflare Edge)');
+      expect(document.getElementById('data-info-base-sub').textContent).toBe('Daily country extract');
     });
 
     it('zeigt Basis-Stand mit (Sync…) während Delta lädt', () => {

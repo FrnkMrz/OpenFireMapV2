@@ -837,10 +837,19 @@ async function openEuropeSources(eu, rect, baseUrl, signal, manifest) {
 
   // Datenstand der Abfrage: der älteste aller beteiligten Dateien. Ist er älter als die Obergrenze, wird kein
   // Overpass-Delta versucht (null), sonst würden die Änderungs-Abfragen für alte Länderstände sehr groß.
-  let osmDataUntil = oldestTimestamp(active.map((s) => s.osmDataUntil));
+  const osmDataStand = oldestTimestamp(active.map((s) => s.osmDataUntil));   // für die Anzeige: auch wenn zu alt für ein Delta
+  let osmDataUntil = osmDataStand;
   const maxAgeDays = Config.pipeline?.europe?.liveDeltaMaxAgeDays ?? 10;
   if (osmDataUntil && Date.now() - Date.parse(osmDataUntil) > maxAgeDays * 86400000) osmDataUntil = null;
-  return { active, meta: { osmDataUntil, generatedAt: oldestTimestamp(active.map((s) => s.generatedAt)) } };
+  return {
+    active,
+    meta: {
+      osmDataUntil,                                                   // Basis für das Overpass-Delta (null: kein Delta)
+      osmDataStand,                                                   // ältester Stand der beteiligten Dateien (Anzeige)
+      generatedAt: oldestTimestamp(active.map((s) => s.generatedAt)),
+      regions: active.filter((s) => s.kind === 'europe').map((s) => s.id)   // beteiligte Länder-Dateien
+    }
+  };
 }
 
 /**

@@ -346,6 +346,20 @@ describe('Datenstand über mehrere Quellen', () => {
     expect(getPipelineOsmDataUntil(els)).toBeNull();
   });
 
+  it('für die Anzeige bleibt der älteste Stand erhalten, auch wenn er für ein Delta zu alt ist; dazu die beteiligten Länder', async () => {
+    setup({ belgium: { osm_data_until: iso(11) } });
+    const els = await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
+    expect(els.pipelineMeta.osmDataUntil).toBeNull();            // kein Delta
+    expect(Date.now() - Date.parse(els.pipelineMeta.osmDataStand)).toBeGreaterThan(10.5 * DAY);   // Anzeige: Belgien, vor 11 Tagen
+    expect(els.pipelineMeta.regions.sort()).toEqual(['belgium', 'netherlands']);                    // DACHLiLu zählt nicht als Land
+  });
+
+  it('ist ein Stand unbekannt, ist er es auch für die Anzeige', async () => {
+    setup({ belgium: { osm_data_until: null } });
+    const els = await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
+    expect(els.pipelineMeta.osmDataStand).toBeNull();
+  });
+
   it('die Obergrenze ist einstellbar', async () => {
     setup({ belgium: { osm_data_until: iso(11) } });
     Config.pipeline.europe.liveDeltaMaxAgeDays = 14;

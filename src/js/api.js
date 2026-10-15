@@ -791,12 +791,16 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
             }
           }
 
+          // Basis des Overpass-Deltas (bei alten Länder-Ständen null) und angezeigter Datenstand können auseinanderfallen:
+          // Die Anzeige nennt bei mehreren Länder-Dateien immer den ältesten Stand, auch wenn kein Delta mehr läuft.
           const baseTimestamp = getPipelineOsmDataUntil(pipelineElements);
+          const pipelineMeta = pipelineElements.pipelineMeta;
           const generatedAt = getPipelineGeneratedAt(pipelineElements);
           const canRunDelta = Boolean(Config.pipeline?.liveDelta && baseTimestamp && navigator.onLine);
           updateDataStatus({
             source: 'pipeline',
-            baseTimestamp,
+            sourceScope: pipelineMeta?.regions?.length ? 'europe' : 'dachlilu',
+            baseTimestamp: pipelineMeta ? pipelineMeta.osmDataStand : baseTimestamp,
             generatedAt,
             deltaStatus: canRunDelta ? 'loading' : 'disabled',
             loadPhase: 'ready'
