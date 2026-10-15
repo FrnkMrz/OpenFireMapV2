@@ -405,6 +405,7 @@ describe('Pufferring über mehrere Quellen', () => {
     expect(calls).toHaveLength(1);                               // nur die sichtbare Kachel
     expect(onBufferComplete).not.toHaveBeenCalled();
     expect(sameRect(els.loadedBounds, els.bufferBounds)).toBe(true);   // Abdeckung = sichtbarer Ausschnitt
+    expect(sameRect(els.loadedBounds, BREDA)).toBe(true);              // und zwar nur der Ausschnitt, nicht die größere Kachel
   });
 
   it('der Erst-Render wartet nicht auf die Header der Ring-Quellen: die sichtbare Kachel wird gezeichnet, während Belgien noch öffnet', async () => {
@@ -497,6 +498,23 @@ describe('Pufferring über mehrere Quellen', () => {
     expect(calls.filter((c) => c.key.includes('/eu/belgium-'))).toHaveLength(8);
   });
 
+  it('ein Land, das nur in die sichtbare Kachel (nicht in den Ausschnitt) ragt, wird für diese Kachel nachgeladen', async () => {
+    setupBorder({ netherlands: {}, belgium: {} });
+    headers.belgium = header(2.5, 49.4, 6.5, 51.525);            // reicht in die sichtbare Kachel, nicht in den Ausschnitt
+    const els = await fetchPipelinePmtiles(BREDA, 'all', { zoom: 16 });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(ids(els)).toContain('node:222');                      // Belgiens Anteil an der sichtbaren Kachel ist im Ergebnis
+    expect(calls.filter((c) => c.key.includes('/eu/belgium-'))).toHaveLength(9);   // sichtbare Kachel plus acht Ring-Kacheln
+  });
+
+  it('ragt das Land nicht in die sichtbare Kachel, wird sie dafür nicht abgefragt', async () => {
+    setupBorder({ netherlands: {}, belgium: {} });               // Belgien-Header endet südlich der sichtbaren Kachel
+    const els = await fetchPipelinePmtiles(BREDA, 'all', { zoom: 16 });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(ids(els)).not.toContain('node:222');                  // Belgien liefert nur Ring-Objekte (kommen über onBufferComplete)
+    expect(calls.filter((c) => c.key.includes('/eu/belgium-'))).toHaveLength(8);
+  });
+
   it('Gegenprobe: ist der Ring bedient, meldet der Pufferring seinen ganzen Bereich als abgedeckt', async () => {
     setupBorder({ netherlands: {}, belgium: {} });
     const onBufferComplete = vi.fn();
@@ -544,6 +562,29 @@ describe('fetchPipelineBoundaries über mehrere Quellen', () => {
     layersByMarker[MARKER.dach] = line(7);
     const els = await fetchPipelineBoundaries(MUNICH, { zoom: 16 });
     expect(els.map((e) => String(e.id)).every((i) => /^7@14\/\d+\/\d+$/.test(i))).toBe(true);
+  });
+
+  it('Grenzen: ein Land, das nur in die sichtbare Kachel ragt, liefert seinen Anteil für diese Kachel', async () => {
+    Config.pipeline.europe.enabled = true;
+    setEuropeStateForTests({ manifest: manifestFor({ netherlands: {}, belgium: {} }), coverage: EUROPE_COVERAGE,
+      regionBounds: { ...EUROPE_REGION_BOUNDS, belgium: [2.5, 49.4, 6.5, 51.515] }, loadedAt: Date.now() });
+    headers.netherlands = header(2.9, 50.7, 7.3, 54.0);
+    headers.belgium = header(2.5, 49.4, 6.5, 51.525);
+    layersByMarker[MARKER.belgium] = line(5);
+    const els = await fetchPipelineBoundaries(vp(51.53, 4.47), { zoom: 16 });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(els.map((e) => String(e.id)).some((i) => i.startsWith('belgium:5@14/'))).toBe(true);   // schon im ersten Ergebnis
+  });
+
+  it('Grenzen: ohne Ring gilt nur der Ausschnitt als abgedeckt, nicht die ganze Kachel', async () => {
+    Config.pipeline.europe.enabled = true;
+    setEuropeStateForTests({ manifest: manifestFor({ netherlands: {} }), coverage: EUROPE_COVERAGE,
+      regionBounds: { ...EUROPE_REGION_BOUNDS, belgium: [2.5, 49.4, 6.5, 51.515] }, loadedAt: Date.now() });
+    headers.netherlands = header(2.9, 50.7, 7.3, 54.0);
+    const view = vp(51.53, 4.47);
+    const els = await fetchPipelineBoundaries(view, { zoom: 16 });
+    const b = els.loadedBounds;
+    expect(['south', 'north', 'west', 'east'].every((k) => Math.abs(b[k] - view[k]) < 1e-9)).toBe(true);
   });
 
   it('Amsterdam: Grenzstücke nur aus der Länder-Datei', async () => {

@@ -919,9 +919,9 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
     : null;
 
   // Kachelverarbeitung mit progressivem Rendern (Streaming)
-  const processTile = async (x, y, phase = 'visible') => {
+  const processTile = async (x, y, phase = 'visible', onlySources = null) => {
     if (signal?.aborted) return 0;
-    const vTiles = await getTilesFromSources(phase === 'buffer' ? ringSources : sources, queryZoom, x, y, signal);
+    const vTiles = await getTilesFromSources(onlySources || (phase === 'buffer' ? ringSources : sources), queryZoom, x, y, signal);
     if (signal?.aborted) return 0;
 
     let newCount = 0;
@@ -974,6 +974,13 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
     ringSources = await resolveRingSources(sources, ringPlan);
     if (!ringSources) { useBuffer = false; ringSources = sources; }
   }
+  // Länder, die nur der Ring berührt, können trotzdem in die sichtbaren Kacheln ragen (eine Kachel ist größer als
+  // der Ausschnitt): ihr Anteil an diesen Kacheln wird nachgeladen, denn die Kachelgrenzen gelten danach als abgedeckt
+  const visTilesRect = { south: tile2lat(visMaxY + 1, queryZoom), north: tile2lat(visMinY, queryZoom), west: tile2lon(visMinX, queryZoom), east: tile2lon(visMaxX + 1, queryZoom) };
+  const ringOnly = ringSources.filter((r) => !sources.some((s) => s.id === r.id) && headerIntersectsViewport(r.header, visTilesRect));
+  if (ringOnly.length > 0) {
+    await processTilesWithPool(visibleTiles, (x, y) => processTile(x, y, 'visible', ringOnly), 10, signal);
+  }
   if (useBuffer) {
     bufMinX = visMinX - 1;
     bufMaxX = visMaxX + 1;
@@ -989,10 +996,13 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   }
 
   // Grenzen der sichtbaren Kacheln
-  const visSouth = tile2lat(visMaxY + 1, queryZoom);
-  const visNorth = tile2lat(visMinY, queryZoom);
-  const visWest = tile2lon(visMinX, queryZoom);
-  const visEast = tile2lon(visMaxX + 1, queryZoom);
+  // Ohne Ring (Mehrquellen-Weg) kennt niemand die Länder jenseits des Ausschnitts: als abgedeckt gilt nur der
+  // Ausschnitt selbst, nicht die ganze (größere) Kachel
+  const claimViewport = sources.multi && !useBuffer;
+  const visSouth = claimViewport ? south : tile2lat(visMaxY + 1, queryZoom);
+  const visNorth = claimViewport ? north : tile2lat(visMinY, queryZoom);
+  const visWest = claimViewport ? west : tile2lon(visMinX, queryZoom);
+  const visEast = claimViewport ? east : tile2lon(visMaxX + 1, queryZoom);
 
   const elements = Array.from(elementsMap.values());
   // Datenstand dieser Abfrage (nur Mehrquellen-Weg), am Ergebnis statt global
@@ -1002,10 +1012,10 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
     : { south: visSouth, north: visNorth, west: visWest, east: visEast };
 
   // Grenzen der aktiven Anfrage inklusive Pufferring merken (verhindert vorzeitigen Abbruch bei kleinen Bewegungen)
-  const activeSouth = tile2lat(bufMaxY + 1, queryZoom);
-  const activeNorth = tile2lat(bufMinY, queryZoom);
-  const activeWest = tile2lon(bufMinX, queryZoom);
-  const activeEast = tile2lon(bufMaxX + 1, queryZoom);
+  const activeSouth = claimViewport ? south : tile2lat(bufMaxY + 1, queryZoom);
+  const activeNorth = claimViewport ? north : tile2lat(bufMinY, queryZoom);
+  const activeWest = claimViewport ? west : tile2lon(bufMinX, queryZoom);
+  const activeEast = claimViewport ? east : tile2lon(bufMaxX + 1, queryZoom);
   // Bereich inklusive Pufferring: so groß wird loadedPoiBounds nach dem Nachladen (z. B. für das Overpass-Delta)
   elements.bufferBounds = { south: activeSouth, west: activeWest, north: activeNorth, east: activeEast };
   State.activeFetchBounds = (typeof L !== 'undefined' && L.latLngBounds)
@@ -1220,9 +1230,9 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         ? startRingPlan(sources, { minX: visMinX, maxX: visMaxX, minY: visMinY, maxY: visMaxY }, queryZoom, zoom, signal)
         : null;
 
-      const processBoundaryTile = async (x, y, phase = 'visible') => {
+      const processBoundaryTile = async (x, y, phase = 'visible', onlySources = null) => {
         if (signal?.aborted) return 0;
-        const tileSources = phase === 'buffer' ? ringSources : sources;
+        const tileSources = onlySources || (phase === 'buffer' ? ringSources : sources);
         const vTiles = await getTilesFromSources(tileSources, queryZoom, x, y, signal);
         if (signal?.aborted) return 0;
 
@@ -1287,6 +1297,12 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         ringSources = await resolveRingSources(sources, ringPlan);
         if (!ringSources) { useBuffer = false; ringSources = sources; }
       }
+      // nur vom Ring berührte Länder ragen evtl. in die sichtbaren Kacheln (siehe fetchPipelinePmtiles)
+      const visTilesRect = { south: tile2lat(visMaxY + 1, queryZoom), north: tile2lat(visMinY, queryZoom), west: tile2lon(visMinX, queryZoom), east: tile2lon(visMaxX + 1, queryZoom) };
+      const ringOnly = ringSources.filter((r) => !sources.some((s) => s.id === r.id) && headerIntersectsViewport(r.header, visTilesRect));
+      if (ringOnly.length > 0) {
+        await processTilesWithPool(visibleTiles, (x, y) => processBoundaryTile(x, y, 'visible', ringOnly), 10, signal);
+      }
       if (useBuffer) {
         bufMinX -= 1;
         bufMaxX += 1;
@@ -1301,10 +1317,11 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         }
       }
 
-      const visSouth = tile2lat(visMaxY + 1, queryZoom);
-      const visNorth = tile2lat(visMinY, queryZoom);
-      const visWest = tile2lon(visMinX, queryZoom);
-      const visEast = tile2lon(visMaxX + 1, queryZoom);
+      const claimViewport = sources.multi && !useBuffer;   // siehe fetchPipelinePmtiles
+      const visSouth = claimViewport ? south : tile2lat(visMaxY + 1, queryZoom);
+      const visNorth = claimViewport ? north : tile2lat(visMinY, queryZoom);
+      const visWest = claimViewport ? west : tile2lon(visMinX, queryZoom);
+      const visEast = claimViewport ? east : tile2lon(visMaxX + 1, queryZoom);
 
       const elements = Array.from(boundaryMap.values());
       elements.loadedBounds = (typeof L !== 'undefined' && L.latLngBounds)
@@ -1312,10 +1329,10 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
         : { south: visSouth, north: visNorth, west: visWest, east: visEast };
 
       // Grenzen der aktiven Anfrage inklusive Pufferring merken (oder erweitern)
-      const activeBufSouth = tile2lat(bufMaxY + 1, queryZoom);
-      const activeBufNorth = tile2lat(bufMinY, queryZoom);
-      const activeBufWest = tile2lon(bufMinX, queryZoom);
-      const activeBufEast = tile2lon(bufMaxX + 1, queryZoom);
+      const activeBufSouth = claimViewport ? south : tile2lat(bufMaxY + 1, queryZoom);
+      const activeBufNorth = claimViewport ? north : tile2lat(bufMinY, queryZoom);
+      const activeBufWest = claimViewport ? west : tile2lon(bufMinX, queryZoom);
+      const activeBufEast = claimViewport ? east : tile2lon(bufMaxX + 1, queryZoom);
       const boundaryTotalBounds = (typeof L !== 'undefined' && L.latLngBounds)
         ? L.latLngBounds([activeBufSouth, activeBufWest], [activeBufNorth, activeBufEast])
         : {
