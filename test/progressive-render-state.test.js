@@ -877,6 +877,7 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
       const els = [{ type: 'node', id: 1, lat: 52.37, lon: 4.9, tags: { emergency: 'fire_hydrant' } }];
       els.loadedBounds = { id: 'visible_bounds' };
+      els.bufferBounds = { south: 52.3, west: 4.8, north: 52.4, east: 5.0 };   // gültiger Bereich: ein Delta wäre abfragbar
       // Stand zu alt für ein Delta (osmDataUntil null), die Anzeige bekommt ihn trotzdem
       els.pipelineMeta = { osmDataUntil: null, osmDataStand: '2026-10-01T00:00:00Z', generatedAt: '2026-10-02T00:00:00Z', regions: ['netherlands'] };
       vi.spyOn(pipelineModule, 'fetchPipelineData').mockResolvedValue(els);
@@ -887,7 +888,10 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
         source: 'pipeline', sourceScope: 'europe', baseTimestamp: '2026-10-01T00:00:00Z',
         generatedAt: '2026-10-02T00:00:00Z', deltaStatus: 'disabled'
       });
-      expect(fetchSpy).not.toHaveBeenCalled();
+      await new Promise((resolve) => setTimeout(resolve, 100));   // Zeit, in der eine Delta-Abfrage sonst starten würde
+      // Kein Delta: keine Overpass-Abfrage mit "newer:" (andere Karten-Abfragen im selben Testlauf zählen nicht)
+      const bodies = fetchSpy.mock.calls.map(([, options]) => decodeURIComponent(String(options?.body || '').replace(/\+/g, ' ')));
+      expect(bodies.filter((body) => body.includes('newer:'))).toEqual([]);
     });
 
     it('Mehrquellen-Ergebnis ohne Länder-Datei (nur DACHLiLu beteiligt): Bereich bleibt DACHLiLu, der Stand kommt aus dem Ergebnis', async () => {
