@@ -719,6 +719,28 @@ function headerIntersectsViewport(header, rect) {
   return rect.west <= maxLon && rect.east >= minLon && rect.south <= maxLat && rect.north >= minLat;
 }
 
+/**
+ * Decken die Header zusammen das ganze Rechteck ab? (Rasterzellen aus allen Kanten der Header innerhalb des Rechtecks;
+ * jede Zelle muss in mindestens einem Header liegen.) Schützt vor einer teilweise veröffentlichten Datei: ein Header,
+ * der den Ausschnitt nur anschneidet, darf ihn nicht als geladen erscheinen lassen.
+ */
+function headersCoverRect(headers, rect) {
+  const boxes = headers.map((h) => ({
+    minLat: h?.minLat ?? -90, maxLat: h?.maxLat ?? 90, minLon: h?.minLon ?? -180, maxLon: h?.maxLon ?? 180
+  }));
+  const cuts = (lo, hi, values) => [lo, hi, ...values.filter((v) => v > lo && v < hi)].sort((a, b) => a - b);
+  const xs = cuts(rect.west, rect.east, boxes.flatMap((b) => [b.minLon, b.maxLon]));
+  const ys = cuts(rect.south, rect.north, boxes.flatMap((b) => [b.minLat, b.maxLat]));
+  for (let i = 0; i < xs.length - 1; i++) {
+    for (let j = 0; j < ys.length - 1; j++) {
+      const cx = (xs[i] + xs[i + 1]) / 2;
+      const cy = (ys[j] + ys[j + 1]) / 2;
+      if (!boxes.some((b) => cx >= b.minLon && cx <= b.maxLon && cy >= b.minLat && cy <= b.maxLat)) return false;
+    }
+  }
+  return true;
+}
+
 /** Ältester Zeitstempel einer Liste (null, sobald einer fehlt oder ungültig ist: ein unbekannter Stand macht alles unbekannt). */
 function oldestTimestamp(values) {
   const times = values.map((v) => (typeof v === 'string' ? Date.parse(v) : NaN));
@@ -803,6 +825,13 @@ async function openEuropeSources(eu, rect, baseUrl, signal, manifest) {
     throw new PmtilesCoverageMismatch(
       `Keine der Quellen (${eu.sources.map((s) => s.id).join(', ')}) enthält den Ausschnitt [s=${south}, w=${west}, n=${north}, e=${east}]`,
       { viewport: rect, sources: eu.sources.map((s) => s.id) }
+    );
+  }
+
+  if (!headersCoverRect(active.map((s) => s.header), rect)) {
+    throw new PmtilesCoverageMismatch(
+      `Die Header der Quellen (${active.map((s) => s.id).join(', ')}) decken den Ausschnitt [s=${south}, w=${west}, n=${north}, e=${east}] nicht vollständig ab`,
+      { viewport: rect, sources: active.map((s) => s.id) }
     );
   }
 

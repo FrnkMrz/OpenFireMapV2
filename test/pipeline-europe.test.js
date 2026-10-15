@@ -224,6 +224,29 @@ describe('fetchPipelinePmtiles über mehrere Quellen', () => {
     expect(ids(els)).toEqual(['node:5']);
   });
 
+  it('ein Header, der den Ausschnitt nur teilweise abdeckt (halb veröffentlichte Datei): PmtilesCoverageMismatch statt "geladen"', async () => {
+    useEurope({ netherlands: {} });
+    headers.netherlands = header(4.9, 50.7, 7.3, 54.0);         // beginnt mitten im Ausschnitt (4.899 bis 4.901)
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(fetchPipelinePmtiles(AMSTERDAM, 'all', { zoom: 16 })).rejects.toBeInstanceOf(PmtilesCoverageMismatch);
+    await expect(fetchPipelineBoundaries(AMSTERDAM, { zoom: 16 })).rejects.toThrow();
+  });
+
+  it('zwei Header, die sich ergänzen, decken den Ausschnitt ab (Landesgrenze); mit Lücke dazwischen nicht', async () => {
+    useEurope({ netherlands: {}, belgium: {}, france: {} });
+    headers.france = header(-5.2, 41.3, 8.3, 48.9);
+    headers.netherlands = header(2.9, 50.805, 7.3, 54.0);        // nördlich von 50.805
+    headers.belgium = header(2.5, 49.4, 6.5, 50.795);            // südlich von 50.795, dazwischen 50.795 bis 50.805
+    layersByMarker[MARKER.dach] = poi(1);
+    headers.dach = header(20, 45, 21, 46);                       // DACHLiLu trägt hier nichts bei
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 })).rejects.toBeInstanceOf(PmtilesCoverageMismatch);
+    headers.belgium = header(2.5, 49.4, 6.5, 50.81);            // überlappt jetzt
+    clearPipelineCache();
+    useEurope({ netherlands: {}, belgium: {}, france: {} });
+    await expect(fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 })).resolves.toBeDefined();
+  });
+
   it('keine Quelle enthält den Ausschnitt: PmtilesCoverageMismatch', async () => {
     useEurope({ netherlands: {} });
     headers.netherlands = header(2.9, 50.7, 3.0, 50.8);     // winziger Bereich weit weg von Amsterdam
@@ -513,6 +536,19 @@ describe('Pufferring über mehrere Quellen', () => {
     await waitForPendingBuffers({ timeoutMs: 500 });
     expect(ids(els)).not.toContain('node:222');                  // Belgien liefert nur Ring-Objekte (kommen über onBufferComplete)
     expect(calls.filter((c) => c.key.includes('/eu/belgium-'))).toHaveLength(8);
+  });
+
+  it('deckt der Header einer Ring-Quelle den Ring nur teilweise ab, gibt es keinen Ring (und keine Abdeckung dafür)', async () => {
+    setupBorder({ netherlands: {}, belgium: {} });
+    headers.netherlands = header(2.9, 51.51, 7.3, 54.0);         // Ring reicht bis 51.5087: Streifen darunter
+    headers.belgium = header(2.5, 49.4, 4.0, 51.52);             // schließt den Streifen nur westlich von 4.0
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const onBufferComplete = vi.fn();
+    const els = await fetchPipelinePmtiles(BREDA, 'all', { zoom: 16, onBufferComplete });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(ids(els)).toContain('node:111');                       // der Ausschnitt selbst wird geliefert
+    expect(onBufferComplete).not.toHaveBeenCalled();
+    expect(sameRect(els.loadedBounds, BREDA)).toBe(true);
   });
 
   it('Gegenprobe: ist der Ring bedient, meldet der Pufferring seinen ganzen Bereich als abgedeckt', async () => {
