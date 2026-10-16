@@ -545,6 +545,20 @@ export function boundaryGeometryToElements(geometry, properties, keyPrefix) {
 }
 
 /**
+ * Richtungsunabhängige Kennung einer Grenzlinie (Koordinaten auf 1e-5 Grad gerundet, etwa 1 m). Dient dem Abgleich
+ * zwischen Dateien: Ein Gemeindegrenz-Weg auf einer Landesgrenze liegt in den Auszügen beider Länder (Geofabrik
+ * schneidet mit ganzen Wegen) und kommt dort mit derselben Geometrie, aber ohne gemeinsame ID an.
+ * @param {Array<{lat:number, lon:number}>} geometry
+ * @returns {string}
+ */
+export function boundaryLineSignature(geometry) {
+  const points = (geometry || []).map((pt) => `${pt.lat.toFixed(5)},${pt.lon.toFixed(5)}`);
+  const forward = points.join(';');
+  const backward = points.slice().reverse().join(';');
+  return forward < backward ? forward : backward;
+}
+
+/**
  * Schutzfilter je Pipeline-Ebene: Welche Tags ein Objekt tragen muss, um in dieser Ebene zu gelten.
  *
  * Hintergrund: Pipeline-Builds bis zum 04.10.2026 enthielten in fire_stations.geojson/PMTiles neben den
@@ -1259,6 +1273,9 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       const rawTileCount = (visMaxX - visMinX + 1) * (visMaxY - visMinY + 1);
 
       const boundaryMap = new Map();
+      // Mehrquellen-Weg: je Kachel die Linien, die schon aus einer Datei stammen (Kennung -> Datei). Dieselbe Linie aus
+      // einer anderen Datei wird nicht noch einmal gezeichnet (Gemeindegrenz-Weg auf einer Landesgrenze).
+      const boundarySignatures = new Map();
 
       // 1. Unmittelbar sichtbare Kacheln
       const visibleTiles = [];
@@ -1305,10 +1322,18 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
             const featKey = feat.id ?? `${Math.round(firstPt[1] * 1e5)}_${Math.round(firstPt[0] * 1e5)}_${Math.round(lastPt[1] * 1e5)}_${Math.round(lastPt[0] * 1e5)}`;
 
             for (const el of boundaryGeometryToElements(gj.geometry, gj.properties, `${keyPrefix}${featKey}@${queryZoom}/${x}/${y}`)) {
-              if (!boundaryMap.has(el.id)) {
-                boundaryMap.set(el.id, el);
-                newCount++;
+              if (boundaryMap.has(el.id)) continue;
+              if (sources.multi) {
+                const tileKey = `${queryZoom}/${x}/${y}`;
+                let seen = boundarySignatures.get(tileKey);
+                if (!seen) boundarySignatures.set(tileKey, seen = new Map());
+                const signature = boundaryLineSignature(el.geometry);
+                const owner = seen.get(signature);
+                if (owner !== undefined && owner !== tileSources[s].id) continue;   // schon aus einer anderen Datei
+                seen.set(signature, tileSources[s].id);
               }
+              boundaryMap.set(el.id, el);
+              newCount++;
             }
           }
 

@@ -17,7 +17,7 @@ vi.mock('@mapbox/vector-tile', () => ({
 
 import { Config } from '../src/js/config.js';
 import {
-  isPipelineEligible, fetchPipelinePmtiles, fetchPipelineBoundaries, fetchPipelineData, getVectorTile, getPipelineOsmDataUntil,
+  isPipelineEligible, fetchPipelinePmtiles, fetchPipelineBoundaries, fetchPipelineData, boundaryLineSignature, getVectorTile, getPipelineOsmDataUntil,
   getPipelineGeneratedAt, clearPipelineCache, waitForPendingBuffers, PmtilesCoverageMismatch
 } from '../src/js/pipeline.js';
 import { parseManifest, setEuropeStateForTests, loadEuropeData } from '../src/js/europe.js';
@@ -587,8 +587,15 @@ describe('Pufferring über mehrere Quellen', () => {
 });
 
 describe('fetchPipelineBoundaries über mehrere Quellen', () => {
-  const line = (id) => ({
-    boundaries: { length: 1, feature: () => ({ id, toGeoJSON: () => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[5.8, 50.8], [5.9, 50.81]] }, properties: { boundary: 'administrative', admin_level: '8' } }) }) }
+  // shift verschiebt die Linie, damit verschiedene Dateien verschiedene Geometrie liefern; reverse kehrt die Richtung um
+  const line = (id, shift = 0, reverse = false) => {
+    const pts = [[5.8 + shift, 50.8], [5.9 + shift, 50.81]];
+    return {
+      boundaries: { length: 1, feature: () => ({ id, toGeoJSON: () => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: reverse ? pts.slice().reverse() : pts }, properties: { boundary: 'administrative', admin_level: '8' } }) }) }
+    };
+  };
+  const twoLines = (ida, idb) => ({
+    boundaries: { length: 2, feature: (i) => ({ id: i === 0 ? ida : idb, toGeoJSON: () => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[5.8, 50.8], [5.9, 50.81]] }, properties: { boundary: 'administrative', admin_level: '8' } }) }) }
   });
 
   it('gleiche feat.id in zwei Dateien: beide Grenzstücke bleiben, Länder-IDs tragen die Kennung davor', async () => {
@@ -596,9 +603,9 @@ describe('fetchPipelineBoundaries über mehrere Quellen', () => {
     headers.france = header(-5.2, 41.3, 8.3, 48.9);   // Rechteck reicht bis Maastricht, die Datei nicht
     headers.netherlands = header(2.9, 50.7, 7.3, 54.0);
     headers.belgium = header(2.5, 49.4, 6.5, 51.6);
-    layersByMarker[MARKER.dach] = line(7);
-    layersByMarker[MARKER.netherlands] = line(7);
-    layersByMarker[MARKER.belgium] = line(7);
+    layersByMarker[MARKER.dach] = line(7, 0);
+    layersByMarker[MARKER.netherlands] = line(7, 0.001);   // andere Geometrie, gleiche feat.id
+    layersByMarker[MARKER.belgium] = line(7, 0.002);
     const els = await fetchPipelineBoundaries(MAASTRICHT, { zoom: 16 });
     const eid = els.map((e) => String(e.id));
     expect(eid.filter((i) => i.startsWith('7@'))).toHaveLength(1);                 // DACHLiLu: bisheriges Format
@@ -635,6 +642,103 @@ describe('fetchPipelineBoundaries über mehrere Quellen', () => {
     const els = await fetchPipelineBoundaries(view, { zoom: 16 });
     const b = els.loadedBounds;
     expect(['south', 'north', 'west', 'east'].every((k) => Math.abs(b[k] - view[k]) < 1e-9)).toBe(true);
+  });
+
+  describe('dieselbe Linie in zwei Dateien (Gemeindegrenze auf einer Landesgrenze)', () => {
+    const setupBorder3 = () => {
+      useEurope({ netherlands: {}, belgium: {}, france: {} });
+      headers.france = header(-5.2, 41.3, 8.3, 48.9);
+      headers.netherlands = header(2.9, 50.7, 7.3, 54.0);
+      headers.belgium = header(2.5, 49.4, 6.5, 51.6);
+    };
+    const edgeIds = (els) => els.map((e) => String(e.id));
+    const visibleOnly = async () => {
+      const els = await fetchPipelineBoundaries(MAASTRICHT, { zoom: 16 });
+      return els;
+    };
+
+    it('gleiche Geometrie in DACHLiLu und einem Land: nur einmal, die DACHLiLu-Linie bleibt', async () => {
+      setupBorder3();
+      layersByMarker[MARKER.dach] = line(7, 0);
+      layersByMarker[MARKER.netherlands] = line(3, 0);
+      const els = await visibleOnly();
+      expect(edgeIds(els).filter((i) => i.startsWith('7@'))).toHaveLength(1);
+      expect(edgeIds(els).filter((i) => i.startsWith('netherlands:'))).toHaveLength(0);
+    });
+
+    it('auch in umgekehrter Richtung gezeichnet gilt sie als dieselbe Linie', async () => {
+      setupBorder3();
+      layersByMarker[MARKER.dach] = line(7, 0, false);
+      layersByMarker[MARKER.netherlands] = line(3, 0, true);
+      const els = await visibleOnly();
+      expect(edgeIds(els).some((i) => i.startsWith('netherlands:'))).toBe(false);
+      expect(edgeIds(els).filter((i) => i.startsWith('7@'))).toHaveLength(1);
+    });
+
+    it('zwei Länder-Dateien mit derselben Linie: nur die der ersten Datei bleibt', async () => {
+      setupBorder3();
+      layersByMarker[MARKER.netherlands] = line(3, 0);
+      layersByMarker[MARKER.belgium] = line(9, 0);
+      const els = await visibleOnly();
+      const ids = edgeIds(els);
+      expect(ids.filter((i) => /^(netherlands|belgium):/.test(i))).toHaveLength(1);
+    });
+
+    it('verschiedene Linien bleiben alle (auch bei gleicher feat.id)', async () => {
+      setupBorder3();
+      layersByMarker[MARKER.dach] = line(7, 0);
+      layersByMarker[MARKER.netherlands] = line(7, 0.001);
+      layersByMarker[MARKER.belgium] = line(7, 0.002);
+      const els = await visibleOnly();
+      expect(els).toHaveLength(3);
+    });
+
+    it('innerhalb EINER Datei werden gleiche Linien nicht entfernt (nur der Abgleich zwischen Dateien)', async () => {
+      useEurope({ netherlands: {} });
+      headers.netherlands = header(2.9, 50.7, 7.3, 54.0);
+      layersByMarker[MARKER.netherlands] = twoLines(3, 4);
+      const els = await fetchPipelineBoundaries(AMSTERDAM, { zoom: 16 });
+      const ids = edgeIds(els).filter((i) => i.startsWith('netherlands:'));
+      const tiles = new Set(ids.map((i) => i.split('@')[1])).size;
+      expect(ids).toHaveLength(2 * tiles);                      // je Kachel beide Linien
+    });
+
+    it('DACHLiLu-Weg unverändert: gleiche Linien einer Datei bleiben beide', async () => {
+      Config.pipeline.europe.enabled = false;
+      layersByMarker[MARKER.dach] = twoLines(1, 2);
+      const els = await fetchPipelineBoundaries(MUNICH, { zoom: 16 });
+      const ids = els.map((e) => String(e.id)).filter((i) => /^[12]@/.test(i));
+      const tiles = new Set(ids.map((i) => i.split('@')[1])).size;
+      expect(ids).toHaveLength(2 * tiles);
+    });
+
+    it('ein Land, das nur über den Ring in die sichtbare Kachel ragt, doppelt die Linie ebenfalls nicht', async () => {
+      Config.pipeline.europe.enabled = true;
+      setEuropeStateForTests({ manifest: manifestFor({ netherlands: {}, belgium: {} }), coverage: EUROPE_COVERAGE,
+        regionBounds: { ...EUROPE_REGION_BOUNDS, belgium: [2.5, 49.4, 6.5, 51.515] }, loadedAt: Date.now() });
+      headers.netherlands = header(2.9, 50.7, 7.3, 54.0);
+      headers.belgium = header(2.5, 49.4, 6.5, 51.525);      // reicht in die sichtbare Kachel
+      layersByMarker[MARKER.netherlands] = line(3, 0);
+      layersByMarker[MARKER.belgium] = line(5, 0);
+      const els = await fetchPipelineBoundaries(vp(51.53, 4.47), { zoom: 16 });
+      await waitForPendingBuffers({ timeoutMs: 500 });
+      // die sichtbare Kachel liefert NL und BE dieselbe Linie: im ersten Ergebnis steht sie einmal
+      expect(edgeIds(els).filter((i) => /^(netherlands|belgium):\d+@14\/\d+\/\d+$/.test(i))).toHaveLength(1);
+    });
+  });
+
+  describe('boundaryLineSignature', () => {
+    const pts = (...xs) => xs.map(([lon, lat]) => ({ lat, lon }));
+    it('ist von der Richtung unabhängig', () => {
+      expect(boundaryLineSignature(pts([5.8, 50.8], [5.9, 50.81]))).toBe(boundaryLineSignature(pts([5.9, 50.81], [5.8, 50.8])));
+    });
+    it('rundet auf 1e-5 Grad: Rauschen darunter ändert nichts, 2e-5 sind schon eine andere Linie', () => {
+      expect(boundaryLineSignature(pts([5.8, 50.8], [5.9, 50.81]))).toBe(boundaryLineSignature(pts([5.800001, 50.8], [5.9, 50.810001])));
+      expect(boundaryLineSignature(pts([5.8, 50.8], [5.9, 50.81]))).not.toBe(boundaryLineSignature(pts([5.80002, 50.8], [5.9, 50.81])));
+    });
+    it('unterscheidet Linien mit anderen Zwischenpunkten', () => {
+      expect(boundaryLineSignature(pts([5.8, 50.8], [5.85, 50.805], [5.9, 50.81]))).not.toBe(boundaryLineSignature(pts([5.8, 50.8], [5.9, 50.81])));
+    });
   });
 
   it('Amsterdam: Grenzstücke nur aus der Länder-Datei', async () => {
