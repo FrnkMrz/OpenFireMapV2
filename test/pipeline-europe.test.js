@@ -17,7 +17,7 @@ vi.mock('@mapbox/vector-tile', () => ({
 
 import { Config } from '../src/js/config.js';
 import {
-  isPipelineEligible, fetchPipelinePmtiles, fetchPipelineBoundaries, fetchPipelineData, boundaryLineSignature, getVectorTile, getPipelineOsmDataUntil,
+  isPipelineEligible, ensureEuropeReady, fetchPipelinePmtiles, fetchPipelineBoundaries, fetchPipelineData, boundaryLineSignature, getVectorTile, getPipelineOsmDataUntil,
   getPipelineGeneratedAt, clearPipelineCache, waitForPendingBuffers, PmtilesCoverageMismatch
 } from '../src/js/pipeline.js';
 import { parseManifest, setEuropeStateForTests, loadEuropeData } from '../src/js/europe.js';
@@ -874,6 +874,57 @@ describe('Daten nachladen über die Eignungsprüfung', () => {
     await settle();
     for (let i = 0; i < 5; i++) { isPipelineEligible(AMSTERDAM, 16); await settle(); }
     expect(manifestRequests).toBe(1);
+  });
+
+  it('ensureEuropeReady: Start-Ort in Europa wartet auf das Manifest, danach ist der Ausschnitt sofort geeignet (statt Overpass)', async () => {
+    expect(isPipelineEligible(AMSTERDAM, 16)).toBe(false);          // so war es: Daten noch nicht da
+    setEuropeStateForTests();                                       // frischer Start ohne laufende Anfrage
+    manifestRequests = 0;
+    await ensureEuropeReady(AMSTERDAM, 16);
+    expect(manifestRequests).toBe(1);
+    expect(isPipelineEligible(AMSTERDAM, 16)).toBe(true);           // ohne weiteres Warten
+  });
+
+  it('ensureEuropeReady: kein Warten für DACHLiLu, bei zu kleinem Zoom, ohne Schalter, ohne PMTiles und wenn die Daten schon da sind', async () => {
+    await ensureEuropeReady(MUNICH, 16);
+    await ensureEuropeReady(AMSTERDAM, 11);
+    Config.pipeline.usePmtiles = false;
+    await ensureEuropeReady(AMSTERDAM, 16);
+    Config.pipeline.usePmtiles = true;
+    Config.pipeline.europe.enabled = false;
+    await ensureEuropeReady(AMSTERDAM, 16);
+    Config.pipeline.europe.enabled = true;
+    await ensureEuropeReady(vp(40.71, -74.0), 16);                    // New York: grob außerhalb Europas
+    await ensureEuropeReady(vp(-33.87, 151.21), 16);                  // Sydney
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(manifestRequests).toBe(0);
+    setEuropeStateForTests({ manifest: manifestFor({ netherlands: {} }), coverage: EUROPE_COVERAGE, regionBounds: EUROPE_REGION_BOUNDS, loadedAt: Date.now() - 3600000 });
+    await ensureEuropeReady(AMSTERDAM, 16);                         // ein abgelaufener Stand zählt als vorhanden (Auffrischen im Hintergrund)
+    expect(manifestRequests).toBe(0);
+  });
+
+  it('ensureEuropeReady: Europa selbst wartet (Azoren, Zypern, Spitzbergen-Rand, Island), jedes Länder-Rechteck liegt in roughBounds', async () => {
+    const [w, so, e, n] = Config.pipeline.europe.roughBounds;
+    for (const [id, [bw, bs, be, bn]] of Object.entries(EUROPE_REGION_BOUNDS)) {
+      expect(bw >= w && bs >= so && be <= e && bn <= n, `${id} ragt aus roughBounds heraus`).toBe(true);
+    }
+    for (const spot of [vp(37.74, -25.67), vp(35.17, 33.36), vp(64.15, -21.94), vp(52.37, 4.9)]) {
+      setEuropeStateForTests();
+      manifestRequests = 0;
+      await ensureEuropeReady(spot, 16);
+      expect(manifestRequests, JSON.stringify(spot)).toBe(1);
+    }
+  });
+
+  it('ensureEuropeReady: ein Fehler lässt den Abruf nicht hängen, und innerhalb der Wartezeit gibt es keinen zweiten Versuch', async () => {
+    Config.pipeline.europe.manifestRetryMs = 60000;
+    manifestResponse = 'fail';
+    await expect(ensureEuropeReady(AMSTERDAM, 16)).resolves.toBe(false);
+    expect(manifestRequests).toBe(1);
+    await ensureEuropeReady(AMSTERDAM, 16);
+    await ensureEuropeReady(AMSTERDAM, 16);
+    expect(manifestRequests).toBe(1);
+    expect(isPipelineEligible(AMSTERDAM, 16)).toBe(false);          // weiter Overpass, aber ohne Verzögerung
   });
 
   it('DACHLiLu-Ausschnitte und ein ausgeschalteter Schalter lösen keine Anfrage aus', async () => {

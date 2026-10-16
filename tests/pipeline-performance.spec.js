@@ -10,6 +10,27 @@ test.describe('Pipeline E2E Performance & Deduplication', () => {
     }
   });
 
+  test('Europa: Paris wird über die Länder-Datei geladen (Manifest, Frankreich-Datei, kein Overpass vor den Daten)', async ({ page }) => {
+    const urls = [];
+    page.on('request', (req) => urls.push(req.url()));
+
+    await page.goto('/#16/48.8566/2.3522');
+    await page.waitForSelector('.leaflet-container');
+
+    await expect.poll(async () => {
+      return await page.evaluate(() => window.State?.cachedPoiElements?.length || 0);
+    }, { timeout: 20000, intervals: [250, 500] }).toBeGreaterThan(0);
+
+    const status = await page.evaluate(() => ({ source: window.State?.dataStatus?.source, scope: window.State?.dataStatus?.sourceScope }));
+    expect(status).toEqual({ source: 'pipeline', scope: 'europe' });
+    expect(urls.some((u) => u.includes('/eu/regions.json'))).toBe(true);
+    expect(urls.some((u) => /\/eu\/france-\d{8}T\d{6}Z\.pmtiles/.test(u))).toBe(true);
+    // Overpass darf für die Hauptdaten nicht gebraucht werden (das Live-Delta danach ist erlaubt)
+    const firstOverpass = urls.findIndex((u) => u.includes('overpass'));
+    const firstFrance = urls.findIndex((u) => /\/eu\/france-/.test(u));
+    if (firstOverpass !== -1) expect(firstFrance).toBeLessThan(firstOverpass);
+  });
+
   test('Pipeline Data & Boundaries load fast and deduplicated at Zoom 16', async ({ page }) => {
     const metadataRequests = [];
     const rangeRequests = [];

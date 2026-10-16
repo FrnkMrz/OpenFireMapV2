@@ -18,7 +18,7 @@ Die Suche verwendet Nominatim. Bitte vermeide viele automatisierte Suchanfragen 
 
 Zoome in einen Bereich hinein und aktiviere die gewünschten Objektarten über die Kartensteuerung. Ein Klick auf ein Objekt öffnet die verfügbaren Details aus OSM. Je nach Eintrag können beispielsweise Typ, Durchmesser, Fördermenge, Adresse oder Hinweise angezeigt werden.
 
-Die Karte lädt nur für den aktuellen Ausschnitt relevante Daten. Innerhalb DACHLiLu werden bevorzugt PMTiles-Kacheln verwendet. Außerhalb dieser Gebiete und bei Pipeline-Problemen kommt Overpass zum Einsatz.
+Die Karte lädt nur für den aktuellen Ausschnitt relevante Daten. In DACHLiLu und in 40 weiteren europäischen Ländern werden bevorzugt PMTiles-Kacheln verwendet (die Länder-Dateien werden wöchentlich neu gebaut, der Datenstand steht im Datenstand-Popover). Außerhalb dieser Gebiete und bei Pipeline-Problemen kommt Overpass zum Einsatz.
 
 ## Export verwenden
 

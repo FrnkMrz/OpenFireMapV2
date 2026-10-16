@@ -10,14 +10,14 @@ async function gotoReady(page, url = '/') {
 test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
 
   test('Szenario A -> B -> A -> Zoomwechsel: Hydranten von A bleiben vollständig sichtbar', async ({ page }) => {
-    // Overpass-Route mocken (Paris außerhalb DACHLiLu für isolierten, kontrollierten Test)
+    // Overpass-Route mocken (New York, außerhalb DACHLiLu und Europa, für isolierten, kontrollierten Test)
     let requestCountB = 0;
 
     await page.route('**/api/interpreter', async (route) => {
       const postData = route.request().postData() || '';
       
-      // Bereich B (ca. 48.89)
-      if (postData.includes('48.89') || postData.includes('48.88')) {
+      // Bereich B (ca. 40.74)
+      if (postData.includes('40.74') || postData.includes('40.73')) {
         requestCountB++;
         // Verzögerte Antwort für B (simuliert langsame Netzwerkantwort)
         await new Promise(r => setTimeout(r, 1000));
@@ -25,27 +25,27 @@ test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             elements: [
-              { type: 'node', id: 201, lat: 48.8900, lon: 2.3900, tags: { emergency: 'fire_hydrant' } }
+              { type: 'node', id: 201, lat: 40.7462, lon: -74.0000, tags: { emergency: 'fire_hydrant' } }
             ]
           })
         });
         return;
       }
 
-      // Bereich A (ca. 48.85)
+      // Bereich A (ca. 40.71)
       await route.fulfill({
         contentType: 'application/json',
         body: JSON.stringify({
           elements: [
-            { type: 'node', id: 101, lat: 48.8566, lon: 2.3522, tags: { emergency: 'fire_hydrant' } },
-            { type: 'node', id: 102, lat: 48.8570, lon: 2.3530, tags: { emergency: 'fire_hydrant' } }
+            { type: 'node', id: 101, lat: 40.7128, lon: -74.0060, tags: { emergency: 'fire_hydrant' } },
+            { type: 'node', id: 102, lat: 40.7132, lon: -74.0052, tags: { emergency: 'fire_hydrant' } }
           ]
         })
       });
     });
 
     // 1. Start bei A (Zoom 16)
-    await gotoReady(page, '/?lang=de#16/48.8566/2.3522/voyager');
+    await gotoReady(page, '/?lang=de#16/40.7128/-74.0060/voyager');
 
     // Warten bis A geladen und gerendert ist
     await expect.poll(async () => {
@@ -58,7 +58,7 @@ test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
 
     // 2. Schneller Schwenk nach B
     await page.evaluate(() => {
-      window.State.map.setView([48.8900, 2.3900], 16);
+      window.State.map.setView([40.7462, -74.0000], 16);
     });
 
     // Kurz warten, damit doFetch für B anläuft
@@ -66,7 +66,7 @@ test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
 
     // 3. Zurückschwenken nach A, während B noch lädt
     await page.evaluate(() => {
-      window.State.map.setView([48.8566, 2.3522], 16);
+      window.State.map.setView([40.7128, -74.0060], 16);
     });
 
     // 4. Warten, bis B im Hintergrund fertig gewesen wäre (> 1000ms Delay)
@@ -99,13 +99,13 @@ test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           elements: [
-            { type: 'node', id: 301, lat: 48.8566, lon: 2.3522, tags: { emergency: 'fire_hydrant' } }
+            { type: 'node', id: 301, lat: 40.7128, lon: -74.0060, tags: { emergency: 'fire_hydrant' } }
           ]
         })
       });
     });
 
-    await gotoReady(page, '/?lang=de#16/48.8566/2.3522/voyager');
+    await gotoReady(page, '/?lang=de#16/40.7128/-74.0060/voyager');
 
     // Status-Historie per MutationObserver im Browser mitschneiden
     await page.evaluate(() => {
@@ -160,13 +160,13 @@ test.describe('Progressives Rendern & State-Konsistenz E2E', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           elements: [
-            { type: 'node', id: 401, lat: 48.8566, lon: 2.3522, tags: { emergency: 'fire_hydrant' } }
+            { type: 'node', id: 401, lat: 40.7128, lon: -74.0060, tags: { emergency: 'fire_hydrant' } }
           ]
         })
       });
     });
 
-    await gotoReady(page, '/?lang=de#16/48.8566/2.3522/voyager');
+    await gotoReady(page, '/?lang=de#16/40.7128/-74.0060/voyager');
 
     // Warten bis Daten geladen und Ladevorgänge abgeschlossen sind
     await expect.poll(async () => {

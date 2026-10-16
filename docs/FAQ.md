@@ -6,7 +6,7 @@ Die Anwendung lädt nur den sichtbaren Kartenausschnitt und wartet dabei auf ext
 
 ## Warum wird außerhalb bestimmter Gebiete Overpass verwendet?
 
-OpenFireMap war von Anfang an weltweit nutzbar. Die PMTiles-Pipeline ist derzeit für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein vorbereitet. Außerhalb dieser DACHLiLu-Abdeckung bleibt Overpass die normale Datenquelle. Die Pipeline beschleunigt ausgewählte Gebiete, ersetzt aber nicht die weltweite Overpass-Abdeckung.
+OpenFireMap war von Anfang an weltweit nutzbar. Die PMTiles-Pipeline ist für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein (DACHLiLu) sowie 40 weitere europäische Länder vorbereitet (nicht Russland, Ukraine, Belarus, Türkei). Außerhalb dieser Abdeckung bleibt Overpass die normale Datenquelle. Die Pipeline beschleunigt ausgewählte Gebiete, ersetzt aber nicht die weltweite Overpass-Abdeckung.
 
 ## Ist die Anwendung offline nutzbar?
 
@@ -14,7 +14,7 @@ Nein, nicht vollständig. Neue Kartenausschnitte, Suche und aktuelle Daten benö
 
 ## Wie aktuell sind die Daten?
 
-Overpass liefert Daten aus dem Stand, den der verwendete Dienst aktuell bereitstellt. PMTiles sind vorberechnete Datenstände; ihr OSM-Datenstand steht in den Pipeline-Metadaten (`osm_data_until`). In DACHLiLu lädt OpenFireMap nach den PMTiles im Hintergrund über Overpass alle seitdem neuen oder geänderten Feuerwachen, Hydranten, Löschwasserstellen und Defibrillatoren im Ausschnitt nach. Neu eingetragene Objekte erscheinen so meist nach wenigen Sekunden. Gelöschte Objekte erkennt dieses Nachladen nicht; sie verschwinden erst mit dem nächsten Pipeline-Build.
+Overpass liefert Daten aus dem Stand, den der verwendete Dienst aktuell bereitstellt. PMTiles sind vorberechnete Datenstände; ihr OSM-Datenstand steht in den Pipeline-Metadaten (`osm_data_until`). In DACHLiLu und, solange der Länder-Stand höchstens 10 Tage alt ist, auch in den Europa-Ländern lädt OpenFireMap nach den PMTiles im Hintergrund über Overpass alle seitdem neuen oder geänderten Feuerwachen, Hydranten, Löschwasserstellen und Defibrillatoren im Ausschnitt nach. Neu eingetragene Objekte erscheinen so meist nach wenigen Sekunden. Gelöschte Objekte erkennt dieses Nachladen nicht; sie verschwinden erst mit dem nächsten Pipeline-Build.
 
 ## Wie können Fehler in OSM korrigiert werden?
 

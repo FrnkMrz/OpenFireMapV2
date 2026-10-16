@@ -113,16 +113,16 @@ test('Hydranten-Ladestatus zeigt Fortschritt und erfolgreichen Abschluss', async
             contentType: 'application/json',
             body: JSON.stringify({
                 elements: [
-                    { type: 'node', id: 1, lat: 48.856, lon: 2.352, tags: { emergency: 'fire_hydrant' } },
-                    { type: 'node', id: 2, lat: 48.857, lon: 2.353, tags: { emergency: 'fire_hydrant' } },
-                    { type: 'node', id: 3, lat: 48.858, lon: 2.354, tags: { emergency: 'water_tank' } }
+                    { type: 'node', id: 1, lat: 40.7122, lon: -74.006, tags: { emergency: 'fire_hydrant' } },
+                    { type: 'node', id: 2, lat: 40.7132, lon: -74.005, tags: { emergency: 'fire_hydrant' } },
+                    { type: 'node', id: 3, lat: 40.7142, lon: -74.004, tags: { emergency: 'water_tank' } }
                 ]
             })
         });
     });
 
-    // Koordinate außerhalb von DACHLiLu (Paris), damit Overpass getriggert wird
-    await gotoReady(page, '/?lang=de#15/48.8566/2.3522/voyager');
+    // Koordinate außerhalb von DACHLiLu UND Europa (New York), damit Overpass getriggert wird
+    await gotoReady(page, '/?lang=de#15/40.7128/-74.0060/voyager');
     const status = page.locator('#hydrant-download-status [role="status"]');
     await expect(status).toBeVisible();
     await expect(status).toContainText('Hydrantendaten werden geladen');
