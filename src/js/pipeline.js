@@ -427,20 +427,20 @@ function isEuropeOnlyViewport(bounds, zoom) {
  * Schalter, wenn die Daten schon da sind und nach einem Fehler innerhalb der Wartezeit (`manifestRetryMs`).
  * @param {L.LatLngBounds|Object} bounds
  * @param {number} zoom
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>|null} Promise nur, wenn gewartet werden muss; sonst null (kein zusätzlicher Wartepunkt)
  */
-export async function ensureEuropeReady(bounds, zoom) {
-  if (!Config.pipeline?.enabled || !Config.pipeline?.url || !Config.pipeline?.usePmtiles) return;
+export function ensureEuropeReady(bounds, zoom) {
+  if (!Config.pipeline?.enabled || !Config.pipeline?.url || !Config.pipeline?.usePmtiles) return null;
   const eu = Config.pipeline?.europe;
-  if (!eu?.enabled) return;
+  if (!eu?.enabled) return null;
   const effectiveZoom = typeof zoom === 'number' ? zoom : 14;
-  if (effectiveZoom < (eu.minZoom ?? 12)) return;
+  if (effectiveZoom < (eu.minZoom ?? 12)) return null;
   // Grob außerhalb Europas (zum Beispiel Nordamerika): kein Warten, kein Zugriff auf pipeline.openfiremap.org
   const rect = viewportRect(bounds);
-  if (rect && Array.isArray(eu.roughBounds) && !rectIntersectsBounds(rect, eu.roughBounds)) return;
-  if (getEuropeData().manifest) return;                       // vorhanden (auch ein älterer Stand; Auffrischen läuft im Hintergrund)
-  if (isDachliluEligible(bounds, effectiveZoom)) return;      // DACHLiLu braucht Europa nicht
-  await loadEuropeData();
+  if (rect && Array.isArray(eu.roughBounds) && !rectIntersectsBounds(rect, eu.roughBounds)) return null;
+  if (getEuropeData().manifest) return null;                       // vorhanden (auch ein älterer Stand; Auffrischen läuft im Hintergrund)
+  if (isDachliluEligible(bounds, effectiveZoom)) return null;      // DACHLiLu braucht Europa nicht
+  return loadEuropeData();
 }
 
 /**

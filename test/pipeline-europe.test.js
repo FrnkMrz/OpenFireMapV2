@@ -919,7 +919,7 @@ describe('Daten nachladen über die Eignungsprüfung', () => {
   it('ensureEuropeReady: ein Fehler lässt den Abruf nicht hängen, und innerhalb der Wartezeit gibt es keinen zweiten Versuch', async () => {
     Config.pipeline.europe.manifestRetryMs = 60000;
     manifestResponse = 'fail';
-    await expect(ensureEuropeReady(AMSTERDAM, 16)).resolves.toBeUndefined();
+    await expect(ensureEuropeReady(AMSTERDAM, 16)).resolves.toBe(false);
     expect(manifestRequests).toBe(1);
     await ensureEuropeReady(AMSTERDAM, 16);
     await ensureEuropeReady(AMSTERDAM, 16);

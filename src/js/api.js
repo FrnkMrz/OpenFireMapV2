@@ -724,7 +724,10 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
   try {
     // Für die lokale Pipeline das tatsächliche sichtbare Kartenfenster nutzen
     const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
-    await ensureEuropeReady(viewBounds, zoom);   // Start-Ort in Europa: auf Manifest warten statt auf Overpass auszuweichen
+    // Start-Ort in Europa: auf das Manifest warten statt auf Overpass auszuweichen. Nur wenn wirklich gewartet wird, gibt es
+    // einen Wartepunkt (sonst bleibt der Ablauf wie bisher); wurde der Abruf währenddessen überholt, startet er nichts mehr.
+    const europeWait = ensureEuropeReady(viewBounds, zoom);
+    if (europeWait) { await europeWait; ensureCurrentRequest(); }
     if (isPipelineEligible(viewBounds, zoom)) {
       try {
         console.log('[API] Verwende lokale Pipeline (DACHLiLu oder Europa)...');
@@ -1056,7 +1059,8 @@ export async function fetchBoundaryData(onProgressData = null) {
     }
 
     const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
-    await ensureEuropeReady(viewBounds, zoom);
+    const europeWait = ensureEuropeReady(viewBounds, zoom);
+    if (europeWait) { await europeWait; ensureCurrentRequest(); }
 
     if (isPipelineEligible(viewBounds, zoom)) {
       try {
