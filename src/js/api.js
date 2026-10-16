@@ -17,7 +17,7 @@ import { t } from './i18n.js';
 import { showNotification, hideNotification } from './ui.js';
 
 import { fetchJson, HttpError } from './net.js';
-import { isPipelineEligible, fetchPipelineData, fetchPipelineBoundaries, getPipelineOsmDataUntil, getPipelineGeneratedAt } from './pipeline.js';
+import { isPipelineEligible, ensureEuropeReady, fetchPipelineData, fetchPipelineBoundaries, getPipelineOsmDataUntil, getPipelineGeneratedAt } from './pipeline.js';
 import { updateDataStatus } from './data-status.js';
 import {
   getCache,
@@ -724,9 +724,10 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
   try {
     // Für die lokale Pipeline das tatsächliche sichtbare Kartenfenster nutzen
     const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
+    await ensureEuropeReady(viewBounds, zoom);   // Start-Ort in Europa: auf Manifest warten statt auf Overpass auszuweichen
     if (isPipelineEligible(viewBounds, zoom)) {
       try {
-        console.log('[API] Verwende lokale Pipeline für DACHLiLu...');
+        console.log('[API] Verwende lokale Pipeline (DACHLiLu oder Europa)...');
         let hasReportedSuccess = false;
         let deltaKey = null;
         const onPoiProgress = (progressElements, isPartial = true, meta = {}) => {
@@ -1055,6 +1056,7 @@ export async function fetchBoundaryData(onProgressData = null) {
     }
 
     const viewBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
+    await ensureEuropeReady(viewBounds, zoom);
 
     if (isPipelineEligible(viewBounds, zoom)) {
       try {

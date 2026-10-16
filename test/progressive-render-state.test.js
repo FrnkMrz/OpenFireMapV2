@@ -894,6 +894,22 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       expect(bodies.filter((body) => body.includes('newer:'))).toEqual([]);
     });
 
+    it('Start-Ort in Europa: der Abruf wartet auf die Europa-Daten und nimmt dann die Pipeline statt Overpass', async () => {
+      let ready = false;
+      vi.spyOn(pipelineModule, 'ensureEuropeReady').mockImplementation(async () => { await new Promise((r) => setTimeout(r, 20)); ready = true; });
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockImplementation(() => ready);   // wie beim Start: erst nach dem Laden geeignet
+      const els = [{ type: 'node', id: 1, lat: 52.37, lon: 4.9, tags: { emergency: 'fire_hydrant' } }];
+      els.loadedBounds = { id: 'visible_bounds' };
+      const pipelineSpy = vi.spyOn(pipelineModule, 'fetchPipelineData').mockResolvedValue(els);
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => ({ ok: true, json: async () => ({ elements: [] }) }));
+
+      await fetchOSMData();
+      expect(pipelineSpy).toHaveBeenCalledTimes(1);
+      expect(State.dataStatus.source).toBe('pipeline');
+      const overpassVollabfragen = fetchSpy.mock.calls.filter(([url]) => String(url).includes('overpass')).length;
+      expect(overpassVollabfragen).toBe(0);
+    });
+
     it('Mehrquellen-Ergebnis ohne Länder-Datei (nur DACHLiLu beteiligt): Bereich bleibt DACHLiLu, der Stand kommt aus dem Ergebnis', async () => {
       vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
       const els = [{ type: 'node', id: 1, lat: 48.5, lon: 7.8, tags: { emergency: 'fire_hydrant' } }];

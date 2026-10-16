@@ -11,14 +11,14 @@
 
 Die Live-Karte ist unter **[openfiremap.org](https://openfiremap.org)** erreichbar. Der Quellcode und die technische Dokumentation liegen im **[GitHub-Repository FrnkMrz/OpenFireMapV2](https://github.com/FrnkMrz/OpenFireMapV2)**.
 
-OpenFireMapV2 ist aktuell **v0.8.5**. OpenFireMap war von Anfang an weltweit nutzbar: Außerhalb der vorbereiteten Pipeline-Gebiete ruft die Anwendung Daten über Overpass ab. Für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein (DACHLiLu) steht zusätzlich eine schnelle, vorberechnete PMTiles-Versorgung über Cloudflare R2 bereit. Sie umfasst rund **1,2 Millionen feuerwehrrelevante Objekte**; durch den auf **MaxZoom 14** optimierten Build ist die aktuelle PMTiles-Datei etwa **182,4 MiB** groß (**191.243.978 Bytes**). Damit bleibt sie unter dem Cloudflare-Free-Cache-Limit von **512 MiB**. Seit dem letzten Datenstand neu angelegte oder geänderte Objekte lädt die Anwendung im Hintergrund über Overpass nach. Die Pipeline erweitert nicht die geografische Abdeckung, sondern beschleunigt die Datenversorgung in diesen Gebieten.
+OpenFireMapV2 ist aktuell **v0.8.5**. OpenFireMap war von Anfang an weltweit nutzbar: Außerhalb der vorbereiteten Pipeline-Gebiete ruft die Anwendung Daten über Overpass ab. Für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein (DACHLiLu) sowie 40 weitere europäische Länder (jeweils eine eigene Datei, wöchentlich neu gebaut) steht zusätzlich eine schnelle, vorberechnete PMTiles-Versorgung über Cloudflare R2 bereit. Nicht dabei sind Russland, die Ukraine, Belarus und die Türkei; dort und außerhalb Europas bleibt Overpass die Datenquelle. Die DACHLiLu-Datei umfasst rund **1,2 Millionen feuerwehrrelevante Objekte**, die Länder-Dateien zusammen weitere rund **1,0 Millionen** (etwa 634 MB in 40 Dateien, die größte ist Frankreich mit 171 MB); durch den auf **MaxZoom 14** optimierten Build ist die aktuelle PMTiles-Datei etwa **182,4 MiB** groß (**191.243.978 Bytes**). Damit bleibt sie unter dem Cloudflare-Free-Cache-Limit von **512 MiB**. Seit dem letzten Datenstand neu angelegte oder geänderte Objekte lädt die Anwendung im Hintergrund über Overpass nach. Die Pipeline erweitert nicht die geografische Abdeckung, sondern beschleunigt die Datenversorgung in diesen Gebieten.
 
 > OpenFireMapV2 ist ein nichtkommerzielles Open-Source-Projekt, das moderne Webtechnik mit offenen OpenStreetMap-Daten verbindet.
 
 ## Warum OpenFireMap?
 
 - weltweite Nutzung mit Overpass-Fallback
-- schnelle PMTiles-Vektorkacheln für DACHLiLu per HTTP-Range-Requests
+- schnelle PMTiles-Vektorkacheln für DACHLiLu und 40 weitere europäische Länder per HTTP-Range-Requests
 - R2-optimierte Auslieferung mit abgestuften Cache-Zeiten, ETags und Upload-Verifikation
 - automatische Erkennung veralteter Pipeline-Abdeckung und Rückfall auf Overpass
 - Exporte als PNG, PDF, GPX und CSV
@@ -28,8 +28,8 @@ OpenFireMapV2 ist aktuell **v0.8.5**. OpenFireMap war von Anfang an weltweit nut
 ### Architektur in einem Satz
 
 ```text
-Browser → PMTiles / Cloudflare R2 (innerhalb DACHLiLu) → Overpass-Fallback
-                         ↘ Overpass weltweit außerhalb DACHLiLu
+Browser → PMTiles / Cloudflare R2 (DACHLiLu und 40 europäische Länder) → Overpass-Fallback
+                         ↘ Overpass weltweit außerhalb dieser Gebiete
 ```
 
 Der Browser lädt bei PMTiles nur die für den sichtbaren Kartenausschnitt benötigten Kachelbereiche. Wenn Pipeline-Daten fehlen, veraltet sind oder nicht erreichbar sind, wechselt die Anwendung automatisch zu Overpass. Nach einem Build werden PMTiles, GeoJSON und `metadata.json` in einer sicheren Reihenfolge nach R2 übertragen und der öffentliche Stand anschließend anhand von `generated_at` und Dateigröße geprüft.

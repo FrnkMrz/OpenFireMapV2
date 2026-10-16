@@ -20,6 +20,8 @@ Der Build wird nach `docs/` geschrieben und über GitHub Pages veröffentlicht.
 Browser
   ├─ DACHLiLu: metadata.json → PMTiles-Header → benötigte Kacheln
   │             └─ Cloudflare R2 über pipeline.openfiremap.org
+  ├─ Europa: eu/regions.json (Manifest) → je Land eine PMTiles-Datei (eu/<land>-<Stempel>.pmtiles)
+  │             └─ an Landesgrenzen mehrere Dateien, zusammengeführt per type:id
   └─ weltweit oder bei Fehlern: Overpass-Abfrage
                          └─ Nominatim für Orts- und Adresssuche
 ```
@@ -31,6 +33,10 @@ Die geografische Nutzung bleibt weltweit möglich. Die PMTiles-Pipeline ist eine
 Die Pipeline stellt vorberechnete Vektorkacheln in einer PMTiles-Datei bereit. Der Browser lädt nicht die gesamte Datei, sondern fordert per HTTP-Range-Request nur die Bytebereiche an, die für die sichtbaren Kacheln benötigt werden. Das reduziert Datenmenge und Wartezeit besonders bei großen Gebieten.
 
 Die aktuelle DACHLiLu-Datei ist ungefähr **182,4 MiB** groß (**191.243.978 Bytes**, inklusive OSM-Typ und -ID je POI) und enthält Daten für rund **1,2 Millionen feuerwehrrelevante Objekte**. Der Build verwendet für die relevanten Layer MaxZoom 14. Dadurch bleibt die Datei unter dem Cloudflare-Free-Cache-Limit von **512 MiB**, während der Browser weiterhin nur benötigte Bytebereiche abruft. Die exakten Build-Zeitpunkte, Dateigröße und Statistiken werden über `metadata.json` der Pipeline veröffentlicht.
+
+### Europa-Erweiterung
+
+Für 40 weitere Länder (ohne Russland, Ukraine, Belarus, Türkei) gibt es je Land eine eigene PMTiles-Datei, wöchentlich neu gebaut und versioniert abgelegt (`eu/<land>-<UTC-Stempel>.pmtiles`, unveränderlich), dazu das Manifest `eu/regions.json` (nie gecacht), das erst nach der geprüften Veröffentlichung umgeschaltet wird. Der Client prüft für einen Ausschnitt, ob er vollständig in der Abdeckung liegt und jedes Land, dessen Rechteck ihn berührt, im Manifest steht; sonst Overpass. An Landesgrenzen öffnet er mehrere Dateien, führt Punkte per `type:id` zusammen, zeichnet Gemeindegrenzen auf einer Landesgrenze nur einmal und zeigt als Datenstand den ältesten der beteiligten Länder. Das Live-Delta über Overpass entfällt, wenn dieser Stand älter als 10 Tage ist. Abschalten (Notbremse): `Config.pipeline.europe.enabled = false`, dann gilt wieder nur DACHLiLu.
 
 ### Datenqualität und Veröffentlichung
 
@@ -71,9 +77,9 @@ Nach dem Laden aus den PMTiles fragt das Frontend im Hintergrund Overpass nach �
 
 ## Fallback-Logik
 
-1. Liegt der sichtbare Ausschnitt in der validierten DACHLiLu-Abdeckung, versucht der Browser PMTiles über R2 zu laden.
+1. Liegt der sichtbare Ausschnitt in der validierten DACHLiLu-Abdeckung, versucht der Browser PMTiles über R2 zu laden. Liegt er in der Europa-Abdeckung (Manifest `eu/regions.json`, jedes nötige Land veröffentlicht), nutzt er die Länder-Dateien, an Landesgrenzen mehrere zugleich.
 2. Ist die Datei nicht erreichbar, veraltet oder deckt der Header den Ausschnitt nicht ab, wird die Pipeline-Anfrage verworfen.
 3. Die Anwendung fragt den Bereich über einen Overpass-Endpunkt ab und kann bei Überlastung auf weitere Endpunkte wechseln.
-4. Liegt der Ausschnitt außerhalb DACHLiLu, wird Overpass direkt als normale Datenquelle verwendet.
+4. Liegt der Ausschnitt außerhalb von DACHLiLu und der Europa-Abdeckung (oder fehlt ein nötiges Land im Manifest), wird Overpass direkt als normale Datenquelle verwendet.
 
 Die Abdeckung wird vor der Anfrage geprüft, damit ein veralteter PMTiles-Header nicht zu einer scheinbar leeren Karte führt.

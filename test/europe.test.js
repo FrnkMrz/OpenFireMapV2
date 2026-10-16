@@ -44,10 +44,22 @@ afterEach(() => {
 });
 
 describe('Auslieferungszustand', () => {
-  it('Europa ist standardmäßig aus und nicht in die Datenabfrage eingebunden', () => {
-    expect(SHIPPED_EUROPE_CONFIG.enabled).toBe(false);
+  it('Europa ist im Auslieferungszustand an (alle 40 Länder sind veröffentlicht), mit allen Parametern', () => {
+    expect(SHIPPED_EUROPE_CONFIG.enabled).toBe(true);
     expect(SHIPPED_EUROPE_CONFIG.manifestPath).toBe('eu/regions.json');
     expect(SHIPPED_EUROPE_CONFIG.minZoom).toBe(12);
+    for (const key of ['manifestTimeoutMs', 'manifestTtlMs', 'manifestRetryMs', 'ringPlanTimeoutMs']) {
+      expect(Number.isFinite(SHIPPED_EUROPE_CONFIG[key]) && SHIPPED_EUROPE_CONFIG[key] > 0, key).toBe(true);
+    }
+  });
+
+  it('Notbremse: mit enabled=false gilt wieder nur DACHLiLu (Paris geht über Overpass, München bleibt in der Pipeline)', () => {
+    setEuropeStateForTests({ manifest: parseManifest(rawManifest(ALL_IDS)), coverage: EUROPE_COVERAGE, regionBounds: EUROPE_REGION_BOUNDS, loadedAt: Date.now() });
+    expect(isEuropeEligible(vp(48.8566, 2.3522), 15)).toBe(true);
+    Config.pipeline.europe.enabled = false;
+    expect(isEuropeEligible(vp(48.8566, 2.3522), 15)).toBe(false);
+    expect(pipeline.isPipelineEligible(vp(48.8566, 2.3522), 15)).toBe(false);
+    expect(pipeline.isPipelineEligible(vp(48.137, 11.576), 15)).toBe(true);
   });
 
   it('geometry.js: pipeline.js exportiert dieselben Funktionen weiter', () => {

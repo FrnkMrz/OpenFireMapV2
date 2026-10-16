@@ -420,6 +420,27 @@ function isEuropeOnlyViewport(bounds, zoom) {
 }
 
 /**
+ * Wartet (höchstens `manifestTimeoutMs`) auf Manifest und Abdeckung der Europa-Erweiterung, BEVOR die Eignung eines
+ * Ausschnitts entschieden wird. Ohne das fiele der allererste Abruf nach dem Start (Start-Ort in Europa) auf Overpass
+ * zurück, weil die Daten beim ersten Prüfen noch laden: bei überlasteten Overpass-Servern ein langes Warten, obwohl
+ * die Länder-Dateien bereitstehen. Kein Warten für Ausschnitte in DACHLiLu, bei zu kleinem Zoom, bei ausgeschaltetem
+ * Schalter, wenn die Daten schon da sind und nach einem Fehler innerhalb der Wartezeit (`manifestRetryMs`).
+ * @param {L.LatLngBounds|Object} bounds
+ * @param {number} zoom
+ * @returns {Promise<void>}
+ */
+export async function ensureEuropeReady(bounds, zoom) {
+  if (!Config.pipeline?.enabled || !Config.pipeline?.url || !Config.pipeline?.usePmtiles) return;
+  const eu = Config.pipeline?.europe;
+  if (!eu?.enabled) return;
+  const effectiveZoom = typeof zoom === 'number' ? zoom : 14;
+  if (effectiveZoom < (eu.minZoom ?? 12)) return;
+  if (getEuropeData().manifest) return;                       // vorhanden (auch ein älterer Stand; Auffrischen läuft im Hintergrund)
+  if (isDachliluEligible(bounds, effectiveZoom)) return;      // DACHLiLu braucht Europa nicht
+  await loadEuropeData();
+}
+
+/**
  * Eignung allein für DACHLiLu (bisherige Prüfung, unverändert): Bounding-Box plus exakter
  * Rechteck-in-Polygon-Test gegen das Abdeckungspolygon.
  */
