@@ -53,6 +53,7 @@ export const State = {
     // --- DATEN-STATUS & AKTUALITÄT (Desktop Info) ---
     dataStatus: {
         source: 'none',          // 'pipeline' | 'overpass' | 'cache' | 'none'
+        sourceScope: 'dachlilu', // bei source 'pipeline': 'dachlilu' | 'europe' (Länder-Dateien beteiligt)
         baseTimestamp: null,     // ISO-String osm_data_until (z. B. '2026-10-08T20:20:21Z')
         generatedAt: null,       // Build-Zeitpunkt (z. B. '2026-10-09T06:10:08Z')
         deltaStatus: 'none',     // 'loading' | 'success' | 'failed' | 'disabled' | 'none'

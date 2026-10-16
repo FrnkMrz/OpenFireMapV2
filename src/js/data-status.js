@@ -141,10 +141,19 @@ export function renderDataStatus() {
   const baseSubEl = document.getElementById('data-info-base-sub');
   const deltaValEl = document.getElementById('data-info-delta-val');
   const deltaSubEl = document.getElementById('data-info-delta-sub');
+  const hintEl = document.getElementById('data-info-hint');
+
+  // Länder-Dateien (Europa-Erweiterung) beteiligt: andere Herkunft, wöchentlicher Stand, ältester Stand aller Länder
+  const europe = ds.source === 'pipeline' && ds.sourceScope === 'europe';
+  if (hintEl) {
+    const hintKey = europe ? 'data_info_hint_europe' : 'data_info_hint';
+    hintEl.setAttribute('data-i18n', hintKey);   // bleibt bei einem Sprachwechsel richtig
+    hintEl.textContent = t(hintKey);
+  }
 
   if (sourceValEl) {
     if (ds.source === 'pipeline') {
-      sourceValEl.textContent = t('data_source_pipeline');
+      sourceValEl.textContent = t(europe ? 'data_source_pipeline_europe' : 'data_source_pipeline');
     } else if (ds.source === 'overpass') {
       sourceValEl.textContent = t('data_source_overpass');
     } else if (ds.source === 'cache') {
@@ -159,7 +168,7 @@ export function renderDataStatus() {
       const abs = formatAbsoluteUtc(ds.baseTimestamp);
       const rel = formatRelativeAge(ds.baseTimestamp);
       baseValEl.textContent = `${abs} (${rel})`;
-      if (baseSubEl) baseSubEl.textContent = t('data_base_sub_geofabrik');
+      if (baseSubEl) baseSubEl.textContent = t(europe ? 'data_base_sub_europe' : 'data_base_sub_geofabrik');
     } else if (ds.source === 'overpass') {
       baseValEl.textContent = t('data_source_overpass_desc');
       if (baseSubEl) baseSubEl.textContent = '–';

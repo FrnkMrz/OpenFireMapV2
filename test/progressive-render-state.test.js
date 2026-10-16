@@ -873,6 +873,51 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       expect(State.cachedPoiElements.map((e) => e.id)).toEqual([1, 3, 2]);
     });
 
+    it('Länder-Ergebnis: Anzeige nennt Europa und den ältesten Länder-Stand, auch wenn dafür kein Delta mehr läuft', async () => {
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+      const els = [{ type: 'node', id: 1, lat: 52.37, lon: 4.9, tags: { emergency: 'fire_hydrant' } }];
+      els.loadedBounds = { id: 'visible_bounds' };
+      els.bufferBounds = { south: 52.3, west: 4.8, north: 52.4, east: 5.0 };   // gültiger Bereich: ein Delta wäre abfragbar
+      // Stand zu alt für ein Delta (osmDataUntil null), die Anzeige bekommt ihn trotzdem
+      els.pipelineMeta = { osmDataUntil: null, osmDataStand: '2026-10-01T00:00:00Z', generatedAt: '2026-10-02T00:00:00Z', regions: ['netherlands'] };
+      vi.spyOn(pipelineModule, 'fetchPipelineData').mockResolvedValue(els);
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => { throw new Error('kein Overpass erwartet'); });
+
+      await fetchOSMData();
+      expect(State.dataStatus).toMatchObject({
+        source: 'pipeline', sourceScope: 'europe', baseTimestamp: '2026-10-01T00:00:00Z',
+        generatedAt: '2026-10-02T00:00:00Z', deltaStatus: 'disabled'
+      });
+      await new Promise((resolve) => setTimeout(resolve, 100));   // Zeit, in der eine Delta-Abfrage sonst starten würde
+      // Kein Delta: keine Overpass-Abfrage mit "newer:" (andere Karten-Abfragen im selben Testlauf zählen nicht)
+      const bodies = fetchSpy.mock.calls.map(([, options]) => decodeURIComponent(String(options?.body || '').replace(/\+/g, ' ')));
+      expect(bodies.filter((body) => body.includes('newer:'))).toEqual([]);
+    });
+
+    it('Mehrquellen-Ergebnis ohne Länder-Datei (nur DACHLiLu beteiligt): Bereich bleibt DACHLiLu, der Stand kommt aus dem Ergebnis', async () => {
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+      const els = [{ type: 'node', id: 1, lat: 48.5, lon: 7.8, tags: { emergency: 'fire_hydrant' } }];
+      els.loadedBounds = { id: 'visible_bounds' };
+      els.pipelineMeta = { osmDataUntil: '2026-10-14T00:00:00Z', osmDataStand: '2026-10-14T00:00:00Z', generatedAt: null, regions: [] };
+      vi.spyOn(pipelineModule, 'fetchPipelineData').mockResolvedValue(els);
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () => ({ ok: true, json: async () => ({ elements: [] }) }));
+
+      await fetchOSMData();
+      expect(State.dataStatus).toMatchObject({ sourceScope: 'dachlilu', baseTimestamp: '2026-10-14T00:00:00Z' });
+    });
+
+    it('DACHLiLu-Ergebnis: Bereich DACHLiLu und Stand wie bisher', async () => {
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+      vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue('2026-09-30T20:22:42Z');
+      const els = [{ type: 'node', id: 1, lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+      els.loadedBounds = { id: 'visible_bounds' };
+      vi.spyOn(pipelineModule, 'fetchPipelineData').mockResolvedValue(els);
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () => ({ ok: true, json: async () => ({ elements: [] }) }));
+
+      await fetchOSMData();
+      expect(State.dataStatus).toMatchObject({ source: 'pipeline', sourceScope: 'dachlilu', baseTimestamp: '2026-09-30T20:22:42Z' });
+    });
+
     it('nutzt den Pufferbereich auch dann, wenn State.queryMeta noch aus dem Overpass-Pfad stammt', async () => {
       const { _testing } = await import('../src/js/api.js');
       State.queryMeta = { bbox: '48.00000,11.00000,48.10000,11.10000' }; // veraltet
