@@ -48,6 +48,7 @@ describe('Auslieferungszustand', () => {
     expect(SHIPPED_EUROPE_CONFIG.enabled).toBe(true);
     expect(SHIPPED_EUROPE_CONFIG.manifestPath).toBe('eu/regions.json');
     expect(SHIPPED_EUROPE_CONFIG.minZoom).toBe(12);
+    expect(SHIPPED_EUROPE_CONFIG.roughBounds).toHaveLength(4);
     for (const key of ['manifestTimeoutMs', 'manifestTtlMs', 'manifestRetryMs', 'ringPlanTimeoutMs']) {
       expect(Number.isFinite(SHIPPED_EUROPE_CONFIG[key]) && SHIPPED_EUROPE_CONFIG[key] > 0, key).toBe(true);
     }

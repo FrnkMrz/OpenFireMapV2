@@ -13,7 +13,7 @@ import { PbfReader } from 'pbf';
 import { Config } from './config.js';
 import { State } from './state.js';
 import { isPointInPolygon, isRectInPolygon } from './geometry.js';
-import { resolveEuropeSources, loadEuropeData, buildRegionUrl, getEuropeData } from './europe.js';
+import { resolveEuropeSources, loadEuropeData, buildRegionUrl, getEuropeData, viewportRect, rectIntersectsBounds } from './europe.js';
 
 // Geometrie-Hilfen liegen in geometry.js; hier weiter exportiert, damit Aufrufer und Tests unverändert bleiben
 export { isPointInPolygon, isRectInPolygon };
@@ -423,7 +423,7 @@ function isEuropeOnlyViewport(bounds, zoom) {
  * Wartet (höchstens `manifestTimeoutMs`) auf Manifest und Abdeckung der Europa-Erweiterung, BEVOR die Eignung eines
  * Ausschnitts entschieden wird. Ohne das fiele der allererste Abruf nach dem Start (Start-Ort in Europa) auf Overpass
  * zurück, weil die Daten beim ersten Prüfen noch laden: bei überlasteten Overpass-Servern ein langes Warten, obwohl
- * die Länder-Dateien bereitstehen. Kein Warten für Ausschnitte in DACHLiLu, bei zu kleinem Zoom, bei ausgeschaltetem
+ * die Länder-Dateien bereitstehen. Kein Warten für Ausschnitte in DACHLiLu, grob außerhalb Europas (`roughBounds`), bei zu kleinem Zoom, bei ausgeschaltetem
  * Schalter, wenn die Daten schon da sind und nach einem Fehler innerhalb der Wartezeit (`manifestRetryMs`).
  * @param {L.LatLngBounds|Object} bounds
  * @param {number} zoom
@@ -435,6 +435,9 @@ export async function ensureEuropeReady(bounds, zoom) {
   if (!eu?.enabled) return;
   const effectiveZoom = typeof zoom === 'number' ? zoom : 14;
   if (effectiveZoom < (eu.minZoom ?? 12)) return;
+  // Grob außerhalb Europas (zum Beispiel Nordamerika): kein Warten, kein Zugriff auf pipeline.openfiremap.org
+  const rect = viewportRect(bounds);
+  if (rect && Array.isArray(eu.roughBounds) && !rectIntersectsBounds(rect, eu.roughBounds)) return;
   if (getEuropeData().manifest) return;                       // vorhanden (auch ein älterer Stand; Auffrischen läuft im Hintergrund)
   if (isDachliluEligible(bounds, effectiveZoom)) return;      // DACHLiLu braucht Europa nicht
   await loadEuropeData();
