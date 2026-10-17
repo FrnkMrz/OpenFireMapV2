@@ -34,9 +34,10 @@ describe('gebautes CSS (Vite + Lightning CSS)', () => {
     });
 
     it('behält backdrop-filter mit und ohne -webkit-Präfix', () => {
+        // Regeln am "}" trennen; gesucht ist die Regel, die genau mit dem Selektor beginnt
+        const rules = css.split('}').map((rule) => rule.trimStart());
         for (const selector of ['.glass-panel', '#notification-box', '.hydrant-download-status']) {
-            const escaped = selector.replace(/[.#]/g, '\\$&');
-            const rule = css.match(new RegExp(`(?:^|})${escaped}\\{[^}]*backdrop-filter[^}]*\\}`))?.[0] || '';
+            const rule = rules.find((r) => r.startsWith(`${selector}{`) && r.includes('backdrop-filter')) || '';
             expect(rule, selector).toMatch(/-webkit-backdrop-filter:blur\(\d+px\)/);
             expect(rule, selector).toMatch(/[;{]backdrop-filter:blur\(\d+px\)/);
         }
