@@ -9,6 +9,10 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     groups:
+      # vitest und @vitest/* haben exakte Peer-Abhängigkeiten aufeinander: nur gemeinsam aktualisierbar,
+      # auch bei Major-Versionen (einzelne PRs scheitern bei npm ci mit ERESOLVE).
+      vitest:
+        patterns: ["vitest", "@vitest/*"]
       runtime:
         dependency-type: production
         update-types: [minor, patch]
@@ -18,7 +22,7 @@ updates:
     ignore:
       # Tailwind 4 ist eine größere Umstellung (Konfiguration, Klassen) und läuft als eigenes Vorhaben.
       - dependency-name: tailwindcss
-        update-types: [version-update:semver-major]
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
