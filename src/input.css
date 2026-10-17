@@ -32,8 +32,8 @@ body {
 /* Glassmorphismus (Milchglas-Effekt für Panels) */
 .glass-panel {
     background: rgba(15, 23, 42, 0.90);
-    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     /* Safari Support */
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -183,8 +183,8 @@ body {
     max-width: min(28rem, calc(100vw - 2.5rem));
     width: max-content;
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
     transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -361,8 +361,8 @@ body {
 /* Status für den asynchronen Hydranten-Download. */
 .hydrant-download-status {
     background: rgba(15, 23, 42, 0.94);
-    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     border: 1px solid rgba(96, 165, 250, 0.45);
     border-radius: 12px;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
