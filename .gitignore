@@ -22,9 +22,10 @@ __MACOSX/
 # Build artefacts (falls später relevant)
 *.map
 
-# Build output (GitHub Pages)
-# Build output (GitHub Pages)
-# docs/
+# Build output (GitHub Pages): `npm run build` schreibt nach docs/, der Deploy baut in GitHub Actions neu.
+# Versioniert bleiben nur die Markdown-Dokumente in docs/ (vite.config.js stellt sie nach dem Build wieder her).
+/docs/*
+!/docs/*.md
 
 # Tooling / Logs
 *.log

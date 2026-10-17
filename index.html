@@ -7,14 +7,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <title>OpenFireMap.org</title>
-    <!-- DPR Scaling Script for Android High-DPI displays -->
-    <script>
-        document.documentElement.style.setProperty('--dpr', Math.max(1, window.devicePixelRatio || 1));
-        if (/Android/i.test(navigator.userAgent)) {
-            document.documentElement.classList.add('is-android');
-        }
-    </script>
-
     <meta property="og:title" content="OpenFireMap.org">
     <meta property="og:description"
         content="Interaktive Karte für Feuerwachen, Hydranten und Defibrillatoren basierend auf OpenStreetMap.">
@@ -28,8 +20,11 @@
         script-src 'self';
         style-src 'self' 'unsafe-inline';
         img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://*.tile.opentopomap.org https://tile.openstreetmap.org https://tile.openstreetmap.de https://*.bayernwolke.de;
-        connect-src 'self' https://pipeline.openfiremap.org http://localhost:* ws://localhost:* https://*.overpass-api.de https://overpass-api.de https://overpass.openstreetmap.fr https://overpass.kumi.systems https://nominatim.openstreetmap.org;
+        connect-src 'self' https://pipeline.openfiremap.org http://localhost:* ws://localhost:* https://*.overpass-api.de https://overpass-api.de https://overpass.kumi.systems https://nominatim.openstreetmap.org;
     ">
+
+    <!-- DPR-Skalierung für Android-High-DPI-Displays: externe Datei, damit die CSP ohne 'unsafe-inline' für Skripte auskommt -->
+    <script src="/assets/boot/dpr.js"></script>
 
     <!-- SECURITY: Permissions-Policy -->
     <meta http-equiv="Permissions-Policy"
@@ -570,14 +565,17 @@
                             Feuerwehr-Daten über pipeline.openfiremap.org.</li>
                         <li><strong>Karten-Server</strong> (OpenStreetMap, CARTO, Esri, OpenTopoMap, BayernAtlas):
                             Hintergrundkarten, je nach gewählter Ebene.</li>
-                        <li><strong>Overpass API</strong> (öffentliche OSM-Server): Abruf von Hydranten, Wachen und
-                            Defibrillatoren, wenn keine vorberechneten Daten verfügbar sind.</li>
-                        <li><strong>Nominatim</strong> (OpenStreetMap Foundation): Ortssuche.</li>
+                        <li><strong>Overpass API</strong> (overpass-api.de, betrieben vom FOSSGIS e.V., Deutschland;
+                            Ausweichserver overpass.kumi.systems, Kumi Systems, Österreich): Abruf von Hydranten, Wachen
+                            und Defibrillatoren, wenn keine vorberechneten Daten verfügbar sind, sowie Abgleich der
+                            vorberechneten Daten mit den neuesten Änderungen für den angezeigten Kartenausschnitt.</li>
+                        <li><strong>Nominatim</strong> (OpenStreetMap Foundation): Ortssuche und Ortsname als Vorschlag
+                            für den Titel beim Export (dafür wird die Kartenmitte übertragen).</li>
                     </ul>
                     <p class="leading-relaxed text-slate-400 mt-2 mb-2">
                         Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer funktionierenden
-                        Karte). Bei Anbietern in den USA kann eine Übermittlung dorthin erfolgen; GitHub und Cloudflare sind
-                        nach dem EU-US Data Privacy Framework zertifiziert. Es gelten zusätzlich die Datenschutzhinweise der
+                        Karte). Bei Anbietern in den USA (GitHub, Cloudflare, Esri, CARTO) kann eine Übermittlung dorthin
+                        erfolgen; GitHub und Cloudflare sind nach dem EU-US Data Privacy Framework zertifiziert. Es gelten zusätzlich die Datenschutzhinweise der
                         jeweiligen Anbieter.
                     </p>
                     <p class="leading-relaxed text-slate-400">
@@ -618,13 +616,17 @@
                             data via pipeline.openfiremap.org.</li>
                         <li><strong>Map servers</strong> (OpenStreetMap, CARTO, Esri, OpenTopoMap, BayernAtlas): base
                             maps, depending on the selected layer.</li>
-                        <li><strong>Overpass API</strong> (public OSM servers): hydrants, stations and defibrillators when
-                            no pre-computed data is available.</li>
-                        <li><strong>Nominatim</strong> (OpenStreetMap Foundation): place search.</li>
+                        <li><strong>Overpass API</strong> (overpass-api.de, operated by FOSSGIS e.V., Germany; fallback
+                            server overpass.kumi.systems, Kumi Systems, Austria): hydrants, stations and defibrillators when
+                            no pre-computed data is available, and matching the pre-computed data against the latest changes
+                            for the displayed map area.</li>
+                        <li><strong>Nominatim</strong> (OpenStreetMap Foundation): place search and the place name
+                            suggested as export title (the map centre is transmitted for this).</li>
                     </ul>
                     <p class="leading-relaxed text-slate-400 mt-2 mb-2">
                         Legal basis is Art. 6(1)(f) GDPR (legitimate interest in a working map). Data may be transferred to
-                        providers in the USA; GitHub and Cloudflare are certified under the EU-US Data Privacy Framework.
+                        providers in the USA (GitHub, Cloudflare, Esri, CARTO); GitHub and Cloudflare are certified under
+                        the EU-US Data Privacy Framework.
                         The privacy policies of the respective providers also apply.
                     </p>
                     <p class="leading-relaxed text-slate-400">

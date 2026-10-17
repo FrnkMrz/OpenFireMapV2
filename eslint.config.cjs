@@ -8,7 +8,6 @@ module.exports = [
       "build/**",
       "docs/**",
       "public/assets/vendor/**",
-      "archive/**",
     ],
   },
 
