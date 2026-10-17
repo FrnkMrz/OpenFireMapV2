@@ -14,7 +14,7 @@ import {
   parseManifest, buildRegionUrl, viewportRect, rectIntersectsBounds, requiredRegionIds, isValidBounds,
   resolveEuropeSources, loadEuropeData, getEuropeData, setEuropeStateForTests, isEuropeEligible
 } from '../src/js/europe.js';
-import { EUROPE_COVERAGE, EUROPE_REGION_BOUNDS } from '../src/js/coverage/europe.js';
+import { EUROPE_COVERAGE, EUROPE_REGION_BOUNDS, EUROPE_REGION_OUTLINES } from '../src/js/coverage/europe.js';
 
 // Vor jeder Änderung durch die Tests festgehalten: Auslieferungszustand
 const SHIPPED_EUROPE_CONFIG = JSON.parse(JSON.stringify(Config.pipeline.europe));
@@ -352,6 +352,7 @@ describe('loadEuropeData', () => {
     expect(fetchJson.mock.calls[0][0]).toBe('https://pipeline.openfiremap.org/eu/regions.json');
     expect(fetchJson.mock.calls[0][1]).toMatchObject({ timeoutMs: 3000 });
     expect(getEuropeData().regionBounds).toBe(EUROPE_REGION_BOUNDS);
+    expect(getEuropeData().regionOutlines).toBe(EUROPE_REGION_OUTLINES);   // die Umrisse für die Quellenwahl kommen mit
     expect(isEuropeEligible(vp(52.37, 4.90), 15)).toBe(true);
     expect(isEuropeEligible(vp(50.45, 30.52), 15)).toBe(false);
   });

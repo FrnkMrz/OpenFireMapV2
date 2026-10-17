@@ -1,7 +1,7 @@
 /**
  * ==========================================================================================
  * DATEI: geometry.js
- * ZWECK: Reine Geometrie-Hilfen für Abdeckungsprüfungen (Punkt-in-Polygon, Rechteck-in-Polygon).
+ * ZWECK: Reine Geometrie-Hilfen für Abdeckungsprüfungen (Punkt-in-Polygon, Rechteck-in-Polygon, Rechteck-Polygon-Schnitt).
  *
  * WARUM EIGENE DATEI:
  * - Aus pipeline.js herausgelöst, damit europe.js dieselben Prüfungen nutzen kann, ohne dass
@@ -158,4 +158,54 @@ export function isRectInPolygon(south, west, north, east, polygon) {
   }
 
   return true;
+}
+
+/**
+ * Prüft, ob sich ein geografisches Rechteck [south, west, north, east] und ein Polygon berühren oder überlappen
+ * (irgendein gemeinsamer Punkt). Anders als isRectInPolygon reicht schon ein Teil des Rechtecks.
+ * Wahr, wenn (1) ein Polygonpunkt im Rechteck liegt, (2) eine Rechteckecke im Polygon liegt (Rechteck ganz oder
+ * teilweise darin, auch wenn das Polygon klein ist) oder (3) eine Polygonkante eine Rechteckkante schneidet.
+ *
+ * @param {number} south
+ * @param {number} west
+ * @param {number} north
+ * @param {number} east
+ * @param {Array<[number, number]>|Array<Array<[number, number]>>} polygon [lat, lon]-Ring oder Liste von Ringen
+ * @returns {boolean}
+ */
+export function isRectIntersectingPolygon(south, west, north, east, polygon) {
+  if (!Array.isArray(polygon) || polygon.length === 0) return false;
+  if (south == null || west == null || north == null || east == null) return false;
+  if (south > north || west > east) return false;
+
+  if (Array.isArray(polygon[0]) && Array.isArray(polygon[0][0])) {
+    return polygon.some((subPoly) => isRectIntersectingPolygon(south, west, north, east, subPoly));
+  }
+  if (polygon.length < 3) return false;
+
+  const n = polygon.length;
+  // (1) Ein Polygonpunkt im Rechteck
+  for (let i = 0; i < n; i++) {
+    const lat = polygon[i][0];
+    const lon = polygon[i][1];
+    if (lat >= south && lat <= north && lon >= west && lon <= east) return true;
+  }
+  // (2) Eine Rechteckecke im Polygon
+  if (isPointInPolygon(south, west, polygon) || isPointInPolygon(north, west, polygon) ||
+      isPointInPolygon(north, east, polygon) || isPointInPolygon(south, east, polygon)) return true;
+  // (3) Eine Polygonkante schneidet eine Rechteckkante
+  for (let i = 0; i < n; i++) {
+    const next = (i + 1) % n;
+    const lat1 = polygon[i][0];
+    const lon1 = polygon[i][1];
+    const lat2 = polygon[next][0];
+    const lon2 = polygon[next][1];
+    if (lat1 === lat2 && lon1 === lon2) continue;
+    if (Math.max(lat1, lat2) < south || Math.min(lat1, lat2) > north || Math.max(lon1, lon2) < west || Math.min(lon1, lon2) > east) continue;
+    if (segmentsIntersect(lon1, lat1, lon2, lat2, west, south, east, south) ||
+        segmentsIntersect(lon1, lat1, lon2, lat2, west, north, east, north) ||
+        segmentsIntersect(lon1, lat1, lon2, lat2, west, south, west, north) ||
+        segmentsIntersect(lon1, lat1, lon2, lat2, east, south, east, north)) return true;
+  }
+  return false;
 }
