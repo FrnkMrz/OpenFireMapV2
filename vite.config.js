@@ -64,6 +64,9 @@ export default defineConfig({
   // but usually './' works best for relative paths.
   base: './',
   build: {
+    // Browser-Ziel wie bisher unter Vite 7. Vite 8 hebt den Standard auf Safari/iOS 16.4 an; Lightning CSS
+    // schreibt dann Media Queries als Bereichssyntax "(width>=768px)", die iOS 16.0-16.3 ignoriert.
+    target: ['chrome107', 'edge107', 'firefox104', 'safari16', 'ios16'],
     outDir: 'docs',
     emptyOutDir: true
   }
