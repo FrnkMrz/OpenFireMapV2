@@ -21,7 +21,7 @@ import {
   getPipelineGeneratedAt, clearPipelineCache, waitForPendingBuffers, PmtilesCoverageMismatch
 } from '../src/js/pipeline.js';
 import { parseManifest, setEuropeStateForTests, loadEuropeData } from '../src/js/europe.js';
-import { EUROPE_COVERAGE, EUROPE_REGION_BOUNDS } from '../src/js/coverage/europe.js';
+import { EUROPE_COVERAGE, EUROPE_REGION_BOUNDS, EUROPE_REGION_OUTLINES } from '../src/js/coverage/europe.js';
 
 const BASE = 'https://pipeline.example.com';
 const STAMP = '20261015T145638Z';
@@ -404,6 +404,53 @@ describe('Datenstand über mehrere Quellen', () => {
     release();
     expect(await outcome).toBe('AbortError');
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('Quellenwahl mit Länder-Umrissen', () => {
+  const useOutlines = (ids) => {
+    Config.pipeline.europe.enabled = true;
+    setEuropeStateForTests({ manifest: manifestFor(Object.fromEntries(ids.map((id) => [id, {}]))), coverage: EUROPE_COVERAGE,
+      regionBounds: EUROPE_REGION_BOUNDS, regionOutlines: EUROPE_REGION_OUTLINES, loadedAt: Date.now() });
+  };
+  const frankreich = () => calls.filter((c) => c.key.includes('/eu/france-'));
+
+  it('Maastricht/Vaals: die Frankreich-Datei wird nicht einmal geöffnet (weder Header noch Kachel), obwohl ihr Rechteck bis dorthin reicht', async () => {
+    useOutlines(['netherlands', 'belgium', 'france']);
+    headers.france = header(-5.2, 41.3, 8.3, 51.1);                  // Header-Rechteck reicht bis Maastricht
+    headers.netherlands = header(2.9, 50.7, 7.3, 54.0);
+    headers.belgium = header(2.5, 49.4, 6.5, 51.6);
+    layersByMarker[MARKER.dach] = poi(1);
+    layersByMarker[MARKER.netherlands] = poi(111);
+    layersByMarker[MARKER.belgium] = poi(222);
+    layersByMarker[MARKER.france] = poi(333);
+    const getHeader = PMTiles.prototype.getHeader;                   // der Spion aus beforeEach: Header-Abrufe mitzählen
+    const els = await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
+    await waitForPendingBuffers({ timeoutMs: 500 });
+    expect(frankreich()).toHaveLength(0);
+    expect(ids(els)).toEqual(expect.arrayContaining(['node:111']));
+    expect(ids(els)).not.toContain('node:333');
+    expect(getHeader.mock.calls.filter((c) => c).length).toBeGreaterThan(0);
+    expect(els.pipelineMeta.regions.sort()).toEqual(['belgium', 'netherlands']);
+  });
+
+  it('Frankreich ist hier (anders als vor den Umrissen) nicht nötig: fehlt es im Manifest, bleibt Maastricht in der Pipeline', async () => {
+    useOutlines(['netherlands', 'belgium']);
+    headers.netherlands = header(2.9, 50.7, 7.3, 54.0);
+    headers.belgium = header(2.5, 49.4, 6.5, 51.6);
+    layersByMarker[MARKER.netherlands] = poi(111);
+    expect(isPipelineEligible(MAASTRICHT, 16)).toBe(true);
+    const els = await fetchPipelinePmtiles(MAASTRICHT, 'all', { zoom: 16 });
+    expect(ids(els)).toContain('node:111');
+  });
+
+  it('weiter richtig an echten Frankreich-Orten: Paris öffnet die Frankreich-Datei', async () => {
+    useOutlines(['france']);
+    headers.france = header(-5.2, 41.3, 8.3, 51.1);
+    layersByMarker[MARKER.france] = poi(333);
+    const els = await fetchPipelinePmtiles(vp(48.8566, 2.3522), 'all', { zoom: 16 });
+    expect(ids(els)).toContain('node:333');
+    expect(frankreich().length).toBeGreaterThan(0);
   });
 });
 

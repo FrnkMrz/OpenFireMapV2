@@ -13,17 +13,19 @@
  * DATENQUELLEN (beide stammen aus dem Pipeline-Repo):
  * - Manifest eu/regions.json (Cloudflare R2): welche Länder veröffentlicht sind, mit Dateiname,
  *   Größe, Datenstand und Rechteck. Wird zur Laufzeit geladen.
- * - coverage/europe.js: Abdeckung (Polygone) und Rechtecke ALLER geplanten Länder. Ist eingecheckt
+ * - coverage/europe.js: Abdeckung (Polygone), Rechtecke und grobe Umrisse ALLER geplanten Länder. Ist eingecheckt
  *   und wird bei Bedarf nachgeladen (eigener Chunk), nicht ins Haupt-Bundle gepackt.
  *
  * REGELN DER EIGNUNGSPRÜFUNG (alle müssen stimmen, sonst Overpass wie bisher):
  * 1. Schalter an, Zoom >= minZoom, gültiger Ausschnitt.
  * 2. Manifest und Abdeckung sind geladen (sonst "nicht bereit": der Aufrufer nutzt den bisherigen Weg).
  * 3. Der Ausschnitt liegt vollständig innerhalb EINES Abdeckungspolygons (wie bei DACHLiLu).
- * 4. Jedes Land, dessen Rechteck den Ausschnitt schneidet, steht im Manifest. Fehlt eines (noch nicht
- *    veröffentlicht oder ausgefallen), wäre der Ausschnitt lückenhaft; dann Overpass. Die Rechtecke
- *    reichen wegen der Meeresränder der Auszüge weit (Norwegen von -11° bis 35° Länge) und schneiden
- *    deshalb oft auch Nachbarländer; solange alle Länder veröffentlicht sind, ist das folgenlos.
+ * 4. Jedes Land, das den Ausschnitt berührt, steht im Manifest. Fehlt eines (noch nicht veröffentlicht oder
+ *    ausgefallen), wäre der Ausschnitt lückenhaft; dann Overpass. "Berührt" heißt: das Rechteck des Landes
+ *    schneidet den Ausschnitt (Vorfilter) UND sein grober Umriss (Land vereinfacht, ca. 5 km nach außen
+ *    gepuffert, größer als das Land). Die Rechtecke allein reichen wegen der Meeresränder der Auszüge weit
+ *    (Norwegen von -11° bis 35° Länge, Frankreich bis Benelux und Rhein) und ließen Dateien öffnen, die im
+ *    Ausschnitt nichts enthalten. Ohne Umriss eines Landes gilt sein Rechteck.
  *
  * QUELLEN EINES AUSSCHNITTS: DACHLiLu (wenn der Ausschnitt dessen Rechteck schneidet) plus die
  * Länder-Dateien aus dem Manifest. An Landesgrenzen sind es mehrere Dateien; Objekte an der Grenze
@@ -33,7 +35,7 @@
 
 import { Config } from './config.js';
 import { fetchJson } from './net.js';
-import { isRectInPolygon } from './geometry.js';
+import { isRectInPolygon, isRectIntersectingPolygon } from './geometry.js';
 
 const MANIFEST_VERSION = 1;
 const REGION_ID_RE = /^[a-z0-9-]+$/;
@@ -144,9 +146,22 @@ export function rectIntersectsBounds(rect, b) {
   return rect.west <= b[2] && rect.east >= b[0] && rect.south <= b[3] && rect.north >= b[1];
 }
 
-/** IDs aller Länder, deren Rechteck den Ausschnitt schneidet (aus der Abdeckung, also auch unveröffentlichte). */
-export function requiredRegionIds(rect, regionBounds) {
-  return Object.keys(regionBounds || {}).filter((id) => isValidBounds(regionBounds[id]) && rectIntersectsBounds(rect, regionBounds[id])).sort();
+/**
+ * IDs aller Länder, deren Rechteck den Ausschnitt schneidet (aus der Abdeckung, also auch unveröffentlichte).
+ * Das Rechteck eines Landes ist wegen Meeresrändern, Überseeteilen und Zipfeln groß (Frankreichs reicht bis Benelux und
+ * Rhein). Liegt zusätzlich ein grober Umriss vor (`regionOutlines`, Land vereinfacht und ca. 5 km nach außen gepuffert),
+ * muss der Ausschnitt auch diesen schneiden: so bleiben Länder weg, die im Ausschnitt nichts enthalten können (und
+ * deren Dateien der Client nicht öffnen muss). Ohne Umriss eines Landes gilt weiter sein Rechteck.
+ */
+export function requiredRegionIds(rect, regionBounds, regionOutlines = null) {
+  return Object.keys(regionBounds || {})
+    .filter((id) => isValidBounds(regionBounds[id]) && rectIntersectsBounds(rect, regionBounds[id]))
+    .filter((id) => {
+      const outline = regionOutlines?.[id];
+      return !Array.isArray(outline) || outline.length === 0 ||
+        isRectIntersectingPolygon(rect.south, rect.west, rect.north, rect.east, outline);
+    })
+    .sort();
 }
 
 // ------------------------------------------------------------------------------------------
@@ -157,7 +172,7 @@ export function requiredRegionIds(rect, regionBounds) {
  * Bestimmt, ob ein Ausschnitt über die Pipeline bedient werden kann, und aus welchen Dateien.
  * @param {*} bounds Leaflet-Bounds oder {south, west, north, east}
  * @param {number} zoom
- * @param {{manifest:Object|null, coverage:Array|null, regionBounds:Object|null}} data
+ * @param {{manifest:Object|null, coverage:Array|null, regionBounds:Object|null, regionOutlines?:Object|null}} data
  * @param {Object} [config] Standard: Config.pipeline
  * @returns {{eligible:boolean, reason:string, sources:Array<{id:string, kind:string, file:string}>, missing:string[]}}
  *   reason: disabled | not_ready | invalid_bounds | zoom | outside_coverage | region_missing | no_source | ok
@@ -166,7 +181,7 @@ export function resolveEuropeSources(bounds, zoom, data, config = Config.pipelin
   const no = (reason, missing = []) => ({ eligible: false, reason, sources: [], missing });
   const eu = config?.europe;
   if (!eu?.enabled) return no('disabled');
-  const { manifest, coverage, regionBounds } = data || {};
+  const { manifest, coverage, regionBounds, regionOutlines } = data || {};
   if (!manifest || !Array.isArray(coverage) || coverage.length === 0 || !regionBounds) return no('not_ready');
   const rect = viewportRect(bounds);
   if (!rect) return no('invalid_bounds');
@@ -177,7 +192,7 @@ export function resolveEuropeSources(bounds, zoom, data, config = Config.pipelin
   if (!inside) return no('outside_coverage');
 
   // Jedes Land, dessen Rechteck den Ausschnitt schneidet, muss veröffentlicht sein
-  const needed = requiredRegionIds(rect, regionBounds);
+  const needed = requiredRegionIds(rect, regionBounds, regionOutlines);
   const missing = needed.filter((id) => !manifest.regions[id]);
   if (missing.length > 0) return no('region_missing', missing);
 
@@ -197,13 +212,14 @@ export function resolveEuropeSources(bounds, zoom, data, config = Config.pipelin
 // Laden und Zustand
 // ------------------------------------------------------------------------------------------
 
-const _state = { manifest: null, coverage: null, regionBounds: null, loadedAt: 0, pending: null, failedAt: 0 };
+const _state = { manifest: null, coverage: null, regionBounds: null, regionOutlines: null, loadedAt: 0, pending: null, failedAt: 0 };
 
 /** Nur für Tests: Zustand setzen bzw. leeren. */
 export function setEuropeStateForTests(next = {}) {
   _state.manifest = next.manifest ?? null;
   _state.coverage = next.coverage ?? null;
   _state.regionBounds = next.regionBounds ?? null;
+  _state.regionOutlines = next.regionOutlines ?? null;
   _state.loadedAt = next.loadedAt ?? 0;
   _state.pending = null;
   _state.failedAt = 0;
@@ -211,7 +227,7 @@ export function setEuropeStateForTests(next = {}) {
 
 /** Aktuell geladene Daten (für die Eignungsprüfung); Felder sind null, solange nichts geladen ist. */
 export function getEuropeData() {
-  return { manifest: _state.manifest, coverage: _state.coverage, regionBounds: _state.regionBounds };
+  return { manifest: _state.manifest, coverage: _state.coverage, regionBounds: _state.regionBounds, regionOutlines: _state.regionOutlines };
 }
 
 /**
@@ -242,6 +258,7 @@ export async function loadEuropeData({ signal, force = false } = {}) {
       if (coverageModule) {
         _state.coverage = coverageModule.EUROPE_COVERAGE;
         _state.regionBounds = coverageModule.EUROPE_REGION_BOUNDS;
+        _state.regionOutlines = coverageModule.EUROPE_REGION_OUTLINES ?? null;
       }
       _state.manifest = manifest;
       _state.loadedAt = Date.now();
