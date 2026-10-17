@@ -70,7 +70,7 @@ jobs:
       # Code aus dem Repository auschecken
       # --------------------------------------------------------------------
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # --------------------------------------------------------------------
       # Node.js Umgebung einrichten
@@ -78,7 +78,7 @@ jobs:
       # - npm Cache aktivieren für schnellere Builds
       # --------------------------------------------------------------------
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: "npm"
@@ -109,7 +109,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ hashFiles('package-lock.json') }}
@@ -137,7 +137,7 @@ jobs:
       # - hier: kompletter docs/-Ordner
       # --------------------------------------------------------------------
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: docs
 
@@ -170,4 +170,4 @@ jobs:
       # --------------------------------------------------------------------
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
