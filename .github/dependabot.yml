@@ -1,0 +1,29 @@
+# Dependabot: wöchentliche Versions-Updates, gebündelt, damit nicht jedes Paket einen eigenen PR erzeugt.
+# Sicherheitsupdates (Repo-Einstellung "Dependabot security updates") kommen unabhängig davon sofort.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+      tooling:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # Tailwind 4 ist eine größere Umstellung (Konfiguration, Klassen) und läuft als eigenes Vorhaben.
+      - dependency-name: tailwindcss
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
