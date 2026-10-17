@@ -5,7 +5,7 @@ Die ausführliche, gepflegte Kurzanleitung steht in [docs/ERSTE_SCHRITTE.md](doc
 ## Datenversorgung
 
 OpenFireMap ist weltweit nutzbar:
-- Im Abdeckungsgebiet **DACHLiLu** (Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein) nutzt die Karte automatisch eine vorberechnete, hochperformante Daten-Pipeline mit rund 1,2 Millionen feuerwehrrelevanten Objekten.
+- Im Abdeckungsgebiet **DACHLiLu** (Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein) sowie in 40 weiteren europäischen Ländern (ohne Russland, Ukraine, Belarus, Türkei) nutzt die Karte automatisch eine vorberechnete, hochperformante Daten-Pipeline mit über 2 Millionen feuerwehrrelevanten Objekten.
 - Außerhalb dieses Bereichs sowie bei vorübergehend nicht verfügbaren Pipeline-Daten schaltet die Anwendung vollautomatisch und nahtlos auf den weltweiten Abruf über die OpenStreetMap-Overpass-Schnittstelle um.
 - Für Anwenderinnen und Anwender geschieht dieser Wechsel völlig transparent: Die Karte lädt überall zuverlässig die passenden Daten.
 

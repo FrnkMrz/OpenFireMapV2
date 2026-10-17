@@ -19,7 +19,7 @@ Overpass makes targeted OSM queries available worldwide. Large areas and many co
 
 For Germany, Austria, Switzerland, Luxembourg and Liechtenstein (DACHLiLu), relevant OSM objects are prepared as PMTiles vector tiles. An optimized MaxZoom 14 build currently keeps the archive at about **182.4 MiB (191,243,978 bytes)**. After the tiles are drawn, the app asks Overpass for objects created or changed since the tiles' OSM data timestamp and merges them by OSM id. Cloudflare R2 serves it, while the browser uses HTTP Range Requests to fetch only the byte ranges needed for visible tiles.
 
-This pipeline is an acceleration layer, not a geographic expansion. OpenFireMap was worldwide from the beginning. Outside DACHLiLu, and whenever pipeline data is missing, stale or unavailable, the application falls back to Overpass.
+Since v0.9.0 the same applies to 40 more European countries (excluding Russia, Ukraine, Belarus and Turkey): each country has its own PMTiles file, rebuilt weekly (about 634 MB in total, roughly 1.0 million objects), a manifest lists the published countries, and at country borders the map opens several files at once. This pipeline is an acceleration layer, not a geographic expansion. OpenFireMap was worldwide from the beginning. Outside these regions, and whenever pipeline data is missing, stale or unavailable, the application falls back to Overpass.
 
 ```text
 Browser → PMTiles / Cloudflare R2 → Overpass fallback
@@ -31,11 +31,11 @@ The R2 publication flow uploads PMTiles first, GeoJSON with a shorter cache life
 
 ## Current facts and features
 
-- version **v0.8.5**
-- approximately **1.2 million** fire-service-related objects in the DACHLiLu pipeline
+- version **v0.9.0**
+- approximately **1.2 million** fire-service-related objects in the DACHLiLu pipeline, plus roughly **1.0 million** in 40 European country files (about 634 MB)
 - PMTiles archive of approximately **182.4 MiB** (**191,243,978 bytes**)
 - Cloudflare R2 as the primary public pipeline source
-- 167 Vitest tests, Playwright end-to-end tests and Python tests for the pipeline builder
+- about 390 Vitest tests, Playwright end-to-end tests and Python tests for the pipeline builder
 - PNG, PDF, GPX and CSV exports
 - more than 30 languages
 - IndexedDB caching and responsive desktop/mobile use
