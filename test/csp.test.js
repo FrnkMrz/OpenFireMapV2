@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Config } from '../src/js/config.js';
-import { stripDevOnlyCspSources } from '../vite.config.js';
+import { stripDevOnlyCspSources } from '../scripts/strip-dev-csp.mjs';
 
 // Prüft die Content Security Policy in index.html gegen die tatsächlich genutzten Dienste:
 // Ein neuer Dienst ohne CSP-Eintrag würde im Browser still blockiert.

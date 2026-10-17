@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { build } from 'vite';
 
-// Baut die Seite einmal wie in der CI (vite.config.js, Lightning CSS als CSS-Minifier) und prüft das
+// Baut die Seite einmal wie in der CI (vite.config.mjs, Lightning CSS als CSS-Minifier) und prüft das
 // erzeugte Stylesheet auf zwei Stolpersteine aus dem Umstieg auf Vite 8:
 // - Lightning CSS ließ bei "backdrop-filter; -webkit-backdrop-filter" nur die Präfix-Variante stehen,
 //   Chrome und Firefox zeigten die Glas-Panels dann ohne Unschärfe.
