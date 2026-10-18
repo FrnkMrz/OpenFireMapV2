@@ -15,6 +15,11 @@
 
 import { DACHLILU_COVERAGE } from './coverage/dachlilu.js';
 
+// CARTO API-Key für Raster-Basemaps (Voyager, Positron, Dark). Verhindert das Wasserzeichen "API KEY REQUIRED".
+// Gehört in den Client-Code und ist damit öffentlich; Schutz nur über die Referrer-Beschränkung im CARTO-Dashboard.
+// Als Konstante, weil ein Objektliteral sich nicht selbst referenzieren kann.
+const CARTO_API_KEY = "cb1_3rhl_1_c46f6032a1460d7cdb99badc";
+
 export const Config = {
   // ----------------------------------------------------------------------------------------
   // 1) Startverhalten der Karte
@@ -109,10 +114,9 @@ export const Config = {
   // ----------------------------------------------------------------------------------------
 
   /**
-   * CARTO API-Key für Raster-Basemaps (Voyager, Positron, Dark).
-   * Verhindert das Wasserzeichen "API KEY REQUIRED".
+   * CARTO API-Key für Raster-Basemaps (Voyager, Positron, Dark), siehe CARTO_API_KEY oben.
    */
-  cartoApiKey: "cb1_3rhl_1_c46f6032a1460d7cdb99badc",
+  cartoApiKey: CARTO_API_KEY,
 
   /**
    * Karten-Hintergründe (Basemaps).
@@ -123,7 +127,7 @@ export const Config = {
    */
   layers: {
     voyager: {
-      url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_3rhl_1_c46f6032a1460d7cdb99badc",
+      url: `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`,
       attr:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
         '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
@@ -131,7 +135,7 @@ export const Config = {
       maxZoom: 18,
     },
     positron: {
-      url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_3rhl_1_c46f6032a1460d7cdb99badc",
+      url: `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`,
       attr:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
         '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
@@ -139,7 +143,7 @@ export const Config = {
       maxZoom: 18,
     },
     dark: {
-      url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=cb1_3rhl_1_c46f6032a1460d7cdb99badc",
+      url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`,
       attr:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
         '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
