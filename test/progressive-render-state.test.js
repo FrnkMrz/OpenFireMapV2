@@ -3,12 +3,29 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { State } from '../src/js/state.js';
 import { Config } from '../src/js/config.js';
 import { fetchOSMData, fetchBoundaryData } from '../src/js/api.js';
+import * as apiModule from '../src/js/api.js';
 import * as pipelineModule from '../src/js/pipeline.js';
 import { exportAsGPX, exportAsCSV, exportPNG } from '../src/js/export.js';
 
 describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', () => {
   let originalMap;
   let originalConfig;
+
+  // Startet initMapLogic() ohne Nebenwirkungen über das Testende hinaus. initMapLogic() feuert sofort 'moveend' und
+  // startet damit doFetch() samt Entprell-, Idle- und Wiederholungs-Timern. Mit den echten Abrufen liefen
+  // Cache-/API-Logs und fetch-Aufrufe noch weiter, wenn der Test (oder die ganze Datei) schon beendet ist: spätere
+  // Tests zählten fremde Abrufe mit, und beim Beenden des Workers hing ein Log-RPC (EnvironmentTeardownError).
+  // Darum: Abrufe ersetzen und alle Timer anhalten; der afterEach verwirft sie.
+  const startMapLogic = async () => {
+    const mapModule = await import('../src/js/map.js');
+    vi.useFakeTimers();
+    vi.spyOn(apiModule, 'fetchOSMData').mockResolvedValue(null);
+    vi.spyOn(apiModule, 'fetchBoundaryData').mockResolvedValue(null);
+    mapModule.initMapLogic();
+    // Den Sofort-Abruf (async doFetch) zu Ende laufen lassen, bevor der Test weitermacht
+    await vi.advanceTimersByTimeAsync(0);
+    return mapModule;
+  };
 
   beforeEach(() => {
     originalMap = State.map;
@@ -149,10 +166,22 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
     };
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Offene Timer (Entprellung, Wiederholung, Permalink) verwerfen und echte Zeit wiederherstellen
+    if (vi.isFakeTimers()) {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+    // Laufende Abrufe abbrechen und Pufferringe vergessen, damit nach dem Test nichts mehr nachläuft
+    State.controllers?.fetch?.abort?.();
+    State.controllers?.boundaryFetch?.abort?.();
+    State.pendingBufferFetches.clear();
+    State.pendingBufferFetch = null;
     State.map = originalMap;
     Config.pipeline = originalConfig;
     vi.restoreAllMocks();
+    // Noch anstehende Mikrotasks und Zeitgeber-Callbacks dieses Tests abwarten
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
   // =========================================================================
@@ -573,8 +602,7 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
   // =========================================================================
   describe('9. Vermeidung von DOM-Thrashing / Neu-Rendern bei Bewegung', () => {
     it('Bewegung im geladenen Bereich ohne laufenden Request ruft renderMarkers & renderBoundaries NICHT auf', async () => {
-      const mapModule = await import('../src/js/map.js');
-      mapModule.initMapLogic();
+      const mapModule = await startMapLogic();
 
       const clearBoundariesSpy = vi.spyOn(State.boundaryLayer, 'clearLayers');
 
@@ -601,8 +629,7 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
     });
 
     it('Bewegung zurück in geladenen Bereich (Pan A -> B -> A) bei laufendem Request B bricht B ab und rendert sauber neu', async () => {
-      const mapModule = await import('../src/js/map.js');
-      mapModule.initMapLogic();
+      const mapModule = await startMapLogic();
 
       const clearBoundariesSpy = vi.spyOn(State.boundaryLayer, 'clearLayers');
 
@@ -619,6 +646,7 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       // Request B läuft gerade für ein ANDERES Gebiet
       const controllerB = new AbortController();
       State.controllers.fetch = controllerB;
+      State.isFetchingData = true;
       // activeFetchBounds deckt anderes Gebiet ab, NICHT boundsA
       State.activeFetchBounds = {
         contains: (b) => false // deckt boundsA nicht ab!
@@ -689,24 +717,16 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
   // =========================================================================
   describe('10. Pufferring bei kleiner Bewegung', () => {
     it('Bewegung innerhalb activeFetchBounds bricht laufenden Puffer-Request NICHT ab', async () => {
-      const mapModule = await import('../src/js/map.js');
-
       const boundsA = State.map.getBounds();
       State.cachedPoiElements = [{ id: 'h_A' }];
       State.loadedPoiBounds = boundsA;
       State.loadedPoiMode = 'all';
       State.loadedBoundaryBounds = boundsA;
 
-      // Pufferring läuft im Hintergrund
+      // Pufferring läuft im Hintergrund (bleibt offen; der afterEach leert das Set)
       const controllerFetch = new AbortController();
       State.controllers.fetch = controllerFetch;
-      let bufferResolved = false;
-      const bufferPromise = new Promise(r => {
-        setTimeout(() => {
-          bufferResolved = true;
-          r();
-        }, 50);
-      });
+      const bufferPromise = new Promise(() => {});
       State.pendingBufferFetches.add(bufferPromise);
 
       // activeFetchBounds deckt Nürnberg + Puffer ab (inkl. der neuen Position!)
@@ -714,7 +734,7 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
         contains: (b) => true // deckt die neue Position voll ab!
       };
 
-      mapModule.initMapLogic();
+      const mapModule = await startMapLogic();
 
       // Nutzer bewegt sich leicht innerhalb des Pufferbereichs
       mapModule._testing.onViewChange();
@@ -731,8 +751,7 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
   // =========================================================================
   describe('11. Controller-Cleanup & Grenzen-Schutz bei Bewegung', () => {
     it('(a) Laden fertig -> erste kleine Bewegung -> kein Neu-Rendern (clearLayers wird nicht aufgerufen)', async () => {
-      const mapModule = await import('../src/js/map.js');
-      mapModule.initMapLogic();
+      const mapModule = await startMapLogic();
 
       const clearBoundariesSpy = vi.spyOn(State.boundaryLayer, 'clearLayers');
 
@@ -764,8 +783,7 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
     });
 
     it('(b) POIs fertig, Grenzen laufen noch, kleine Bewegung im selben Bereich -> Grenzen-Anfrage wird NICHT abgebrochen', async () => {
-      const mapModule = await import('../src/js/map.js');
-      mapModule.initMapLogic();
+      const mapModule = await startMapLogic();
 
       const boundsA = State.map.getBounds();
       State.cachedPoiElements = [{ id: 'h_A' }];
