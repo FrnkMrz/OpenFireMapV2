@@ -4,6 +4,7 @@
  */
 export const strings = {
         search_placeholder: "場所を検索...",
+        skip_to_map: "地図へスキップ",
         locate_title: "現在地",
         layers_title: "地図レイヤー切替",
         export_title: "エクスポート",

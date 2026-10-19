@@ -4,6 +4,7 @@
  */
 export const strings = {
         search_placeholder: "搜尋地點...",
+        skip_to_map: "跳至地圖",
         locate_title: "我的位置",
         layers_title: "切換圖層",
         export_title: "匯出",

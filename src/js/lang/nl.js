@@ -4,6 +4,7 @@
  */
 export const strings = {
         search_placeholder: "Zoek locatie...",
+        skip_to_map: "Naar de kaart springen",
         locate_title: "Mijn locatie",
         layers_title: "Kaart wisselen",
         export_title: "Export",

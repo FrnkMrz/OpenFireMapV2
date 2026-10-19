@@ -115,6 +115,25 @@ function poiCoverageMatchesMode(mode) {
     return false;
 }
 
+
+/**
+ * Barrierefreiheit: Hat die Person "Animationen reduzieren" im Betriebssystem eingestellt?
+ */
+export function prefersReducedMotion() {
+    return typeof window !== 'undefined'
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/**
+ * Springt zu einer Position: Flug-Animation normal, Sprung ohne Animation bei reduzierter Bewegung.
+ */
+export function moveMapTo(latlng, zoom) {
+    if (!State.map) return;
+    if (prefersReducedMotion()) State.map.setView(latlng, zoom, { animate: false });
+    else State.map.flyTo(latlng, zoom);
+}
+
 export function initMapLogic() {
     State.markerLayer = L.layerGroup();
     State.boundaryLayer = L.layerGroup();
@@ -168,8 +187,20 @@ export function initMapLogic() {
         zoomControl: false,
         preferCanvas: true, // <--- WICHTIG: Beschleunigt das Rendering massiv
         center: startCenter,
-        zoom: startZoom
+        zoom: startZoom,
+        // Barrierefreiheit: Wer "Animationen reduzieren" eingestellt hat, bekommt keine Zoom-/Fade-Animationen
+        zoomAnimation: !prefersReducedMotion(),
+        fadeAnimation: !prefersReducedMotion(),
+        markerZoomAnimation: !prefersReducedMotion(),
+        // Auch das Nachlaufen (Trägheit) nach dem Ziehen ist eine JS-Animation, die das CSS nicht abschaltet
+        inertia: !prefersReducedMotion()
     });
+
+    // Leaflets Tastatursteuerung (Pfeiltasten), Popup-Autopan und panTo rufen panBy ohne "animate: false" auf.
+    // Bei reduzierter Bewegung (zur Aufrufzeit geprüft) wird daraus ein direkter Sprung.
+    const originalPanBy = State.map.panBy.bind(State.map);
+    State.map.panBy = (offset, options) =>
+        originalPanBy(offset, prefersReducedMotion() ? { ...options, animate: false } : options);
 
     State.boundaryLayer.addTo(State.map);
     State.rangeLayerGroup.addTo(State.map);
@@ -1056,10 +1087,10 @@ function generateTooltip(tags, clusterMembers) {
         let html = `<div class="p-2 min-w-[180px]"><div class="font-bold text-sm border-b border-white/20 pb-1 mb-1 text-blue-400">${tooltipTitle}</div>`;
         
         if (safeTags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
-            html += `<div class="text-[11px] text-orange-400 font-bold mb-2 pb-1 border-b border-white/10 italic">${escapeHtml(t('wsh_hint') || "Württembergischer Schachthydrant")}</div>`;
+            html += `<div class="text-xs text-orange-400 font-bold mb-2 pb-1 border-b border-white/10 italic">${escapeHtml(t('wsh_hint') || "Württembergischer Schachthydrant")}</div>`;
         }
 
-        html += `<div class="text-[10px] font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
+        html += `<div class="text-xs font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
         for (const [key, val] of Object.entries(safeTags)) {
             html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 break-words">${escapeHtml(val)}</div>`;
         }
@@ -1072,10 +1103,10 @@ function generateTooltip(tags, clusterMembers) {
     clusterMembers.forEach((member, i) => {
         const safeTags = member.tags || {};
         const displayName = escapeHtml(safeTags.name || t('details_hydrant'));
-        html += `<div class="text-[10px] bg-white/5 rounded p-1"><div class="font-bold text-slate-300 mb-1 border-b border-white/10 pb-0.5">${i + 1}. ${displayName}</div>`;
+        html += `<div class="text-xs bg-white/5 rounded p-1"><div class="font-bold text-slate-300 mb-1 border-b border-white/10 pb-0.5">${i + 1}. ${displayName}</div>`;
         
         if (safeTags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
-            html += `<div class="text-[11px] text-orange-400 font-bold mb-1 pb-1 border-b border-white/10 italic">${escapeHtml(t('wsh_hint') || "Württembergischer Schachthydrant")}</div>`;
+            html += `<div class="text-xs text-orange-400 font-bold mb-1 pb-1 border-b border-white/10 italic">${escapeHtml(t('wsh_hint') || "Württembergischer Schachthydrant")}</div>`;
         }
         
         html += `<div class="font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;

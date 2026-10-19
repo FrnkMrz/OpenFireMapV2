@@ -38,6 +38,55 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* BARRIEREFREIHEIT
+   ========================================================================== */
+
+/* Sichtbarer Tastaturfokus für alle bedienbaren Elemente (WCAG 2.4.7 / 2.4.11).
+   !important, weil die Tailwind-Klasse focus:outline-none an vielen Stellen steht.
+   Das Suchfeld ist ausgenommen: Sein Rahmen-Container zeigt den Fokus (focus-within). */
+:focus-visible {
+    outline: 3px solid #3b82f6 !important;
+    outline-offset: 2px;
+}
+
+#search-input:focus-visible {
+    outline: none !important;
+}
+
+/* Skip-Link: nur bei Tastaturfokus sichtbar, liegt über allen Bedienelementen */
+.skip-link {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 10000;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transform: translateY(-200%);
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
+/* Wer "Bewegung reduzieren" eingestellt hat, bekommt keine Animationen und Übergänge.
+   Der Ladeindikator behält seine Farbe/Form und ist damit auch ohne Drehung erkennbar. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 /* Layout für das Info-Fenster (Rechtliches) */
 #legal-modal {
     display: none;

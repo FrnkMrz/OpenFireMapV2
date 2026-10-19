@@ -4,6 +4,7 @@
  */
 export const strings = {
   search_placeholder: "অবস্থান খুঁজুন...",
+  skip_to_map: "মানচিত্রে যান",
   locate_title: "আমার অবস্থান",
   layers_title: "মানচিত্র বদলান",
   export_title: "রপ্তানি",

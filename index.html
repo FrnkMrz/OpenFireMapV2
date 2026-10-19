@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>OpenFireMap.org</title>
     <meta property="og:title" content="OpenFireMap.org">
@@ -52,6 +52,7 @@
 </head>
 
 <body>
+    <a href="#map" id="skip-to-map" class="skip-link" data-i18n="skip_to_map">Zur Karte springen</a>
     <h1 class="sr-only">OpenFireMap.org</h1>
 
     <main>
@@ -162,7 +163,7 @@
                 </button>
 
                 <button id="mobile-open-search"
-                    class="w-full bg-white/5 hover:bg-white/10 pyz py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="menu_search">Suche</span>
                 </button>
 
@@ -203,21 +204,21 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span class="text-[10px] font-bold hidden md:inline" data-i18n="legal_btn">Info & Recht</span>
+                <span class="text-xs font-bold hidden md:inline" data-i18n="legal_btn">Info & Recht</span>
             </button>
         </div>
 
         <!-- Status-Dock unten rechts (Desktop: vertikale Stapelung ohne Überlappung; Mobile: display: contents via CSS) -->
         <div id="desktop-status-dock">
             <div id="status-box"
-                class="glass-panel p-4 rounded-2xl text-[10px] text-slate-400 font-mono border border-white/5">
+                class="glass-panel p-4 rounded-2xl text-xs text-slate-400 font-mono border border-white/5">
                 <div class="flex justify-between gap-4"><span data-i18n="zoom_info">ZOOM</span><span id="zoom-val"
                         class="text-white font-bold">14.0</span></div>
                 <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status"
                         class="text-green-400 transition-colors duration-200">AKTUELL</span></div>
                 <div id="data-info-row" class="justify-between items-center gap-2 pt-1.5 mt-1.5 border-t border-white/5 font-sans">
                     <button id="data-info-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="data-info-popover"
-                        class="text-[9px] text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 focus:outline-none focus:underline cursor-pointer">
+                        class="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 focus:outline-none focus:underline cursor-pointer">
                         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -240,7 +241,7 @@
                         class="text-slate-400 hover:text-white p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">✕</button>
                 </div>
 
-                <div class="space-y-2.5 text-[11px] leading-relaxed">
+                <div class="space-y-2.5 text-xs leading-relaxed">
                     <div>
                         <div class="text-slate-400 font-semibold" data-i18n="data_source_label">Quelle</div>
                         <div id="data-info-source-val" class="text-white font-medium">–</div>
@@ -249,17 +250,17 @@
                     <div>
                         <div class="text-slate-400 font-semibold" data-i18n="data_base_date_label">Basis-Datenstand (Geofabrik)</div>
                         <div id="data-info-base-val" class="text-white font-medium">–</div>
-                        <div id="data-info-base-sub" class="text-slate-500 text-[10px]" data-i18n="data_base_sub_geofabrik">Täglicher Länderauszug</div>
+                        <div id="data-info-base-sub" class="text-slate-500 text-xs" data-i18n="data_base_sub_geofabrik">Täglicher Länderauszug</div>
                     </div>
 
                     <div>
                         <div class="text-slate-400 font-semibold" data-i18n="data_live_sync_label">Live-Aktualisierung (Overpass)</div>
                         <div id="data-info-delta-val" class="text-green-400 font-medium">–</div>
-                        <div id="data-info-delta-sub" class="text-slate-500 text-[10px]">–</div>
+                        <div id="data-info-delta-sub" class="text-slate-500 text-xs">–</div>
                     </div>
                 </div>
 
-                <div class="pt-2 border-t border-white/10 text-[10px] text-slate-400 leading-normal">
+                <div class="pt-2 border-t border-white/10 text-xs text-slate-400 leading-normal">
                     <p id="data-info-hint" data-i18n="data_info_hint">
                         Tägliche Geofabrik-Auszüge bilden die Basis. Neu erfasste oder bearbeitete Hydranten und Wachen werden im Bildausschnitt automatisch live nachgeladen.
                     </p>
@@ -267,7 +268,7 @@
 
                 <div class="pt-1 flex justify-end">
                     <button id="data-info-legal-link" type="button"
-                        class="text-[10px] text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 focus:outline-none cursor-pointer">
+                        class="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 focus:outline-none cursor-pointer">
                         <span data-i18n="data_info_more_link">Mehr in Info & Recht →</span>
                     </button>
                 </div>
@@ -377,17 +378,17 @@
 
                 <!-- 1. Format-Vorlage (jetzt ganz oben) -->
                 <div class="space-y-2">
-                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider"
+                    <label class="text-xs uppercase font-bold text-slate-500 tracking-wider"
                         data-i18n="format_label">Format</label>
                     <div class="grid grid-cols-3 gap-2" role="group" aria-label="Format Auswahl">
                         <button id="fmt-free" aria-pressed="true"
-                            class="fmt-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active"
+                            class="fmt-btn bg-white/10 p-2 rounded-xl text-xs font-bold border border-blue-400/50 text-blue-400 active"
                             data-i18n="fmt_free">FREI</button>
                         <button id="fmt-a4l" aria-pressed="false"
-                            class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10"
+                            class="fmt-btn bg-white/5 p-2 rounded-xl text-xs font-bold border border-white/10 hover:bg-white/10"
                             data-i18n="fmt_a4l">DIN QUER</button>
                         <button id="fmt-a4p" aria-pressed="false"
-                            class="fmt-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10"
+                            class="fmt-btn bg-white/5 p-2 rounded-xl text-xs font-bold border border-white/10 hover:bg-white/10"
                             data-i18n="fmt_a4p">DIN HOCH</button>
                     </div>
                 </div>
@@ -398,22 +399,22 @@
                     <span data-i18n="select_area_btn">Ausschnitt wählen</span>
                 </button>
                 <div id="selection-info"
-                    class="hidden text-[11px] text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20"
+                    class="hidden text-xs text-emerald-400 bg-emerald-400/10 p-2 rounded-lg text-center border border-emerald-400/20"
                     data-i18n="area_fixed">Fixiert ✓</div>
 
                 <!-- 3. Detail-Grad -->
                 <div class="space-y-2">
-                    <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider"
+                    <label class="text-xs uppercase font-bold text-slate-500 tracking-wider"
                         data-i18n="zoom_label">Zoom</label>
                     <div class="grid grid-cols-4 gap-2" role="group" aria-label="Zoom Stufe Auswahl">
                         <button id="zoom-15" aria-pressed="false"
-                            class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">15</button>
+                            class="zoom-btn bg-white/5 p-2 rounded-xl text-xs font-bold border border-white/10 hover:bg-white/10">15</button>
                         <button id="zoom-16" aria-pressed="false"
-                            class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">16</button>
+                            class="zoom-btn bg-white/5 p-2 rounded-xl text-xs font-bold border border-white/10 hover:bg-white/10">16</button>
                         <button id="zoom-17" aria-pressed="false"
-                            class="zoom-btn bg-white/5 p-2 rounded-xl text-[10px] font-bold border border-white/10 hover:bg-white/10">17</button>
+                            class="zoom-btn bg-white/5 p-2 rounded-xl text-xs font-bold border border-white/10 hover:bg-white/10">17</button>
                         <button id="zoom-18" aria-pressed="true"
-                            class="zoom-btn bg-white/10 p-2 rounded-xl text-[10px] font-bold border border-blue-400/50 text-blue-400 active">18</button>
+                            class="zoom-btn bg-white/10 p-2 rounded-xl text-xs font-bold border border-blue-400/50 text-blue-400 active">18</button>
                     </div>
                 </div>
 

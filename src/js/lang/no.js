@@ -4,6 +4,7 @@
  */
 export const strings = {
         search_placeholder: "Søk etter sted...",
+        skip_to_map: "Hopp til kartet",
         locate_title: "Min posisjon",
         layers_title: "Bytt kartlag",
         export_title: "Eksport",

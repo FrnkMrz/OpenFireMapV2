@@ -4,6 +4,7 @@
  */
 export const strings = {
         search_placeholder: "Cari lokasi...",
+        skip_to_map: "Langkau ke peta",
         locate_title: "Lokasi Saya",
         layers_title: "Tukar Lapisan Peta",
         export_title: "Eksport",
