@@ -5,6 +5,8 @@
 export const strings = {
         search_placeholder: "搜尋地點...",
         skip_to_map: "跳至地圖",
+        map_region_label: "地圖",
+        map_keyboard_hint: "地圖鍵盤操作：方向鍵移動檢視範圍，加號與減號縮放。",
         locate_title: "我的位置",
         layers_title: "切換圖層",
         export_title: "匯出",

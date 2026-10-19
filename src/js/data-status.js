@@ -301,15 +301,7 @@ export function initDataStatusUI() {
     });
   }
 
-  // Escape-Taste schließt Popover
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      if (popover && !popover.classList.contains('hidden')) {
-        closeDataInfoPopover();
-        btn?.focus();
-      }
-    }
-  });
+  // Escape und Fokus-Rückgabe für das Popover übernimmt registerDialog() in ui.js
 
   // Klick außerhalb schließt Popover
   document.addEventListener('click', (e) => {

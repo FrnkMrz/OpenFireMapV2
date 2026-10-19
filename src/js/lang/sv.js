@@ -5,6 +5,8 @@
 export const strings = {
         search_placeholder: "Sök plats...",
         skip_to_map: "Hoppa till kartan",
+        map_region_label: "Karta",
+        map_keyboard_hint: "Tangentbordsstyrning av kartan: pilarna flyttar vyn, plus och minus zoomar.",
         locate_title: "Min plats",
         layers_title: "Byt kartlager",
         export_title: "Export",

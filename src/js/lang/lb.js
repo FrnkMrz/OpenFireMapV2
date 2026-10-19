@@ -5,6 +5,8 @@
 export const strings = {
         search_placeholder: "Plaz sichen...",
         skip_to_map: "Op d'Kaart sprangen",
+        map_region_label: "Kaart",
+        map_keyboard_hint: "Tastaturbedienung vun der Kaart: D'Feiltasten verréckelen den Ausschnëtt, Plus a Minus zoomen.",
         locate_title: "Meng Positioun",
         layers_title: "Kaart wiesselen",
         export_title: "Export",

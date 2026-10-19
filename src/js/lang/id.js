@@ -5,6 +5,8 @@
 export const strings = {
   search_placeholder: "Cari lokasi...",
   skip_to_map: "Lewati ke peta",
+  map_region_label: "Peta",
+  map_keyboard_hint: "Kontrol peta dengan keyboard: tombol panah menggeser tampilan, plus dan minus memperbesar atau memperkecil.",
   locate_title: "Lokasi saya",
   layers_title: "Ganti peta",
   export_title: "Ekspor",

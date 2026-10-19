@@ -5,6 +5,8 @@
 export const strings = {
         search_placeholder: "Etsi sijainti...",
         skip_to_map: "Siirry karttaan",
+        map_region_label: "Kartta",
+        map_keyboard_hint: "Kartan näppäimistöohjaus: nuolinäppäimet siirtävät näkymää, plus ja miinus zoomaavat.",
         locate_title: "Oma sijainti",
         layers_title: "Vaihda karttataso",
         export_title: "Vienti",

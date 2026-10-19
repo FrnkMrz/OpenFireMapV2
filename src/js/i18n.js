@@ -129,6 +129,7 @@ export function t(key) {
  * - data-i18n="key"        -> innerText
  * - data-i18n-title="key"  -> title
  * - data-i18n-placeholder  -> placeholder
+ * - data-i18n-aria-label   -> aria-label
  */
 export function updatePageLanguage() {
   document.documentElement.lang = currentLang;
@@ -150,6 +151,10 @@ export function updatePageLanguage() {
 
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+  });
+
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+    el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria-label')));
   });
 
   // Rechtstexte: Deutsch ist verbindlich, alle anderen Sprachen sehen die englische Fassung

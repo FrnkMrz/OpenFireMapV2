@@ -7,7 +7,7 @@ import AxeBuilder from '@axe-core/playwright';
 // damit künftige Level-A-Regeln von 2.2 automatisch mitlaufen.
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
 
-// Bekannte, noch offene Funde (Phase 2/3 des Barrierefreiheits-Plans).
+// Bekannte, noch offene Funde (Phase 3 des Barrierefreiheits-Plans).
 // Jede Regel hier ist Schuld, die abgebaut wird – nicht erweitern, sondern Einträge entfernen.
 const KNOWN_OPEN_RULES = [
     'color-contrast' // Phase 3: Kontrast der Panels auf wechselnden Kartenebenen messen und anpassen
@@ -26,10 +26,10 @@ async function jsClick(page, selector) {
     }, selector);
 }
 
-function axe(page, extraOpenRules = []) {
+function axe(page) {
     return new AxeBuilder({ page })
         .withTags(WCAG_TAGS)
-        .disableRules([...KNOWN_OPEN_RULES, ...extraOpenRules]);
+        .disableRules(KNOWN_OPEN_RULES);
 }
 
 function formatViolations(violations) {
@@ -49,8 +49,15 @@ test.describe('Barrierefreiheit', () => {
         await gotoReady(page);
         await jsClick(page, '#layer-btn-trigger');
         await expect(page.locator('#layer-menu')).not.toHaveClass(/hidden/);
-        // Phase 2 (Punkt 7): role="menu" ohne passende Kinder/Pfeiltasten wird noch ersetzt
-        const { violations } = await axe(page, ['aria-required-children']).analyze();
+        const { violations } = await axe(page).analyze();
+        expect(violations, formatViolations(violations)).toEqual([]);
+    });
+
+    test('Info-&-Recht-Dialog hat keine axe-Verstöße', async ({ page }) => {
+        await gotoReady(page);
+        await jsClick(page, '#btn-legal-trigger');
+        await expect(page.locator('#legal-modal')).toBeVisible();
+        const { violations } = await axe(page).analyze();
         expect(violations, formatViolations(violations)).toEqual([]);
     });
 
@@ -67,8 +74,7 @@ test.describe('Barrierefreiheit', () => {
         const page = await context.newPage();
         await gotoReady(page);
         await jsClick(page, '#mobile-burger-btn');
-        // Phase 2 (Punkt 7): auch das mobile Menü nutzt role="menu" ohne passende Kinder
-        const { violations } = await axe(page, ['aria-required-children']).analyze();
+        const { violations } = await axe(page).analyze();
         await context.close();
         expect(violations, formatViolations(violations)).toEqual([]);
     });
@@ -159,5 +165,235 @@ test.describe('Barrierefreiheit', () => {
             return max;
         });
         expect(longest).toBeLessThan(0.01);
+    });
+});
+
+// Hilfen für die Dialog-Tests: liegt der Fokus (noch) innerhalb des Elements?
+const focusInside = (page, selector) => page.evaluate(
+    (sel) => !!document.querySelector(sel)?.contains(document.activeElement), selector
+);
+
+// Drückt Tab bzw. Shift+Tab mehrfach und prüft, dass der Fokus den Dialog nie verlässt
+async function expectFocusStaysIn(page, selector, key, presses = 14) {
+    for (let i = 0; i < presses; i++) {
+        await page.keyboard.press(key);
+        expect(await focusInside(page, selector), `Fokus nach ${key} #${i + 1} außerhalb von ${selector}`).toBe(true);
+    }
+}
+
+const isInert = (page, selector) => page.evaluate((sel) => !!document.querySelector(sel)?.closest('[inert]'), selector);
+
+test.describe('Menü- und Karten-Struktur', () => {
+    test('Es gibt keine Menü-Rollen ohne Pfeiltasten-Verhalten', async ({ page }) => {
+        await gotoReady(page);
+        const count = await page.locator('[role="menu"], [role="menubar"], [role="menuitem"]').count();
+        expect(count).toBe(0);
+    });
+
+    test('Ebenenauswahl ist eine beschriftete Gruppe aus Buttons mit aria-pressed', async ({ page }) => {
+        await gotoReady(page);
+        const menu = page.locator('#layer-menu');
+        await expect(menu).toHaveAttribute('role', 'group');
+        await expect(menu).toHaveAttribute('aria-labelledby', 'layer-menu-title');
+        const buttons = menu.locator('button.layer-btn');
+        expect(await buttons.count()).toBeGreaterThanOrEqual(7);
+        for (const btn of await buttons.all()) {
+            expect(['true', 'false']).toContain(await btn.getAttribute('aria-pressed'));
+        }
+        await expect(menu.locator('button[aria-pressed="true"]')).toHaveCount(1);
+
+        // Auswahl wechselt den gedrückten Button
+        await jsClick(page, '#layer-btn-trigger');
+        await page.locator('#btn-osm').click();
+        await expect(page.locator('#btn-osm')).toHaveAttribute('aria-pressed', 'true');
+        await expect(menu.locator('button[aria-pressed="true"]')).toHaveCount(1);
+    });
+
+    test('Das mobile Menü ist eine Gruppe ohne Menü-Rollen', async ({ browser }) => {
+        const context = await browser.newContext({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+        const page = await context.newPage();
+        await gotoReady(page);
+        const role = await page.locator('#mobile-menu').getAttribute('role');
+        const popup = await page.locator('#mobile-burger-btn').getAttribute('aria-haspopup');
+        await context.close();
+        expect(role).toBe('group');
+        expect(popup).toBeNull();
+    });
+
+    test('Die Karte ist eine Region mit Namen und Tastatur-Hinweis, keine Anwendung', async ({ page }) => {
+        await gotoReady(page);
+        const map = page.locator('#map');
+        await expect(map).toHaveAttribute('role', 'region');
+        await expect(map).not.toHaveAttribute('role', 'application');
+        expect(await map.getAttribute('aria-label')).toBeTruthy();
+        const hintId = await map.getAttribute('aria-describedby');
+        expect(hintId).toBeTruthy();
+        const hint = (await page.locator(`#${hintId}`).textContent()).trim();
+        expect(hint.length).toBeGreaterThan(20);
+        // Hinweis gehört nur Screenreadern und ist sichtbar nicht vorhanden
+        const box = await page.locator(`#${hintId}`).boundingBox();
+        expect(box.width).toBeLessThanOrEqual(1);
+    });
+});
+
+test.describe('Dialoge: Fokus, Tab-Falle, Escape', () => {
+    test('Info & Recht: Fokus rein, Tab-Falle, Rest inert, Escape schließt und gibt den Fokus zurück', async ({ page }) => {
+        await gotoReady(page);
+        const trigger = page.locator('#btn-legal-trigger');
+        await trigger.focus();
+        await page.keyboard.press('Enter');
+        await expect(page.locator('#legal-modal')).toBeVisible();
+
+        // Fokus liegt im Dialog, der Auslöser meldet "geöffnet"
+        await expect.poll(() => focusInside(page, '#legal-modal')).toBe(true);
+        await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+        // Rest der Seite ist inert, der Dialog nicht
+        expect(await isInert(page, '#map')).toBe(true);
+        expect(await isInert(page, '#desktop-controls')).toBe(true);
+        expect(await isInert(page, '#legal-modal')).toBe(false);
+
+        await expectFocusStaysIn(page, '#legal-modal', 'Tab');
+        await expectFocusStaysIn(page, '#legal-modal', 'Shift+Tab');
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#legal-modal')).toBeHidden();
+        await expect(trigger).toBeFocused();
+        await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+        expect(await isInert(page, '#map')).toBe(false);
+        expect(await isInert(page, '#desktop-controls')).toBe(false);
+    });
+
+    test('Export-Menü: Tab-Falle, Karte bleibt bedienbar, Escape gibt den Fokus an den Auslöser zurück', async ({ page }) => {
+        await gotoReady(page);
+        const trigger = page.locator('#export-btn-trigger');
+        await trigger.focus();
+        await page.keyboard.press('Enter');
+        await expect(page.locator('#export-menu')).toBeVisible();
+        await expect.poll(() => focusInside(page, '#export-menu')).toBe(true);
+
+        // Die Karte bleibt ansprechbar (Ausschnitt wählen, Verschieben, Zoomen), alles andere ist gesperrt
+        expect(await isInert(page, '#map')).toBe(false);
+        expect(await isInert(page, '#desktop-controls')).toBe(true);
+        expect(await isInert(page, '#status-box')).toBe(true);
+
+        await expectFocusStaysIn(page, '#export-menu', 'Tab', 24);
+        await expectFocusStaysIn(page, '#export-menu', 'Shift+Tab', 24);
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#export-menu')).toBeHidden();
+        await expect(trigger).toBeFocused();
+        expect(await isInert(page, '#desktop-controls')).toBe(false);
+    });
+
+    test('Export-Titel-Dialog: Escape schließt, Fokus geht zurück zum Export-Auslöser', async ({ page }) => {
+        await gotoReady(page);
+        // Der Dialog öffnet erst mit Objekten auf der Karte; hier reicht das Einblenden wie in ui.js
+        await page.evaluate(() => document.getElementById('export-title-modal').classList.remove('hidden'));
+        await expect.poll(() => focusInside(page, '#export-title-modal')).toBe(true);
+        expect(await isInert(page, '#map')).toBe(true);
+
+        await expectFocusStaysIn(page, '#export-title-modal', 'Tab', 8);
+        await expectFocusStaysIn(page, '#export-title-modal', 'Shift+Tab', 8);
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#export-title-modal')).toBeHidden();
+        await expect(page.locator('#export-btn-trigger')).toBeFocused();
+        expect(await isInert(page, '#map')).toBe(false);
+    });
+
+    test('Ebenen-Menü: Fokus auf aktive Ebene, Escape schließt, Fokus zurück, Rest nicht gesperrt', async ({ page }) => {
+        await gotoReady(page);
+        const trigger = page.locator('#layer-btn-trigger');
+        await trigger.focus();
+        await page.keyboard.press('Enter');
+        await expect(page.locator('#layer-menu')).toBeVisible();
+        await expect(page.locator('#layer-menu .layer-btn.active')).toBeFocused();
+        expect(await isInert(page, '#map')).toBe(false);
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#layer-menu')).toBeHidden();
+        await expect(trigger).toBeFocused();
+        await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('Datenstand-Popover: Fokus hinein, Escape schließt, Fokus zurück zum Button', async ({ page }) => {
+        await gotoReady(page);
+        const btn = page.locator('#data-info-btn');
+        await btn.focus();
+        await page.keyboard.press('Enter');
+        await expect(page.locator('#data-info-popover')).toBeVisible();
+        await expect.poll(() => focusInside(page, '#data-info-popover')).toBe(true);
+        // Nicht modal: die Karte bleibt bedienbar
+        expect(await isInert(page, '#map')).toBe(false);
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#data-info-popover')).toBeHidden();
+        await expect(btn).toBeFocused();
+    });
+
+    test('Mobil: Info & Recht aus dem Burger-Menü, Escape bringt den Fokus zum Burger-Button zurück', async ({ browser }) => {
+        const context = await browser.newContext({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+        const page = await context.newPage();
+        await gotoReady(page);
+        await page.locator('#mobile-burger-btn').click();
+        await page.locator('#mobile-open-legal').click();
+        await expect(page.locator('#legal-modal')).toBeVisible();
+        await expect.poll(() => focusInside(page, '#legal-modal')).toBe(true);
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#legal-modal')).toBeHidden();
+        await expect(page.locator('#mobile-burger-btn')).toBeFocused();
+        await context.close();
+    });
+});
+
+test.describe('Live-Regionen', () => {
+    test('Meldungen laufen über feste Regionen, der Toast ist stumm; Warnung landet in der status-Region', async ({ page }) => {
+        await gotoReady(page);
+        const toast = page.locator('#notification-box');
+        await expect(toast).toHaveAttribute('aria-hidden', 'true');
+        expect(await toast.getAttribute('role')).toBeNull();
+        expect(await toast.getAttribute('aria-live')).toBeNull();
+
+        // Rollen der Regionen sind fest
+        await expect(page.locator('#notification-live-status')).toHaveAttribute('role', 'status');
+        await expect(page.locator('#notification-live-alert')).toHaveAttribute('role', 'alert');
+
+        // Suche ohne Treffer: Warnung (kein Fehler)
+        await page.route('**/nominatim**', route => route.fulfill({ json: [] }));
+        await page.locator('#search-input').fill('Zzzzzzqq');
+        await page.locator('#search-btn').click();
+        await expect(page.locator('#notification-live-status')).not.toHaveText('');
+        await expect(page.locator('#notification-live-alert')).toHaveText('');
+        await expect(toast).toHaveAttribute('data-type', 'warning');
+    });
+
+    test('Fehlermeldung landet in der alert-Region und lässt die status-Region leer', async ({ page }) => {
+        await gotoReady(page);
+        // Geolocation-Fehler erzeugen: API liefert sofort PERMISSION_DENIED
+        await page.evaluate(() => {
+            navigator.geolocation.getCurrentPosition = (ok, fail) => fail({ code: 1, message: 'denied' });
+            navigator.geolocation.watchPosition = (ok, fail) => { fail({ code: 1, message: 'denied' }); return 0; };
+        });
+        await page.locator('#locate-btn').click();
+        await expect(page.locator('#notification-live-alert')).not.toHaveText('');
+        await expect(page.locator('#notification-live-status')).toHaveText('');
+        await expect(page.locator('#notification-box')).toHaveAttribute('data-type', 'error');
+        expect(await page.locator('#notification-box').getAttribute('role')).toBeNull();
+    });
+
+    test('Die Datenstand-Box ist keine Live-Region und sagt Kartenereignisse nicht an', async ({ page }) => {
+        await gotoReady(page);
+        const live = await page.evaluate(() => {
+            const out = [];
+            for (let el = document.getElementById('status-box'); el; el = el.parentElement) {
+                const role = el.getAttribute('role');
+                const l = el.getAttribute('aria-live');
+                if ((l && l !== 'off') || role === 'status' || role === 'alert' || role === 'log') out.push(el.id || el.tagName);
+            }
+            return [...out, ...[...document.querySelectorAll('#status-box [aria-live], #status-box [role="status"], #status-box [role="alert"]')].map(e => e.id)];
+        });
+        expect(live).toEqual([]);
     });
 });

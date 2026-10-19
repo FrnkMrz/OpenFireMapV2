@@ -5,6 +5,8 @@
 export const strings = {
   search_placeholder: "ابحث عن موقع...",
   skip_to_map: "انتقل إلى الخريطة",
+  map_region_label: "الخريطة",
+  map_keyboard_hint: "التحكم بالخريطة بلوحة المفاتيح: مفاتيح الأسهم تحرّك العرض، وزرا الزائد والناقص يكبّران ويصغّران.",
   locate_title: "موقعي",
   layers_title: "تغيير الخريطة",
   export_title: "تصدير",

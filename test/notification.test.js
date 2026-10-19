@@ -4,13 +4,21 @@ import { showNotification, hideNotification } from '../src/js/ui.js';
 
 describe('showNotification & hideNotification', () => {
     let box;
+    let statusRegion;
+    let alertRegion;
 
     beforeEach(() => {
         vi.useFakeTimers();
         document.body.replaceChildren();
         box = document.createElement('div');
         box.id = 'notification-box';
-        document.body.appendChild(box);
+        statusRegion = document.createElement('div');
+        statusRegion.id = 'notification-live-status';
+        statusRegion.setAttribute('role', 'status');
+        alertRegion = document.createElement('div');
+        alertRegion.id = 'notification-live-alert';
+        alertRegion.setAttribute('role', 'alert');
+        document.body.append(box, statusRegion, alertRegion);
     });
 
     afterEach(() => {
@@ -21,21 +29,61 @@ describe('showNotification & hideNotification', () => {
         showNotification('Gespeichert', 'success');
 
         expect(box.dataset.type).toBe('success');
-        expect(box.getAttribute('role')).toBe('status');
-        expect(box.getAttribute('aria-live')).toBe('polite');
         expect(box.classList.contains('is-visible')).toBe(true);
         expect(box.style.display).toBe('flex');
         expect(box.textContent).toContain('Gespeichert');
         expect(box.querySelector('.notification-icon')).not.toBeNull();
     });
 
-    it('konfiguriert Fehler als assertives alert', () => {
+    it('zeigt Fehler sichtbar an', () => {
         showNotification('Fehler aufgetreten', 5000, 'error');
 
         expect(box.dataset.type).toBe('error');
-        expect(box.getAttribute('role')).toBe('alert');
-        expect(box.getAttribute('aria-live')).toBe('assertive');
         expect(box.textContent).toContain('Fehler aufgetreten');
+    });
+
+    it('die sichtbare Box ist für Screenreader stumm und wechselt nie ihre Rolle', () => {
+        showNotification('Info', 'info');
+        showNotification('Fehler', 'error');
+
+        expect(box.getAttribute('aria-hidden')).toBe('true');
+        expect(box.hasAttribute('role')).toBe(false);
+        expect(box.hasAttribute('aria-live')).toBe(false);
+    });
+
+    it('sagt Info, Erfolg und Warnung in der status-Region an, Fehler in der alert-Region', () => {
+        showNotification('Gespeichert', 'success');
+        vi.advanceTimersByTime(50);
+        expect(statusRegion.textContent).toBe('Gespeichert');
+        expect(alertRegion.textContent).toBe('');
+
+        showNotification('Kaputt', 'error');
+        vi.advanceTimersByTime(50);
+        expect(alertRegion.textContent).toBe('Kaputt');
+        expect(statusRegion.textContent).toBe('');
+
+        showNotification('Achtung', 'warning');
+        vi.advanceTimersByTime(50);
+        expect(statusRegion.textContent).toBe('Achtung');
+        expect(alertRegion.textContent).toBe('');
+    });
+
+    it('die Live-Regionen behalten ihre feste Rolle', () => {
+        showNotification('A', 'error');
+        showNotification('B', 'info');
+        vi.advanceTimersByTime(50);
+
+        expect(statusRegion.getAttribute('role')).toBe('status');
+        expect(alertRegion.getAttribute('role')).toBe('alert');
+    });
+
+    it('leert die Live-Regionen, wenn die Meldung verschwindet', () => {
+        showNotification('Kurz', 1000, 'info');
+        vi.advanceTimersByTime(50);
+        expect(statusRegion.textContent).toBe('Kurz');
+
+        vi.advanceTimersByTime(1000 + 250);
+        expect(statusRegion.textContent).toBe('');
     });
 
     it('akzeptiert vertauschte Parameter (type, duration)', () => {
