@@ -563,6 +563,15 @@ export function setupUI() {
         if (pendingExportAction) pendingExportAction();
     });
 
+    // Skip-Link: Fokus auf die Karte setzen, ohne den Permalink-Hash (#zoom/lat/lon/layer) durch #map zu ersetzen.
+    // Ohne JavaScript greift weiter der normale Anker (href="#map").
+    document.getElementById('skip-to-map')?.addEventListener('click', (e) => {
+        const mapEl = document.getElementById('map');
+        if (!mapEl) return;
+        e.preventDefault();
+        mapEl.focus();
+    });
+
     // Automatische Schließ-Logik aktivieren
     setupMenuAutoClose();
 

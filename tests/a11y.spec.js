@@ -3,7 +3,9 @@ import AxeBuilder from '@axe-core/playwright';
 
 // Barrierefreiheits-Tests (WCAG 2.2 A/AA) mit axe-core plus gezielte Tastatur-/Bewegungs-Prüfungen.
 
-const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+// 'wcag22a' hat in axe-core derzeit keine Regeln (alle neuen 2.2-Regeln sind AA), bleibt aber drin,
+// damit künftige Level-A-Regeln von 2.2 automatisch mitlaufen.
+const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
 
 // Bekannte, noch offene Funde (Phase 2/3 des Barrierefreiheits-Plans).
 // Jede Regel hier ist Schuld, die abgebaut wird – nicht erweitern, sondern Einträge entfernen.
@@ -78,7 +80,7 @@ test.describe('Barrierefreiheit', () => {
         expect(content).not.toMatch(/maximum-scale/i);
     });
 
-    test('Skip-Link ist erster Tab-Stopp und springt zur Karte', async ({ page }) => {
+    test('Skip-Link ist erster Tab-Stopp und fokussiert die Karte, ohne den Permalink zu ändern', async ({ page }) => {
         await gotoReady(page);
         await page.keyboard.press('Tab');
         const skip = page.locator('#skip-to-map');
@@ -86,8 +88,11 @@ test.describe('Barrierefreiheit', () => {
         // Fokussiert muss er im sichtbaren Bereich liegen
         const box = await skip.boundingBox();
         expect(box.y).toBeGreaterThanOrEqual(0);
+        const hashBefore = new URL(page.url()).hash;
         await page.keyboard.press('Enter');
-        expect(new URL(page.url()).hash).toContain('#map');
+        // Fokus liegt auf der Karte, der Permalink (#zoom/lat/lon/layer) bleibt unverändert
+        await expect(page.locator('#map')).toBeFocused();
+        expect(new URL(page.url()).hash).toBe(hashBefore);
     });
 
     test('Tastaturfokus ist sichtbar (Outline vorhanden)', async ({ page }) => {

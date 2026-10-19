@@ -191,7 +191,9 @@ export function initMapLogic() {
         // Barrierefreiheit: Wer "Animationen reduzieren" eingestellt hat, bekommt keine Zoom-/Fade-Animationen
         zoomAnimation: !prefersReducedMotion(),
         fadeAnimation: !prefersReducedMotion(),
-        markerZoomAnimation: !prefersReducedMotion()
+        markerZoomAnimation: !prefersReducedMotion(),
+        // Auch das Nachlaufen (Trägheit) nach dem Ziehen ist eine JS-Animation, die das CSS nicht abschaltet
+        inertia: !prefersReducedMotion()
     });
 
     State.boundaryLayer.addTo(State.map);
