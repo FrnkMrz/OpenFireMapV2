@@ -100,6 +100,7 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       hasLayer: () => true,
       eachLayer: (fn) => {},
       removeLayer: (layer) => {},
+      panBy: () => mapObj, // initMapLogic umhüllt panBy (reduzierte Bewegung)
       on: (ev, fn) => {
         ev.split(' ').forEach(e => {
           listeners[e] = listeners[e] || [];

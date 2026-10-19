@@ -196,6 +196,12 @@ export function initMapLogic() {
         inertia: !prefersReducedMotion()
     });
 
+    // Leaflets Tastatursteuerung (Pfeiltasten), Popup-Autopan und panTo rufen panBy ohne "animate: false" auf.
+    // Bei reduzierter Bewegung (zur Aufrufzeit geprüft) wird daraus ein direkter Sprung.
+    const originalPanBy = State.map.panBy.bind(State.map);
+    State.map.panBy = (offset, options) =>
+        originalPanBy(offset, prefersReducedMotion() ? { ...options, animate: false } : options);
+
     State.boundaryLayer.addTo(State.map);
     State.rangeLayerGroup.addTo(State.map);
     State.distanceLayerGroup.addTo(State.map);

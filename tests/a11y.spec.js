@@ -127,6 +127,22 @@ test.describe('Barrierefreiheit', () => {
         expect(tooSmall).toEqual([]);
     });
 
+    test('Pfeiltasten verschieben die Karte bei reduzierter Bewegung ohne Animation', async ({ page }) => {
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await gotoReady(page);
+        await page.locator('#map').focus();
+        const readX = () => page.locator('.leaflet-map-pane').evaluate(el => {
+            const m = /translate3d\((-?[\d.]+)px/.exec(el.style.transform || '');
+            return { x: m ? parseFloat(m[1]) : 0, animating: el.classList.contains('leaflet-pan-anim') };
+        });
+        const before = await readX();
+        await page.keyboard.press('ArrowRight');
+        // Direkt nach dem Tastendruck, ohne Wartezeit: bei Animation läge x noch nahe am Startwert
+        const after = await readX();
+        expect(after.animating).toBe(false);
+        expect(Math.abs(after.x - before.x)).toBeGreaterThanOrEqual(70);
+    });
+
     test('Bei reduzierter Bewegung gibt es keine Übergänge/Animationen', async ({ page }) => {
         await page.emulateMedia({ reducedMotion: 'reduce' });
         await gotoReady(page);
