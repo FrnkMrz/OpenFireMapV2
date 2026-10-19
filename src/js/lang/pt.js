@@ -4,6 +4,7 @@
  */
 export const strings = {
         search_placeholder: "Pesquisar local...",
+        skip_to_map: "Saltar para o mapa",
         locate_title: "Minha localização",
         layers_title: "Mudar camada",
         export_title: "Exportar",

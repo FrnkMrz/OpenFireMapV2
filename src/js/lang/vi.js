@@ -4,6 +4,7 @@
  */
 export const strings = {
   search_placeholder: "Tìm địa điểm...",
+  skip_to_map: "Chuyển đến bản đồ",
   locate_title: "Vị trí của tôi",
   layers_title: "Đổi bản đồ",
   export_title: "Xuất",

@@ -4,6 +4,7 @@
  */
 export const strings = {
         search_placeholder: "장소 검색...",
+        skip_to_map: "지도로 건너뛰기",
         locate_title: "내 위치",
         layers_title: "지도 레이어 전환",
         export_title: "내보내기",

@@ -23,7 +23,7 @@ async function getExport() {
     return _exportModule;
 }
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
-import { setBaseLayer, clearDistanceLine, drawLineToNearest, shareMap } from './map.js';
+import { setBaseLayer, clearDistanceLine, drawLineToNearest, shareMap, moveMapTo } from './map.js';
 
 // ...
 
@@ -361,7 +361,7 @@ export function searchLocation() {
         .then(data => {
             if (data.length > 0 && State.map) {
                 // Wir nutzen den zentral konfigurierten Zoom-Wert
-                State.map.flyTo([data[0].lat, data[0].lon], Config.searchZoom);
+                moveMapTo([data[0].lat, data[0].lon], Config.searchZoom);
 
                 input.blur(); // Tastatur am Handy einklappen
             } else {
@@ -421,7 +421,7 @@ export function locateUser(highAccuracy = true) {
                 // Sonst den Standard-Wert (17) nehmen.
                 const targetZoom = currentZoom >= 18 ? currentZoom : defaultZoom;
 
-                State.map.flyTo([lat, lng], targetZoom);
+                moveMapTo([lat, lng], targetZoom);
             }
 
             // 2. Alten Marker entfernen

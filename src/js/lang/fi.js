@@ -4,6 +4,7 @@
  */
 export const strings = {
         search_placeholder: "Etsi sijainti...",
+        skip_to_map: "Siirry karttaan",
         locate_title: "Oma sijainti",
         layers_title: "Vaihda karttataso",
         export_title: "Vienti",

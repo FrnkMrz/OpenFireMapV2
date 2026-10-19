@@ -4,6 +4,7 @@
  */
 export const strings = {
   search_placeholder: "Konum ara...",
+  skip_to_map: "Haritaya geç",
   locate_title: "Konumum",
   layers_title: "Haritayı değiştir",
   export_title: "Dışa aktar",

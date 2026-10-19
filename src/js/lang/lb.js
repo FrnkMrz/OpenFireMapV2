@@ -4,6 +4,7 @@
  */
 export const strings = {
         search_placeholder: "Plaz sichen...",
+        skip_to_map: "Op d'Kaart sprangen",
         locate_title: "Meng Positioun",
         layers_title: "Kaart wiesselen",
         export_title: "Export",

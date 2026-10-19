@@ -4,6 +4,7 @@
  */
 export const strings = {
   search_placeholder: "स्थान खोजें...",
+  skip_to_map: "मानचित्र पर जाएँ",
   locate_title: "मेरा स्थान",
   layers_title: "मानचित्र बदलें",
   export_title: "निर्यात",
