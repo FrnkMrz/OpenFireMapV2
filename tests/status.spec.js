@@ -1,0 +1,155 @@
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+// Pipeline-Statusseite (/status/): Die Pipeline-Dateien werden abgefangen, damit der Test weder vom Netz
+// noch vom aktuellen Datenstand abhängt.
+
+const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
+const CORS = { 'access-control-allow-origin': '*' };
+
+const region = (id, name, hydrants, fire, over = {}) => ({
+    id, name, bounds: [0, 0, 1, 1], file: `eu/${id}-20261018T010000Z.pmtiles`, minzoom: 0, maxzoom: 14, size_bytes: 2_500_000,
+    generated_at: '2026-10-18T01:00:00.123+00:00', osm_data_until: '2026-10-17T20:00:00Z',
+    counts: { hydrants, fire_stations: fire, water_points: 2, defibrillators: 3, boundaries: 50 }, ...over
+});
+const MANIFEST = {
+    version: 1,
+    updated_at: '2026-10-20T01:08:45Z',
+    regions: {
+        poland: region('poland', 'Polen', 403193, 15461),
+        france: region('france', 'Frankreich', 243903, 8057),
+        italy: region('italy', 'Italien', 49180, 1701),
+        hungary: region('hungary', 'Ungarn', 33346, 408),
+        spain: region('spain', 'Spanien', 19944, 1114),
+        malta: region('malta', 'Malta', 61, 16, { generated_at: '2026-10-19T01:00:00+00:00' })
+    }
+};
+const extract = (name) => ({ name, size_mb: 100, mtime: '2026-10-19T00:30:00+00:00', osm_data_timestamp: '2026-10-18T20:25:06Z' });
+const METADATA = {
+    generated_at: '2026-10-19T05:59:26.477688+00:00',
+    osm_data_until: '2026-10-18T20:25:06Z',
+    extracts: {
+        germany: extract('Deutschland'), austria: extract('Österreich'), switzerland: extract('Schweiz'),
+        luxembourg: extract('Luxemburg'), liechtenstein: extract('Liechtenstein')
+    },
+    pmtiles: { file: 'openfiremap.pmtiles', size_mb: 182.5, minzoom: 12, maxzoom: 14, duration_sec: 156 },
+    timings: { download_sec: 247, extraction_sec: 603, total_sec: 850 },
+    features: {
+        hydrants: { count: 1022616 }, fire_stations: { count: 42037 }, water_points: { count: 25548 },
+        defibrillators: { count: 40815 }, boundaries: { count: 96998 }
+    }
+};
+
+async function mockPipeline(page, { manifest = MANIFEST, metadata = METADATA, manifestStatus = 200 } = {}) {
+    await page.route('https://pipeline.openfiremap.org/**', (route) => {
+        const url = route.request().url();
+        if (url.endsWith('/eu/regions.json')) {
+            return manifestStatus === 200
+                ? route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(manifest) })
+                : route.fulfill({ status: manifestStatus, headers: CORS, body: 'x' });
+        }
+        if (url.endsWith('/metadata.json')) {
+            return metadata
+                ? route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(metadata) })
+                : route.fulfill({ status: 503, headers: CORS, body: 'x' });
+        }
+        return route.abort();
+    });
+}
+
+async function open(page, query = '?lang=de') {
+    await page.goto(`/status/${query}`);
+    await page.waitForSelector('#st-content:not([hidden])');
+}
+
+test.describe('Pipeline-Statusseite', () => {
+    test('zeigt Kennzahlen, Gruppen und Tabellen auf Deutsch', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+        await expect(page.locator('h1')).toHaveText('OpenFireMap Pipeline');
+        await expect(page.locator('#st-kpis')).toContainText('Länder und Gebiete');
+        await expect(page.locator('#st-groups')).toContainText('Polen, Frankreich, Italien, Ungarn, Spanien');
+        await expect(page.locator('#st-timeline svg')).toBeVisible();
+        await expect(page.locator('#st-density svg')).toBeVisible();
+        await expect(page.locator('#st-table tbody tr')).toHaveCount(11);
+    });
+
+    test('Wachen stehen auch für die DACHLiLu-Länder in der Tabelle', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        for (const id of ['germany', 'austria', 'switzerland', 'luxembourg', 'liechtenstein']) {
+            const cell = page.locator(`#st-table tbody tr[data-key="${id}"] td`).nth(3);
+            await expect(cell).not.toHaveText('—');
+        }
+    });
+
+    test('Umschalten auf Englisch ändert Texte, Ländernamen und Zahlenformat', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        await page.click('.st-lang button[data-lang="en"]');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+        await expect(page.locator('#st-kpis')).toContainText('Countries and regions');
+        await expect(page.locator('#st-groups')).toContainText('Poland, France, Italy, Hungary, Spain');
+        await expect(page.locator('#st-table tbody tr[data-key="germany"] td').first()).toHaveText('Germany');
+        await expect(page.locator('#st-table tbody tr[data-key="poland"] td').nth(2)).toHaveText('403,193');
+        await page.click('.st-lang button[data-lang="de"]');
+        await expect(page.locator('#st-table tbody tr[data-key="poland"] td').nth(2)).toHaveText('403.193');
+    });
+
+    test('Tabelle sortiert nach Spalte und filtert per Suche', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        await page.click('#st-table th button[data-k="name"]');
+        await expect(page.locator('#st-table th').first()).toHaveAttribute('aria-sort', 'ascending');
+        await expect(page.locator('#st-table tbody tr').first()).toHaveAttribute('data-key', 'germany');
+        await page.fill('#st-search', 'malta');
+        await expect(page.locator('#st-table tbody tr')).toHaveCount(1);
+    });
+
+    test('Lauf-Tabelle je Gebiet nennt Datei, Zeiten und alle Ebenen', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        const rows = page.locator('#st-runs tbody tr');
+        await expect(rows).toHaveCount(7);
+        await expect(rows.first()).toHaveAttribute('data-key', 'dachlilu');
+        await expect(rows.first()).toContainText('openfiremap.pmtiles');
+        await expect(page.locator('#st-runs tbody tr[data-key="poland"]')).toContainText('eu/poland-20261018T010000Z.pmtiles');
+    });
+
+    test('ohne metadata.json bleibt die Seite nutzbar und warnt', async ({ page }) => {
+        await mockPipeline(page, { metadata: null });
+        await open(page);
+        await expect(page.locator('#st-warn')).toBeVisible();
+        await expect(page.locator('#st-run-card')).toBeHidden();
+        await expect(page.locator('#st-table tbody tr')).toHaveCount(6);
+    });
+
+    test('zeigt bei fehlendem Manifest eine Fehlermeldung mit Wiederholen', async ({ page }) => {
+        await mockPipeline(page, { manifestStatus: 500 });
+        await page.goto('/status/?lang=en');
+        await expect(page.locator('#st-error')).toBeVisible();
+        await expect(page.locator('#st-content')).toBeHidden();
+        await page.unroute('https://pipeline.openfiremap.org/**');
+        await mockPipeline(page);
+        await page.click('#st-retry');
+        await expect(page.locator('#st-content')).toBeVisible();
+    });
+
+    test('hat keine axe-Verstöße (Deutsch und Englisch)', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        let { violations } = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+        expect(violations, JSON.stringify(violations.map((v) => v.id + ': ' + v.nodes.map((n) => n.target.join(' ')).join(' | ')), null, 1)).toEqual([]);
+        await page.click('.st-lang button[data-lang="en"]');
+        ({ violations } = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze());
+        expect(violations, JSON.stringify(violations.map((v) => v.id), null, 1)).toEqual([]);
+    });
+
+    test('läuft auf dem Handy ohne waagerechtes Scrollen der Seite', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 800 });
+        await mockPipeline(page);
+        await open(page, '?lang=en');
+        expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+    });
+});

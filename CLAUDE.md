@@ -37,7 +37,9 @@ src/
     europe.js   # Europe extension (manifest, required countries, eligibility), used by pipeline.js behind a flag (on; off = emergency brake)
     export.js   # Map export (PNG/PDF via jsPDF + html2canvas, lazy-loaded)
     version.js  # Version constant
+    status/      # Pipeline-Statusseite /status/ (model, texts, charts, load, status)
   input.css     # Tailwind CSS source
+status/index.html  # Pipeline-Statusseite (zweiter Vite-Einstieg → /status/)
 public/         # Static assets served as-is (sw.js, manifest.json, favicons, vendor assets)
 index.html      # Single page entry point (Vite root)
 scripts/
@@ -91,6 +93,7 @@ GitHub Actions workflow (`.github/workflows/pages.yml`) runs on push to `main`:
 ## Key Architecture Notes
 
 - **Bootstrap order** (`app.js`): i18n → UI → wait for `window.L` (Leaflet via CDN/vendor) → `initMapLogic()` → lazy-import `export.js`
+- **Statusseite** (`status/index.html`, `src/js/status/`): eigene Seite ohne Karte, lädt `eu/regions.json` und `metadata.json` live aus `pipeline.openfiremap.org`, Deutsch/Englisch (`ofm_lang`). `model.js` ist rein und getestet; Einwohner (`src/data/status-population.json`) sind Schätzwerte, DACHLiLu-Länder einzeln stehen in `src/data/status-dach-snapshot.json`, bis der Builder `features.<ebene>.by_country` schreibt. Neues Land im Manifest braucht Einwohnerzahl und englischen Namen (`COUNTRY_EN`), ein Test prüft beides.
 - **Mobile UI** (`mobile-ui.js`): loaded as an IIFE script tag, not imported. Detects mobile via `pointer: coarse` / touch / `window.innerWidth < 1370`, hides desktop controls, proxies actions by calling `.click()` on hidden desktop buttons — no logic is duplicated
 - **State** (`state.js`): single mutable singleton; all modules share it via import. Key fields: `map`, `markerLayer`, `cachedElements`, `isFetchingData`, `isFetchingBoundaries`, `pendingBufferFetches`, `activeFetchBounds`, `activeLayerKey`, `exportFormat`, `selection`
 - **Permalink**: URL hash format `#zoom/lat/lon/layer` (e.g. `#17/48.12345/9.56789/topo`), updated debounced on map move

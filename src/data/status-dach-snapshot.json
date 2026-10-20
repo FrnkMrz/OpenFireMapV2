@@ -1,0 +1,10 @@
+{
+  "_meta": {
+    "note": "Objekte je DACHLiLu-Land und Ebene, einmalig am 20.10.2026 aus den Geofabrik-Auszügen gezählt (osmium tags-filter -R mit den Filtern des Builders: nwr/emergency=fire_hydrant; nwr/amenity=fire_station und nwr/building=fire_station; nwr/emergency=water_tank,suction_point,fire_water_pond,cistern; n/emergency=defibrillator; Stand OSM 18.10.2026 20:25 UTC). metadata.json nennt nur die Summen. Sobald der Builder metadata.json features.<ebene>.by_country schreibt, hat dieses Feld Vorrang und diese Datei entfällt.",
+    "asOf": "2026-10-20"
+  },
+  "hydrants": { "germany": 914827, "austria": 45869, "switzerland": 60016, "luxembourg": 2764, "liechtenstein": 85 },
+  "fire_stations": { "germany": 36113, "austria": 4395, "switzerland": 1422, "luxembourg": 148, "liechtenstein": 10 },
+  "water_points": { "germany": 23307, "austria": 1778, "switzerland": 533, "luxembourg": 8, "liechtenstein": 1 },
+  "defibrillators": { "germany": 21064, "austria": 2042, "switzerland": 17402, "luxembourg": 243, "liechtenstein": 224 }
+}
