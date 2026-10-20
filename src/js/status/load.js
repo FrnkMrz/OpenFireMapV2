@@ -11,6 +11,7 @@
  */
 
 import { fetchJson } from '../net.js';
+import { parseManifest } from '../europe-manifest.js';
 
 export const PIPELINE_URL = 'https://pipeline.openfiremap.org';
 export const MANIFEST_PATH = 'eu/regions.json';
@@ -20,7 +21,8 @@ export const LOAD_TIMEOUT_MS = 10000;
 /**
  * Das Manifest ist Pflicht (ohne es gibt es nichts zu zeigen), metadata.json optional: fehlt sie,
  * entfallen nur die fünf DACHLiLu-Länder und der Lauf-Abschnitt.
- * @returns {Promise<{manifest: Object, metadata: Object|null, metadataFailed: boolean}>}
+ * Das Manifest wird wie in der Karte geprüft (`parseManifest`); abgelehnte Einträge stehen in `rejected`.
+ * @returns {Promise<{manifest: Object, rejected: string[], metadata: Object|null, metadataFailed: boolean}>}
  */
 export async function loadPipelineData(fetcher = fetchJson) {
   const [manifestRes, metadataRes] = await Promise.allSettled([
@@ -28,12 +30,15 @@ export async function loadPipelineData(fetcher = fetchJson) {
     fetcher(`${PIPELINE_URL}/${METADATA_PATH}`, { timeoutMs: LOAD_TIMEOUT_MS })
   ]);
   if (manifestRes.status !== 'fulfilled') throw manifestRes.reason;
-  const manifest = manifestRes.value;
-  if (!manifest || typeof manifest !== 'object' || !manifest.regions || typeof manifest.regions !== 'object') {
-    throw new Error('Manifest ohne regions');
-  }
+  // Dieselbe strenge Prüfung wie in der Karte: nur Einträge, die die Karte laden würde, gelten als veröffentlicht
+  const raw = manifestRes.value;
+  const parsed = parseManifest(raw);
+  if (!parsed) throw new Error('Manifest ungültig (Version oder regions)');
+  const regions = {};
+  for (const id of Object.keys(parsed.regions)) regions[id] = raw.regions[id];
+  const manifest = { version: raw.version, regions };
   const metadata = metadataRes.status === 'fulfilled' && metadataRes.value && typeof metadataRes.value === 'object'
     ? metadataRes.value
     : null;
-  return { manifest, metadata, metadataFailed: metadata == null };
+  return { manifest, rejected: parsed.rejected, metadata, metadataFailed: metadata == null };
 }

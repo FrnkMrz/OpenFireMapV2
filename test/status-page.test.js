@@ -96,7 +96,11 @@ describe('Statusseite: Zählung der DACHLiLu-Länder', () => {
 });
 
 describe('Statusseite: Laden', () => {
-  const manifest = { version: 1, regions: { malta: { id: 'malta' } } };
+  const entry = (id, over = {}) => ({
+    id, name: id, bounds: [14, 35, 15, 36], file: `eu/${id}-20261018T010000Z.pmtiles`, size_bytes: 100,
+    generated_at: '2026-10-18T01:00:00+00:00', osm_data_until: '2026-10-17T20:00:00Z', counts: { hydrants: 1 }, ...over
+  });
+  const manifest = { version: 1, regions: { malta: entry('malta') } };
 
   it('nutzt dieselbe Pipeline-Adresse wie die Karte', () => {
     expect(PIPELINE_URL).toBe(Config.pipeline.url);
@@ -108,7 +112,29 @@ describe('Statusseite: Laden', () => {
     const fetcher = async (url) => { urls.push(url); return url.endsWith(METADATA_PATH) ? { generated_at: 'x' } : manifest; };
     const out = await loadPipelineData(fetcher);
     expect(urls.sort()).toEqual([`${PIPELINE_URL}/${METADATA_PATH}`, `${PIPELINE_URL}/${MANIFEST_PATH}`].sort());
-    expect(out).toMatchObject({ manifest, metadataFailed: false });
+    expect(out).toMatchObject({ manifest, rejected: [], metadataFailed: false });
+  });
+
+  it('übernimmt nur Einträge, die auch die Karte laden würde (gleiche Prüfung wie parseManifest)', async () => {
+    const bad = {
+      version: 1,
+      regions: {
+        malta: entry('malta'),
+        falscheKennung: entry('anders'),                                  // Schlüssel passt nicht zur Kennung
+        spain: entry('spain', { file: 'eu/portugal-20261018T010000Z.pmtiles' }), // Datei gehört zu anderem Land
+        italy: entry('italy', { bounds: [10, 40, 5, 41] }),              // West größer als Ost
+        greece: entry('greece', { file: '../evil.pmtiles' }),            // Pfad nach außen
+        peru: entry('peru', { generated_at: 'gestern' })                 // Zeitstempel unbrauchbar
+      }
+    };
+    const out = await loadPipelineData(async (url) => (url.endsWith(METADATA_PATH) ? {} : bad));
+    expect(Object.keys(out.manifest.regions)).toEqual(['malta']);
+    expect(out.rejected.sort()).toEqual(['falscheKennung', 'greece', 'italy', 'peru', 'spain']);
+  });
+
+  it('behält die Rohdaten (Zählungen) der angenommenen Einträge', async () => {
+    const out = await loadPipelineData(async (url) => (url.endsWith(METADATA_PATH) ? {} : manifest));
+    expect(out.manifest.regions.malta.counts).toEqual({ hydrants: 1 });
   });
 
   it('läuft ohne metadata.json weiter und meldet es', async () => {
@@ -120,7 +146,8 @@ describe('Statusseite: Laden', () => {
 
   it('wirft, wenn das Manifest fehlt oder unbrauchbar ist', async () => {
     await expect(loadPipelineData(async (url) => { if (url.endsWith(MANIFEST_PATH)) throw new Error('HTTP 404'); return {}; })).rejects.toThrow('404');
-    await expect(loadPipelineData(async () => ({ version: 1 }))).rejects.toThrow('regions');
+    await expect(loadPipelineData(async () => ({ version: 1 }))).rejects.toThrow('ungültig');
+    await expect(loadPipelineData(async () => ({ version: 2, regions: {} }))).rejects.toThrow('ungültig');
     await expect(loadPipelineData(async () => null)).rejects.toThrow();
   });
 });
