@@ -134,4 +134,67 @@ test.describe('Objektliste', () => {
         await expect(page.locator('#mobile-burger-btn')).toBeFocused();
         await context.close();
     });
+
+    test('Offene Liste folgt den Daten, wenn die Marker erst nach dem Öffnen geladen werden', async ({ page }) => {
+        await page.route('**/api/interpreter', async route => {
+            await new Promise(r => setTimeout(r, 1500));
+            await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ elements: ELEMENTS }) });
+        });
+        await page.goto('/?lang=de#18/40.7129/-74.0055/voyager');
+        await page.waitForSelector('.leaflet-container');
+        await page.waitForFunction(() => window.State && window.State.map);
+
+        await openListByKeyboard(page);
+        // Noch keine Daten: Ladehinweis statt "keine Objekte"
+        await expect(items(page)).toHaveCount(0);
+        await expect(page.locator('#objects-list-summary')).not.toContainText('Zoomstufe 15');
+
+        // Ohne erneutes Öffnen erscheinen die Einträge, der Fokus bleibt im Dialog
+        await expect(items(page)).toHaveCount(3, { timeout: 8000 });
+        await expect(page.locator('#objects-list-summary')).toContainText('3 Objekte');
+        expect(await page.evaluate(() => document.getElementById('objects-list').contains(document.activeElement))).toBe(true);
+    });
+
+    test('Der Fokus auf einem Eintrag bleibt beim Aktualisieren der Liste erhalten', async ({ page }) => {
+        await openMap(page, 18);
+        await openListByKeyboard(page);
+        const second = items(page).nth(1);
+        await second.focus();
+        const id = await second.getAttribute('data-object-id');
+        // Gleiche Daten: kein Neuaufbau, Fokus bleibt
+        await page.evaluate(() => window.dispatchEvent(new CustomEvent('ofm:markerschange')));
+        await page.waitForTimeout(300);
+        expect(await page.evaluate(() => document.activeElement?.dataset.objectId)).toBe(id);
+    });
+});
+
+
+// Nahe Hydranten (< 5 m) werden ab Zoom 17 zu einem Cluster-Symbol gebündelt
+test.describe('Objektliste und Clustering', () => {
+    const NEAR = [
+        { type: 'node', id: 201, lat: 40.71280, lon: -74.00600, tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'pillar', name: 'Eins' } },
+        { type: 'node', id: 202, lat: 40.71281, lon: -74.00600, tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'pillar', name: 'Zwei' } }
+    ];
+
+    for (const name of ['Eins', 'Zwei']) {
+        test(`Auswahl von "${name}" landet nach dem Zoomen im Cluster-Symbol`, async ({ page }) => {
+            await page.route('**/api/interpreter', route => route.fulfill({
+                contentType: 'application/json',
+                body: JSON.stringify({ elements: NEAR })
+            }));
+            await page.goto('/?lang=de#16/40.7128/-74.0060/voyager');
+            await page.waitForSelector('.leaflet-container');
+            await page.waitForFunction(() => window.State && window.State.map);
+            await expect.poll(() => page.evaluate(() => window.State.markerCache.size), { timeout: 7000 }).toBe(2);
+
+            await openListByKeyboard(page);
+            await items(page).filter({ hasText: name }).focus();
+            await page.keyboard.press('Enter');
+
+            const cluster = page.locator('.leaflet-marker-icon[aria-label$="Objekte innerhalb 5m"]');
+            await expect(cluster).toBeFocused({ timeout: 8000 });
+            await expect(page.locator('.leaflet-tooltip:not(.range-label)')).toContainText('Eins');
+            await expect(page.locator('.leaflet-tooltip:not(.range-label)')).toContainText('Zwei');
+        });
+    }
 });

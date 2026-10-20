@@ -1185,6 +1185,18 @@ export function getObjectsInView(max = 100) {
 }
 
 /**
+ * Findet den Marker-Eintrag zu einer Objekt-ID: direkt oder als Mitglied eines Clusters (Schlüssel wie in renderMarkers()).
+ */
+function findMarkerEntry(id) {
+    const direct = State.markerCache.get(id);
+    if (direct) return direct;
+    for (const entry of State.markerCache.values()) {
+        if (entry.isHydrantCluster && entry.clusterMembers?.some(m => `${m.type || 'node'}:${m.id}` === id)) return entry;
+    }
+    return null;
+}
+
+/**
  * Springt zu einem Objekt der Liste: zoomt bei Bedarf auf Symbol-Zoom (17), fokussiert den Marker und
  * öffnet dessen Details (wie Enter auf dem Marker).
  */
@@ -1195,9 +1207,11 @@ export function focusMapObject(id) {
     const latlng = L.latLng(entry.lat, entry.lon);
     const symbolZoom = 17;
 
-    // Bis der Marker als Symbol im DOM steht (nach dem Zoomen werden Punkte zu Symbolen)
+    // Bis der Marker als Symbol im DOM steht (nach dem Zoomen werden Punkte zu Symbolen).
+    // Beim Zoomen auf 17 können nahe Objekte zu einem Cluster werden, der nur die ID seines ersten Objekts trägt:
+    // dann ist das Cluster-Symbol das Ziel, in dem das gewählte Objekt steckt.
     const focusWhenReady = (triesLeft = 30) => {
-        const current = State.markerCache.get(id);
+        const current = findMarkerEntry(id);
         const el = current && current.mode === 'svg' ? current.marker.getElement() : null;
         if (el && current.activate) {
             el.focus({ preventScroll: true });
@@ -1500,6 +1514,9 @@ export function renderMarkers(elements, zoom, { isPartial = false } = {}) {
             }
         }
     }
+
+    // Die Objektliste (ui.js) aktualisiert sich damit, wenn sie bei laufendem Laden schon offen ist
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('ofm:markerschange'));
 }
 
 export function renderBoundaries(elements, zoom) {

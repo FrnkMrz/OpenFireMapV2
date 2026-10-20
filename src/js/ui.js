@@ -556,17 +556,27 @@ export function toggleExportMenu() {
 
 const OBJECTS_LIST_MAX = 100;
 
-/** Baut die Objektliste neu auf (bei jedem Öffnen, passend zum aktuellen Kartenausschnitt). */
+// Zuletzt gezeichnete Liste (IDs), damit ein Neuaufbau ohne Änderung den Fokus nicht anfasst
+let objectsListSignature = '';
+
+/** Baut die Objektliste neu auf (beim Öffnen und bei neuen Markerdaten, passend zum aktuellen Kartenausschnitt). */
 function renderObjectsList() {
     const summary = document.getElementById('objects-list-summary');
     const list = document.getElementById('objects-list-items');
     if (!summary || !list) return;
 
     const { items, total } = getObjectsInView(OBJECTS_LIST_MAX);
+    const signature = `${total}|${items.map(item => item.id).join(',')}`;
+    if (signature === objectsListSignature && list.childElementCount === items.length) return;
+    objectsListSignature = signature;
+
+    // Hat gerade ein Eintrag den Fokus, soll er ihn nach dem Neuaufbau behalten
+    const focusedId = document.activeElement?.closest?.('#objects-list-items') ? document.activeElement.dataset.objectId : null;
     list.replaceChildren();
 
     if (total === 0) {
-        summary.textContent = t('objects_list_empty');
+        // Während der erste Abruf noch läuft, ist die Liste nicht "leer", sondern wartet auf Daten
+        summary.textContent = State.isFetchingData ? t('hydrant_load_started') : t('objects_list_empty');
         return;
     }
     summary.textContent = total > items.length
@@ -577,6 +587,7 @@ function renderObjectsList() {
         const li = document.createElement('li');
         const btn = document.createElement('button');
         btn.type = 'button';
+        btn.dataset.objectId = item.id;
         btn.className = 'w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 flex justify-between gap-3';
         const name = document.createElement('span');
         name.textContent = item.label;
@@ -591,7 +602,18 @@ function renderObjectsList() {
         });
         li.appendChild(btn);
         list.appendChild(li);
+        if (item.id === focusedId) btn.focus();
     }
+}
+
+// Ist die Liste offen, während Marker (nach)geladen werden, folgt sie den Daten (gebündelt, nicht bei jedem Zwischenstand)
+let objectsListRefreshTimer = null;
+function scheduleObjectsListRefresh() {
+    clearTimeout(objectsListRefreshTimer);
+    objectsListRefreshTimer = setTimeout(() => {
+        const dialog = document.getElementById('objects-list');
+        if (dialog && !dialog.classList.contains('hidden')) renderObjectsList();
+    }, 150);
 }
 
 export function toggleObjectsList() {
@@ -601,6 +623,7 @@ export function toggleObjectsList() {
     const isHidden = dialog.classList.contains('hidden');
     closeAllMenus();
     if (isHidden) {
+        objectsListSignature = ''; // beim Öffnen immer neu aufbauen
         renderObjectsList();
         dialog.classList.remove('hidden');
     }
@@ -782,6 +805,7 @@ export function setupUI() {
     addClick('share-btn-trigger', shareMap);
     addClick('objects-btn-trigger', toggleObjectsList);
     addClick('objects-close-btn', toggleObjectsList);
+    window.addEventListener('ofm:markerschange', scheduleObjectsListRefresh);
 
     // Info & Recht Button (Desktop: ⓘ unten links / Mobile: Burger-Menü-Eintrag)
     addClick('btn-legal-trigger', toggleLegalModal);
