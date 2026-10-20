@@ -695,8 +695,6 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
   // loading state...
   State.isFetchingData = true;
-  // Eine offene Objektliste soll den Ladehinweis zeigen, auch wenn der Abruf (nach dem Entprellen) erst jetzt startet
-  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('ofm:markerschange'));
   State.activeFetchBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
   emit({ phase: 'load_start', reqId, zoom, bboxKey, dataset: 'poi', dataClass });
   reportHydrantDownload(hydrantStatus, 'loading');
@@ -1013,8 +1011,6 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
   } finally {
     if (isCurrentRequest()) {
       State.isFetchingData = false;
-      // Auch ohne neue Marker (Fehler, leeres Ergebnis) soll eine offene Objektliste ihren Ladehinweis loswerden
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('ofm:markerschange'));
       const hasActiveBuffer = Boolean(State.pendingBufferFetches && State.pendingBufferFetches.size > 0);
       if (!hasActiveBuffer && State.controllers.fetch === controller) {
         State.controllers.fetch = null;

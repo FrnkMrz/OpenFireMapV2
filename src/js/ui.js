@@ -23,7 +23,7 @@ async function getExport() {
     return _exportModule;
 }
 // Wir importieren die Karten-Funktion zum Wechseln des Hintergrunds
-import { setBaseLayer, clearDistanceLine, drawLineToNearest, shareMap, moveMapTo, getObjectsInView, focusMapObject } from './map.js';
+import { setBaseLayer, clearDistanceLine, drawLineToNearest, shareMap, moveMapTo } from './map.js';
 
 // ...
 
@@ -477,7 +477,7 @@ export function showNotification(msg, durationOrType = 3000, explicitTypeOrDurat
  */
 export function closeAllMenus() {
     // 1. Normale Menüs (Layer & Export) ausblenden
-    ['layer-menu', 'export-menu', 'objects-list'].forEach(id => {
+    ['layer-menu', 'export-menu'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden'); // 'hidden' ist eine Tailwind-Klasse
     });
@@ -555,87 +555,6 @@ export function toggleExportMenu() {
         document.getElementById('export-setup')?.classList.remove('hidden');
         document.getElementById('export-progress')?.classList.add('hidden');
 
-    }
-}
-
-const OBJECTS_LIST_MAX = 100;
-
-// Zuletzt gezeichnete Liste (ID, Name, Entfernung, Ladezustand): ein Neuaufbau ohne Änderung fasst den Fokus nicht an,
-// eine Änderung unter gleicher ID (Live-Delta) wird aber übernommen
-let objectsListSignature = '';
-
-/** Baut die Objektliste neu auf (beim Öffnen und bei neuen Markerdaten, passend zum aktuellen Kartenausschnitt). */
-function renderObjectsList() {
-    const summary = document.getElementById('objects-list-summary');
-    const list = document.getElementById('objects-list-items');
-    if (!summary || !list) return;
-
-    const { items, total } = getObjectsInView(OBJECTS_LIST_MAX);
-    // Der Ladezustand gehört dazu: aus "lädt" wird bei leerem Ergebnis "keine Objekte", ohne dass sich die Einträge ändern
-    const signature = `${State.isFetchingData ? 'loading' : 'idle'}|${total}|${items.map(item => `${item.id}:${item.label}:${item.distance}`).join(',')}`;
-    if (signature === objectsListSignature && list.childElementCount === items.length) return;
-    objectsListSignature = signature;
-
-    // Hat gerade ein Eintrag den Fokus, soll er ihn nach dem Neuaufbau behalten
-    const focusedId = document.activeElement?.closest?.('#objects-list-items') ? document.activeElement.dataset.objectId : null;
-    list.replaceChildren();
-
-    if (total === 0) {
-        // Während der erste Abruf noch läuft, ist die Liste nicht "leer", sondern wartet auf Daten
-        summary.textContent = State.isFetchingData ? t('hydrant_load_started') : t('objects_list_empty');
-        // Der fokussierte Eintrag ist weg: Fokus im modalen Dialog halten
-        if (focusedId) document.getElementById('objects-close-btn')?.focus();
-        return;
-    }
-    summary.textContent = total > items.length
-        ? t('objects_list_count_limited').replace('{count}', String(total)).replace('{max}', String(items.length))
-        : t('objects_list_count').replace('{count}', String(total));
-
-    for (const item of items) {
-        const li = document.createElement('li');
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.dataset.objectId = item.id;
-        btn.className = 'w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 flex justify-between gap-3';
-        const name = document.createElement('span');
-        name.textContent = item.label;
-        const dist = document.createElement('span');
-        dist.className = 'text-slate-300 shrink-0';
-        dist.textContent = `${item.distance} m`;
-        btn.append(name, dist);
-        btn.addEventListener('click', () => {
-            closeAllMenus();
-            // Erst im nächsten Task: bis dahin hat registerDialog() inert wieder von der Karte genommen
-            setTimeout(() => focusMapObject(item.id), 0);
-        });
-        li.appendChild(btn);
-        list.appendChild(li);
-        if (item.id === focusedId) btn.focus();
-    }
-    // Der fokussierte Eintrag ist verschwunden: auf den ersten verbleibenden springen, statt den Fokus zu verlieren
-    if (focusedId && !list.contains(document.activeElement)) list.querySelector('button')?.focus();
-}
-
-// Ist die Liste offen, während Marker (nach)geladen werden oder der Ausschnitt sich ändert, folgt sie (gebündelt, nicht bei jedem Zwischenstand)
-let objectsListRefreshTimer = null;
-function scheduleObjectsListRefresh() {
-    clearTimeout(objectsListRefreshTimer);
-    objectsListRefreshTimer = setTimeout(() => {
-        const dialog = document.getElementById('objects-list');
-        if (dialog && !dialog.classList.contains('hidden')) renderObjectsList();
-    }, 150);
-}
-
-export function toggleObjectsList() {
-    const dialog = document.getElementById('objects-list');
-    if (!dialog) return;
-
-    const isHidden = dialog.classList.contains('hidden');
-    closeAllMenus();
-    if (isHidden) {
-        objectsListSignature = ''; // beim Öffnen immer neu aufbauen
-        renderObjectsList();
-        dialog.classList.remove('hidden');
     }
 }
 
@@ -813,10 +732,6 @@ export function setupUI() {
     addClick('layer-btn-trigger', toggleLayerMenu);
     addClick('export-btn-trigger', toggleExportMenu);
     addClick('share-btn-trigger', shareMap);
-    addClick('objects-btn-trigger', toggleObjectsList);
-    addClick('objects-close-btn', toggleObjectsList);
-    window.addEventListener('ofm:markerschange', scheduleObjectsListRefresh);
-    window.addEventListener('ofm:viewchange', scheduleObjectsListRefresh);
 
     // Info & Recht Button (Desktop: ⓘ unten links / Mobile: Burger-Menü-Eintrag)
     addClick('btn-legal-trigger', toggleLegalModal);
@@ -906,11 +821,6 @@ export function setupUI() {
         fallbacks: ['#export-btn-trigger', mobileBurgerFallback],
         initialFocus: '#export-confirm-title',
         close: closeExportTitleModal
-    });
-    registerDialog('#objects-list', {
-        trigger: '#objects-btn-trigger',
-        fallbacks: ['#objects-btn-trigger', mobileBurgerFallback],
-        close: closeAllMenus
     });
     registerDialog('#legal-modal', {
         trigger: '#btn-legal-trigger',

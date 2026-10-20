@@ -120,13 +120,6 @@ test.describe('Kontraste', () => {
         await expectHoverContrast(page, '#export-title-modal');
     });
 
-    test('Objektliste', async ({ page }) => {
-        await openMap(page);
-        await page.locator('#objects-btn-trigger').click();
-        await expectContrast(page);
-        await expectHoverContrast(page, '#objects-list');
-    });
-
     test('Marker-Details (Tooltip)', async ({ page }) => {
         await openMap(page);
         await page.locator('.leaflet-marker-icon[aria-label^="Hydrant"]').focus();
@@ -202,7 +195,6 @@ test.describe('Kontraste', () => {
 
     for (const [name, opener, dialog] of [
         ['Info & Recht', '#mobile-open-legal', '#legal-modal'],
-        ['Objektliste', '#mobile-open-objects', '#objects-list']
     ]) {
         test(`Mobil: ${name} aus dem Burger-Menü`, async ({ browser }) => {
             const context = await browser.newContext({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
