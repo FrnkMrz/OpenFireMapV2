@@ -10,7 +10,7 @@
 
 import { loadPipelineData } from './load.js';
 import { buildRows, summarize, timelineRows } from './model.js';
-import { LANG_KEY, TEXTS, countryName, createFormatters, detectLang } from './texts.js';
+import { LANGS, LANG_KEY, TEXTS, countryName, createFormatters, detectLang } from './texts.js';
 import { renderDensity, renderRunBar, renderTimeline } from './charts.js';
 import population from '../../data/status-population.json';
 import dachSnapshot from '../../data/status-dach-snapshot.json';
@@ -18,7 +18,19 @@ import dachSnapshot from '../../data/status-dach-snapshot.json';
 const REFRESH_MS = 10 * 60 * 1000;
 const $ = (s) => document.querySelector(s);
 
+// Frühere Fassungen speicherten die Wahl unter `ofm_lang` (Schlüssel der Karte, die keinen Sprachschalter hat und dadurch
+// auf Englisch festgehalten wurde). Einmal übernehmen und dort entfernen: nur die Statusseite hat je de/en dort abgelegt.
+const LEGACY_LANG_KEY = 'ofm_lang';
+function migrateLegacyLang() {
+  try {
+    const legacy = localStorage.getItem(LEGACY_LANG_KEY);
+    if (!LANGS.includes(legacy)) return;
+    if (localStorage.getItem(LANG_KEY) === null) localStorage.setItem(LANG_KEY, legacy);
+    localStorage.removeItem(LEGACY_LANG_KEY);
+  } catch { /* Speicher gesperrt: nichts zu migrieren */ }
+}
 function readStored() {
+  migrateLegacyLang();
   try { return localStorage.getItem(LANG_KEY); } catch { return null; }
 }
 function storeLang(lang) {

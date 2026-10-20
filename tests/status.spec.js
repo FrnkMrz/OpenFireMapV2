@@ -115,6 +115,17 @@ test.describe('Pipeline-Statusseite', () => {
         expect(await page.evaluate(() => localStorage.getItem('ofm_status_lang'))).toBe('en');
     });
 
+    test('eine früher unter ofm_lang gespeicherte Sprachwahl wird übernommen und von der Karte entfernt', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        await page.evaluate(() => { localStorage.removeItem('ofm_status_lang'); localStorage.setItem('ofm_lang', 'de'); });
+        // Der Testbrowser meldet en-US: Deutsch kann nur aus der übernommenen Wahl kommen
+        await open(page, '');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+        expect(await page.evaluate(() => localStorage.getItem('ofm_lang'))).toBeNull();
+        expect(await page.evaluate(() => localStorage.getItem('ofm_status_lang'))).toBe('de');
+    });
+
     test('Diagramm wechselt zwischen Hydranten, Wachen und Defibrillatoren je Einwohner', async ({ page }) => {
         await mockPipeline(page);
         await open(page);
