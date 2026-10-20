@@ -31,13 +31,15 @@ The R2 publication flow uploads PMTiles first, GeoJSON with a shorter cache life
 
 ## Current facts and features
 
-- version **v0.9.0**
+- version **v0.10.0**
 - approximately **1.2 million** fire-service-related objects in the DACHLiLu pipeline, plus roughly **1.0 million** in 40 European country files (about 634 MB)
 - PMTiles archive of approximately **182.4 MiB** (**191,243,978 bytes**)
 - Cloudflare R2 as the primary public pipeline source
-- about 390 Vitest tests, Playwright end-to-end tests and Python tests for the pipeline builder
+- about 490 Vitest tests, about 125 Playwright end-to-end tests and Python tests for the pipeline builder
 - PNG, PDF, GPX and CSV exports
 - more than 30 languages
+- accessibility against WCAG 2.2 (A/AA): keyboard operation, an object list as a text alternative, labelled controls for screen readers, checked contrast
+- public pipeline status page at `/status/`
 - IndexedDB caching and responsive desktop/mobile use
 - local VM 102 used as the pipeline test and backup environment
 

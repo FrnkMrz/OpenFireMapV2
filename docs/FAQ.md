@@ -28,6 +28,10 @@ Overpass ist ein öffentlicher Gemeinschaftsdienst und kann Abfragen bei hoher L
 
 Der DACHLiLu-Pipeline-Build verwendet MaxZoom 14 und ist aktuell etwa 182,4 MiB groß. PMTiles werden per HTTP-Range-Requests ohne Gzip-Transformation ausgeliefert; ETags, CORS und abgestimmte Cache-Zeiten unterstützen die Wiederverwendung bereits geladener Daten. Nach einem Upload wird der öffentliche Stand anhand von Build-Zeitstempel und Dateigröße verifiziert. So wird `metadata.json` erst dann als neue Version veröffentlicht, wenn die eigentlichen Daten vollständig in R2 angekommen sind.
 
+## Ist die Karte barrierefrei?
+
+Weitgehend, aber nicht vollständig geprüft. Die Oberfläche ist per Tastatur bedienbar (Skip-Link, sichtbarer Fokus, Marker-Details auf <kbd>Enter</kbd>, Dialoge mit Fokusführung) und hat Beschriftungen für Screenreader. Die Objektliste „Objekte im Ausschnitt“ ersetzt das Anklicken von Markern in der Karte. Farbkontraste der Panels sind gemessen, Animationen entfallen bei „Bewegung reduzieren“. Automatische Tests (axe, Playwright) laufen bei jeder Änderung; ein Test mit einem echten Screenreader am Gerät, Zoom bis 400 % und Touch-Zielgrößen sind noch nicht gemessen. Details stehen in [Erste Schritte](ERSTE_SCHRITTE.md#bedienung-per-tastatur-und-screenreader). Probleme gern als Issue melden.
+
 ## Sind die Daten für einen Feuerwehreinsatz verbindlich?
 
 Nein. OpenFireMap ist eine offene Informations- und Mapping-Anwendung. OSM-Daten können unvollständig, veraltet oder fehlerhaft sein und ersetzen keine lokalen Einsatzunterlagen, Leitstelleninformationen oder amtlichen Daten.

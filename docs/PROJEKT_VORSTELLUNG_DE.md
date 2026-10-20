@@ -31,13 +31,15 @@ Die R2-Synchronisation überträgt PMTiles zuerst, GeoJSON mit kürzerer Cache-D
 
 ## Aktuelle Messwerte und Funktionen
 
-- Version **v0.9.0**
+- Version **v0.10.0**
 - rund **1,2 Millionen** feuerwehrrelevante Objekte in der DACHLiLu-Pipeline, dazu rund **1,0 Millionen** in 40 europäischen Länder-Dateien (etwa 634 MB)
 - PMTiles-Datei mit etwa **182,4 MiB** (**191.243.978 Bytes**)
 - Cloudflare R2 als primäre öffentliche Pipeline-Quelle
-- rund 390 Vitest-Tests, Playwright-End-to-End-Tests und Python-Tests für den Pipeline-Builder
+- rund 490 Vitest-Tests, rund 125 Playwright-End-to-End-Tests und Python-Tests für den Pipeline-Builder
 - Exporte als PNG, PDF, GPX und CSV
 - mehr als 30 Sprachen
+- Barrierefreiheit nach WCAG 2.2 (A/AA): Tastaturbedienung, Objektliste als Textalternative, Screenreader-Beschriftungen, geprüfte Kontraste
+- öffentliche Pipeline-Statusseite unter `/status/`
 - IndexedDB-Cache und responsive Nutzung auf Desktop und Mobilgeräten
 - lokale VM 102 als Test- und Backup-Umgebung für den Pipeline-Betrieb
 
