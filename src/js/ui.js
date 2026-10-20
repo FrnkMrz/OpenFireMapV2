@@ -347,7 +347,11 @@ function announceNotification(type, msg) {
     const alertRegion = document.getElementById('notification-live-alert');
     const target = type === 'error' ? alertRegion : status;
     const other = type === 'error' ? status : alertRegion;
-    if (other) other.textContent = '';
+    if (other) {
+        // Auch eine noch wartende Ansage der anderen Region verwerfen, sonst erscheint sie nach dem Leeren doch noch
+        clearTimeout(liveAnnounceTimers[other.id]);
+        other.textContent = '';
+    }
     if (!target) return;
 
     // Erst leeren, dann kurz verzögert befüllen: so wird auch eine gleichlautende Folgemeldung erneut angesagt

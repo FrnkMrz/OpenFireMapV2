@@ -68,6 +68,25 @@ describe('showNotification & hideNotification', () => {
         expect(alertRegion.textContent).toBe('');
     });
 
+    it('verwirft die noch wartende Ansage der anderen Region, wenn die Art der Meldung wechselt', () => {
+        showNotification('Alte Info', 'info');
+        vi.advanceTimersByTime(10); // weniger als die 50 ms Verzögerung
+        showNotification('Neuer Fehler', 'error');
+        vi.advanceTimersByTime(100);
+
+        expect(statusRegion.textContent).toBe('');
+        expect(alertRegion.textContent).toBe('Neuer Fehler');
+
+        // und umgekehrt
+        showNotification('Fehler zuerst', 'error');
+        vi.advanceTimersByTime(10);
+        showNotification('Danach Info', 'info');
+        vi.advanceTimersByTime(100);
+
+        expect(alertRegion.textContent).toBe('');
+        expect(statusRegion.textContent).toBe('Danach Info');
+    });
+
     it('die Live-Regionen behalten ihre feste Rolle', () => {
         showNotification('A', 'error');
         showNotification('B', 'info');
