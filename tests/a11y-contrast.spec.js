@@ -124,16 +124,38 @@ test.describe('Kontraste', () => {
         await expectContrast(page);
     });
 
-    for (const type of ['info', 'success', 'warning', 'error']) {
+    // Meldungen über die echten Auslöser, damit Aufbau (Symbol + Text) und Farben je Typ wie im Betrieb sind
+    const TOAST_TRIGGERS = {
+        warning: async (page) => {
+            await page.route('**/nominatim**', route => route.fulfill({ json: [] }));
+            await page.locator('#search-input').fill('Zzzzzzqq');
+            await page.locator('#search-btn').click();
+        },
+        error: async (page) => {
+            await page.evaluate(() => {
+                navigator.geolocation.getCurrentPosition = (ok, fail) => fail({ code: 1, message: 'denied' });
+                navigator.geolocation.watchPosition = (ok, fail) => { fail({ code: 1, message: 'denied' }); return 0; };
+            });
+            await page.locator('#locate-btn').click();
+        },
+        success: async (page) => {
+            await page.locator('#btn-legal-trigger').click();
+            await page.locator('#cache-duration-select').selectOption('24');
+        },
+        info: async (page) => {
+            await page.locator('#export-btn-trigger').click();
+            await page.locator('#select-btn').click();
+        }
+    };
+
+    for (const type of Object.keys(TOAST_TRIGGERS)) {
         test(`Meldung (${type})`, async ({ page }) => {
             await openMap(page);
-            await page.evaluate((t) => {
-                const box = document.getElementById('notification-box');
-                box.dataset.type = t;
-                box.style.display = 'flex';
-                box.classList.add('is-visible');
-                box.innerHTML = '<span class="notification-text">Testmeldung</span>';
-            }, type);
+            await TOAST_TRIGGERS[type](page);
+            const box = page.locator('#notification-box');
+            await expect(box).toHaveAttribute('data-type', type);
+            await expect(box).toHaveCSS('opacity', '1'); // Einblend-Übergang abwarten
+            await expect(box.locator('.notification-text')).not.toHaveText('');
             await expectContrast(page);
         });
     }
@@ -152,6 +174,25 @@ test.describe('Kontraste', () => {
         await page.locator('#mobile-burger-btn').click();
         await expectContrast(page);
         await context.close();
+    });
+
+    test('Der Messhelfer erfasst auch die sichtbare, für Screenreader stumme Meldung (Gegenprobe)', async ({ page }) => {
+        await openMap(page);
+        await TOAST_TRIGGERS.warning(page);
+        await expect(page.locator('#notification-box')).toHaveCSS('opacity', '1');
+        await expect(page.locator('#notification-box')).toHaveAttribute('aria-hidden', 'true');
+        await page.evaluate(() => { document.querySelector('#notification-box .notification-text').style.color = '#64748b'; });
+        const findings = await auditContrast(page, '#ffffff');
+        expect(findings.some(f => f.selector.includes('notification-text'))).toBe(true);
+    });
+
+    test('Der Skip-Link wird nur gemessen, solange er fokussiert ist (Gegenprobe)', async ({ page }) => {
+        await openMap(page);
+        await page.evaluate(() => { document.getElementById('skip-to-map').style.color = '#64748b'; });
+        expect((await auditContrast(page, '#ffffff')).some(f => f.text.includes('Karte'))).toBe(false);
+        await page.keyboard.press('Tab');
+        await expect(page.locator('#skip-to-map')).toBeFocused();
+        expect((await auditContrast(page, '#ffffff')).some(f => f.text.includes('Karte'))).toBe(true);
     });
 
     test('Der Messhelfer erkennt zu schwache Kontraste (Gegenprobe)', async ({ page }) => {

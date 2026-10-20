@@ -91,7 +91,9 @@ export async function auditContrast(page, backdrop = '#ffffff', { root = null } 
             if (!el || seen.has(el) || ['SCRIPT', 'STYLE', 'OPTION'].includes(el.tagName)) continue;
             // Marker-Symbole (SVG) und Texte mit weißem Rand (Radius-Label, Distanz-Label) haben eigene Flächen: dort
             // gilt der Hintergrund aus dem CSS nicht (Marker-Farben prüft test/marker-colors.test.js)
-            if (el.closest('.sr-only, .skip-link, [aria-hidden="true"], svg, .range-label, .distance-label-icon')) continue;
+            if (el.closest('.sr-only, svg, .range-label, .distance-label-icon')) continue;
+            // Der Skip-Link liegt außerhalb des Bildschirms und zählt nur, solange er den Fokus hat (dann ist er sichtbar)
+            if (el.closest('.skip-link') && !el.closest('.skip-link').matches(':focus')) continue;
             if (!visible(el)) continue;
             seen.add(el);
             const s = getComputedStyle(el);
