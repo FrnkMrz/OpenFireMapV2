@@ -157,8 +157,6 @@ function sumRows(rows) {
   const unknown = (k) => rows.filter((r) => r[k] == null).length;
   const withHydrantDensity = rows.filter((r) => r.per1000 != null);
   const pop = Math.round(withHydrantDensity.reduce((s, r) => s + r.populationM, 0) * 100) / 100;
-  const osm = rows.map((r) => r.osmMs).filter((v) => v != null);
-  const up = rows.map((r) => r.uploadMs).filter((v) => v != null);
   return {
     regions: rows.length,
     hydrants: sum('hydrants'),
@@ -170,19 +168,28 @@ function sumRows(rows) {
     populationM: pop,
     per1000: densityOf(rows, 'hydrants', 1000),
     fireStationsPer100k: densityOf(rows, 'fireStations', 10),
-    defibrillatorsPer100k: densityOf(rows, 'defibrillators', 10),
-    oldestOsmMs: osm.length ? Math.min(...osm) : null,
-    latestUploadMs: up.length ? Math.max(...up) : null
+    defibrillatorsPer100k: densityOf(rows, 'defibrillators', 10)
   };
 }
 
 /**
  * Gesamtkennzahlen über alle Länder. Dichten zählen nur Länder mit bekannter Einwohnerzahl; ein Gebiet, das
- * schon im Auszug eines anderen Landes steckt (Azoren in Portugal), zählt in Summen und Dichten nicht doppelt.
+ * schon im Auszug eines anderen Landes steckt (Azoren in Portugal), zählt in Objektzahlen, Einwohnern und
+ * Dichten nicht doppelt. Ältester Datenstand und letzter Upload gelten für ALLE veröffentlichten Karten, auch
+ * für die doppelt enthaltene: Es ist eine eigene Datei mit eigenem Stand.
  */
 export function summarize(rows) {
   const own = rows.filter((r) => !r.containedIn || !rows.some((x) => x.id === r.containedIn));
-  return { total: { ...sumRows(own), regions: rows.length } };
+  const osm = rows.map((r) => r.osmMs).filter((v) => v != null);
+  const up = rows.map((r) => r.uploadMs).filter((v) => v != null);
+  return {
+    total: {
+      ...sumRows(own),
+      regions: rows.length,
+      oldestOsmMs: osm.length ? Math.min(...osm) : null,
+      latestUploadMs: up.length ? Math.max(...up) : null
+    }
+  };
 }
 
 /** Zeilen der Zeitleiste: je Land eine, neuester Upload zuerst, dann die meisten Hydranten. */

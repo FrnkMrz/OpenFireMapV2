@@ -240,6 +240,13 @@ describe('summarize', () => {
     expect(t.regions).toBe(14);                       // die Zeile zählt als Gebiet
     expect(t.hydrants).toBe(total.hydrants);          // Hydranten der Azoren nicht doppelt
     expect(t.populationM).toBe(total.populationM);    // Einwohner auch nicht
+    // Datenstand und Upload gelten für alle Karten: eine ältere/neuere Azoren-Datei bleibt sichtbar
+    const m2 = manifest();
+    m2.regions.azores = region('azores', 'Azoren', 5, { osm_data_until: '2026-10-10T00:00:00Z', generated_at: '2026-10-25T00:00:00+00:00' });
+    const t2 = summarize(buildRows({ manifest: m2, metadata: metadata(), snapshot, population: { populationM: popWith } }).rows).total;
+    expect(t2.oldestOsmMs).toBe(Date.parse('2026-10-10T00:00:00Z'));
+    expect(t2.latestUploadMs).toBe(Date.parse('2026-10-25T00:00:00+00:00'));
+    expect(t2.hydrants).toBe(total.hydrants);   // die Zählung bleibt trotzdem einfach
     // ohne Portugal in der Liste zählt das Gebiet normal
     const noPt = out.rows.filter((r) => r.id !== 'portugal');
     expect(summarize(noPt).total.hydrants).toBe(total.hydrants - 12 + 5);
