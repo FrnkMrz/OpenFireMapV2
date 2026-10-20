@@ -244,7 +244,7 @@ export function toggleDataInfoPopover(show) {
 
   if (willShow) {
     // Andere Menüs schließen und ARIA-Zustände sauber zurücksetzen
-    ['layer-menu', 'export-menu', 'objects-list'].forEach(id => {
+    ['layer-menu', 'export-menu'].forEach(id => {
       document.getElementById(id)?.classList.add('hidden');
     });
     const layerBtn = document.getElementById('layer-btn-trigger');
