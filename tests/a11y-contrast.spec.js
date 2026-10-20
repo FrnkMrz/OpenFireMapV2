@@ -176,6 +176,35 @@ test.describe('Kontraste', () => {
         await context.close();
     });
 
+    test('Mobile Suche (Dialog mit Platzhalter)', async ({ browser }) => {
+        const context = await browser.newContext({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+        const page = await context.newPage();
+        await openMap(page);
+        await page.locator('#mobile-burger-btn').click();
+        await page.locator('#mobile-open-search').click();
+        await expect(page.locator('#mobile-search-modal')).toBeVisible();
+        await expect(page.locator('#mobile-search-input')).toHaveAttribute('placeholder', /.+/);
+        await expectContrast(page);
+        await expectHoverContrast(page, '#mobile-search-modal');
+        await context.close();
+    });
+
+    for (const [name, opener, dialog] of [
+        ['Info & Recht', '#mobile-open-legal', '#legal-modal'],
+        ['Objektliste', '#mobile-open-objects', '#objects-list']
+    ]) {
+        test(`Mobil: ${name} aus dem Burger-Menü`, async ({ browser }) => {
+            const context = await browser.newContext({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+            const page = await context.newPage();
+            await openMap(page);
+            await page.locator('#mobile-burger-btn').click();
+            await page.locator(opener).click();
+            await expect(page.locator(dialog)).toBeVisible();
+            await expectContrast(page);
+            await context.close();
+        });
+    }
+
     test('Der Messhelfer erfasst auch die sichtbare, für Screenreader stumme Meldung (Gegenprobe)', async ({ page }) => {
         await openMap(page);
         await TOAST_TRIGGERS.warning(page);
