@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "Etsi sijainti...",
         skip_to_map: "Siirry karttaan",
+        pipeline_status_link: "Putkiston tila",
         map_region_label: "Kartta",
         map_keyboard_hint: "Kartan näppäimistöohjaus: nuolinäppäimet siirtävät näkymää, plus ja miinus zoomaavat.",
         marker_water: "Vesiotto",

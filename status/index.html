@@ -72,7 +72,12 @@
 
                 <section class="st-card" id="st-density-card" aria-labelledby="st-den-h">
                     <h2 id="st-den-h" data-i18n="den_title"></h2>
-                    <p class="st-muted" data-i18n="den_desc"></p>
+                    <div class="st-seg" role="group" data-i18n-aria="den_pick" aria-label="Kennzahl wählen">
+                        <button type="button" data-metric="hydrants" aria-pressed="true" data-i18n="m_hydrants"></button>
+                        <button type="button" data-metric="fireStations" aria-pressed="false" data-i18n="m_fireStations"></button>
+                        <button type="button" data-metric="defibrillators" aria-pressed="false" data-i18n="m_defibrillators"></button>
+                    </div>
+                    <p class="st-muted" id="st-den-desc"></p>
                     <div class="st-chart" id="st-density"></div>
                 </section>
 
@@ -128,6 +133,7 @@
                     <p data-i18n="n_osm"></p>
                     <p data-i18n="n_pop"></p>
                     <p id="st-note-dach"></p>
+                    <p id="st-note-overlap"></p>
                     <p data-i18n="src"></p>
                     <p id="st-fetched"></p>
                 </div>

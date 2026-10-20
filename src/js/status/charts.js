@@ -111,43 +111,39 @@ export function renderTimeline(box, rows, ctx) {
 }
 
 /**
- * Balken "Hydranten je 1.000 Einwohner". rows: nur Länder mit per1000, absteigend sortiert.
- * average: Gesamtwert (gestrichelte Linie).
+ * Balkendiagramm einer Kennzahl je Einwohner, ein Balken je Land, absteigend sortiert.
+ * rows: nur Länder mit Wert. average: Gesamtwert (gestrichelte Linie).
+ * ctx: {t, fmt, name(row), value(row), format(v), tip(row) → Zeilen, ariaKey, width}
  */
 export function renderDensity(box, rows, average, ctx) {
-  const { t, fmt } = ctx;
+  const { t } = ctx;
   const W = Math.max(ctx.width || box.clientWidth, 320);
-  const svg = el('svg', { role: 'img', 'aria-label': t('den_aria'), width: '100%' });
+  const svg = el('svg', { role: 'img', 'aria-label': t(ctx.ariaKey), width: '100%' });
   box.replaceChildren(svg);
   if (!rows.length) return;
   const left = maxTextWidth(svg, rows.map(ctx.name)) + 12;
-  const right = maxTextWidth(svg, rows.map((r) => fmt.dens(r.per1000))) + 12;
+  const right = maxTextWidth(svg, rows.map((r) => ctx.format(ctx.value(r)))) + 12;
   const top = 22, rowH = 20;
   const H = top + rows.length * rowH + 4;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const max = Math.max(...rows.map((r) => r.per1000), average ?? 0);
+  const max = Math.max(...rows.map(ctx.value), average ?? 0);
   const x = (v) => left + (v / max) * (W - left - right);
   const tip = makeTip(box);
   rows.forEach((r, i) => {
     const y = top + i * rowH;
     const cy = y + rowH / 2;
+    const v = ctx.value(r);
     svg.appendChild(el('text', { x: left - 8, y: cy + 4, 'text-anchor': 'end', class: 'st-axis' }, ctx.name(r)));
-    svg.appendChild(el('rect', { x: left, y: cy - 6, width: Math.max(2, x(r.per1000) - left), height: 12, rx: 4, fill: SERIES }));
-    svg.appendChild(el('text', { x: x(r.per1000) + 6, y: cy + 4, class: 'st-value' }, fmt.dens(r.per1000)));
+    svg.appendChild(el('rect', { x: left, y: cy - 6, width: Math.max(2, x(v) - left), height: 12, rx: 4, fill: SERIES }));
+    svg.appendChild(el('text', { x: x(v) + 6, y: cy + 4, class: 'st-value' }, ctx.format(v)));
     const hit = el('rect', { x: 0, y, width: W, height: rowH, fill: 'transparent' });
-    hit.addEventListener('mousemove', (ev) => tip.show([
-      ctx.name(r),
-      `${fmt.int(r.hydrants)} ${t('tip_hyd')}`,
-      `${fmt.mio(r.populationM)} ${t('tip_pop')}`,
-      `${fmt.dens(r.per1000)} ${t('tip_per')}`,
-      `${fmt.int(Math.round(r.inhPerHydrant))} ${t('tip_inh')}`
-    ], ev));
+    hit.addEventListener('mousemove', (ev) => tip.show([ctx.name(r), ...ctx.tip(r)], ev));
     hit.addEventListener('mouseleave', () => tip.hide());
     svg.appendChild(hit);
   });
   if (average != null) {
     svg.appendChild(el('line', { x1: x(average), x2: x(average), y1: top - 4, y2: H - 2, class: 'st-ref' }));
-    svg.appendChild(el('text', { x: Math.min(x(average), W - 60), y: 11, 'text-anchor': 'middle', class: 'st-axis' }, `Ø ${fmt.dens(average)}`));
+    svg.appendChild(el('text', { x: Math.min(x(average), W - 60), y: 11, 'text-anchor': 'middle', class: 'st-axis' }, `Ø ${ctx.format(average)}`));
   }
 }
 

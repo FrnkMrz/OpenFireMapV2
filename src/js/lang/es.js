@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "Buscar lugar...",
         skip_to_map: "Saltar al mapa",
+        pipeline_status_link: "Estado de la pipeline",
         map_region_label: "Mapa",
         map_keyboard_hint: "Control de la mapa con el teclado: las flechas desplazan la vista, más y menos acercan o alejan.",
         marker_water: "Punto de agua",

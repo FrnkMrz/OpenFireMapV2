@@ -5,6 +5,7 @@
 export const strings = {
   search_placeholder: "Cari lokasi...",
   skip_to_map: "Lewati ke peta",
+  pipeline_status_link: "Status pipeline",
   map_region_label: "Peta",
   map_keyboard_hint: "Kontrol peta dengan keyboard: tombol panah menggeser tampilan, plus dan minus memperbesar atau memperkecil.",
   marker_water: "Sumber air",

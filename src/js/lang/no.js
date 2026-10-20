@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "Søk etter sted...",
         skip_to_map: "Hopp til kartet",
+        pipeline_status_link: "Pipeline-status",
         map_region_label: "Kart",
         map_keyboard_hint: "Tastaturstyring av kartet: Piltastene flytter utsnittet, pluss og minus zoomer.",
         marker_water: "Vannuttak",

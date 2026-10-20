@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "장소 검색...",
         skip_to_map: "지도로 건너뛰기",
+        pipeline_status_link: "파이프라인 상태",
         map_region_label: "지도",
         map_keyboard_hint: "지도 키보드 조작: 화살표 키로 화면을 이동하고, 더하기와 빼기 키로 확대·축소합니다.",
         marker_water: "소방 용수",

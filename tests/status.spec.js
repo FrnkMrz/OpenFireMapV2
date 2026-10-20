@@ -81,7 +81,7 @@ test.describe('Pipeline-Statusseite', () => {
         expect(body).not.toMatch(/\bLuLi\b/);
         expect(body).not.toMatch(/Top 5/);
         await expect(page.locator('#st-table tbody tr[data-key="dachlilu"], #st-runs tbody tr[data-key="dachlilu"]')).toHaveCount(0);
-        await expect(page.locator('#st-table thead th')).toHaveCount(10);
+        await expect(page.locator('#st-table thead th')).toHaveCount(13);
     });
 
     test('Wachen stehen auch für die DACHLiLu-Länder in der Tabelle', async ({ page }) => {
@@ -103,6 +103,24 @@ test.describe('Pipeline-Statusseite', () => {
         await expect(page.locator('#st-table tbody tr[data-key="poland"] td').nth(1)).toHaveText('403,193');
         await page.click('.st-lang button[data-lang="de"]');
         await expect(page.locator('#st-table tbody tr[data-key="poland"] td').nth(1)).toHaveText('403.193');
+    });
+
+    test('Diagramm wechselt zwischen Hydranten, Wachen und Defibrillatoren je Einwohner', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        const svg = page.locator('#st-density svg');
+        await expect(svg).toHaveAttribute('aria-label', /Hydranten je 1\.000/);
+        await page.click('.st-seg button[data-metric="fireStations"]');
+        await expect(page.locator('.st-seg button[data-metric="fireStations"]')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('.st-seg button[data-metric="hydrants"]')).toHaveAttribute('aria-pressed', 'false');
+        await expect(svg).toHaveAttribute('aria-label', /Wachen je 100\.000/);
+        await expect(page.locator('#st-den-desc')).toContainText('Feuerwachen');
+        await page.click('.st-seg button[data-metric="defibrillators"]');
+        await expect(svg).toHaveAttribute('aria-label', /Defibrillatoren je 100\.000/);
+        await page.click('.st-lang button[data-lang="en"]');
+        await expect(svg).toHaveAttribute('aria-label', /Defibrillators per 100,000/);
+        await expect(page.locator('#st-kpis')).toContainText('Stations per 100,000 inhabitants');
+        await expect(page.locator('#st-kpis')).toContainText('Defibrillators per 100,000 inhabitants');
     });
 
     test('Tabelle sortiert nach Spalte und filtert per Suche', async ({ page }) => {
@@ -199,6 +217,24 @@ test.describe('Pipeline-Statusseite', () => {
         await mockPipeline(page);
         await page.clock.fastForward('10:30');
         await expect(page.locator('#st-warn')).toBeHidden();
+    });
+
+    test('die Karte verlinkt die Statusseite im Dialog "Info & Recht"', async ({ page }) => {
+        const openLegal = async (lang) => {
+            await page.evaluate((l) => localStorage.setItem('ofm_lang', l), lang);
+            await page.reload();
+            await page.waitForSelector('.leaflet-container');
+            await page.evaluate(() => document.querySelector('#btn-legal-trigger').click());
+            return page.locator('#legal-modal a[href="/status/"]');
+        };
+        await page.goto('/');
+        await page.waitForSelector('.leaflet-container');
+        await expect(await openLegal('de')).toHaveText('Pipeline-Status');
+        const link = await openLegal('en');
+        await expect(link).toBeVisible();
+        await expect(link).toHaveText('Pipeline status');
+        await Promise.all([page.waitForURL('**/status/**'), link.click()]);
+        await expect(page.locator('h1')).toHaveText('OpenFireMap Pipeline');
     });
 
     test('hat keine axe-Verstöße (Deutsch und Englisch)', async ({ page }) => {

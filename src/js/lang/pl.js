@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "Szukaj miejsca...",
         skip_to_map: "Przejdź do mapy",
+        pipeline_status_link: "Status potoku danych",
         map_region_label: "Mapa",
         map_keyboard_hint: "Obsługa mapy klawiaturą: strzałki przesuwają widok, plus i minus powiększają lub pomniejszają.",
         marker_water: "Punkt czerpania wody",

@@ -31,7 +31,8 @@ const S = {
   fetchedMs: null,
   refreshFailed: false, // letzte Aktualisierung gescheitert, alte Daten stehen noch
   sort: { main: { k: 'hydrants', dir: -1 }, runs: { k: 'uploadMs', dir: -1 } },
-  query: ''
+  query: '',
+  metric: 'hydrants' // Kennzahl im Diagramm "Je Einwohner"
 };
 
 const t = (k) => TEXTS[S.lang][k];
@@ -81,18 +82,45 @@ function renderKpis() {
     kpiCard(t('k_regions'), f.int(tot.regions), t('k_regions_n')),
     kpiCard(t('k_hyd'), f.compact(tot.hydrants), withUnknown(t('k_hyd_n'), tot.hydrantsUnknown)),
     kpiCard(t('k_fs'), f.compact(tot.fireStations), withUnknown(t('k_fs_n'), tot.fireStationsUnknown)),
+    kpiCard(t('k_aed'), f.compact(tot.defibrillators), withUnknown(t('k_aed_n'), tot.defibrillatorsUnknown)),
     kpiCard(t('k_per'), dash(tot.per1000, f.dens), `${f.mio(tot.populationM)} ${t('mio')} · ${t('k_per_n')}`),
+    kpiCard(t('k_fs_per'), dash(tot.fireStationsPer100k, f.dens), t('k_per_n')),
+    kpiCard(t('k_aed_per'), dash(tot.defibrillatorsPer100k, f.dens), t('k_per_n')),
     kpiCard(t('k_oldest'), dash(tot.oldestOsmMs, f.dt), t('k_oldest_n'), true),
     kpiCard(t('k_latest'), dash(tot.latestUploadMs, f.dt), t('k_latest_n'), true)
   );
 }
 
-function renderCharts() {
+// Kennzahlen des Diagramms "Je Einwohner": Wert je Land, Gesamtwert, Zählung und Einheit für den Tooltip
+const METRICS = {
+  hydrants: { value: (r) => r.per1000, total: 'per1000', count: (r) => r.hydrants },
+  fireStations: { value: (r) => r.fireStationsPer100k, total: 'fireStationsPer100k', count: (r) => r.fireStations },
+  defibrillators: { value: (r) => r.defibrillatorsPer100k, total: 'defibrillatorsPer100k', count: (r) => r.defibrillators }
+};
+
+function renderDensityChart() {
   const f = fmt();
-  const ctx = { t, fmt: f, name };
-  renderTimeline($('#st-timeline'), timelineRows(S.data.rows), ctx);
-  const dens = S.data.rows.filter((r) => r.per1000 != null).sort((a, b) => b.per1000 - a.per1000);
-  renderDensity($('#st-density'), dens, S.data.summary.total.per1000, ctx);
+  const m = METRICS[S.metric];
+  const rows = S.data.rows.filter((r) => m.value(r) != null).sort((a, b) => m.value(b) - m.value(a));
+  renderDensity($('#st-density'), rows, S.data.summary.total[m.total], {
+    t, fmt: f, name, value: m.value, format: f.dens, ariaKey: `den_aria_${S.metric}`,
+    tip: (r) => [
+      `${f.int(m.count(r))} ${t(`tip_${S.metric}`)}`,
+      `${f.mio(r.populationM)} ${t('tip_pop')}`,
+      `${f.dens(m.value(r))} ${t(`tip_per_${S.metric}`)}`
+    ]
+  });
+}
+
+function renderMetricPicker() {
+  $('#st-den-desc').textContent = t(`den_desc_${S.metric}`);
+  document.querySelectorAll('.st-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.metric === S.metric)));
+}
+
+function renderCharts() {
+  renderTimeline($('#st-timeline'), timelineRows(S.data.rows), { t, fmt: fmt(), name });
+  renderDensityChart();
+  renderMetricPicker();
 }
 
 // Spalten beider Tabellen: k = Sortierschlüssel, get = Sortierwert, text = Anzeige, left = linksbündig
@@ -106,8 +134,11 @@ const TABLES = {
       { k: 'name', label: 'c_name', left: true, get: name, text: name },
       { k: 'hydrants', label: 'c_hyd', text: (r) => dash(r.hydrants, f.int) },
       { k: 'fireStations', label: 'c_fs', text: (r) => dash(r.fireStations, f.int) },
+      { k: 'defibrillators', label: 'c_aed', text: (r) => dash(r.defibrillators, f.int) },
       { k: 'populationM', label: 'c_pop', text: (r) => dash(r.populationM, f.mio) },
       { k: 'per1000', label: 'c_per', text: (r) => dash(r.per1000, f.dens), bar: (r) => (r.per1000 != null && maxD ? (100 * r.per1000) / maxD : null) },
+      { k: 'fireStationsPer100k', label: 'c_fsper', text: (r) => dash(r.fireStationsPer100k, f.dens) },
+      { k: 'defibrillatorsPer100k', label: 'c_aedper', text: (r) => dash(r.defibrillatorsPer100k, f.dens) },
       { k: 'inhPerHydrant', label: 'c_inh', text: (r) => dash(r.inhPerHydrant, (v) => f.int(Math.round(v))) },
       { k: 'osmMs', label: 'c_osm', text: (r) => dash(r.osmMs, f.dt) },
       { k: 'uploadMs', label: 'c_up', text: (r) => dash(r.uploadMs, f.dt) },
@@ -198,6 +229,7 @@ function renderRun() {
 function renderNotes() {
   const d = S.data;
   $('#st-note-dach').textContent = d.hasDach ? t(d.usedSnapshot ? 'n_dach_snapshot' : 'n_dach_live') : '';
+  $('#st-note-overlap').textContent = d.rows.some((r) => r.containedIn && d.rows.some((x) => x.id === r.containedIn)) ? t('n_overlap') : '';
   $('#st-fetched').textContent = S.fetchedMs ? `${t('fetched')}${fmt().dt(S.fetchedMs)} UTC` : '';
   const warn = $('#st-warn');
   const lines = [];
@@ -258,6 +290,10 @@ function init() {
     if (sort.k === k) sort.dir = -sort.dir;
     else S.sort[id] = { k, dir: k === 'name' || k === 'file' ? 1 : -1 };
     if (S.data) renderTables();
+  }));
+  document.querySelectorAll('.st-seg button').forEach((b) => b.addEventListener('click', () => {
+    S.metric = b.dataset.metric;
+    if (S.data) { renderDensityChart(); renderMetricPicker(); }
   }));
   $('#st-search').addEventListener('input', (e) => { S.query = e.target.value; if (S.data) renderTables(); });
   $('#st-retry').addEventListener('click', () => {

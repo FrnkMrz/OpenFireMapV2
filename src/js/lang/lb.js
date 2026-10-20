@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "Plaz sichen...",
         skip_to_map: "Op d'Kaart sprangen",
+        pipeline_status_link: "Pipeline-Status",
         map_region_label: "Kaart",
         map_keyboard_hint: "Tastaturbedienung vun der Kaart: D'Feiltasten verréckelen den Ausschnëtt, Plus a Minus zoomen.",
         marker_water: "Waasserstell",

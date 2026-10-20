@@ -5,6 +5,7 @@
 export const strings = {
   search_placeholder: "स्थान खोजें...",
   skip_to_map: "मानचित्र पर जाएँ",
+  pipeline_status_link: "पाइपलाइन स्थिति",
   map_region_label: "मानचित्र",
   map_keyboard_hint: "मानचित्र का कीबोर्ड नियंत्रण: तीर कुंजियाँ दृश्य खिसकाती हैं, प्लस और माइनस ज़ूम करते हैं।",
   marker_water: "जल स्रोत",

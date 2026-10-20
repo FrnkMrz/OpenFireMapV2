@@ -5,6 +5,7 @@
 export const strings = {
   search_placeholder: "مقام تلاش کریں...",
   skip_to_map: "نقشے پر جائیں",
+  pipeline_status_link: "پائپ لائن کی صورتحال",
   map_region_label: "نقشہ",
   map_keyboard_hint: "نقشے کا کی بورڈ کنٹرول: تیر والی کلیدیں منظر کو کھسکاتی ہیں، پلس اور مائنس زوم کرتے ہیں۔",
   marker_water: "پانی کا ذریعہ",
