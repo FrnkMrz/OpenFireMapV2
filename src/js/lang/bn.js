@@ -5,6 +5,7 @@
 export const strings = {
   search_placeholder: "অবস্থান খুঁজুন...",
   skip_to_map: "মানচিত্রে যান",
+  pipeline_status_link: "পাইপলাইন স্ট্যাটাস",
   map_region_label: "মানচিত্র",
   map_keyboard_hint: "মানচিত্রের কীবোর্ড নিয়ন্ত্রণ: তীর কী দৃশ্য সরায়, প্লাস ও মাইনাস জুম করে।",
   marker_water: "জলের উৎস",

@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "Sök plats...",
         skip_to_map: "Hoppa till kartan",
+        pipeline_status_link: "Pipeline-status",
         map_region_label: "Karta",
         map_keyboard_hint: "Tangentbordsstyrning av kartan: pilarna flyttar vyn, plus och minus zoomar.",
         marker_water: "Vattentag",

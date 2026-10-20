@@ -5,6 +5,7 @@
 export const strings = {
     search_placeholder: "Search location...",
     skip_to_map: "Skip to map",
+    pipeline_status_link: "Pipeline status",
     map_region_label: "Map",
     map_keyboard_hint: "Keyboard controls for the map: arrow keys pan the view, plus and minus zoom.",
     marker_water: "Water source",

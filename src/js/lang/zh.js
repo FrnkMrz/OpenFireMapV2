@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "搜索地点...",
         skip_to_map: "跳至地图",
+        pipeline_status_link: "数据管线状态",
         map_region_label: "地图",
         map_keyboard_hint: "地图键盘操作：方向键移动视图，加号和减号缩放。",
         marker_water: "取水点",

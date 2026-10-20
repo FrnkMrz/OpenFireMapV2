@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "Zoek locatie...",
         skip_to_map: "Naar de kaart springen",
+        pipeline_status_link: "Pipelinestatus",
         map_region_label: "Kaart",
         map_keyboard_hint: "Toetsenbordbediening van de kaart: pijltjestoetsen verschuiven het kaartbeeld, plus en min zoomen.",
         marker_water: "Waterwinplaats",

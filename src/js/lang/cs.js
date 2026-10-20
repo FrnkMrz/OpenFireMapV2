@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "Hledat místo...",
         skip_to_map: "Přeskočit na mapu",
+        pipeline_status_link: "Stav datové pipeline",
         map_region_label: "Mapa",
         map_keyboard_hint: "Ovládání mapy klávesnicí: šipky posouvají výřez, plus a mínus přibližují a oddalují.",
         marker_water: "Zdroj vody",

@@ -206,6 +206,45 @@ describe('summarize', () => {
     expect(total.fireStationsUnknown).toBe(0);
   });
 
+  it('rechnet Wachen und Defibrillatoren je 100.000 Einwohner, je Land und insgesamt', () => {
+    const de = rows.find((r) => r.id === 'germany');
+    expect(de.fireStationsPer100k).toBeCloseTo(60 / (80 * 10), 10);
+    expect(de.defibrillatorsPer100k).toBeCloseTo(15 / (80 * 10), 10);
+    const known = rows.filter((r) => r.fireStationsPer100k != null);
+    const stations = known.reduce((s, r) => s + r.fireStations, 0);
+    const people = known.reduce((s, r) => s + r.populationM, 0);
+    expect(total.fireStationsPer100k).toBeCloseTo(stations / (people * 10), 8);
+    expect(total.defibrillatorsPer100k).toBeGreaterThan(0);
+    expect(total.defibrillators).toBe(15 + 8 + 5 + 1 + 1 + 8 * 3);
+  });
+
+  it('Länder ohne Einwohner oder Zählung haben keine Dichte', () => {
+    const neuland = rows.find((r) => r.id === 'neuland');
+    expect(neuland.fireStationsPer100k).toBeNull();
+    const m = manifest();
+    m.regions.poland.counts = { hydrants: 400 };
+    const out = buildRows({ manifest: m, metadata: metadata(), snapshot, population: { populationM: pop } });
+    expect(out.rows.find((r) => r.id === 'poland').fireStationsPer100k).toBeNull();
+    expect(out.rows.find((r) => r.id === 'poland').defibrillatorsPer100k).toBeNull();
+  });
+
+  it('zählt ein Gebiet nicht doppelt, das im Auszug eines anderen Landes steckt (Azoren in Portugal)', () => {
+    const m = manifest();
+    m.regions.azores = region('azores', 'Azoren', 5);
+    const popWith = { ...pop, azores: 0.2 };
+    const out = buildRows({ manifest: m, metadata: metadata(), snapshot, population: { populationM: popWith } });
+    const azores = out.rows.find((r) => r.id === 'azores');
+    expect(azores.containedIn).toBe('portugal');
+    expect(out.rows.find((r) => r.id === 'portugal').containedIn).toBeNull();
+    const t = summarize(out.rows).total;
+    expect(t.regions).toBe(14);                       // die Zeile zählt als Gebiet
+    expect(t.hydrants).toBe(total.hydrants);          // Hydranten der Azoren nicht doppelt
+    expect(t.populationM).toBe(total.populationM);    // Einwohner auch nicht
+    // ohne Portugal in der Liste zählt das Gebiet normal
+    const noPt = out.rows.filter((r) => r.id !== 'portugal');
+    expect(summarize(noPt).total.hydrants).toBe(total.hydrants - 12 + 5);
+  });
+
   it('liefert für eine leere Liste keine Zeiten und keine Dichte', () => {
     expect(summarize([]).total).toMatchObject({ regions: 0, per1000: null, oldestOsmMs: null, latestUploadMs: null });
   });

@@ -5,6 +5,7 @@
 export const strings = {
   search_placeholder: "Konum ara...",
   skip_to_map: "Haritaya geç",
+  pipeline_status_link: "Boru hattı durumu",
   map_region_label: "Harita",
   map_keyboard_hint: "Haritanın klavye kontrolü: Ok tuşları görünümü kaydırır, artı ve eksi yakınlaştırır veya uzaklaştırır.",
   marker_water: "Su kaynağı",

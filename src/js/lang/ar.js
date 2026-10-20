@@ -5,6 +5,7 @@
 export const strings = {
   search_placeholder: "ابحث عن موقع...",
   skip_to_map: "انتقل إلى الخريطة",
+  pipeline_status_link: "حالة خط البيانات",
   map_region_label: "الخريطة",
   map_keyboard_hint: "التحكم بالخريطة بلوحة المفاتيح: مفاتيح الأسهم تحرّك العرض، وزرا الزائد والناقص يكبّران ويصغّران.",
   marker_water: "مصدر مياه",

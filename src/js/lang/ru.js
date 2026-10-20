@@ -5,6 +5,7 @@
 export const strings = {
   search_placeholder: "Поиск места...",
   skip_to_map: "Перейти к карте",
+  pipeline_status_link: "Состояние конвейера данных",
   map_region_label: "Карта",
   map_keyboard_hint: "Управление картой с клавиатуры: стрелки сдвигают вид, плюс и минус меняют масштаб.",
   marker_water: "Источник воды",

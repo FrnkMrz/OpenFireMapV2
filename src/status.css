@@ -100,13 +100,14 @@ a { color: var(--accent); }
 .st-back { margin: 0; font-size: 0.875rem; }
 .st-muted { color: var(--muted); font-size: 0.875rem; margin: 0; }
 
-.st-lang {
+.st-lang, .st-seg {
     display: inline-flex;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     overflow: hidden;
 }
-.st-lang button {
+.st-seg { flex-wrap: wrap; justify-self: start; }
+.st-lang button, .st-seg button {
     font: inherit;
     font-size: 0.875rem;
     background: transparent;
@@ -115,7 +116,7 @@ a { color: var(--accent); }
     padding: 0.35rem 0.85rem;
     cursor: pointer;
 }
-.st-lang button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.st-lang button[aria-pressed="true"], .st-seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
 
 main { display: grid; gap: 1.25rem; }
 main:focus { outline: none; }
@@ -181,7 +182,7 @@ main:focus { outline: none; }
 .st-chart svg { display: block; width: 100%; height: auto; }
 .st-axis { fill: var(--muted); font-size: 11px; }
 .st-group { fill: var(--fg); font-size: 11px; font-weight: 600; }
-.st-value { fill: var(--fg); font-size: 11px; }
+.st-value { fill: var(--fg); font-size: 11px; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; }
 .st-gridline { stroke: var(--grid); stroke-width: 1; }
 .st-ref { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .st-dot-osm { fill: var(--panel); stroke-width: 2; }

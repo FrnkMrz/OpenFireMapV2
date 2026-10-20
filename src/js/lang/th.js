@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "ค้นหาสถานที่...",
         skip_to_map: "ข้ามไปที่แผนที่",
+        pipeline_status_link: "สถานะไปป์ไลน์",
         map_region_label: "แผนที่",
         map_keyboard_hint: "การควบคุมแผนที่ด้วยแป้นพิมพ์: ปุ่มลูกศรเลื่อนมุมมอง ปุ่มบวกและลบซูมเข้าและออก",
         marker_water: "แหล่งน้ำ",

@@ -52,6 +52,19 @@ describe('Statusseite: Texte', () => {
     for (const v of Object.values(population.populationM)) expect(v).toBeGreaterThan(0);
   });
 
+  it('jede Einwohnerzahl nennt ihre Quelle', () => {
+    expect(Object.keys(population.sources).sort()).toEqual(Object.keys(population.populationM).sort());
+    for (const [id, src] of Object.entries(population.sources)) expect(src.length, id).toBeGreaterThan(5);
+  });
+
+  it('Einwohner folgen dem Zuschnitt der Auszüge (Überseegebiete, Kanaren, Nordirland)', () => {
+    const p = population.populationM;
+    expect(p.france).toBeLessThan(67);          // Eurostat-FR 68,9 Mio. enthält 2,3 Mio. Überseegebiete
+    expect(p.spain).toBeLessThan(47.5);         // ohne Kanaren (2,26 Mio.)
+    expect(p['great-britain'] + p['ireland-and-northern-ireland']).toBeGreaterThan(70); // Nordirland in Irland, nicht in GB
+    expect(p.cyprus).toBeGreaterThan(1.3);      // ganze Insel
+  });
+
   it('countryName: englischer Name, sonst Name aus dem Manifest', () => {
     expect(countryName({ id: 'poland', nameDe: 'Polen' }, 'en')).toBe('Poland');
     expect(countryName({ id: 'poland', nameDe: 'Polen' }, 'de')).toBe('Polen');

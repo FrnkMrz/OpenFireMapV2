@@ -27,14 +27,20 @@ const toMs = (iso) => {
 function finishRow(base, populationM) {
   const pop = isNum(populationM) && populationM > 0 ? populationM : null;
   const hydrants = isNum(base.hydrants) ? base.hydrants : null;
+  const fireStations = isNum(base.fireStations) ? base.fireStations : null;
+  const defibrillators = isNum(base.defibrillators) ? base.defibrillators : null;
   const lagH = base.osmMs != null && base.uploadMs != null
     ? Math.round(((base.uploadMs - base.osmMs) / 36e5) * 10) / 10
     : null;
   return {
     ...base,
     hydrants,
+    fireStations,
+    defibrillators,
     populationM: pop,
     per1000: pop && hydrants != null ? hydrants / (pop * 1000) : null,
+    fireStationsPer100k: pop && fireStations != null ? fireStations / (pop * 10) : null,
+    defibrillatorsPer100k: pop && defibrillators != null ? defibrillators / (pop * 10) : null,
     inhPerHydrant: pop && hydrants ? (pop * 1e6) / hydrants : null,
     lagH
   };
@@ -121,12 +127,16 @@ export function buildRegionRows(manifest, populationM) {
 }
 
 /** Alles zusammen: Zeilen (DACHLiLu-Länder zuerst) und Hinweise für die Seite. */
+// Gebiete, die der Auszug eines anderen Landes schon enthält (Geofabrik-Portugal umfasst die Azoren): sie
+// bleiben als eigene Zeile stehen, zählen in den Gesamtsummen aber nur einmal.
+export const CONTAINED_IN = { azores: 'portugal' };
+
 export function buildRows({ manifest, metadata, snapshot, population }) {
   const popMap = population?.populationM ?? population ?? {};
   const dach = buildDachRows(metadata, snapshot, popMap);
   const regions = buildRegionRows(manifest, popMap);
   return {
-    rows: [...dach.rows, ...regions],
+    rows: [...dach.rows, ...regions].map((r) => ({ ...r, containedIn: CONTAINED_IN[r.id] ?? null })),
     // Die Auszüge fehlen in einer vorhandenen metadata.json: die Länder erscheinen nicht, die Seite soll das melden
     dachMissing: metadata ? DACHLILU_IDS.filter((id) => !dach.rows.some((r) => r.id === id)) : [],
     usedSnapshot: dach.usedSnapshot,
@@ -134,33 +144,45 @@ export function buildRows({ manifest, metadata, snapshot, population }) {
   };
 }
 
+/** Anteil je Einheit über die Länder, die Zählung und Einwohner kennen (Einwohner in Millionen). */
+function densityOf(rows, countKey, perMillionDivisor) {
+  const known = rows.filter((r) => r[countKey] != null && r.populationM != null);
+  const pop = known.reduce((s, r) => s + r.populationM, 0);
+  return pop > 0 ? known.reduce((s, r) => s + r[countKey], 0) / (pop * perMillionDivisor) : null;
+}
+
 function sumRows(rows) {
-  const withDensity = rows.filter((r) => r.per1000 != null);
   // Summen zählen nur Länder mit Angabe; wie viele fehlen, steht daneben, damit die Summe nicht vollständig wirkt
-  const hydrants = rows.reduce((s, r) => s + (r.hydrants ?? 0), 0);
-  const fireStations = rows.reduce((s, r) => s + (r.fireStations ?? 0), 0);
-  const hydrantsUnknown = rows.filter((r) => r.hydrants == null).length;
-  const fireStationsUnknown = rows.filter((r) => r.fireStations == null).length;
-  const hydrantsWithPop = withDensity.reduce((s, r) => s + r.hydrants, 0);
-  const pop = Math.round(withDensity.reduce((s, r) => s + r.populationM, 0) * 100) / 100;
+  const sum = (k) => rows.reduce((s, r) => s + (r[k] ?? 0), 0);
+  const unknown = (k) => rows.filter((r) => r[k] == null).length;
+  const withHydrantDensity = rows.filter((r) => r.per1000 != null);
+  const pop = Math.round(withHydrantDensity.reduce((s, r) => s + r.populationM, 0) * 100) / 100;
   const osm = rows.map((r) => r.osmMs).filter((v) => v != null);
   const up = rows.map((r) => r.uploadMs).filter((v) => v != null);
   return {
     regions: rows.length,
-    hydrants,
-    fireStations,
-    hydrantsUnknown,
-    fireStationsUnknown,
+    hydrants: sum('hydrants'),
+    fireStations: sum('fireStations'),
+    defibrillators: sum('defibrillators'),
+    hydrantsUnknown: unknown('hydrants'),
+    fireStationsUnknown: unknown('fireStations'),
+    defibrillatorsUnknown: unknown('defibrillators'),
     populationM: pop,
-    per1000: pop > 0 ? hydrantsWithPop / (pop * 1000) : null,
+    per1000: densityOf(rows, 'hydrants', 1000),
+    fireStationsPer100k: densityOf(rows, 'fireStations', 10),
+    defibrillatorsPer100k: densityOf(rows, 'defibrillators', 10),
     oldestOsmMs: osm.length ? Math.min(...osm) : null,
     latestUploadMs: up.length ? Math.max(...up) : null
   };
 }
 
-/** Gesamtkennzahlen über alle Länder. Die Dichte zählt nur Länder mit bekannter Einwohnerzahl. */
+/**
+ * Gesamtkennzahlen über alle Länder. Dichten zählen nur Länder mit bekannter Einwohnerzahl; ein Gebiet, das
+ * schon im Auszug eines anderen Landes steckt (Azoren in Portugal), zählt in Summen und Dichten nicht doppelt.
+ */
 export function summarize(rows) {
-  return { total: sumRows(rows) };
+  const own = rows.filter((r) => !r.containedIn || !rows.some((x) => x.id === r.containedIn));
+  return { total: { ...sumRows(own), regions: rows.length } };
 }
 
 /** Zeilen der Zeitleiste: je Land eine, neuester Upload zuerst, dann die meisten Hydranten. */

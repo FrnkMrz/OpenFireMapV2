@@ -5,6 +5,7 @@
 export const strings = {
     search_placeholder: "Ort suchen...",
     skip_to_map: "Zur Karte springen",
+    pipeline_status_link: "Pipeline-Status",
     map_region_label: "Karte",
     map_keyboard_hint: "Tastaturbedienung der Karte: Pfeiltasten verschieben den Ausschnitt, Plus und Minus zoomen.",
     marker_water: "Löschwasserstelle",

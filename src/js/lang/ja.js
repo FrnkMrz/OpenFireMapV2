@@ -5,6 +5,7 @@
 export const strings = {
         search_placeholder: "場所を検索...",
         skip_to_map: "地図へスキップ",
+        pipeline_status_link: "パイプラインの状況",
         map_region_label: "地図",
         map_keyboard_hint: "地図のキーボード操作：矢印キーで表示位置を移動、プラスとマイナスでズームします。",
         marker_water: "消防水利",
