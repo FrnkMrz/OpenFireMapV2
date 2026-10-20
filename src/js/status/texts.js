@@ -5,14 +5,16 @@
  *        Spracherkennung der Pipeline-Statusseite (/status/).
  *
  * Die Statusseite lädt bewusst nicht i18n.js der Karte (30+ Sprachen), sondern bringt ihre zwei
- * Sprachen selbst mit. Die Wahl liegt unter demselben Schlüssel wie in der Karte (`ofm_lang`).
+ * Sprachen selbst mit. Die Wahl liegt unter einem eigenen Schlüssel (`ofm_status_lang`), nicht unter `ofm_lang` der Karte:
+ * die Karte hat keinen Sprachschalter, ein einmal auf der Statusseite gewähltes Englisch würde sie sonst dauerhaft
+ * gegen die Browsersprache auf Englisch festhalten.
  * ==========================================================================================
  */
 
 export const LANGS = ['de', 'en'];
-export const LANG_KEY = 'ofm_lang';
+export const LANG_KEY = 'ofm_status_lang';
 
-/** Sprache: ?lang=, gespeicherte Wahl der Karte (nur de/en), Browsersprache, sonst Deutsch (Projekt-Standard). */
+/** Sprache: ?lang=, gespeicherte Wahl der Statusseite (nur de/en), Browsersprache, sonst Deutsch (Projekt-Standard). */
 export function detectLang({ search = '', stored = null, browser = '' } = {}) {
   const fromUrl = new URLSearchParams(search).get('lang');
   if (LANGS.includes(fromUrl)) return fromUrl;

@@ -105,6 +105,16 @@ test.describe('Pipeline-Statusseite', () => {
         await expect(page.locator('#st-table tbody tr[data-key="poland"] td').nth(1)).toHaveText('403.193');
     });
 
+    test('die Sprachwahl der Statusseite verstellt nicht die Sprache der Karte', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        await page.click('.st-lang button[data-lang="en"]');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+        // Die Karte hat keinen Sprachschalter: ein hier gespeichertes Englisch würde sie sonst festhalten
+        expect(await page.evaluate(() => localStorage.getItem('ofm_lang'))).toBeNull();
+        expect(await page.evaluate(() => localStorage.getItem('ofm_status_lang'))).toBe('en');
+    });
+
     test('Diagramm wechselt zwischen Hydranten, Wachen und Defibrillatoren je Einwohner', async ({ page }) => {
         await mockPipeline(page);
         await open(page);
