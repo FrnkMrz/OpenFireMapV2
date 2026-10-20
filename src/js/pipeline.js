@@ -1,7 +1,7 @@
 /**
  * ==========================================================================================
  * DATEI: pipeline.js
- * ZWECK: Adapter für die lokale OpenFireMap DACH Data Pipeline (Proxmox / Docker).
+ * ZWECK: Adapter für die OpenFireMap-Daten-Pipeline (PMTiles-Vektorkacheln über Cloudflare R2).
  *        Lädt vorbereitete GeoJSON-Objekte blitzschnell im Heimnetzwerk und wandelt sie
  *        in das Standard-Elementformat von OpenFireMap um.
  * ==========================================================================================
