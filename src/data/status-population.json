@@ -1,0 +1,16 @@
+{
+  "_meta": {
+    "note": "Gerundete Schätzwerte in Millionen Einwohnern (ca. 2024/25) für das jeweilige Geofabrik-Auszugsgebiet, nicht amtlich geprüft. Bei Bedarf durch Eurostat-Werte ersetzen; die Seite zeigt sie ausdrücklich als Schätzung.",
+    "unit": "Millionen Einwohner"
+  },
+  "populationM": {
+    "germany": 84.5, "austria": 9.2, "switzerland": 9.0, "luxembourg": 0.67, "liechtenstein": 0.04,
+    "albania": 2.4, "andorra": 0.08, "azores": 0.24, "belgium": 11.8, "bosnia-herzegovina": 3.2, "bulgaria": 6.4,
+    "croatia": 3.86, "cyprus": 1.3, "czech-republic": 10.9, "denmark": 5.96, "estonia": 1.37, "faroe-islands": 0.054,
+    "finland": 5.6, "france": 66.0, "great-britain": 66.0, "greece": 10.4, "guernsey-jersey": 0.16, "hungary": 9.6,
+    "iceland": 0.38, "ireland-and-northern-ireland": 7.3, "isle-of-man": 0.085, "italy": 58.9, "kosovo": 1.76,
+    "latvia": 1.87, "lithuania": 2.89, "malta": 0.57, "macedonia": 1.83, "moldova": 2.5, "monaco": 0.04,
+    "montenegro": 0.62, "netherlands": 17.9, "norway": 5.55, "poland": 36.6, "portugal": 10.3, "romania": 19.0,
+    "serbia": 6.65, "slovakia": 5.42, "slovenia": 2.12, "spain": 48.6, "sweden": 10.5
+  }
+}

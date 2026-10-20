@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Pipeline-Status – OpenFireMap</title>
+    <meta name="description"
+        content="Pipeline-Status von OpenFireMap: Stand der Geofabrik-Auszüge, Uploads und Hydranten je Einwohner für alle veröffentlichten Karten.">
+    <meta property="og:title" content="Pipeline-Status – OpenFireMap">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://openfiremap.org/status/">
+
+    <!-- SECURITY: Content Security Policy (CSP). Nur die Pipeline wird geladen (Manifest und metadata.json). -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data:;
+        connect-src 'self' https://pipeline.openfiremap.org http://localhost:* ws://localhost:*;
+    ">
+
+    <link rel="preconnect" href="https://pipeline.openfiremap.org" crossorigin>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-icon-180x180.png">
+    <link rel="stylesheet" href="/src/status.css">
+</head>
+
+<body>
+    <a class="st-skip" href="#main" data-i18n="skip">Zum Inhalt springen</a>
+
+    <div class="st-page">
+        <header class="st-head">
+            <div>
+                <p class="st-back"><a href="/" data-i18n="back">← Zur Karte</a></p>
+                <h1>OpenFireMap Pipeline</h1>
+                <p class="st-muted" data-i18n="sub"></p>
+            </div>
+            <div class="st-lang" role="group" data-i18n-aria="lang_label" aria-label="Sprache">
+                <button type="button" data-lang="de" aria-pressed="false" lang="de">DE</button>
+                <button type="button" data-lang="en" aria-pressed="false" lang="en">EN</button>
+            </div>
+        </header>
+
+        <main id="main" tabindex="-1">
+            <p class="st-state" id="st-loading" role="status" data-i18n="loading">Daten werden geladen …</p>
+            <div class="st-state st-error" id="st-error" role="alert" hidden>
+                <p data-i18n="error"></p>
+                <button type="button" id="st-retry" data-i18n="retry"></button>
+            </div>
+            <p class="st-warn" id="st-warn" role="status" hidden></p>
+            <noscript><p class="st-state">Diese Seite braucht JavaScript. / This page needs JavaScript.</p></noscript>
+
+            <div id="st-content" hidden>
+                <dl class="st-defs">
+                    <div><dt data-i18n="def_osm_t"></dt><dd data-i18n="def_osm_d"></dd></div>
+                    <div><dt data-i18n="def_up_t"></dt><dd data-i18n="def_up_d"></dd></div>
+                </dl>
+
+                <section class="st-grid" id="st-kpis" aria-label="KPIs"></section>
+
+                <section class="st-card" id="st-timeline-card" aria-labelledby="st-tl-h">
+                    <h2 id="st-tl-h" data-i18n="tl_title"></h2>
+                    <p class="st-muted" data-i18n="tl_desc"></p>
+                    <div class="st-legend st-muted">
+                        <span><i class="st-sw hollow"></i><span data-i18n="tl_osm"></span></span>
+                        <span><i class="st-sw"></i><span data-i18n="tl_up"></span></span>
+                    </div>
+                    <div class="st-chart" id="st-timeline"></div>
+                </section>
+
+                <section class="st-card" id="st-density-card" aria-labelledby="st-den-h">
+                    <h2 id="st-den-h" data-i18n="den_title"></h2>
+                    <p class="st-muted" data-i18n="den_desc"></p>
+                    <div class="st-chart" id="st-density"></div>
+                </section>
+
+                <section class="st-card" id="st-table-card" aria-labelledby="st-tb-h">
+                    <h2 id="st-tb-h" data-i18n="tb_title"></h2>
+                    <p class="st-muted" data-i18n="tb_desc"></p>
+                    <div class="st-tools">
+                        <input type="search" id="st-search" data-i18n-ph="tb_search" data-i18n-aria="tb_search">
+                    </div>
+                    <div class="st-scroll" tabindex="0" role="region" data-i18n-aria="tb_caption" aria-label="Tabelle">
+                        <table id="st-table">
+                            <caption class="st-sr" data-i18n="tb_caption"></caption>
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="st-card" id="st-runs-card" aria-labelledby="st-runs-h">
+                    <h2 id="st-runs-h" data-i18n="runs_title"></h2>
+                    <p class="st-muted" data-i18n="runs_desc"></p>
+                    <div class="st-scroll" tabindex="0" role="region" data-i18n-aria="runs_caption" aria-label="Tabelle">
+                        <table id="st-runs">
+                            <caption class="st-sr" data-i18n="runs_caption"></caption>
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="st-card" id="st-run-card" aria-labelledby="st-run-h">
+                    <h2 id="st-run-h" data-i18n="run_title"></h2>
+                    <p class="st-muted" data-i18n="run_desc"></p>
+                    <div class="st-grid" id="st-run-kpis"></div>
+                    <div class="st-runbar" id="st-runbar"></div>
+                    <div class="st-scroll" tabindex="0" role="region" data-i18n-aria="x_caption" aria-label="Tabelle">
+                        <table id="st-extracts">
+                            <caption class="st-sr" data-i18n="x_caption"></caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="l" data-i18n="x_name"></th>
+                                    <th scope="col" data-i18n="x_size"></th>
+                                    <th scope="col" data-i18n="x_osm"></th>
+                                    <th scope="col" data-i18n="x_dl"></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <div class="st-muted st-notes">
+                    <p data-i18n="n_osm"></p>
+                    <p data-i18n="n_pop"></p>
+                    <p id="st-note-dach"></p>
+                    <p data-i18n="src"></p>
+                    <p id="st-fetched"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="/src/js/status/status.js"></script>
+</body>
+
+</html>

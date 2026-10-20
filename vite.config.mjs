@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { stripDevOnlyCspSources } from './scripts/strip-dev-csp.mjs';
 
@@ -57,6 +58,13 @@ export default defineConfig({
     // schreibt dann Media Queries als Bereichssyntax "(width>=768px)", die iOS 16.0-16.3 ignoriert.
     target: ['chrome107', 'edge107', 'firefox104', 'safari16', 'ios16'],
     outDir: 'docs',
-    emptyOutDir: true
+    emptyOutDir: true,
+    // Zwei Seiten: die Karte (index.html) und die Pipeline-Statusseite (status/index.html → /status/)
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        status: fileURLToPath(new URL('./status/index.html', import.meta.url))
+      }
+    }
   }
 });
