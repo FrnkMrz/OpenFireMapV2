@@ -109,6 +109,15 @@ test.describe('Kontraste', () => {
         });
     }
 
+    test('Export-Titel-Dialog', async ({ page }) => {
+        await openMap(page);
+        // Der Dialog öffnet sonst erst nach einem Export-Klick; hier reicht das Einblenden wie in ui.js
+        await page.evaluate(() => document.getElementById('export-title-modal').classList.remove('hidden'));
+        await expect(page.locator('#export-title-modal')).toBeVisible();
+        await expectContrast(page);
+        await expectHoverContrast(page, '#export-title-modal');
+    });
+
     test('Objektliste', async ({ page }) => {
         await openMap(page);
         await page.locator('#objects-btn-trigger').click();
