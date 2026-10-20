@@ -222,7 +222,7 @@ export function setExportFormat(fmt) {
   document.querySelectorAll(".fmt-btn").forEach((b) => {
     b.classList.remove(
       "active",
-      "text-blue-400",
+      "text-blue-300",
       "border-blue-400/50",
       "bg-white/10",
     );
@@ -233,7 +233,7 @@ export function setExportFormat(fmt) {
   if (btn) {
     btn.classList.add(
       "active",
-      "text-blue-400",
+      "text-blue-300",
       "border-blue-400/50",
       "bg-white/10",
     );
@@ -252,7 +252,7 @@ export function setExportZoom(z) {
   document.querySelectorAll(".zoom-btn").forEach((b) => {
     b.classList.remove(
       "active",
-      "text-blue-400",
+      "text-blue-300",
       "border-blue-400/50",
       "bg-white/10",
     );
@@ -263,7 +263,7 @@ export function setExportZoom(z) {
   if (btn) {
     btn.classList.add(
       "active",
-      "text-blue-400",
+      "text-blue-300",
       "border-blue-400/50",
       "bg-white/10",
     );

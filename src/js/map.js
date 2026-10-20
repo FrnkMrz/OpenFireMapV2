@@ -1356,7 +1356,7 @@ export function drawBlueLine(targetLat, targetLon, isRedraw = false) {
 
     const labelIcon = L.divIcon({
         className: 'distance-label-icon',
-        html: `<div style="padding: 2px 6px; font-size: 13px; font-weight: 800; color: #3b82f6; white-space: nowrap; transform: translate(-50%, -120%); text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; pointer-events: none;">${dist} m</div>`,
+        html: `<div style="padding: 2px 6px; font-size: 13px; font-weight: 800; color: #1d4ed8; white-space: nowrap; transform: translate(-50%, -120%); text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; pointer-events: none;">${dist} m</div>`,
         iconSize: [0, 0]
     });
 

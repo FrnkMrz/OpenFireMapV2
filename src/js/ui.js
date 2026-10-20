@@ -596,7 +596,7 @@ function renderObjectsList() {
         const name = document.createElement('span');
         name.textContent = item.label;
         const dist = document.createElement('span');
-        dist.className = 'text-slate-400 shrink-0';
+        dist.className = 'text-slate-300 shrink-0';
         dist.textContent = `${item.distance} m`;
         btn.append(name, dist);
         btn.addEventListener('click', () => {
