@@ -60,8 +60,9 @@ export async function auditContrast(page, backdrop = '#ffffff', { root = null } 
             base = { ...base, a: 1 };
             let started = false;
             for (const n of chain) {
-                // body und main liegen unter der Karte; erst Overlay-Elemente zählen
-                if (!started && (n === document.body || n.tagName === 'MAIN')) continue;
+                // body, main und der Karten-Container liegen auf/unter der Karte: ihr Ersatz-Hintergrund (#1e293b) darf den
+                // gewählten Untergrund (Kacheln) nicht verdecken; erst Overlay-Elemente zählen
+                if (!started && (n === document.body || n.tagName === 'MAIN' || n.id === 'map')) continue;
                 started = true;
                 const s = getComputedStyle(n);
                 const bg = parse(s.backgroundColor);

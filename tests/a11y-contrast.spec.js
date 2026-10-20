@@ -205,6 +205,23 @@ test.describe('Kontraste', () => {
         });
     }
 
+    test('Untergrund der Karte wirkt auf Elemente in der Karte (Quellenangabe)', async ({ page }) => {
+        await openMap(page);
+        const attribution = '.leaflet-control-attribution';
+        await expect(page.locator(attribution)).toBeVisible();
+        // Weißer Untergrund liefert einen helleren Grund als schwarzer: die Messung muss davon abhängen
+        const bgOf = async (backdrop) => {
+            await page.evaluate(() => { document.querySelector('.leaflet-control-attribution a').style.color = '#cbd5e1'; });
+            const f = await auditContrast(page, backdrop, { root: attribution });
+            return f.find(x => x.selector === 'a')?.bg;
+        };
+        const onWhite = await bgOf('#ffffff');
+        const onBlack = await bgOf('#000000');
+        expect(onWhite).toBeTruthy();
+        expect(onBlack).toBeTruthy();
+        expect(onWhite).not.toBe(onBlack);
+    });
+
     test('Der Messhelfer erfasst auch die sichtbare, für Screenreader stumme Meldung (Gegenprobe)', async ({ page }) => {
         await openMap(page);
         await TOAST_TRIGGERS.warning(page);
