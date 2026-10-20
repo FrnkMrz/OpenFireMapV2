@@ -62,7 +62,7 @@ function openTitleConfirmation(exportFnName) {
         if (input) {
             // IMMER neu laden, damit es zum aktuellen Ausschnitt passt (User-Feedback)
             input.value = "";
-            input.placeholder = "Lade Ortsnamen...";
+            input.placeholder = t('export_title_loading');
 
             // Vorbefüllen des Ortsnamens für den Export-Dialog
             // NEU: Wenn eine Auswahl (Selection) aktiv ist, nehmen wir das Zentrum DIESER Auswahl.
@@ -86,7 +86,7 @@ function openTitleConfirmation(exportFnName) {
                         if (city) {
                             input.value = `Ort- und Hydrantenplan ${city}`;
                         } else {
-                            input.placeholder = "Titel eingeben";
+                            input.placeholder = t('export_title_placeholder');
                         }
                     });
                 });
