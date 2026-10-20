@@ -210,6 +210,10 @@ export function initMapLogic() {
     State.map.panBy = (offset, options) =>
         originalPanBy(offset, prefersReducedMotion() ? { ...options, animate: false } : options);
 
+    // Die Objektliste (ui.js) folgt dem Ausschnitt: Flug, Zoom oder Größenänderung ändern Auswahl und Entfernungen,
+    // auch wenn danach kein neues Marker-Rendering stattfindet (Daten schon geladen)
+    State.map.on('moveend resize', () => window.dispatchEvent(new CustomEvent('ofm:viewchange')));
+
     State.boundaryLayer.addTo(State.map);
     State.rangeLayerGroup.addTo(State.map);
     State.distanceLayerGroup.addTo(State.map);
@@ -1162,6 +1166,75 @@ function generateTooltip(tags, clusterMembers) {
 
 
 /**
+ * Barrierefreiheit: Objekte im sichtbaren Kartenausschnitt als Liste (Textalternative zu den Markern).
+ * Sortiert nach Entfernung zum Kartenmittelpunkt, auf `max` Einträge begrenzt.
+ * @returns {{items: Array<{id: string, label: string, distance: number}>, total: number}}
+ */
+export function getObjectsInView(max = 100) {
+    if (!State.map || !State.markerCache) return { items: [], total: 0 };
+    const bounds = State.map.getBounds();
+    const center = State.map.getCenter();
+    const found = [];
+
+    for (const [id, entry] of State.markerCache) {
+        if (!bounds.contains([entry.lat, entry.lon])) continue;
+        found.push({
+            id,
+            label: getMarkerLabel(entry),
+            distance: Math.round(distanceMeters({ lat: center.lat, lon: center.lng }, { lat: entry.lat, lon: entry.lon }))
+        });
+    }
+    found.sort((a, b) => a.distance - b.distance);
+    return { items: found.slice(0, max), total: found.length };
+}
+
+/**
+ * Findet den Marker-Eintrag zu einer Objekt-ID: direkt oder als Mitglied eines Clusters (Schlüssel wie in renderMarkers()).
+ */
+function findMarkerEntry(id) {
+    const direct = State.markerCache.get(id);
+    if (direct) return direct;
+    for (const entry of State.markerCache.values()) {
+        if (entry.isHydrantCluster && entry.clusterMembers?.some(m => `${m.type || 'node'}:${m.id}` === id)) return entry;
+    }
+    return null;
+}
+
+/**
+ * Springt zu einem Objekt der Liste: zoomt bei Bedarf auf Symbol-Zoom (17), fokussiert den Marker und
+ * öffnet dessen Details (wie Enter auf dem Marker).
+ */
+export function focusMapObject(id) {
+    const entry = State.markerCache?.get(id);
+    if (!entry || !State.map) return;
+
+    const latlng = L.latLng(entry.lat, entry.lon);
+    const symbolZoom = 17;
+
+    // Bis der Marker als Symbol im DOM steht (nach dem Zoomen werden Punkte zu Symbolen).
+    // Beim Zoomen auf 17 können nahe Objekte zu einem Cluster werden, der nur die ID seines ersten Objekts trägt:
+    // dann ist das Cluster-Symbol das Ziel, in dem das gewählte Objekt steckt.
+    const focusWhenReady = (triesLeft = 30) => {
+        const current = findMarkerEntry(id);
+        const el = current && current.mode === 'svg' ? current.marker.getElement() : null;
+        if (el && current.activate) {
+            el.focus({ preventScroll: true });
+            current.activate();
+        } else if (triesLeft > 0) {
+            setTimeout(() => focusWhenReady(triesLeft - 1), 50);
+        }
+    };
+
+    const needsMove = State.map.getZoom() < symbolZoom || !State.map.getBounds().pad(-0.1).contains(latlng);
+    if (needsMove) {
+        State.map.once('moveend', () => focusWhenReady());
+        moveMapTo(latlng, Math.max(State.map.getZoom(), symbolZoom));
+    } else {
+        focusWhenReady();
+    }
+}
+
+/**
  * Schließt den offenen Marker-Tooltip, den 100-m-Radius und die Distanz-Linie. Der Fokus bleibt auf dem Marker.
  * @returns {boolean} true, wenn etwas geschlossen wurde
  */
@@ -1445,6 +1518,9 @@ export function renderMarkers(elements, zoom, { isPartial = false } = {}) {
             }
         }
     }
+
+    // Die Objektliste (ui.js) aktualisiert sich damit, wenn sie bei laufendem Laden schon offen ist
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('ofm:markerschange'));
 }
 
 export function renderBoundaries(elements, zoom) {
@@ -1478,6 +1554,7 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
     let className = '';
     let size = [28, 28];
     let zIndex;
+    let activate = null; // Details/Radius per Tastatur öffnen (nur Symbol-Marker), für die Objektliste
 
     // 1. Icon Konfiguration basierend auf Modus
     if (mode === 'dot') {
@@ -1692,6 +1769,8 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             announceStatus(getMarkerDetailsText(label, tags, clusterMembers));
         };
 
+        activate = activateByKeyboard;
+
         marker.on('add', () => {
             const el = marker.getElement();
             if (!el || el.__ofmKeyBound) return;
@@ -1724,7 +1803,8 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             isDefib,
             isHydrantCluster,
             clusterCount,
-            clusterMembers: isHydrantCluster ? clusterMembers : undefined
+            clusterMembers: isHydrantCluster ? clusterMembers : undefined,
+            activate
         });
     }
 }

@@ -123,6 +123,15 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
             </button>
+
+            <!-- Objektliste (Textalternative zu den Markern) -->
+            <button id="objects-btn-trigger" data-i18n-title="objects_list_title" data-i18n-aria-label="objects_list_title"
+                aria-label="Objekte im Ausschnitt" aria-haspopup="dialog" aria-expanded="false" aria-controls="objects-list"
+                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
         </div>
 
         <!-- =========================================================
@@ -165,6 +174,11 @@
                 <button id="mobile-open-share" type="button"
                     class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="share_map">Kartenansicht teilen</span>
+                </button>
+
+                <button id="mobile-open-objects" type="button"
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span data-i18n="objects_list_title">Objekte im Ausschnitt</span>
                 </button>
 
                 <button id="mobile-open-search"
@@ -485,6 +499,18 @@
                     Erstellen
                 </button>
             </div>
+        </div>
+
+        <!-- Objektliste: alle Objekte im sichtbaren Ausschnitt als Textliste, nach Entfernung zum Kartenmittelpunkt -->
+        <div id="objects-list" role="dialog" aria-modal="true" aria-labelledby="objects-list-title" tabindex="-1"
+            class="hidden absolute top-20 left-5 z-[1001] w-80 max-h-[70vh] flex flex-col glass-panel rounded-3xl p-5 shadow-2xl text-white border border-white/10">
+            <div class="flex justify-between items-center mb-3 shrink-0">
+                <h2 id="objects-list-title" class="font-bold text-lg" data-i18n="objects_list_title">Objekte im Ausschnitt</h2>
+                <button id="objects-close-btn" type="button" data-i18n-aria-label="menu_close" aria-label="Schließen"
+                    class="text-slate-400 hover:text-white text-2xl leading-none rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-blue-500">&times;</button>
+            </div>
+            <p id="objects-list-summary" role="status" class="text-xs text-slate-300 mb-3 shrink-0"></p>
+            <ul id="objects-list-items" class="overflow-y-auto custom-scroll space-y-1 text-sm p-1 -m-1"></ul>
         </div>
 
         <div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title" tabindex="-1"
