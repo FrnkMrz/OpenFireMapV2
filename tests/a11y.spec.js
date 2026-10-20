@@ -322,6 +322,7 @@ test.describe('Dialoge: Fokus, Tab-Falle, Escape', () => {
         await page.keyboard.press('Enter');
         await expect(page.locator('#data-info-popover')).toBeVisible();
         await expect.poll(() => focusInside(page, '#data-info-popover')).toBe(true);
+        await expect(page.locator('#data-info-status-link')).toHaveAttribute('href', '/status/');
         // Nicht modal: die Karte bleibt bedienbar
         expect(await isInert(page, '#map')).toBe(false);
 
