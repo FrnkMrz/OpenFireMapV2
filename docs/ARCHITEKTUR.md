@@ -46,7 +46,7 @@ Für 40 weitere Länder (ohne Russland, Ukraine, Belarus, Türkei) gibt es je La
 
 ## Cloudflare R2
 
-Cloudflare R2 ist die primäre öffentliche Quelle für die vorbereiteten PMTiles-Daten. Die Auslieferung erfolgt über `https://pipeline.openfiremap.org`. CORS und Range-Requests ermöglichen den direkten Zugriff aus dem Browser. Eine lokale VM (intern als **VM 102** bezeichnet) dient als Test- und Backup-Umgebung für den Pipeline-Betrieb; private Netzwerkadressen, Zugangsdaten und interne Pfade gehören nicht zur öffentlichen Dokumentation.
+Cloudflare R2 ist die primäre öffentliche Quelle für die vorbereiteten PMTiles-Daten. Die Auslieferung erfolgt über `https://pipeline.openfiremap.org`. CORS und Range-Requests ermöglichen den direkten Zugriff aus dem Browser. Der Pipeline-Betrieb liegt in einem privaten Repository; Netzwerkadressen, Zugangsdaten und interne Pfade gehören nicht zur öffentlichen Dokumentation.
 
 ### R2-Auslieferung und Synchronisation
 
