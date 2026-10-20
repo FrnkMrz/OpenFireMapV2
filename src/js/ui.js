@@ -859,6 +859,7 @@ export function setupUI() {
 
     // 6. Export-Aktionen & Bestätigungs-Dialog
     addClick('select-btn', async () => { const m = await getExport(); m.startSelection(); });
+    addClick('select-view-btn', async () => { const m = await getExport(); m.useViewAsSelection(); });
     addClick('png-btn', withTitleConfirm('exportAsPNG'));
     addClick('pdf-btn', withTitleConfirm('exportAsPDF'));
     addClick('gpx-btn', withTitleConfirm('exportAsGPX'));

@@ -155,6 +155,12 @@ export function initMapLogic() {
     // Escape in der Karte schließt Details und 100-m-Radius (Dialoge behandelt registerDialog() in ui.js zuerst)
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape' || e.defaultPrevented) return;
+        // Auswahlmodus des Exports (Rechteck ziehen) abbrechen: sonst bleibt das Verschieben der Karte gesperrt
+        if (cancelSelectionMode()) {
+            e.preventDefault();
+            showNotification(t('selection_cancelled'), 2000, 'info');
+            return;
+        }
         if (!State.map?.getContainer().contains(e.target)) return;
         if (closeMapOverlays()) e.preventDefault();
     });
@@ -1232,6 +1238,24 @@ export function focusMapObject(id) {
     } else {
         focusWhenReady();
     }
+}
+
+/**
+ * Bricht den Auswahlmodus des Exports ab (Rechteck ziehen), gibt das Verschieben der Karte wieder frei
+ * und entfernt das angefangene Rechteck. Eine schon fixierte Auswahl bleibt unberührt.
+ * @returns {boolean} true, wenn der Modus aktiv war
+ */
+export function cancelSelectionMode() {
+    if (!State.selection?.active) return false;
+    if (State.selection.rect && State.map && !State.selection.finalBounds) State.map.removeLayer(State.selection.rect);
+    if (!State.selection.finalBounds) State.selection.rect = null;
+    State.selection.active = false;
+    State.selection.startPoint = null;
+    if (State.map) {
+        State.map.dragging.enable();
+        State.map.getContainer().classList.remove('selection-mode');
+    }
+    return true;
 }
 
 /**

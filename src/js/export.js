@@ -16,6 +16,7 @@ import { fetchDataForExport } from "./api.js";
 import { waitForPendingBuffers, isBoundaryElement } from "./pipeline.js";
 import { t, getLang } from "./i18n.js";
 import { showNotification, toggleExportMenu } from "./ui.js";
+import { cancelSelectionMode } from "./map.js";
 import { jsPDF } from "jspdf";
 
 /**
@@ -281,6 +282,45 @@ export function startSelection() {
   State.map.dragging.disable();
   State.map.getContainer().classList.add("selection-mode");
   showNotification(t("drag_area"), 3000, 'info');
+}
+
+/**
+ * Tastaturweg zur Auswahl: übernimmt den gerade sichtbaren Kartenausschnitt als Export-Auswahl
+ * (bei DIN-Formaten im passenden Seitenverhältnis, mittig, mit etwas Rand), ohne Rechteck zu ziehen.
+ * Wer den Ausschnitt anders will, verschiebt/zoomt die Karte (Pfeiltasten, +/−) und übernimmt erneut.
+ */
+export function useViewAsSelection() {
+  if (!State.map) return;
+  cancelSelectionMode();
+  clearSelection();
+
+  const view = State.map.getBounds();
+  const center = view.getCenter();
+  const lngScale = Math.cos((center.lat * Math.PI) / 180);
+  let height = (view.getNorth() - view.getSouth()) * 0.8; // Grad Breite
+  let width = (view.getEast() - view.getWest()) * 0.8; // Grad Länge
+
+  if (State.exportFormat !== "free") {
+    // gleiche Seitenverhältnisse wie beim Ziehen mit der Maus (Breite : Höhe in Metern)
+    const ratio = State.exportFormat === "a4l" ? 1.4142 : 0.7071;
+    const widthForHeight = (height * ratio) / lngScale;
+    if (widthForHeight <= width) width = widthForHeight;
+    else height = (width * lngScale) / ratio;
+  }
+
+  const bounds = L.latLngBounds(
+    [center.lat - height / 2, center.lng - width / 2],
+    [center.lat + height / 2, center.lng + width / 2],
+  );
+  State.selection.rect = L.rectangle(bounds, {
+    color: Config.colors.selection,
+    weight: 2,
+    fillOpacity: 0.2,
+    interactive: false,
+  }).addTo(State.map);
+  State.selection.finalBounds = bounds;
+  document.getElementById("selection-info").classList.remove("hidden");
+  showNotification(t("area_from_view"), 3000, "success");
 }
 
 function clearSelection() {
