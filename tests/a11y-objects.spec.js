@@ -188,6 +188,20 @@ test.describe('Objektliste', () => {
         expect(/(\d+) m/.exec(after)[1]).not.toBe(/(\d+) m/.exec(before)[1]);
     });
 
+    test('Ändert sich der Kartenausschnitt bei offener Liste, folgen Auswahl und Sortierung', async ({ page }) => {
+        await openMap(page, 18);
+        await openListByKeyboard(page);
+        await expect(items(page).first()).toContainText('Zweiter');
+        // Noch anstehende Aktualisierungen vom Laden abwarten (Bündelung 150 ms), damit nur die Ausschnitts-Änderung wirkt
+        await page.waitForTimeout(500);
+
+        // z. B. ein noch laufender Flug oder eine Größenänderung: Mitte wandert zur Wache, alle Daten sind schon geladen.
+        // Marker-Ereignisse werden unterdrückt, damit nur die Ausschnitts-Aktualisierung die Liste ändern kann.
+        await page.evaluate(() => window.addEventListener('ofm:markerschange', e => e.stopImmediatePropagation(), true));
+        await page.evaluate(() => window.State.map.setView([40.7131, -74.0050], 18, { animate: false }));
+        await expect(items(page).first()).toContainText('Testwache');
+    });
+
     test('Verschwindet der fokussierte Eintrag beim Aktualisieren, bleibt der Fokus im Dialog', async ({ page }) => {
         await openMap(page, 18);
         await openListByKeyboard(page);

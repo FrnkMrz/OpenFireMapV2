@@ -210,6 +210,10 @@ export function initMapLogic() {
     State.map.panBy = (offset, options) =>
         originalPanBy(offset, prefersReducedMotion() ? { ...options, animate: false } : options);
 
+    // Die Objektliste (ui.js) folgt dem Ausschnitt: Flug, Zoom oder Größenänderung ändern Auswahl und Entfernungen,
+    // auch wenn danach kein neues Marker-Rendering stattfindet (Daten schon geladen)
+    State.map.on('moveend resize', () => window.dispatchEvent(new CustomEvent('ofm:viewchange')));
+
     State.boundaryLayer.addTo(State.map);
     State.rangeLayerGroup.addTo(State.map);
     State.distanceLayerGroup.addTo(State.map);

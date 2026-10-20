@@ -612,7 +612,7 @@ function renderObjectsList() {
     if (focusedId && !list.contains(document.activeElement)) list.querySelector('button')?.focus();
 }
 
-// Ist die Liste offen, während Marker (nach)geladen werden, folgt sie den Daten (gebündelt, nicht bei jedem Zwischenstand)
+// Ist die Liste offen, während Marker (nach)geladen werden oder der Ausschnitt sich ändert, folgt sie (gebündelt, nicht bei jedem Zwischenstand)
 let objectsListRefreshTimer = null;
 function scheduleObjectsListRefresh() {
     clearTimeout(objectsListRefreshTimer);
@@ -812,6 +812,7 @@ export function setupUI() {
     addClick('objects-btn-trigger', toggleObjectsList);
     addClick('objects-close-btn', toggleObjectsList);
     window.addEventListener('ofm:markerschange', scheduleObjectsListRefresh);
+    window.addEventListener('ofm:viewchange', scheduleObjectsListRefresh);
 
     // Info & Recht Button (Desktop: ⓘ unten links / Mobile: Burger-Menü-Eintrag)
     addClick('btn-legal-trigger', toggleLegalModal);
