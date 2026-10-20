@@ -36,6 +36,8 @@ async function expectContrast(page) {
 
 // Hover-Zustände: jeder sichtbare Button/Link im Bereich muss auch unter der Maus lesbar sein
 async function expectHoverContrast(page, scopeSelector) {
+    // Gemessen werden die Endzustände: Farbübergänge beim Hover würden Zwischenfarben liefern und den Test unzuverlässig machen
+    await page.addStyleTag({ content: 'button, a, select, button *, a * { transition: none !important; }' });
     const targets = await page.locator(`${scopeSelector} button:visible, ${scopeSelector} a:visible`).all();
     expect(targets.length).toBeGreaterThan(0);
     for (const target of targets) {
