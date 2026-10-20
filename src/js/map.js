@@ -10,7 +10,7 @@ import { Config } from './config.js';
 import { t } from './i18n.js';
 import { fetchBoundaryData, fetchOSMData } from './api.js';
 import { isPipelineEligible, lon2tile, lat2tile, computeQueryZoom, isBoundaryElement } from './pipeline.js';
-import { showNotification } from './ui.js';
+import { showNotification, announceStatus } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
 import { updateDataStatus } from './data-status.js';
 
@@ -149,7 +149,15 @@ export function initMapLogic() {
     //   Damit erzwingen wir: "max. 1 Tooltip gleichzeitig".
     //   Öffnet ein neuer Tooltip, schließen wir den alten sofort.
     State.openTooltipMarker = null;
+    // Marker, dessen Tooltip per Tastatur geöffnet wurde (darf auch unter Zoom 18 offen bleiben)
+    State.keyboardTooltipMarker = null;
 
+    // Escape in der Karte schließt Details und 100-m-Radius (Dialoge behandelt registerDialog() in ui.js zuerst)
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || e.defaultPrevented) return;
+        if (!State.map?.getContainer().contains(e.target)) return;
+        if (closeMapOverlays()) e.preventDefault();
+    });
 
     // 1) Startposition bestimmen: Permalink-Hash > localStorage > Config-Default
     let startCenter = Config.defaultCenter;
@@ -452,7 +460,7 @@ export function initMapLogic() {
         }
 
         // Tooltips gibt es nur ab Zoom 18. Bei Zoom-Out: offenen Tooltip sofort schließen.
-        if (zoom < 18 && State.openTooltipMarker) {
+        if (zoom < 18 && State.openTooltipMarker && State.keyboardTooltipMarker !== State.openTooltipMarker) {
             try { State.openTooltipMarker.closeTooltip(); } catch { /* ignore */ }
             State.openTooltipMarker = null;
         }
@@ -1085,6 +1093,32 @@ function clusterPOIs(rawElements, zoom, radiusMeters = 5) {
     return clustered.concat(others);
 }
 
+/**
+ * Barrierefreiheit: Name eines Markers für Screenreader ("Hydrant: Name oder Nummer").
+ * Cluster nennen nur die Anzahl, die Einzelobjekte stehen in den Details.
+ */
+export function getMarkerLabel({ type, tags, isStation, isDefib, isHydrantCluster, clusterCount }) {
+    if (isHydrantCluster) return `${clusterCount} ${t('cluster_info')}`;
+    const water = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
+    const typeLabel = t(isStation ? 'station' : (isDefib ? 'defib' : (water ? 'marker_water' : 'hydrant')));
+    const detail = tags?.name || tags?.ref || '';
+    return detail ? `${typeLabel}: ${detail}` : typeLabel;
+}
+
+/**
+ * Barrierefreiheit: Details eines Markers als reiner Text (gleicher Inhalt wie der Tooltip) zum Ansagen.
+ */
+export function getMarkerDetailsText(label, tags, clusterMembers) {
+    const describe = (tg) => Object.entries(tg || {}).map(([k, v]) => `${k}: ${v}`).join('. ');
+    if (clusterMembers && clusterMembers.length > 0) {
+        return `${label}. ` + clusterMembers
+            .map((m, i) => `${i + 1}. ${m.tags?.name || t('details_hydrant')}. ${describe(m.tags)}`)
+            .join('. ');
+    }
+    const text = describe(tags);
+    return text ? `${label}. ${text}` : label;
+}
+
 function generateTooltip(tags, clusterMembers) {
     // Single POI Logic
     if (!clusterMembers || clusterMembers.length === 0) {
@@ -1126,6 +1160,29 @@ function generateTooltip(tags, clusterMembers) {
     return html;
 }
 
+
+/**
+ * Schließt den offenen Marker-Tooltip, den 100-m-Radius und die Distanz-Linie. Der Fokus bleibt auf dem Marker.
+ * @returns {boolean} true, wenn etwas geschlossen wurde
+ */
+export function closeMapOverlays() {
+    let closed = false;
+    if (State.openTooltipMarker) {
+        try { State.openTooltipMarker.closeTooltip(); } catch { /* ignore */ }
+        State.openTooltipMarker = null;
+        closed = true;
+    }
+    if (State.rangeLayerGroup && State.rangeLayerGroup.getLayers().length > 0) {
+        State.rangeLayerGroup.clearLayers();
+        closed = true;
+    }
+    // Die blaue Distanz-Linie gehört zur Aktivierung (wie beim Klick auf die Karte entfernt sie Escape wieder)
+    if (State.distanceTarget || (State.distanceLayerGroup && State.distanceLayerGroup.getLayers().length > 0)) {
+        clearDistanceLine();
+        closed = true;
+    }
+    return closed;
+}
 
 // Kreis-Funktion (jetzt mit Config-Farbe)
 export function showRangeCircle(lat, lon) {
@@ -1424,16 +1481,17 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
 
     // 1. Icon Konfiguration basierend auf Modus
     if (mode === 'dot') {
-        // Kleine Punkte für niedrige Zoomstufen
+        // Kleine Punkte für niedrige Zoomstufen. Sie sind ohne Name und in großer Zahl da, daher kein Tab-Stopp
+        // (keyboard: false); erreichbar sind die Objekte per Tastatur ab dem Symbol-Modus (Zoom 17).
         if (isStation) {
-            marker = L.marker([lat, lon], { icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10, 10] }) });
+            marker = L.marker([lat, lon], { keyboard: false, icon: L.divIcon({ html: '<div class="station-square"></div>', iconSize: [10, 10] }) });
         } else if (isDefib) {
-            marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'defib-dot', iconSize: [10, 10] }) });
+            marker = L.marker([lat, lon], { keyboard: false, icon: L.divIcon({ className: 'defib-dot', iconSize: [10, 10] }) });
         } else {
             // Wasser/Hydranten Unterscheidung für Dots
             const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
             className = isWater ? 'tank-dot' : 'hydrant-dot';
-            marker = L.marker([lat, lon], { icon: L.divIcon({ className, iconSize: [10, 10] }) });
+            marker = L.marker([lat, lon], { keyboard: false, icon: L.divIcon({ className, iconSize: [10, 10] }) });
         }
     } else {
         if (isStation) {
@@ -1567,7 +1625,8 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         //   wenn Leaflet den Tooltip aus anderen Gründen öffnet (Touch/Keyboard).
         marker.on('tooltipopen', function (e) {
             // Tooltips gibt es nur ab Zoom-Level 18. Falls Leaflet ihn aus anderen Gründen öffnet: sofort schließen.
-            if (State.map.getZoom() < 18) {
+            // Ausnahme: per Tastatur geöffnet (Enter/Leertaste), dort gilt der Symbol-Modus ab Zoom 17.
+            if (State.map.getZoom() < 18 && State.keyboardTooltipMarker !== marker) {
                 try { marker.closeTooltip(); } catch { /* ignore */ }
                 return;
             }
@@ -1604,10 +1663,47 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
             if (State.openTooltipMarker === marker) {
                 State.openTooltipMarker = null;
             }
+            if (State.keyboardTooltipMarker === marker) {
+                State.keyboardTooltipMarker = null;
+            }
             if (closeTimer) {
                 clearTimeout(closeTimer);
                 closeTimer = null;
             }
+        });
+
+        // --- Tastaturbedienung (Barrierefreiheit) ---
+        // Enter/Leertaste auf dem fokussierten Marker: Details öffnen (wie Hover), bei Hydranten zusätzlich
+        // Radius und Distanz-Linie (wie Klick) und die Details als Text ansagen. Escape schließt (closeMapOverlays).
+        const label = getMarkerLabel({ type, tags, isStation, isDefib, isHydrantCluster, clusterCount });
+        const activateByKeyboard = () => {
+            if (closeTimer) {
+                clearTimeout(closeTimer);
+                closeTimer = null;
+            }
+            closeOtherOpenTooltip(marker);
+            State.keyboardTooltipMarker = marker;
+            marker.openTooltip();
+            State.openTooltipMarker = marker;
+            if (!isStation && !isDefib) {
+                drawBlueLine(lat, lon);
+                showRangeCircle(lat, lon);
+            }
+            announceStatus(getMarkerDetailsText(label, tags, clusterMembers));
+        };
+
+        marker.on('add', () => {
+            const el = marker.getElement();
+            if (!el || el.__ofmKeyBound) return;
+            el.__ofmKeyBound = true;
+            el.setAttribute('aria-label', label);
+            // keydown mit preventDefault verhindert Leaflets eigenen keypress-Klick: kein doppeltes Auslösen
+            L.DomEvent.on(el, 'keydown', (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                L.DomEvent.preventDefault(e);
+                L.DomEvent.stopPropagation(e);
+                activateByKeyboard();
+            });
         });
 
     }

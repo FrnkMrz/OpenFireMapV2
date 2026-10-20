@@ -7,6 +7,7 @@ export const strings = {
         skip_to_map: "지도로 건너뛰기",
         map_region_label: "지도",
         map_keyboard_hint: "지도 키보드 조작: 화살표 키로 화면을 이동하고, 더하기와 빼기 키로 확대·축소합니다.",
+        marker_water: "소방 용수",
         locate_title: "내 위치",
         layers_title: "지도 레이어 전환",
         export_title: "내보내기",

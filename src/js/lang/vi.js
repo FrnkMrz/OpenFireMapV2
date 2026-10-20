@@ -7,6 +7,7 @@ export const strings = {
   skip_to_map: "Chuyển đến bản đồ",
   map_region_label: "Bản đồ",
   map_keyboard_hint: "Điều khiển bản đồ bằng bàn phím: phím mũi tên di chuyển khung nhìn, phím cộng và trừ phóng to, thu nhỏ.",
+  marker_water: "Nguồn nước",
   locate_title: "Vị trí của tôi",
   layers_title: "Đổi bản đồ",
   export_title: "Xuất",

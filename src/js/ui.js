@@ -356,6 +356,11 @@ function announceNotification(type, msg) {
     liveAnnounceTimers[target.id] = setTimeout(() => { target.textContent = msg; }, 50);
 }
 
+/** Sagt einen Text höflich an (status-Region), ohne sichtbare Meldung. */
+export function announceStatus(msg) {
+    announceNotification('info', msg);
+}
+
 function clearLiveRegions() {
     ['notification-live-status', 'notification-live-alert'].forEach(id => {
         clearTimeout(liveAnnounceTimers[id]);

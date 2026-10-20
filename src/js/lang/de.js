@@ -7,6 +7,7 @@ export const strings = {
     skip_to_map: "Zur Karte springen",
     map_region_label: "Karte",
     map_keyboard_hint: "Tastaturbedienung der Karte: Pfeiltasten verschieben den Ausschnitt, Plus und Minus zoomen.",
+    marker_water: "Löschwasserstelle",
     locate_title: "Mein Standort",
     layers_title: "Karte wechseln",
     export_title: "Export",

@@ -7,6 +7,7 @@ export const strings = {
         skip_to_map: "Vai alla mappa",
         map_region_label: "Mappa",
         map_keyboard_hint: "Comandi da tastiera per la mappa: le frecce spostano la vista, più e meno ingrandiscono o riducono.",
+        marker_water: "Punto d'acqua",
         locate_title: "La mia posizione",
         layers_title: "Cambia mappa",
         export_title: "Esporta",

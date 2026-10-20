@@ -7,6 +7,7 @@ export const strings = {
   skip_to_map: "انتقل إلى الخريطة",
   map_region_label: "الخريطة",
   map_keyboard_hint: "التحكم بالخريطة بلوحة المفاتيح: مفاتيح الأسهم تحرّك العرض، وزرا الزائد والناقص يكبّران ويصغّران.",
+  marker_water: "مصدر مياه",
   locate_title: "موقعي",
   layers_title: "تغيير الخريطة",
   export_title: "تصدير",

@@ -7,6 +7,7 @@ export const strings = {
         skip_to_map: "Przejdź do mapy",
         map_region_label: "Mapa",
         map_keyboard_hint: "Obsługa mapy klawiaturą: strzałki przesuwają widok, plus i minus powiększają lub pomniejszają.",
+        marker_water: "Punkt czerpania wody",
         locate_title: "Moja lokalizacja",
         layers_title: "Zmień mapę",
         export_title: "Eksport",

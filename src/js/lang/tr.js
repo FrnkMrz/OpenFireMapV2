@@ -7,6 +7,7 @@ export const strings = {
   skip_to_map: "Haritaya geç",
   map_region_label: "Harita",
   map_keyboard_hint: "Haritanın klavye kontrolü: Ok tuşları görünümü kaydırır, artı ve eksi yakınlaştırır veya uzaklaştırır.",
+  marker_water: "Su kaynağı",
   locate_title: "Konumum",
   layers_title: "Haritayı değiştir",
   export_title: "Dışa aktar",

@@ -7,6 +7,7 @@ export const strings = {
         skip_to_map: "Langkau ke peta",
         map_region_label: "Peta",
         map_keyboard_hint: "Kawalan papan kekunci untuk peta: kekunci anak panah menggerakkan paparan, tambah dan tolak mengezum.",
+        marker_water: "Sumber air",
         locate_title: "Lokasi Saya",
         layers_title: "Tukar Lapisan Peta",
         export_title: "Eksport",

@@ -7,6 +7,7 @@ export const strings = {
   skip_to_map: "نقشے پر جائیں",
   map_region_label: "نقشہ",
   map_keyboard_hint: "نقشے کا کی بورڈ کنٹرول: تیر والی کلیدیں منظر کو کھسکاتی ہیں، پلس اور مائنس زوم کرتے ہیں۔",
+  marker_water: "پانی کا ذریعہ",
   locate_title: "میرا مقام",
   layers_title: "نقشہ بدلیں",
   export_title: "ایکسپورٹ",
