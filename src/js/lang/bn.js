@@ -5,6 +5,8 @@
 export const strings = {
   search_placeholder: "অবস্থান খুঁজুন...",
   skip_to_map: "মানচিত্রে যান",
+  map_region_label: "মানচিত্র",
+  map_keyboard_hint: "মানচিত্রের কীবোর্ড নিয়ন্ত্রণ: তীর কী দৃশ্য সরায়, প্লাস ও মাইনাস জুম করে।",
   locate_title: "আমার অবস্থান",
   layers_title: "মানচিত্র বদলান",
   export_title: "রপ্তানি",

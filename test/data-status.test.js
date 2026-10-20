@@ -338,7 +338,7 @@ describe('data-status.js', () => {
       expect(exportBtn.getAttribute('aria-expanded')).toBe('false');
     });
 
-    it('initDataStatusUI bindet Klicks, Escape und Schließen korrekt ein', () => {
+    it('initDataStatusUI bindet Klicks und Schließen korrekt ein', () => {
       initDataStatusUI();
       const popover = document.getElementById('data-info-popover');
       const btn = document.getElementById('data-info-btn');
@@ -352,11 +352,7 @@ describe('data-status.js', () => {
       closeBtn.click();
       expect(popover.classList.contains('hidden')).toBe(true);
 
-      // 3. Öffnen und per Escape schließen
-      btn.click();
-      expect(popover.classList.contains('hidden')).toBe(false);
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-      expect(popover.classList.contains('hidden')).toBe(true);
+      // 3. Escape schließt das Popover über registerDialog() in ui.js (getestet in tests/a11y.spec.js)
 
       // 4. Klick auf Legal-Link leitet weiter
       let legalClicked = false;

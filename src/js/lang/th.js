@@ -5,6 +5,8 @@
 export const strings = {
         search_placeholder: "ค้นหาสถานที่...",
         skip_to_map: "ข้ามไปที่แผนที่",
+        map_region_label: "แผนที่",
+        map_keyboard_hint: "การควบคุมแผนที่ด้วยแป้นพิมพ์: ปุ่มลูกศรเลื่อนมุมมอง ปุ่มบวกและลบซูมเข้าและออก",
         locate_title: "ตำแหน่งของฉัน",
         layers_title: "เปลี่ยนชั้นข้อมูลแผนที่",
         export_title: "ส่งออก",

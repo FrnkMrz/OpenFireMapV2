@@ -5,6 +5,8 @@
 export const strings = {
         search_placeholder: "場所を検索...",
         skip_to_map: "地図へスキップ",
+        map_region_label: "地図",
+        map_keyboard_hint: "地図のキーボード操作：矢印キーで表示位置を移動、プラスとマイナスでズームします。",
         locate_title: "現在地",
         layers_title: "地図レイヤー切替",
         export_title: "エクスポート",

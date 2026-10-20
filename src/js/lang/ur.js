@@ -5,6 +5,8 @@
 export const strings = {
   search_placeholder: "مقام تلاش کریں...",
   skip_to_map: "نقشے پر جائیں",
+  map_region_label: "نقشہ",
+  map_keyboard_hint: "نقشے کا کی بورڈ کنٹرول: تیر والی کلیدیں منظر کو کھسکاتی ہیں، پلس اور مائنس زوم کرتے ہیں۔",
   locate_title: "میرا مقام",
   layers_title: "نقشہ بدلیں",
   export_title: "ایکسپورٹ",

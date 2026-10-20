@@ -5,6 +5,8 @@
 export const strings = {
         search_placeholder: "Pesquisar local...",
         skip_to_map: "Saltar para o mapa",
+        map_region_label: "Mapa",
+        map_keyboard_hint: "Controlo do mapa pelo teclado: as setas deslocam a vista, mais e menos aumentam ou diminuem o zoom.",
         locate_title: "Minha localização",
         layers_title: "Mudar camada",
         export_title: "Exportar",

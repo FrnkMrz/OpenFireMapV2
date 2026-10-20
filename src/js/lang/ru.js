@@ -5,6 +5,8 @@
 export const strings = {
   search_placeholder: "Поиск места...",
   skip_to_map: "Перейти к карте",
+  map_region_label: "Карта",
+  map_keyboard_hint: "Управление картой с клавиатуры: стрелки сдвигают вид, плюс и минус меняют масштаб.",
   locate_title: "Моё местоположение",
   layers_title: "Сменить карту",
   export_title: "Экспорт",

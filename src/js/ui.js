@@ -31,6 +31,10 @@ import { setBaseLayer, clearDistanceLine, drawLineToNearest, shareMap, moveMapTo
 const withTitleConfirm = (lazyFnName) => () => openTitleConfirmation(lazyFnName);
 let pendingExportAction = null;
 
+function closeExportTitleModal() {
+    document.getElementById('export-title-modal')?.classList.add('hidden');
+}
+
 function openTitleConfirmation(exportFnName) {
     // 0. Daten-Check: Haben wir überhaupt Hydranten?
     if (!State.cachedElements || State.cachedElements.length === 0) {
@@ -110,6 +114,192 @@ function addClick(id, fn) {
     }
 }
 
+/* =============================================================================
+   DIALOG-HELFER (Barrierefreiheit)
+   Gemeinsame Logik für Overlays: Fokus beim Öffnen hinein, Tab-Falle (nur modal),
+   Rest der Seite per inert, Escape schließt, Fokus geht zum Auslöser zurück.
+   Der Helfer beobachtet nur Sichtbarkeit (class/style) des Overlays. So greift er auch,
+   wenn andere Module (mobile-ui.js, Auto-Close-Timer, export.js) ein Overlay öffnen oder
+   schließen, ohne dass dort etwas doppelt gebaut werden muss.
+   ============================================================================= */
+
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const OPENER_SELECTOR = 'button, a[href], input, select, textarea, [tabindex]';
+const INERT_MARK = 'data-ofm-inert';
+// Diese Bereiche bleiben bei einem modalen Dialog immer bedienbar bzw. hörbar (Live-Regionen für Meldungen)
+const ALWAYS_ACTIVE_SELECTORS = ['#notification-live-status', '#notification-live-alert'];
+// Ein Klick zählt als Auslöser, wenn der Dialog kurz danach aufgeht
+const OPENER_MAX_AGE_MS = 1500;
+
+const registeredDialogs = [];
+const openDialogs = []; // zuletzt geöffnet = ganz hinten
+let lastClick = null;
+let dialogObserver = null;
+
+function isVisible(el) {
+    return !!el && el.isConnected && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+}
+
+function visibleFocusables(root) {
+    return Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)).filter(el => isVisible(el) && !el.closest('[inert]'));
+}
+
+function resolveElement(ref) {
+    return typeof ref === 'string' ? document.querySelector(ref) : ref;
+}
+
+/** Setzt inert auf alles außer dem obersten modalen Dialog (und den Bereichen, die aktiv bleiben sollen). */
+function applyInert(topModal) {
+    document.querySelectorAll(`[${INERT_MARK}]`).forEach(node => {
+        node.removeAttribute('inert');
+        node.removeAttribute(INERT_MARK);
+    });
+    if (!topModal) return;
+
+    const keep = new Set();
+    [topModal.el, ...ALWAYS_ACTIVE_SELECTORS, ...topModal.keepActive].forEach(ref => {
+        const el = resolveElement(ref);
+        if (el) keep.add(el);
+    });
+    const onPath = new Set();
+    keep.forEach(el => {
+        for (let node = el; node && node !== document.body; node = node.parentElement) onPath.add(node);
+    });
+
+    const visit = (parent) => {
+        for (const child of parent.children) {
+            if (keep.has(child)) continue;
+            if (onPath.has(child)) {
+                visit(child);
+            } else if (!child.hasAttribute('inert') && child.tagName !== 'SCRIPT') {
+                child.setAttribute('inert', '');
+                child.setAttribute(INERT_MARK, '');
+            }
+        }
+    };
+    visit(document.body);
+}
+
+function pickOpener(dialog) {
+    const active = document.activeElement;
+    if (active && active !== document.body && !dialog.el.contains(active) && active.matches(OPENER_SELECTOR)) return active;
+    if (lastClick && performance.now() - lastClick.at < OPENER_MAX_AGE_MS && !dialog.el.contains(lastClick.el)) return lastClick.el;
+    return null;
+}
+
+function focusInto(dialog) {
+    const active = document.activeElement;
+    if (active && active !== dialog.el && dialog.el.contains(active)) return; // Fokus ist schon im Dialog
+    const preferred = dialog.initialFocus
+        ? Array.from(dialog.el.querySelectorAll(dialog.initialFocus)).find(isVisible)
+        : null;
+    (preferred || visibleFocusables(dialog.el)[0] || dialog.el).focus({ preventScroll: true });
+}
+
+function restoreFocus(dialog) {
+    const active = document.activeElement;
+    // Hat der Nutzer den Fokus schon bewusst woanders hingesetzt, nichts überschreiben
+    if (active && active !== document.body && !dialog.el.contains(active)) return;
+    const candidates = [dialog.opener, ...dialog.fallbacks.map(resolveElement)];
+    const target = candidates.find(el => isVisible(el) && !el.closest('[inert]'));
+    if (target) target.focus({ preventScroll: true });
+}
+
+function syncDialogs() {
+    const opened = [];
+    const closed = [];
+    for (const dialog of registeredDialogs) {
+        const shown = isVisible(dialog.el);
+        if (shown && !dialog.isOpen) {
+            dialog.isOpen = true;
+            dialog.opener = pickOpener(dialog);
+            openDialogs.push(dialog);
+            opened.push(dialog);
+        } else if (!shown && dialog.isOpen) {
+            dialog.isOpen = false;
+            openDialogs.splice(openDialogs.indexOf(dialog), 1);
+            closed.push(dialog);
+        } else {
+            continue;
+        }
+        if (dialog.trigger) {
+            document.querySelectorAll(dialog.trigger).forEach(btn => btn.setAttribute('aria-expanded', String(dialog.isOpen)));
+        }
+    }
+    if (!opened.length && !closed.length) return;
+
+    applyInert([...openDialogs].reverse().find(d => d.modal) || null);
+
+    if (opened.length) {
+        focusInto(opened[opened.length - 1]);
+    } else if (!openDialogs.length) {
+        restoreFocus(closed[closed.length - 1]);
+    }
+}
+
+function handleDialogKeydown(e) {
+    const top = openDialogs[openDialogs.length - 1];
+    if (!top) return;
+
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        top.close();
+        return;
+    }
+    if (e.key !== 'Tab' || !top.modal) return;
+
+    // Fokus-Falle: Tab und Shift+Tab bleiben im Dialog
+    const items = visibleFocusables(top.el);
+    if (!items.length) {
+        e.preventDefault();
+        top.el.focus();
+        return;
+    }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (!top.el.contains(active)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+    } else if (e.shiftKey && (active === first || active === top.el)) {
+        e.preventDefault();
+        last.focus();
+    } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+    }
+}
+
+/**
+ * Macht ein ein-/ausblendbares Overlay tastaturbedienbar.
+ * @param {string|Element} ref Overlay-Element (oder Selektor)
+ * @param {Object} options
+ * @param {Function} options.close Schließt das Overlay (Escape)
+ * @param {boolean} [options.modal=true] Tab-Falle und inert für den Rest der Seite; false für Popups ohne Sperre
+ * @param {string[]} [options.keepActive] Bereiche, die trotz modalem Dialog bedienbar bleiben (z. B. die Karte)
+ * @param {string} [options.trigger] Selektor der Auslöser-Buttons (aria-expanded wird nachgeführt)
+ * @param {string[]} [options.fallbacks] Auslöser, falls der ursprüngliche nicht mehr sichtbar ist (z. B. Mobile-Menü zu)
+ * @param {string} [options.initialFocus] Selektor des Elements, das beim Öffnen den Fokus bekommt
+ */
+export function registerDialog(ref, { close, modal = true, keepActive = [], trigger = null, fallbacks = [], initialFocus = null } = {}) {
+    const el = resolveElement(ref);
+    if (!el || registeredDialogs.some(d => d.el === el)) return;
+
+    registeredDialogs.push({ el, close, modal, keepActive, trigger, fallbacks, initialFocus, isOpen: false, opener: null });
+
+    if (!dialogObserver) {
+        dialogObserver = new MutationObserver(syncDialogs);
+        document.addEventListener('keydown', handleDialogKeydown);
+        // Capture-Phase, weil addClick() die Klicks an den Buttons sonst nicht weiterreicht
+        document.addEventListener('click', (e) => {
+            const target = e.target instanceof Element ? e.target.closest(OPENER_SELECTOR) : null;
+            if (target) lastClick = { el: target, at: performance.now() };
+        }, true);
+    }
+    dialogObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
+    syncDialogs();
+}
+
 function setupCacheDurationSelects() {
     const selects = Array.from(document.querySelectorAll('[data-cache-duration-select]'));
     if (!selects.length) return;
@@ -146,6 +336,34 @@ const NOTIFICATION_ICONS = {
     info: `<svg class="w-4 h-4 shrink-0 text-blue-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.247.25v3.25a.75.75 0 001.5 0v-3.5A1.75 1.75 0 009.25 9H9z" clip-rule="evenodd" /></svg>`
 };
 
+const liveAnnounceTimers = {};
+
+/**
+ * Sagt eine Meldung über die zwei festen Live-Regionen an: Fehler in #notification-live-alert (role="alert"),
+ * alles andere in #notification-live-status (role="status"). Die Rollen bleiben dabei unverändert.
+ */
+function announceNotification(type, msg) {
+    const status = document.getElementById('notification-live-status');
+    const alertRegion = document.getElementById('notification-live-alert');
+    const target = type === 'error' ? alertRegion : status;
+    const other = type === 'error' ? status : alertRegion;
+    if (other) other.textContent = '';
+    if (!target) return;
+
+    // Erst leeren, dann kurz verzögert befüllen: so wird auch eine gleichlautende Folgemeldung erneut angesagt
+    target.textContent = '';
+    clearTimeout(liveAnnounceTimers[target.id]);
+    liveAnnounceTimers[target.id] = setTimeout(() => { target.textContent = msg; }, 50);
+}
+
+function clearLiveRegions() {
+    ['notification-live-status', 'notification-live-alert'].forEach(id => {
+        clearTimeout(liveAnnounceTimers[id]);
+        const region = document.getElementById(id);
+        if (region) region.textContent = '';
+    });
+}
+
 // Laufende Nummer der zuletzt gezeigten Benachrichtigung (steht in #notification-box[data-notification-id])
 let notificationSeq = 0;
 
@@ -166,6 +384,7 @@ export function hideNotification(id = null) {
     setTimeout(() => {
         if (!box.classList.contains('is-visible')) {
             box.style.display = 'none';
+            clearLiveRegions();
         }
     }, 250);
 }
@@ -210,9 +429,10 @@ export function showNotification(msg, durationOrType = 3000, explicitTypeOrDurat
     const id = ++notificationSeq;
     box.dataset.notificationId = String(id);
 
-    box.setAttribute('role', type === 'error' ? 'alert' : 'status');
-    box.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+    // Die sichtbare Box ist für Screenreader stumm; angesagt wird über die festen Live-Regionen (Fehler: alert, sonst status)
+    box.setAttribute('aria-hidden', 'true');
     box.dataset.type = type;
+    announceNotification(type, msg);
 
     // Icon + Text sicher zusammenbauen (XSS-sicher via textContent)
     box.replaceChildren();
@@ -551,11 +771,8 @@ export function setupUI() {
     addClick('csv-btn', withTitleConfirm('exportAsCSV'));
     addClick('cancel-export-btn', async () => { const m = await getExport(); m.cancelExport(); });
 
-    addClick('export-confirm-cancel', () => {
-        document.getElementById('export-title-modal')?.classList.add('hidden');
-        // Zurück zum Trigger-Button fokussieren (Barrierefreiheit)
-        document.getElementById('export-btn-trigger')?.focus();
-    });
+    // Der Fokus geht über registerDialog() (unten) zum Auslöser zurück
+    addClick('export-confirm-cancel', closeExportTitleModal);
 
     addClick('export-confirm-ok', () => {
         const modal = document.getElementById('export-title-modal');
@@ -575,41 +792,36 @@ export function setupUI() {
     // Automatische Schließ-Logik aktivieren
     setupMenuAutoClose();
 
-    // Globaler Escape-Key Listener für Barrierefreiheit (Keyboard Navigation)
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            // 1. Export Title Modal
-            const titleModal = document.getElementById('export-title-modal');
-            if (titleModal && !titleModal.classList.contains('hidden')) {
-                titleModal.classList.add('hidden');
-                document.getElementById('export-btn-trigger')?.focus();
-                return;
-            }
-
-            // 2. Layer Menu
-            const layerMenu = document.getElementById('layer-menu');
-            if (layerMenu && !layerMenu.classList.contains('hidden')) {
-                closeAllMenus();
-                document.getElementById('layer-btn-trigger')?.focus();
-                return;
-            }
-
-            // 3. Export Menu
-            const exportMenu = document.getElementById('export-menu');
-            if (exportMenu && !exportMenu.classList.contains('hidden')) {
-                closeAllMenus();
-                document.getElementById('export-btn-trigger')?.focus();
-                return;
-            }
-
-            // 4. Legal Modal
-            const legalModal = document.getElementById('legal-modal');
-            if (legalModal && legalModal.style.display !== 'none' && legalModal.style.display !== '') {
-                closeAllMenus();
-                document.getElementById('btn-legal-trigger')?.focus();
-                return;
-            }
-        }
+    // Tastaturbedienung der Overlays (Fokus, Tab-Falle, Escape, Fokus-Rückgabe) an einer Stelle
+    const mobileBurgerFallback = '#mobile-burger-btn';
+    registerDialog('#layer-menu', {
+        modal: false,
+        trigger: '#layer-btn-trigger',
+        fallbacks: ['#layer-btn-trigger', mobileBurgerFallback],
+        initialFocus: '.layer-btn.active',
+        close: closeAllMenus
+    });
+    registerDialog('#export-menu', {
+        trigger: '#export-btn-trigger',
+        fallbacks: ['#export-btn-trigger', mobileBurgerFallback],
+        keepActive: ['#map'], // "Ausschnitt wählen" und Verschieben/Zoomen der Karte laufen bei offenem Menü weiter
+        close: closeAllMenus
+    });
+    registerDialog('#export-title-modal', {
+        fallbacks: ['#export-btn-trigger', mobileBurgerFallback],
+        initialFocus: '#export-confirm-title',
+        close: closeExportTitleModal
+    });
+    registerDialog('#legal-modal', {
+        trigger: '#btn-legal-trigger',
+        fallbacks: ['#btn-legal-trigger', mobileBurgerFallback],
+        close: closeAllMenus
+    });
+    registerDialog('#data-info-popover', {
+        modal: false,
+        trigger: '#data-info-btn',
+        fallbacks: ['#data-info-btn'],
+        close: closeDataInfoPopover
     });
 }
 

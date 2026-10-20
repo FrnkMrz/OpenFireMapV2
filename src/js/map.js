@@ -719,9 +719,15 @@ export function setBaseLayer(key) {
 
     L.tileLayer(conf.url, options).addTo(State.map);
 
-    document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.layer-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-pressed', 'false');
+    });
     const btn = document.getElementById(`btn-${key}`);
-    if (btn) btn.classList.add('active');
+    if (btn) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+    }
 
     // Boundaries aktualisieren (Farbe je nach Hintergrund)
     // Gelb für Satellit, Dunkelgrau für alles andere

@@ -56,9 +56,14 @@
     <h1 class="sr-only">OpenFireMap.org</h1>
 
     <main>
-        <div id="map" aria-label="Karte" role="application"></div>
+        <div id="map" role="region" aria-label="Karte" data-i18n-aria-label="map_region_label"
+            aria-describedby="map-keyboard-hint"></div>
+        <p id="map-keyboard-hint" class="sr-only" data-i18n="map_keyboard_hint">Tastaturbedienung der Karte: Pfeiltasten verschieben den Ausschnitt, Plus und Minus zoomen.</p>
 
-        <div id="notification-box" role="status" aria-live="polite"></div>
+        <!-- Sichtbare Meldung (Toast) ist für Screenreader stumm; angesagt wird nur über die zwei Live-Regionen darunter -->
+        <div id="notification-box" aria-hidden="true"></div>
+        <div id="notification-live-status" class="sr-only" role="status"></div>
+        <div id="notification-live-alert" class="sr-only" role="alert"></div>
 
         <div id="desktop-controls" class="absolute top-5 left-5 z-[1000] flex gap-3">
 
@@ -90,7 +95,7 @@
                 </svg>
             </button>
 
-            <button id="layer-btn-trigger" data-i18n-title="layers_title" aria-haspopup="true" aria-expanded="false"
+            <button id="layer-btn-trigger" data-i18n-title="layers_title" aria-expanded="false"
                 aria-controls="layer-menu" aria-label="Kartenebenen-Menü öffnen"
                 class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
@@ -100,7 +105,7 @@
                 </svg>
             </button>
 
-            <button id="export-btn-trigger" data-i18n-title="export_title" aria-haspopup="true" aria-expanded="false"
+            <button id="export-btn-trigger" data-i18n-title="export_title" aria-haspopup="dialog" aria-expanded="false"
                 aria-controls="export-menu" aria-label="Export-Menü öffnen"
                 class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
 
@@ -137,7 +142,7 @@
                 </svg>
             </button>
 
-            <button id="mobile-burger-btn" aria-haspopup="true" aria-expanded="false" aria-controls="mobile-menu"
+            <button id="mobile-burger-btn" aria-expanded="false" aria-controls="mobile-menu"
                 aria-label="Menü öffnen (Mobile)"
                 class="glass-panel p-3 rounded-2xl text-slate-200 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
@@ -149,7 +154,7 @@
 
         <div id="mobile-menu"
             class="hidden md:hidden absolute top-[74px] left-5 z-[2500] w-[260px] glass-panel rounded-2xl p-3 shadow-2xl text-white border border-white/10"
-            role="menu" aria-labelledby="mobile-burger-btn">
+            role="group" aria-labelledby="mobile-burger-btn" tabindex="-1">
             <div class="flex flex-col gap-2">
                 <button id="mobile-open-layers" type="button"
                     class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -197,7 +202,7 @@
         </div>
 
         <div class="absolute bottom-8 left-5 z-[1000]">
-            <button id="btn-legal-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="legal-modal"
+            <button id="btn-legal-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="legal-modal"
                 class="glass-panel p-1.5 rounded-xl text-slate-400 hover:text-white shadow-xl transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
@@ -217,7 +222,7 @@
                 <div class="flex justify-between gap-4"><span data-i18n="data_info">DATEN</span><span id="data-status"
                         class="text-green-400 transition-colors duration-200">AKTUELL</span></div>
                 <div id="data-info-row" class="justify-between items-center gap-2 pt-1.5 mt-1.5 border-t border-white/5 font-sans">
-                    <button id="data-info-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="data-info-popover"
+                    <button id="data-info-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="data-info-popover"
                         class="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 focus:outline-none focus:underline cursor-pointer">
                         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -228,7 +233,7 @@
             </div>
 
             <!-- Detail-Popover für Datenstand & Herkunft (Desktop) -->
-            <div id="data-info-popover" role="dialog" aria-modal="false" aria-labelledby="data-info-popover-title"
+            <div id="data-info-popover" role="dialog" aria-modal="false" aria-labelledby="data-info-popover-title" tabindex="-1"
                 class="hidden w-80 glass-panel rounded-2xl p-4 text-xs text-slate-300 border border-white/10 shadow-2xl space-y-3 font-sans">
                 <div class="flex items-center justify-between border-b border-white/10 pb-2">
                     <h4 id="data-info-popover-title" class="font-bold text-white flex items-center gap-1.5 text-sm">
@@ -303,61 +308,61 @@
         </div>
 
 
-        <div id="layer-menu" role="menu" aria-labelledby="layer-btn-trigger"
+        <div id="layer-menu" role="group" aria-labelledby="layer-menu-title" tabindex="-1"
             class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center"
+            <h3 id="layer-menu-title" class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center"
                 data-i18n="bg_header">Hintergrund</h3>
             <div class="grid grid-cols-1 gap-1">
 
-                <button id="btn-voyager" role="menuitem"
+                <button id="btn-voyager" type="button" aria-pressed="false"
                     class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
                     <div class="w-3 h-3 rounded-full bg-blue-500" aria-hidden="true"></div>
                     <span data-i18n="layer_std">Standard</span>
                 </button>
 
-                <button id="btn-positron" role="menuitem"
+                <button id="btn-positron" type="button" aria-pressed="false"
                     class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
                     <div class="w-3 h-3 rounded-full bg-slate-300" aria-hidden="true"></div>
                     <span data-i18n="layer_print">Druck</span>
                 </button>
 
-                <button id="btn-dark" role="menuitem"
+                <button id="btn-dark" type="button" aria-pressed="false"
                     class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
                     <div class="w-3 h-3 rounded-full bg-slate-800" aria-hidden="true"></div>
                     <span data-i18n="layer_night">Nacht</span>
                 </button>
 
-                <button id="btn-satellite" role="menuitem"
+                <button id="btn-satellite" type="button" aria-pressed="false"
                     class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
                     <div class="w-3 h-3 rounded-full bg-green-600" aria-hidden="true"></div>
                     <span data-i18n="layer_sat">Satellit</span>
                 </button>
 
-                <button id="btn-topo" role="menuitem"
+                <button id="btn-topo" type="button" aria-pressed="false"
                     class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
                     <div class="w-3 h-3 rounded-full bg-amber-600" aria-hidden="true"></div>
                     <span data-i18n="layer_topo">Topographisch</span>
                 </button>
 
-                <button id="btn-osm" role="menuitem"
+                <button id="btn-osm" type="button" aria-pressed="false"
                     class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 border-t border-white/5 mt-1 pt-2">
                     <div class="w-3 h-3 rounded-full bg-emerald-500" aria-hidden="true"></div>
                     <span data-i18n="layer_osm">OSM</span>
                 </button>
 
-                <button id="btn-osmde" role="menuitem"
+                <button id="btn-osmde" type="button" aria-pressed="false"
                     class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
                     <div class="w-3 h-3 rounded-full bg-emerald-700" aria-hidden="true"></div>
                     <span data-i18n="layer_osmde">OSM DE</span>
                 </button>
 
-                <button id="btn-bayern" role="menuitem" style="display: none;"
+                <button id="btn-bayern" type="button" aria-pressed="false" style="display: none;"
                     class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2 border-t border-white/5 mt-1 pt-2">
                     <div class="w-3 h-3 rounded-[3px] bg-sky-500" aria-hidden="true"></div>
                     <span data-i18n="layer_bayern">BayernAtlas</span>
                 </button>
 
-                <button id="btn-bayern_dop" role="menuitem" style="display: none;"
+                <button id="btn-bayern_dop" type="button" aria-pressed="false" style="display: none;"
                     class="layer-btn w-full text-left px-3 py-2 rounded-xl text-sm transition-all hover:bg-white/5 flex items-center gap-2">
                     <div class="w-3 h-3 rounded-[3px] bg-sky-700" aria-hidden="true"></div>
                     <span data-i18n="layer_bayern_dop">Bayern Luftbild</span>
@@ -365,7 +370,7 @@
             </div>
         </div>
 
-        <div id="export-menu" role="dialog" aria-labelledby="export-title" aria-modal="true"
+        <div id="export-menu" role="dialog" aria-labelledby="export-title" aria-modal="true" tabindex="-1"
             class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
 
             <div id="export-setup" class="space-y-5">
@@ -460,9 +465,9 @@
         </div>
 
         <!-- NEU: Bestätigungs-Dialog für Titel -->
-        <div id="export-title-modal" role="dialog" aria-modal="true"
+        <div id="export-title-modal" role="dialog" aria-modal="true" aria-labelledby="export-confirm-header" tabindex="-1"
             class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1002] w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
-            <h3 class="font-bold text-lg mb-2" data-i18n="export_confirm_header">Titel bestätigen</h3>
+            <h3 id="export-confirm-header" class="font-bold text-lg mb-2" data-i18n="export_confirm_header">Titel bestätigen</h3>
             <p class="text-sm text-slate-400 mb-4" data-i18n="export_confirm_text">Bitte passe den Titel für den Plan
                 an:</p>
 
@@ -482,7 +487,7 @@
             </div>
         </div>
 
-        <div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title"
+        <div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title" tabindex="-1"
             class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
             <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
                 <h2 id="legal-title" class="text-lg font-bold text-white flex items-center gap-2">

@@ -5,6 +5,8 @@
 export const strings = {
   search_placeholder: "स्थान खोजें...",
   skip_to_map: "मानचित्र पर जाएँ",
+  map_region_label: "मानचित्र",
+  map_keyboard_hint: "मानचित्र का कीबोर्ड नियंत्रण: तीर कुंजियाँ दृश्य खिसकाती हैं, प्लस और माइनस ज़ूम करते हैं।",
   locate_title: "मेरा स्थान",
   layers_title: "मानचित्र बदलें",
   export_title: "निर्यात",
