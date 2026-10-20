@@ -127,6 +127,8 @@ export function buildRows({ manifest, metadata, snapshot, population }) {
   const regions = buildRegionRows(manifest, popMap);
   return {
     rows: [...dach.rows, ...regions],
+    // Die Auszüge fehlen in einer vorhandenen metadata.json: die Länder erscheinen nicht, die Seite soll das melden
+    dachMissing: metadata ? DACHLILU_IDS.filter((id) => !dach.rows.some((r) => r.id === id)) : [],
     usedSnapshot: dach.usedSnapshot,
     hasDach: dach.rows.length > 0
   };
@@ -134,8 +136,11 @@ export function buildRows({ manifest, metadata, snapshot, population }) {
 
 function sumRows(rows) {
   const withDensity = rows.filter((r) => r.per1000 != null);
+  // Summen zählen nur Länder mit Angabe; wie viele fehlen, steht daneben, damit die Summe nicht vollständig wirkt
   const hydrants = rows.reduce((s, r) => s + (r.hydrants ?? 0), 0);
   const fireStations = rows.reduce((s, r) => s + (r.fireStations ?? 0), 0);
+  const hydrantsUnknown = rows.filter((r) => r.hydrants == null).length;
+  const fireStationsUnknown = rows.filter((r) => r.fireStations == null).length;
   const hydrantsWithPop = withDensity.reduce((s, r) => s + r.hydrants, 0);
   const pop = Math.round(withDensity.reduce((s, r) => s + r.populationM, 0) * 100) / 100;
   const osm = rows.map((r) => r.osmMs).filter((v) => v != null);
@@ -144,6 +149,8 @@ function sumRows(rows) {
     regions: rows.length,
     hydrants,
     fireStations,
+    hydrantsUnknown,
+    fireStationsUnknown,
     populationM: pop,
     per1000: pop > 0 ? hydrantsWithPop / (pop * 1000) : null,
     oldestOsmMs: osm.length ? Math.min(...osm) : null,

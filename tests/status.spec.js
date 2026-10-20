@@ -133,6 +133,33 @@ test.describe('Pipeline-Statusseite', () => {
         await expect(page.locator('#st-table tbody tr')).toHaveCount(6);
     });
 
+    test('warnt bei leerem metadata.json statt die fünf Länder still wegzulassen', async ({ page }) => {
+        await mockPipeline(page, { metadata: {} });
+        await open(page);
+        await expect(page.locator('#st-warn')).toBeVisible();
+        await expect(page.locator('#st-run-card')).toBeHidden();
+        await expect(page.locator('#st-table tbody tr')).toHaveCount(6);
+    });
+
+    test('warnt, wenn metadata.json einzelne DACHLiLu-Länder nicht enthält', async ({ page }) => {
+        const metadata = JSON.parse(JSON.stringify(METADATA));
+        delete metadata.extracts.austria;
+        await mockPipeline(page, { metadata });
+        await open(page);
+        await expect(page.locator('#st-warn')).toContainText('DACHLiLu');
+        await expect(page.locator('#st-table tbody tr[data-key="austria"]')).toHaveCount(0);
+    });
+
+    test('Summen nennen, wie viele Länder ohne Zählung fehlen', async ({ page }) => {
+        const manifest = JSON.parse(JSON.stringify(MANIFEST));
+        manifest.regions.malta.counts = { fire_stations: 16 };
+        await mockPipeline(page, { manifest });
+        await open(page);
+        await expect(page.locator('#st-kpis')).toContainText('ohne 1 Länder ohne Angabe');
+        await page.click('.st-lang button[data-lang="en"]');
+        await expect(page.locator('#st-kpis')).toContainText('excluding 1 without data');
+    });
+
     test('zeigt bei fehlendem Manifest eine Fehlermeldung mit Wiederholen', async ({ page }) => {
         await mockPipeline(page, { manifestStatus: 500 });
         await page.goto('/status/?lang=en');

@@ -152,6 +152,18 @@ describe('buildRows', () => {
     expect(pl).toMatchObject({ shared: false, file: 'eu/poland-20261018T010000Z.pmtiles' });
   });
 
+  it('meldet fehlende DACHLiLu-Länder, wenn metadata.json vorhanden, aber unvollständig ist', () => {
+    const md = metadata();
+    delete md.extracts.austria;
+    delete md.extracts.liechtenstein;
+    const out = buildRows({ manifest: manifest(), metadata: md, snapshot, population: { populationM: pop } });
+    expect(out.dachMissing).toEqual(['austria', 'liechtenstein']);
+    expect(buildRows({ manifest: manifest(), metadata: { extracts: {} }, snapshot, population: { populationM: pop } }).dachMissing).toHaveLength(5);
+    expect(rows.length).toBe(13);
+    expect(buildRows({ manifest: manifest(), metadata: metadata(), snapshot, population: { populationM: pop } }).dachMissing).toEqual([]);
+    expect(buildRows({ manifest: manifest(), metadata: null, snapshot, population: { populationM: pop } }).dachMissing).toEqual([]);
+  });
+
   it('kommt ohne metadata.json aus und liefert nur die Länder-Dateien', () => {
     const out = buildRows({ manifest: manifest(), metadata: null, snapshot, population: { populationM: pop } });
     expect(out.hasDach).toBe(false);
@@ -179,6 +191,19 @@ describe('summarize', () => {
   it('nennt ältesten OSM-Stand und letzten Upload', () => {
     expect(total.oldestOsmMs).toBe(Date.parse('2026-10-17T20:00:00Z'));
     expect(total.latestUploadMs).toBe(Date.parse('2026-10-19T05:59:26.477688+00:00'));
+  });
+
+  it('zählt Länder ohne Angabe nicht als 0, sondern nennt, wie viele in der Summe fehlen', () => {
+    const m = manifest();
+    m.regions.poland.counts = { fire_stations: 5 };          // keine Hydranten
+    m.regions.france.counts = { hydrants: 240 };             // keine Wachen
+    const out = buildRows({ manifest: m, metadata: metadata(), snapshot, population: { populationM: pop } });
+    const t = summarize(out.rows).total;
+    expect(t.hydrantsUnknown).toBe(1);
+    expect(t.fireStationsUnknown).toBe(1);
+    expect(t.hydrants).toBe(700 + 150 + 100 + 40 + 10 + 240 + 50 + 33 + 20 + 12 + 1 + 7);
+    expect(total.hydrantsUnknown).toBe(0);
+    expect(total.fireStationsUnknown).toBe(0);
   });
 
   it('liefert für eine leere Liste keine Zeiten und keine Dichte', () => {

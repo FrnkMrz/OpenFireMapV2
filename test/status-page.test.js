@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Config } from '../src/js/config.js';
-import { loadPipelineData, PIPELINE_URL, MANIFEST_PATH, METADATA_PATH } from '../src/js/status/load.js';
+import { isValidMetadata, loadPipelineData, PIPELINE_URL, MANIFEST_PATH, METADATA_PATH } from '../src/js/status/load.js';
 import { COUNTRY_EN, LANGS, TEXTS, countryName, createFormatters, detectLang } from '../src/js/status/texts.js';
 import population from '../src/data/status-population.json';
 import snapshot from '../src/data/status-dach-snapshot.json';
@@ -109,7 +109,7 @@ describe('Statusseite: Laden', () => {
 
   it('holt Manifest und metadata.json', async () => {
     const urls = [];
-    const fetcher = async (url) => { urls.push(url); return url.endsWith(METADATA_PATH) ? { generated_at: 'x' } : manifest; };
+    const fetcher = async (url) => { urls.push(url); return url.endsWith(METADATA_PATH) ? { generated_at: '2026-10-19T05:59:26Z', extracts: {} } : manifest; };
     const out = await loadPipelineData(fetcher);
     expect(urls.sort()).toEqual([`${PIPELINE_URL}/${METADATA_PATH}`, `${PIPELINE_URL}/${MANIFEST_PATH}`].sort());
     expect(out).toMatchObject({ manifest, rejected: [], metadataFailed: false });
@@ -135,6 +135,22 @@ describe('Statusseite: Laden', () => {
   it('behält die Rohdaten (Zählungen) der angenommenen Einträge', async () => {
     const out = await loadPipelineData(async (url) => (url.endsWith(METADATA_PATH) ? {} : manifest));
     expect(out.manifest.regions.malta.counts).toEqual({ hydrants: 1 });
+  });
+
+  it('isValidMetadata verlangt Upload-Zeit und Auszüge', () => {
+    expect(isValidMetadata({ generated_at: '2026-10-19T05:59:26+00:00', extracts: {} })).toBe(true);
+    for (const bad of [null, undefined, [], {}, 'x', { generated_at: 'gestern', extracts: {} }, { generated_at: '2026-10-19T05:59:26Z' },
+      { generated_at: '2026-10-19T05:59:26Z', extracts: [] }, { generated_at: 5, extracts: {} }]) {
+      expect(isValidMetadata(bad), JSON.stringify(bad)).toBe(false);
+    }
+  });
+
+  it('wertet ein leeres oder falsch geformtes metadata.json als Ausfall', async () => {
+    for (const bad of [{}, [], { generated_at: 'x', extracts: {} }]) {
+      const out = await loadPipelineData(async (url) => (url.endsWith(METADATA_PATH) ? bad : manifest));
+      expect(out.metadata, JSON.stringify(bad)).toBeNull();
+      expect(out.metadataFailed).toBe(true);
+    }
   });
 
   it('läuft ohne metadata.json weiter und meldet es', async () => {

@@ -69,13 +69,18 @@ function kpiCard(label, value, note, isDate) {
     h('div', { class: 'st-label' }, note));
 }
 
+/** Hängt an die Beschriftung, wie viele Länder in der Summe fehlen (keine Angabe im Manifest). */
+function withUnknown(note, n) {
+  return n > 0 ? `${note}, ${t('k_unknown').replace('{n}', String(n))}` : note;
+}
+
 function renderKpis() {
   const f = fmt();
   const tot = S.data.summary.total;
   $('#st-kpis').replaceChildren(
     kpiCard(t('k_regions'), f.int(tot.regions), t('k_regions_n')),
-    kpiCard(t('k_hyd'), f.compact(tot.hydrants), t('k_hyd_n')),
-    kpiCard(t('k_fs'), f.compact(tot.fireStations), t('k_fs_n')),
+    kpiCard(t('k_hyd'), f.compact(tot.hydrants), withUnknown(t('k_hyd_n'), tot.hydrantsUnknown)),
+    kpiCard(t('k_fs'), f.compact(tot.fireStations), withUnknown(t('k_fs_n'), tot.fireStationsUnknown)),
     kpiCard(t('k_per'), dash(tot.per1000, f.dens), `${f.mio(tot.populationM)} ${t('mio')} · ${t('k_per_n')}`),
     kpiCard(t('k_oldest'), dash(tot.oldestOsmMs, f.dt), t('k_oldest_n'), true),
     kpiCard(t('k_latest'), dash(tot.latestUploadMs, f.dt), t('k_latest_n'), true)
@@ -197,6 +202,7 @@ function renderNotes() {
   const warn = $('#st-warn');
   const lines = [];
   if (d.metadataFailed) lines.push(t('warn_meta'));
+  else if (d.dachMissing.length) lines.push(t('warn_dach'));
   if (S.refreshFailed) lines.push(t('warn_refresh'));
   warn.hidden = lines.length === 0;
   warn.textContent = lines.join(' ');

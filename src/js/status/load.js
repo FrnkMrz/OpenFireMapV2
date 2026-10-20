@@ -19,6 +19,16 @@ export const METADATA_PATH = 'metadata.json';
 export const LOAD_TIMEOUT_MS = 10000;
 
 /**
+ * metadata.json brauchbar? Für die fünf DACHLiLu-Länder braucht die Seite den Upload-Zeitpunkt und die
+ * Auszüge; ein leeres Objekt oder eine Liste zählt als Ausfall (sonst verschwänden die Länder still).
+ */
+export function isValidMetadata(md) {
+  return !!md && typeof md === 'object' && !Array.isArray(md)
+    && typeof md.generated_at === 'string' && Number.isFinite(Date.parse(md.generated_at))
+    && !!md.extracts && typeof md.extracts === 'object' && !Array.isArray(md.extracts);
+}
+
+/**
  * Das Manifest ist Pflicht (ohne es gibt es nichts zu zeigen), metadata.json optional: fehlt sie,
  * entfallen nur die fünf DACHLiLu-Länder und der Lauf-Abschnitt.
  * Das Manifest wird wie in der Karte geprüft (`parseManifest`); abgelehnte Einträge stehen in `rejected`.
@@ -37,8 +47,6 @@ export async function loadPipelineData(fetcher = fetchJson) {
   const regions = {};
   for (const id of Object.keys(parsed.regions)) regions[id] = raw.regions[id];
   const manifest = { version: raw.version, regions };
-  const metadata = metadataRes.status === 'fulfilled' && metadataRes.value && typeof metadataRes.value === 'object'
-    ? metadataRes.value
-    : null;
+  const metadata = metadataRes.status === 'fulfilled' && isValidMetadata(metadataRes.value) ? metadataRes.value : null;
   return { manifest, rejected: parsed.rejected, metadata, metadataFailed: metadata == null };
 }
