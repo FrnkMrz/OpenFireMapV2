@@ -155,6 +155,21 @@ test.describe('Objektliste', () => {
         expect(await page.evaluate(() => document.getElementById('objects-list').contains(document.activeElement))).toBe(true);
     });
 
+    test('Liefert der laufende Abruf keine Objekte, wechselt der Ladehinweis zur Leer-Meldung', async ({ page }) => {
+        await page.route('**/api/interpreter', async route => {
+            await new Promise(r => setTimeout(r, 1500));
+            await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ elements: [] }) });
+        });
+        await page.goto('/?lang=de#18/40.7129/-74.0055/voyager');
+        await page.waitForSelector('.leaflet-container');
+        await page.waitForFunction(() => window.State && window.State.map);
+
+        await openListByKeyboard(page);
+        await expect(page.locator('#objects-list-summary')).not.toContainText('Zoomstufe 15');
+        await expect(page.locator('#objects-list-summary')).toContainText('Zoomstufe 15', { timeout: 8000 });
+        await expect(items(page)).toHaveCount(0);
+    });
+
     test('Der Fokus auf einem Eintrag bleibt beim Aktualisieren der Liste erhalten', async ({ page }) => {
         await openMap(page, 18);
         await openListByKeyboard(page);

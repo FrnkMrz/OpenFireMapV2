@@ -566,7 +566,8 @@ function renderObjectsList() {
     if (!summary || !list) return;
 
     const { items, total } = getObjectsInView(OBJECTS_LIST_MAX);
-    const signature = `${total}|${items.map(item => item.id).join(',')}`;
+    // Der Ladezustand gehört dazu: aus "lädt" wird bei leerem Ergebnis "keine Objekte", ohne dass sich die Einträge ändern
+    const signature = `${State.isFetchingData ? 'loading' : 'idle'}|${total}|${items.map(item => item.id).join(',')}`;
     if (signature === objectsListSignature && list.childElementCount === items.length) return;
     objectsListSignature = signature;
 
