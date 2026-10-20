@@ -170,6 +170,24 @@ test.describe('Objektliste', () => {
         await expect(items(page)).toHaveCount(0);
     });
 
+    test('Ändert sich ein Objekt unter gleicher ID (Live-Delta), übernimmt die offene Liste Name und Entfernung', async ({ page }) => {
+        await openMap(page, 18);
+        await openListByKeyboard(page);
+        await expect(items(page).filter({ hasText: 'Testhydrant' })).toHaveCount(1);
+        const before = await items(page).filter({ hasText: 'Testhydrant' }).innerText();
+
+        await page.evaluate(() => {
+            const entry = window.State.markerCache.get('node:101');
+            entry.tags = { ...entry.tags, name: 'Umbenannt' };
+            entry.lat += 0.0003;
+            window.dispatchEvent(new CustomEvent('ofm:markerschange'));
+        });
+        await expect(items(page).filter({ hasText: 'Umbenannt' })).toHaveCount(1);
+        await expect(items(page).filter({ hasText: 'Testhydrant' })).toHaveCount(0);
+        const after = await items(page).filter({ hasText: 'Umbenannt' }).innerText();
+        expect(/(\d+) m/.exec(after)[1]).not.toBe(/(\d+) m/.exec(before)[1]);
+    });
+
     test('Der Fokus auf einem Eintrag bleibt beim Aktualisieren der Liste erhalten', async ({ page }) => {
         await openMap(page, 18);
         await openListByKeyboard(page);

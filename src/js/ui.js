@@ -556,7 +556,8 @@ export function toggleExportMenu() {
 
 const OBJECTS_LIST_MAX = 100;
 
-// Zuletzt gezeichnete Liste (IDs), damit ein Neuaufbau ohne Änderung den Fokus nicht anfasst
+// Zuletzt gezeichnete Liste (ID, Name, Entfernung, Ladezustand): ein Neuaufbau ohne Änderung fasst den Fokus nicht an,
+// eine Änderung unter gleicher ID (Live-Delta) wird aber übernommen
 let objectsListSignature = '';
 
 /** Baut die Objektliste neu auf (beim Öffnen und bei neuen Markerdaten, passend zum aktuellen Kartenausschnitt). */
@@ -567,7 +568,7 @@ function renderObjectsList() {
 
     const { items, total } = getObjectsInView(OBJECTS_LIST_MAX);
     // Der Ladezustand gehört dazu: aus "lädt" wird bei leerem Ergebnis "keine Objekte", ohne dass sich die Einträge ändern
-    const signature = `${State.isFetchingData ? 'loading' : 'idle'}|${total}|${items.map(item => item.id).join(',')}`;
+    const signature = `${State.isFetchingData ? 'loading' : 'idle'}|${total}|${items.map(item => `${item.id}:${item.label}:${item.distance}`).join(',')}`;
     if (signature === objectsListSignature && list.childElementCount === items.length) return;
     objectsListSignature = signature;
 
