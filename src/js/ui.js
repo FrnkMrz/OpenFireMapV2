@@ -579,6 +579,8 @@ function renderObjectsList() {
     if (total === 0) {
         // Während der erste Abruf noch läuft, ist die Liste nicht "leer", sondern wartet auf Daten
         summary.textContent = State.isFetchingData ? t('hydrant_load_started') : t('objects_list_empty');
+        // Der fokussierte Eintrag ist weg: Fokus im modalen Dialog halten
+        if (focusedId) document.getElementById('objects-close-btn')?.focus();
         return;
     }
     summary.textContent = total > items.length
@@ -606,6 +608,8 @@ function renderObjectsList() {
         list.appendChild(li);
         if (item.id === focusedId) btn.focus();
     }
+    // Der fokussierte Eintrag ist verschwunden: auf den ersten verbleibenden springen, statt den Fokus zu verlieren
+    if (focusedId && !list.contains(document.activeElement)) list.querySelector('button')?.focus();
 }
 
 // Ist die Liste offen, während Marker (nach)geladen werden, folgt sie den Daten (gebündelt, nicht bei jedem Zwischenstand)

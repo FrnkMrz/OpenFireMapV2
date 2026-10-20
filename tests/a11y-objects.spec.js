@@ -188,6 +188,28 @@ test.describe('Objektliste', () => {
         expect(/(\d+) m/.exec(after)[1]).not.toBe(/(\d+) m/.exec(before)[1]);
     });
 
+    test('Verschwindet der fokussierte Eintrag beim Aktualisieren, bleibt der Fokus im Dialog', async ({ page }) => {
+        await openMap(page, 18);
+        await openListByKeyboard(page);
+        await items(page).filter({ hasText: 'Testwache' }).focus();
+        await page.evaluate(() => {
+            window.State.markerCache.delete('node:301');
+            window.dispatchEvent(new CustomEvent('ofm:markerschange'));
+        });
+        await expect(items(page)).toHaveCount(2);
+        expect(await page.evaluate(() => document.getElementById('objects-list').contains(document.activeElement))).toBe(true);
+        expect(await page.evaluate(() => document.activeElement.tagName)).toBe('BUTTON');
+
+        // Verschwinden alle Einträge, landet der Fokus auf dem Schließen-Button
+        await items(page).first().focus();
+        await page.evaluate(() => {
+            window.State.markerCache.clear();
+            window.dispatchEvent(new CustomEvent('ofm:markerschange'));
+        });
+        await expect(items(page)).toHaveCount(0);
+        await expect(page.locator('#objects-close-btn')).toBeFocused();
+    });
+
     test('Der Fokus auf einem Eintrag bleibt beim Aktualisieren der Liste erhalten', async ({ page }) => {
         await openMap(page, 18);
         await openListByKeyboard(page);
