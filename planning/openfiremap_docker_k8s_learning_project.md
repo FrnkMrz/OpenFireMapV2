@@ -139,7 +139,7 @@ Ziel:
 
 Vorgehen:
 
-- eigenen Proxmox-Heimserver nutzen (LXC-Container oder VM neben Home Assistant) oder kleinen VPS mieten
+- einen eigenen Heimserver nutzen (Container oder virtuelle Maschine) oder einen kleinen VPS mieten
 - zuerst Docker Compose deployen
 - für sicheren externen Zugriff: Cloudflare Tunnel (kein Portforwarding nötig, automatische HTTPS-Verschlüsselung)
 - danach optional auf K3s umstellen
@@ -218,9 +218,9 @@ Der erste MVP soll klein bleiben.
 
 ### Server später
 
-- **Proxmox VE (Heimserver im Keller)**:
+- **Proxmox VE (eigener Heimserver)**:
   - Eigener LXC-Container oder schlanke VM (Debian 12 / Ubuntu 24.04)
-  - Läuft parallel und ungestört neben Home Assistant
+  - Läuft parallel und ungestört neben anderen Diensten
   - Empfohlene Ressourcen: 2–4 vCPUs, 4 GB RAM, 30–50 GB SSD-Speicher
   - Docker Engine + Docker Compose Plugin
   - Sicherer externer Zugriff via Cloudflare Tunnel (kein Router-Portforwarding/DynDNS erforderlich)

@@ -198,7 +198,7 @@ Diese Phase sollte erst beginnen, wenn die Pipeline stabil statische Dateien lie
 
 Ziel:
 
-- erster Betrieb auf eigenem Server (Proxmox VE im Keller neben Home Assistant oder kleiner VPS)
+- erster Betrieb auf eigenem Server (eigener Heimserver oder kleiner VPS)
 - ohne Kubernetes produktionsnahe Abläufe lernen
 
 Vorgehen:
@@ -272,7 +272,7 @@ Erfolgskriterium:
 ## Offene Fragen vor Umsetzung
 
 - Eigenes GitHub-Repository oder Unterordner im bestehenden Repo? (Empfehlung: eigenes Repo `openfiremap-dach-pipeline`)
-- Hosting-Infrastruktur: Proxmox VE im Keller (LXC-Container / VM neben Home Assistant) mit Docker Compose ist als Zielplattform gesetzt; Cloudflare Tunnel für sichere HTTPS-Anbindung.
+- Hosting-Infrastruktur: ein eigener Server (virtuelle Maschine oder Container) mit Docker Compose ist als Zielplattform gesetzt; Cloudflare Tunnel für sichere HTTPS-Anbindung.
 - GeoJSON als verbindliches Startformat?
 - Welches kleine Testgebiet soll zuerst verwendet werden?
 - Sollen DACH-Laender von Anfang an getrennt gebaut werden?

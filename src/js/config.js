@@ -64,7 +64,7 @@ export const Config = {
   nominatimUrl: "https://nominatim.openstreetmap.org",
 
   /**
-   * Lokale DACH Data Pipeline (Proxmox / Docker).
+   * Daten-Pipeline (PMTiles-Vektorkacheln über Cloudflare R2).
    * Wird bevorzugt, wenn das Kartenfenster im Abdeckungsbereich liegt.
    */
   pipeline: {
