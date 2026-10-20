@@ -29,6 +29,7 @@ const S = {
   lang: detectLang({ search: location.search, stored: readStored(), browser: navigator.language }),
   data: null,        // { rows, usedSnapshot, hasDach, summary, metadata }
   fetchedMs: null,
+  refreshFailed: false, // letzte Aktualisierung gescheitert, alte Daten stehen noch
   sort: { main: { k: 'hydrants', dir: -1 }, runs: { k: 'uploadMs', dir: -1 } },
   query: ''
 };
@@ -143,9 +144,13 @@ function renderTable(id, rows, maxD) {
     if (vb == null) return -1;
     return (typeof va === 'string' ? va.localeCompare(vb, S.lang) : va - vb) * sort.dir;
   });
-  table.querySelector('thead').replaceChildren(h('tr', {}, ...cols.map((c) =>
+  // Das Neuzeichnen ersetzt den Kopf samt Knopf: ein Tastaturfokus darauf geht sonst verloren
+  const thead = table.querySelector('thead');
+  const focusedKey = thead.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+  thead.replaceChildren(h('tr', {}, ...cols.map((c) =>
     h('th', { scope: 'col', class: c.left ? 'l' : null, 'aria-sort': c.k === sort.k ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none' },
       h('button', { type: 'button', 'data-k': c.k }, t(c.label))))));
+  if (focusedKey) thead.querySelector(`button[data-k="${focusedKey}"]`)?.focus();
   table.querySelector('tbody').replaceChildren(...sorted.map((r) => h('tr', { 'data-key': r.id },
     ...cols.map((c) => {
       const td = h('td', c.left ? { class: 'l' } : c.bar ? { class: 'bar' } : {}, c.text(r));
@@ -190,8 +195,11 @@ function renderNotes() {
   $('#st-note-dach').textContent = d.hasDach ? t(d.usedSnapshot ? 'n_dach_snapshot' : 'n_dach_live') : '';
   $('#st-fetched').textContent = S.fetchedMs ? `${t('fetched')}${fmt().dt(S.fetchedMs)} UTC` : '';
   const warn = $('#st-warn');
-  warn.hidden = !d.metadataFailed;
-  warn.textContent = d.metadataFailed ? t('warn_meta') : '';
+  const lines = [];
+  if (d.metadataFailed) lines.push(t('warn_meta'));
+  if (S.refreshFailed) lines.push(t('warn_refresh'));
+  warn.hidden = lines.length === 0;
+  warn.textContent = lines.join(' ');
 }
 
 function renderAll() {
@@ -212,14 +220,18 @@ async function refresh() {
     const built = buildRows({ manifest, metadata, snapshot: dachSnapshot, population });
     S.data = { ...built, summary: summarize(built.rows), metadata, metadataFailed };
     S.fetchedMs = Date.now();
+    S.refreshFailed = false;
     $('#st-loading').hidden = true;
     $('#st-error').hidden = true;
     $('#st-content').hidden = false;
     renderAll();
   } catch (err) {
     console.warn('[Status] Laden fehlgeschlagen:', err);
-    // Ein früherer Stand bleibt stehen; nur beim ersten Laden gibt es die Fehlermeldung
-    if (!S.data) {
+    // Ein früherer Stand bleibt stehen, aber mit Warnung; nur beim ersten Laden gibt es die Fehlermeldung
+    if (S.data) {
+      S.refreshFailed = true;
+      renderNotes();
+    } else {
       $('#st-loading').hidden = true;
       $('#st-error').hidden = false;
     }

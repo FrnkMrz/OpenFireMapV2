@@ -144,6 +144,36 @@ test.describe('Pipeline-Statusseite', () => {
         await expect(page.locator('#st-content')).toBeVisible();
     });
 
+    test('Sortieren per Tastatur behält den Fokus auf der Spaltenüberschrift', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        const button = page.locator('#st-table th button[data-k="hydrants"]');
+        await button.focus();
+        await page.keyboard.press('Enter');
+        await expect(page.locator('#st-table th').nth(1)).toHaveAttribute('aria-sort', 'ascending');
+        await expect(page.locator('#st-table th button[data-k="hydrants"]')).toBeFocused();
+        await page.keyboard.press('Space');
+        await expect(page.locator('#st-table th').nth(1)).toHaveAttribute('aria-sort', 'descending');
+        await expect(page.locator('#st-table th button[data-k="hydrants"]')).toBeFocused();
+    });
+
+    test('warnt, wenn eine spätere Aktualisierung scheitert, und nimmt die Warnung bei Erfolg zurück', async ({ page }) => {
+        await page.clock.install();
+        await mockPipeline(page);
+        await open(page);
+        await expect(page.locator('#st-warn')).toBeHidden();
+        await page.unroute('https://pipeline.openfiremap.org/**');
+        await mockPipeline(page, { manifestStatus: 500 });
+        await page.clock.fastForward('10:30');
+        await expect(page.locator('#st-warn')).toBeVisible();
+        await expect(page.locator('#st-warn')).toContainText('Aktualisierung');
+        await expect(page.locator('#st-table tbody tr')).toHaveCount(11);
+        await page.unroute('https://pipeline.openfiremap.org/**');
+        await mockPipeline(page);
+        await page.clock.fastForward('10:30');
+        await expect(page.locator('#st-warn')).toBeHidden();
+    });
+
     test('hat keine axe-Verstöße (Deutsch und Englisch)', async ({ page }) => {
         await mockPipeline(page);
         await open(page);
