@@ -202,6 +202,30 @@ test.describe('Objektliste', () => {
         await expect(items(page).first()).toContainText('Testwache');
     });
 
+    test('Beim Verschieben in ein ungeladenes Gebiet zeigt die offene Liste den Ladehinweis, dann die neuen Objekte', async ({ page }) => {
+        const FAR = [{ type: 'node', id: 501, lat: 40.7462, lon: -74.0000, tags: { emergency: 'fire_hydrant', name: 'Weit weg' } }];
+        await page.route('**/api/interpreter', async route => {
+            const body = route.request().postData() || '';
+            if (body.includes('40.74') || body.includes('40.73')) {
+                await new Promise(r => setTimeout(r, 1800));
+                await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ elements: FAR }) });
+            } else {
+                await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ elements: [] }) });
+            }
+        });
+        await page.goto('/?lang=de#18/40.7129/-74.0055/voyager');
+        await page.waitForSelector('.leaflet-container');
+        await page.waitForFunction(() => window.State && window.State.map && !window.State.isFetchingData);
+
+        await openListByKeyboard(page);
+        await expect(page.locator('#objects-list-summary')).toContainText('Zoomstufe 15');
+
+        await page.evaluate(() => window.State.map.setView([40.7462, -74.0000], 18, { animate: false }));
+        // Der Abruf startet erst nach dem Entprellen: die Liste muss dann vom Leer- zum Ladehinweis wechseln
+        await expect(page.locator('#objects-list-summary')).toContainText('werden geladen', { timeout: 3000 });
+        await expect(items(page).filter({ hasText: 'Weit weg' })).toHaveCount(1, { timeout: 8000 });
+    });
+
     test('Verschwindet der fokussierte Eintrag beim Aktualisieren, bleibt der Fokus im Dialog', async ({ page }) => {
         await openMap(page, 18);
         await openListByKeyboard(page);

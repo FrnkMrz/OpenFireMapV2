@@ -695,6 +695,8 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
   // loading state...
   State.isFetchingData = true;
+  // Eine offene Objektliste soll den Ladehinweis zeigen, auch wenn der Abruf (nach dem Entprellen) erst jetzt startet
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('ofm:markerschange'));
   State.activeFetchBounds = cloneBounds(State.map?.getBounds?.() || requestedBounds);
   emit({ phase: 'load_start', reqId, zoom, bboxKey, dataset: 'poi', dataClass });
   reportHydrantDownload(hydrantStatus, 'loading');
