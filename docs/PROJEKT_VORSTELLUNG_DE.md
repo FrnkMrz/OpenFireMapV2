@@ -41,7 +41,6 @@ Die R2-Synchronisation überträgt PMTiles zuerst, GeoJSON mit kürzerer Cache-D
 - Barrierefreiheit nach WCAG 2.2 (A/AA): Tastaturbedienung, Objektliste als Textalternative, Screenreader-Beschriftungen, geprüfte Kontraste
 - öffentliche Pipeline-Statusseite unter `/status/`
 - IndexedDB-Cache und responsive Nutzung auf Desktop und Mobilgeräten
-- lokale VM 102 als Test- und Backup-Umgebung für den Pipeline-Betrieb
 
 ## Nutzen für OSM und Feuerwehren
 

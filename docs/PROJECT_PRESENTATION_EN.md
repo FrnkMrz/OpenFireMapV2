@@ -41,7 +41,6 @@ The R2 publication flow uploads PMTiles first, GeoJSON with a shorter cache life
 - accessibility against WCAG 2.2 (A/AA): keyboard operation, an object list as a text alternative, labelled controls for screen readers, checked contrast
 - public pipeline status page at `/status/`
 - IndexedDB caching and responsive desktop/mobile use
-- local VM 102 used as the pipeline test and backup environment
 
 ## Value for OSM and fire departments
 
