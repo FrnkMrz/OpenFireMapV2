@@ -224,10 +224,11 @@ export const Config = {
    * Änderung hier wirkt sich überall aus (Karte & Export), sofern die Werte dort genutzt werden.
    */
   colors: {
-    station: "#ef4444", // Rot (Feuerwachen)
-    hydrant: "#ef4444", // Rot (Standard-Hydranten)
-    water: "#3b82f6", // Blau (Wasser/Zisternen/Teiche)
-    defib: "#16a34a", // Grün (Defibrillatoren)
+    // Marker-Füllungen tragen weiße Zeichen/Buchstaben: Kontrast zu Weiß mindestens 4,5:1 (WCAG 1.4.3, getestet in test/marker-colors.test.js)
+    station: "#dc2626", // Rot (Feuerwachen)
+    hydrant: "#dc2626", // Rot (Standard-Hydranten)
+    water: "#2563eb", // Blau (Wasser/Zisternen/Teiche)
+    defib: "#15803d", // Grün (Defibrillatoren)
 
     rangeCircle: "#f97316", // Orange (100 m Radius-Kreis)
     selection: "#3b82f6", // Blau (Auswahl-Rechteck Export)

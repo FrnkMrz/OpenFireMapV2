@@ -7,11 +7,9 @@ import AxeBuilder from '@axe-core/playwright';
 // damit künftige Level-A-Regeln von 2.2 automatisch mitlaufen.
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
 
-// Bekannte, noch offene Funde (Phase 3 des Barrierefreiheits-Plans).
-// Jede Regel hier ist Schuld, die abgebaut wird – nicht erweitern, sondern Einträge entfernen.
-const KNOWN_OPEN_RULES = [
-    'color-contrast' // Phase 3: Kontrast der Panels auf wechselnden Kartenebenen messen und anpassen
-];
+// Bekannte, noch offene Funde: derzeit keine. Regeln hier nur vorübergehend und mit Begründung eintragen.
+// Kontraste der Panels über wechselnden Karten prüft tests/a11y-contrast.spec.js (axe kann halbtransparente Flächen über Kacheln nicht auswerten).
+const KNOWN_OPEN_RULES = [];
 
 async function gotoReady(page, url = '/') {
     await page.goto(url);

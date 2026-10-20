@@ -170,6 +170,15 @@ body {
     padding: 0;
 }
 
+/* Leaflet-Quellenangabe: Leaflets Standard (weiß 80 %, Link #0078a8) hat auf dunklen Karten nur ca. 3,3:1 */
+.leaflet-container .leaflet-control-attribution {
+    background: rgba(255, 255, 255, 0.92);
+    color: #1f2937;
+}
+.leaflet-container .leaflet-control-attribution a {
+    color: #00557f;
+}
+
 /* Text "100m" am Radius-Kreis */
 .range-label {
     background: transparent !important;
@@ -187,7 +196,7 @@ body {
 
 /* Aktiver Button im Layer-Menü */
 .layer-btn.active {
-    color: #3b82f6;
+    color: #60a5fa;
     background: rgba(59, 130, 246, 0.1);
     font-weight: bold;
 }
