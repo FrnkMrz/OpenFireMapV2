@@ -37,6 +37,23 @@ Die Oberfläche ist für Smartphones und Tablets angepasst. Verschiebe die Karte
 
 Die Anwendung kann als PWA zum Startbildschirm hinzugefügt werden. Das bedeutet nicht, dass Live-Kartendaten vollständig offline verfügbar sind: Für neue Ausschnitte, Suche und aktuelle Daten ist weiterhin eine Internetverbindung nötig. Bereits geladene Daten können abhängig von der Cache-Einstellung lokal vorgehalten werden.
 
+## Bedienung per Tastatur und Screenreader
+
+OpenFireMap ist für die Bedienung ohne Maus ausgelegt und wird gegen WCAG 2.2 (A/AA) geprüft. Ein Test mit einem echten Screenreader am Gerät steht noch aus; Rückmeldungen dazu sind willkommen.
+
+- **Zur Karte springen**: Der erste Tab-Stopp ist der Link „Zur Karte springen“. Er setzt den Fokus auf die Karte, ohne den Link zur aktuellen Ansicht (Permalink) zu ändern.
+- **Karte**: Mit Fokus auf der Karte verschieben die Pfeiltasten den Ausschnitt, <kbd>+</kbd> und <kbd>−</kbd> zoomen. Die Seite selbst lässt sich im Browser vergrößern.
+- **Objekte im Ausschnitt**: Der Button „Objekte im Ausschnitt“ (neben „Teilen“, mobil im Burger-Menü) öffnet eine Liste der sichtbaren Objekte mit Namen und Entfernung zum Kartenmittelpunkt, nach Entfernung sortiert (höchstens 100). Ein Eintrag zoomt bei Bedarf heran und öffnet die Details. Ohne Objekte hilft ein Hinweis, näher heranzuzoomen (Objekte erscheinen ab Zoomstufe 15).
+- **Marker**: Ab Zoomstufe 17 sind Symbole per <kbd>Tab</kbd> erreichbar und haben einen Namen (Typ und Name bzw. Nummer). <kbd>Enter</kbd> oder <kbd>Leertaste</kbd> öffnet die Details, <kbd>Escape</kbd> schließt sie.
+- **Menüs und Dialoge**: Beim Öffnen springt der Fokus hinein, <kbd>Tab</kbd> bleibt im Dialog, <kbd>Escape</kbd> schließt ihn und der Fokus kehrt zum Auslöser zurück.
+- **Export ohne Maus**: Im Export-Menü übernimmt „Sichtbaren Ausschnitt übernehmen“ den aktuellen Kartenausschnitt als Auswahl. <kbd>Escape</kbd> bricht den Auswahlmodus ab. Das Ziehen eines Rechtecks mit der Maus bleibt möglich.
+- **Bewegung**: Ist im Betriebssystem „Bewegung reduzieren“ eingestellt, gibt es keine Animationen und die Karte springt statt zu fliegen.
+- **Sprachen**: Beschriftungen für Screenreader sind in allen unterstützten Sprachen vorhanden. Die Rechtstexte stehen bewusst auf Deutsch verbindlich.
+
+## Pipeline-Statusseite
+
+Unter [openfiremap.org/status](https://openfiremap.org/status/) (Deutsch und Englisch) zeigt eine Statusseite je Land, wann der OSM-Datenstand war, wann die Karte hochgeladen wurde und wie viele Hydranten, Feuerwachen und Defibrillatoren es je Einwohner gibt. Der Link steht auch im Dialog „Info & Recht“ der Karte.
+
 ## Cache
 
 Der lokale IndexedDB-Cache kann in der Anwendung deaktiviert oder mit einer Dauer von 1 Stunde, 1 Tag, 3 Tagen, 7 Tagen oder 30 Tagen konfiguriert werden. Ein Cache verbessert die Wiederholung bereits geladener Ausschnitte, ersetzt aber keine Aktualisierung aus OpenStreetMap.
