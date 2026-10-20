@@ -39,16 +39,19 @@
   function closeDesktopPopupMenus() {
     const layerMenu = $('layer-menu');
     const exportMenu = $('export-menu');
+    const objectsList = $('objects-list');
     const legalModal = $('legal-modal');
 
     // Nur schließen, wenn sichtbar
     if (layerMenu && !isHidden(layerMenu)) hide(layerMenu);
     if (exportMenu && !isHidden(exportMenu)) hide(exportMenu);
+    if (objectsList && !isHidden(objectsList)) hide(objectsList);
     if (legalModal && !isHidden(legalModal)) hide(legalModal);
 
     // aria state (falls vorhanden)
     $('layer-btn-trigger')?.setAttribute('aria-expanded', 'false');
     $('export-btn-trigger')?.setAttribute('aria-expanded', 'false');
+    $('objects-btn-trigger')?.setAttribute('aria-expanded', 'false');
     $('btn-legal-trigger')?.setAttribute('aria-expanded', 'false');
   }
 
@@ -128,6 +131,7 @@
   const mobileLocate = $('mobile-locate-btn');
   const mobileOpenLayers = $('mobile-open-layers');
   const mobileOpenShare = $('mobile-open-share');
+  const mobileOpenObjects = $('mobile-open-objects');
   const mobileOpenSearch = $('mobile-open-search');
   const mobileOpenLegal = $('mobile-open-legal');
   const mobileClose = $('mobile-close-menu');
@@ -270,6 +274,18 @@
       setTimeout(() => {
         wireLayerMenuAutoClose();
       }, 0);
+    });
+  }
+
+  // ---------------------------
+  // Objektliste (Mobile -> Desktop Objekte-Trigger)
+  // ---------------------------
+  if (mobileOpenObjects) {
+    mobileOpenObjects.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeMobileMenu();
+      closeDesktopPopupMenus();
+      safeClick('objects-btn-trigger');
     });
   }
 
