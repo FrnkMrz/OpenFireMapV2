@@ -7,6 +7,7 @@ export const strings = {
         skip_to_map: "Přeskočit na mapu",
         map_region_label: "Mapa",
         map_keyboard_hint: "Ovládání mapy klávesnicí: šipky posouvají výřez, plus a mínus přibližují a oddalují.",
+        marker_water: "Zdroj vody",
         locate_title: "Moje poloha",
         layers_title: "Změnit mapu",
         export_title: "Export",

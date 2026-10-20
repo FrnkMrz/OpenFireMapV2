@@ -7,6 +7,7 @@ export const strings = {
         skip_to_map: "Aller à la carte",
         map_region_label: "Carte",
         map_keyboard_hint: "Commandes clavier de la carte : les flèches déplacent la vue, plus et moins zooment.",
+        marker_water: "Point d'eau",
         locate_title: "Ma position",
         layers_title: "Changer de carte",
         export_title: "Exporter",

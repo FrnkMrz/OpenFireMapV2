@@ -7,6 +7,7 @@ export const strings = {
         skip_to_map: "Op d'Kaart sprangen",
         map_region_label: "Kaart",
         map_keyboard_hint: "Tastaturbedienung vun der Kaart: D'Feiltasten verréckelen den Ausschnëtt, Plus a Minus zoomen.",
+        marker_water: "Waasserstell",
         locate_title: "Meng Positioun",
         layers_title: "Kaart wiesselen",
         export_title: "Export",

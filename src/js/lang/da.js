@@ -7,6 +7,7 @@ export const strings = {
         skip_to_map: "Gå til kortet",
         map_region_label: "Kort",
         map_keyboard_hint: "Tastaturstyring af kortet: Piletasterne flytter udsnittet, plus og minus zoomer.",
+        marker_water: "Vandforsyningssted",
         locate_title: "Min placering",
         layers_title: "Skift kortlag",
         export_title: "Eksport",

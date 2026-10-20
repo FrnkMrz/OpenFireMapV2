@@ -7,6 +7,7 @@ export const strings = {
         skip_to_map: "跳至地图",
         map_region_label: "地图",
         map_keyboard_hint: "地图键盘操作：方向键移动视图，加号和减号缩放。",
+        marker_water: "取水点",
         locate_title: "我的位置",
         layers_title: "切换图层",
         export_title: "导出",
