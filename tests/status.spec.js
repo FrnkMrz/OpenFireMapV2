@@ -63,23 +63,32 @@ async function open(page, query = '?lang=de') {
 }
 
 test.describe('Pipeline-Statusseite', () => {
-    test('zeigt Kennzahlen, Gruppen und Tabellen auf Deutsch', async ({ page }) => {
+    test('zeigt Kennzahlen, Diagramme und Tabellen auf Deutsch', async ({ page }) => {
         await mockPipeline(page);
         await open(page);
         await expect(page.locator('html')).toHaveAttribute('lang', 'de');
         await expect(page.locator('h1')).toHaveText('OpenFireMap Pipeline');
         await expect(page.locator('#st-kpis')).toContainText('Länder und Gebiete');
-        await expect(page.locator('#st-groups')).toContainText('Polen, Frankreich, Italien, Ungarn, Spanien');
         await expect(page.locator('#st-timeline svg')).toBeVisible();
         await expect(page.locator('#st-density svg')).toBeVisible();
         await expect(page.locator('#st-table tbody tr')).toHaveCount(11);
+    });
+
+    test('wertet nur je Land aus, ohne DACH-, LuLi- oder DACHLiLu-Summen', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        const body = await page.locator('#st-content').innerText();
+        expect(body).not.toMatch(/\bLuLi\b/);
+        expect(body).not.toMatch(/Top 5/);
+        await expect(page.locator('#st-table tbody tr[data-key="dachlilu"], #st-runs tbody tr[data-key="dachlilu"]')).toHaveCount(0);
+        await expect(page.locator('#st-table thead th')).toHaveCount(10);
     });
 
     test('Wachen stehen auch für die DACHLiLu-Länder in der Tabelle', async ({ page }) => {
         await mockPipeline(page);
         await open(page);
         for (const id of ['germany', 'austria', 'switzerland', 'luxembourg', 'liechtenstein']) {
-            const cell = page.locator(`#st-table tbody tr[data-key="${id}"] td`).nth(3);
+            const cell = page.locator(`#st-table tbody tr[data-key="${id}"] td`).nth(2);
             await expect(cell).not.toHaveText('—');
         }
     });
@@ -90,11 +99,10 @@ test.describe('Pipeline-Statusseite', () => {
         await page.click('.st-lang button[data-lang="en"]');
         await expect(page.locator('html')).toHaveAttribute('lang', 'en');
         await expect(page.locator('#st-kpis')).toContainText('Countries and regions');
-        await expect(page.locator('#st-groups')).toContainText('Poland, France, Italy, Hungary, Spain');
         await expect(page.locator('#st-table tbody tr[data-key="germany"] td').first()).toHaveText('Germany');
-        await expect(page.locator('#st-table tbody tr[data-key="poland"] td').nth(2)).toHaveText('403,193');
+        await expect(page.locator('#st-table tbody tr[data-key="poland"] td').nth(1)).toHaveText('403,193');
         await page.click('.st-lang button[data-lang="de"]');
-        await expect(page.locator('#st-table tbody tr[data-key="poland"] td').nth(2)).toHaveText('403.193');
+        await expect(page.locator('#st-table tbody tr[data-key="poland"] td').nth(1)).toHaveText('403.193');
     });
 
     test('Tabelle sortiert nach Spalte und filtert per Suche', async ({ page }) => {
@@ -111,8 +119,8 @@ test.describe('Pipeline-Statusseite', () => {
         await mockPipeline(page);
         await open(page);
         const rows = page.locator('#st-runs tbody tr');
-        await expect(rows).toHaveCount(7);
-        await expect(rows.first()).toHaveAttribute('data-key', 'dachlilu');
+        await expect(rows).toHaveCount(11);
+        await expect(rows.first()).toHaveAttribute('data-key', 'germany');
         await expect(rows.first()).toContainText('openfiremap.pmtiles');
         await expect(page.locator('#st-runs tbody tr[data-key="poland"]')).toContainText('eu/poland-20261018T010000Z.pmtiles');
     });

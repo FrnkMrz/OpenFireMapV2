@@ -9,9 +9,9 @@
  */
 
 import { loadPipelineData } from './load.js';
-import { GROUPS, buildRows, summarize, timelineGroups } from './model.js';
+import { buildRows, summarize, timelineRows } from './model.js';
 import { LANG_KEY, TEXTS, countryName, createFormatters, detectLang } from './texts.js';
-import { groupColor, renderDensity, renderRunBar, renderTimeline } from './charts.js';
+import { renderDensity, renderRunBar, renderTimeline } from './charts.js';
 import population from '../../data/status-population.json';
 import dachSnapshot from '../../data/status-dach-snapshot.json';
 
@@ -36,7 +36,6 @@ const S = {
 const t = (k) => TEXTS[S.lang][k];
 const fmt = () => createFormatters(S.lang);
 const name = (r) => countryName(r, S.lang);
-const gname = (g) => t(`g_${g}`);
 const dash = (v, f) => (v == null ? '—' : f(v));
 
 function h(tag, attrs = {}, ...children) {
@@ -82,48 +81,23 @@ function renderKpis() {
   );
 }
 
-function renderGroups() {
-  const f = fmt();
-  const { groups, top5 } = S.data.summary;
-  $('#st-groups').replaceChildren(...GROUPS.map((g) => {
-    const s = groups[g];
-    const sub = g === 'Top-5' ? top5.map(name).join(', ') : t(`g_${g}_s`);
-    return h('article', { class: 'st-card' },
-      h('div', { class: 'st-gname' }, h('i', { class: 'st-dot', style: `background:${groupColor(g)}` }), h('h2', {}, gname(g))),
-      h('p', { class: 'st-muted' }, sub || '—'),
-      h('dl', { class: 'st-stats' },
-        h('dt', {}, t('s_regions')), h('dd', {}, f.int(s.regions)),
-        h('dt', {}, t('s_hyd')), h('dd', {}, f.int(s.hydrants)),
-        h('dt', {}, t('s_fs')), h('dd', {}, f.int(s.fireStations)),
-        h('dt', {}, t('s_pop')), h('dd', {}, s.regions ? f.mio(s.populationM) : '—'),
-        h('dt', {}, t('s_per')), h('dd', {}, dash(s.per1000, f.dens)),
-        h('dt', {}, t('s_oldest')), h('dd', {}, dash(s.oldestOsmMs, f.dt)),
-        h('dt', {}, t('s_latest')), h('dd', {}, dash(s.latestUploadMs, f.dt))));
-  }));
-}
-
-function renderLegend() {
-  $('#st-legend-groups').replaceChildren(...GROUPS.map((g) =>
-    h('span', {}, h('i', { class: 'st-dot', style: `background:${groupColor(g)}` }), gname(g))));
-}
-
 function renderCharts() {
   const f = fmt();
-  const ctx = { t, fmt: f, name, gname };
-  renderTimeline($('#st-timeline'), timelineGroups(S.data.rows), ctx);
+  const ctx = { t, fmt: f, name };
+  renderTimeline($('#st-timeline'), timelineRows(S.data.rows), ctx);
   const dens = S.data.rows.filter((r) => r.per1000 != null).sort((a, b) => b.per1000 - a.per1000);
   renderDensity($('#st-density'), dens, S.data.summary.total.per1000, ctx);
 }
 
 // Spalten beider Tabellen: k = Sortierschlüssel, get = Sortierwert, text = Anzeige, left = linksbündig
 const ZOOM = (r) => (r.minzoom != null && r.maxzoom != null ? `${r.minzoom}–${r.maxzoom}` : '—');
-const runName = (r) => (r.shared ? `${name(r)} (${t('run_shared')})` : name(r));
+const runName = (r) => name(r);
+const runFile = (r) => (r.file ? (r.shared ? `${r.file} (${t('run_shared')})` : r.file) : '—');
 const TABLES = {
   main: {
     sel: '#st-table',
     cols: (f, maxD) => [
       { k: 'name', label: 'c_name', left: true, get: name, text: name },
-      { k: 'group', label: 'c_group', left: true, get: (r) => GROUPS.indexOf(r.group), text: (r) => gname(r.group) },
       { k: 'hydrants', label: 'c_hyd', text: (r) => dash(r.hydrants, f.int) },
       { k: 'fireStations', label: 'c_fs', text: (r) => dash(r.fireStations, f.int) },
       { k: 'populationM', label: 'c_pop', text: (r) => dash(r.populationM, f.mio) },
@@ -139,7 +113,7 @@ const TABLES = {
     sel: '#st-runs',
     cols: (f) => [
       { k: 'name', label: 'c_name', left: true, get: runName, text: runName },
-      { k: 'file', label: 'c_file', left: true, get: (r) => r.file, text: (r) => r.file ?? '—' },
+      { k: 'file', label: 'c_file', left: true, get: (r) => r.file, text: runFile },
       { k: 'uploadMs', label: 'c_up', text: (r) => dash(r.uploadMs, f.dt) },
       { k: 'osmMs', label: 'c_osm', text: (r) => dash(r.osmMs, f.dt) },
       { k: 'lagH', label: 'c_lag', text: (r) => dash(r.lagH, f.d1) },
@@ -185,8 +159,8 @@ function renderTables() {
   const q = S.query.trim().toLowerCase();
   const all = S.data.rows;
   const maxD = Math.max(0, ...all.map((r) => r.per1000 ?? 0));
-  renderTable('main', all.filter((r) => !q || `${r.nameDe} ${name(r)} ${gname(r.group)}`.toLowerCase().includes(q)), maxD);
-  renderTable('runs', S.data.runRows, 0);
+  renderTable('main', all.filter((r) => !q || `${r.nameDe} ${name(r)}`.toLowerCase().includes(q)), maxD);
+  renderTable('runs', all, 0);
 }
 
 function renderRun() {
@@ -224,8 +198,6 @@ function renderAll() {
   applyTexts();
   if (!S.data) return;
   renderKpis();
-  renderGroups();
-  renderLegend();
   renderCharts();
   renderTables();
   renderRun();
@@ -266,7 +238,7 @@ function init() {
     if (!k) return;
     const sort = S.sort[id];
     if (sort.k === k) sort.dir = -sort.dir;
-    else S.sort[id] = { k, dir: k === 'name' || k === 'group' || k === 'file' ? 1 : -1 };
+    else S.sort[id] = { k, dir: k === 'name' || k === 'file' ? 1 : -1 };
     if (S.data) renderTables();
   }));
   $('#st-search').addEventListener('input', (e) => { S.query = e.target.value; if (S.data) renderTables(); });

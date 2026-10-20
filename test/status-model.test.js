@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DACHLILU_IDS, GROUPS, assignGroups, buildDachRows, buildRegionRows, buildRows, buildRunRows, summarize, timelineGroups
+  DACHLILU_IDS, buildDachRows, buildRegionRows, buildRows, summarize, timelineRows
 } from '../src/js/status/model.js';
 
 // Aufbau wie eu/regions.json und metadata.json der Pipeline (gekürzt)
@@ -126,100 +126,82 @@ describe('buildDachRows', () => {
   });
 });
 
-describe('assignGroups', () => {
-  const { rows } = buildRows({ manifest: manifest(), metadata: metadata(), snapshot, population: { populationM: pop } });
-  const group = (id) => rows.find((r) => r.id === id).group;
+describe('buildRows', () => {
+  const { rows, hasDach, usedSnapshot } = buildRows({ manifest: manifest(), metadata: metadata(), snapshot, population: { populationM: pop } });
 
-  it('teilt DACH, LuLi, Top-5 und Rest zu', () => {
-    expect(['germany', 'austria', 'switzerland'].map(group)).toEqual(['DACH', 'DACH', 'DACH']);
-    expect(['luxembourg', 'liechtenstein'].map(group)).toEqual(['LuLi', 'LuLi']);
-    expect(['poland', 'france', 'italy', 'hungary', 'spain'].map(group)).toEqual(Array(5).fill('Top-5'));
-    expect(['portugal', 'malta', 'neuland'].map(group)).toEqual(['Rest', 'Rest', 'Rest']);
+  it('führt jedes Land einmal einzeln, die fünf DACHLiLu-Länder zuerst', () => {
+    expect(rows).toHaveLength(13);
+    expect(new Set(rows.map((r) => r.id)).size).toBe(13);
+    expect(rows.slice(0, 5).map((r) => r.id)).toEqual(DACHLILU_IDS);
+    expect(hasDach).toBe(true);
+    expect(usedSnapshot).toBe(true);
   });
 
-  it('zählt DACHLiLu-Länder nicht zu den Top 5, auch wenn sie mehr Hydranten haben', () => {
-    expect(rows.filter((r) => r.group === 'Top-5')).toHaveLength(5);
-    expect(group('germany')).toBe('DACH');
+  it('kennt keine Gruppen: keine Summen für DACH, LuLi oder DACHLiLu', () => {
+    for (const r of rows) {
+      expect(r).not.toHaveProperty('group');
+      expect(r).not.toHaveProperty('groups');
+    }
+    expect(rows.some((r) => r.id === 'dachlilu' || r.id === 'dach' || r.id === 'luli')).toBe(false);
   });
 
-  it('entscheidet Gleichstand nach Kennung', () => {
-    const tied = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => ({ id, hydrants: 5 }));
-    expect(assignGroups(tied).filter((r) => r.group === 'Top-5').map((r) => r.id)).toEqual(['a', 'b', 'c', 'd', 'e']);
+  it('weist die gemeinsame Datei des DACHLiLu-Builds je Land aus', () => {
+    const de = rows.find((r) => r.id === 'germany');
+    expect(de).toMatchObject({ shared: true, file: 'openfiremap.pmtiles', minzoom: 12, maxzoom: 14, sizeMb: null });
+    const pl = rows.find((r) => r.id === 'poland');
+    expect(pl).toMatchObject({ shared: false, file: 'eu/poland-20261018T010000Z.pmtiles' });
+  });
+
+  it('kommt ohne metadata.json aus und liefert nur die Länder-Dateien', () => {
+    const out = buildRows({ manifest: manifest(), metadata: null, snapshot, population: { populationM: pop } });
+    expect(out.hasDach).toBe(false);
+    expect(out.rows).toHaveLength(8);
   });
 });
 
 describe('summarize', () => {
   const { rows } = buildRows({ manifest: manifest(), metadata: metadata(), snapshot, population: { populationM: pop } });
-  const sum = summarize(rows);
+  const { total } = summarize(rows);
 
-  it('zählt Länder, Hydranten und Wachen insgesamt', () => {
-    expect(sum.total.regions).toBe(13);
-    expect(sum.total.hydrants).toBe(700 + 150 + 100 + 40 + 10 + 400 + 240 + 50 + 33 + 20 + 12 + 1 + 7);
-    expect(sum.total.fireStations).toBe(60 + 20 + 12 + 5 + 3 + 6 * 10 + 10 + 10);
+  it('zählt Länder, Hydranten und Wachen insgesamt (jedes Land einmal)', () => {
+    expect(total.regions).toBe(13);
+    expect(total.hydrants).toBe(700 + 150 + 100 + 40 + 10 + 400 + 240 + 50 + 33 + 20 + 12 + 1 + 7);
+    expect(total.fireStations).toBe(60 + 20 + 12 + 5 + 3 + 6 * 10 + 10 + 10);
   });
 
   it('rechnet die Dichte nur über Länder mit bekannter Einwohnerzahl', () => {
     const withPop = rows.filter((r) => r.per1000 != null);
     const hydrants = withPop.reduce((s, r) => s + r.hydrants, 0);
     const people = withPop.reduce((s, r) => s + r.populationM, 0);
-    expect(sum.total.per1000).toBeCloseTo(hydrants / (people * 1000), 6);
-    expect(sum.total.regions).toBe(rows.length);
-  });
-
-  it('fasst jede Gruppe zusammen und nennt die Top 5 absteigend', () => {
-    expect(Object.keys(sum.groups)).toEqual(GROUPS);
-    expect(sum.groups.DACH.regions).toBe(3);
-    expect(sum.groups.LuLi.hydrants).toBe(50);
-    expect(sum.top5.map((r) => r.id)).toEqual(['poland', 'france', 'italy', 'hungary', 'spain']);
+    expect(total.per1000).toBeCloseTo(hydrants / (people * 1000), 6);
   });
 
   it('nennt ältesten OSM-Stand und letzten Upload', () => {
-    expect(sum.total.oldestOsmMs).toBe(Date.parse('2026-10-17T20:00:00Z'));
-    expect(sum.total.latestUploadMs).toBe(Date.parse('2026-10-19T05:59:26.477688+00:00'));
+    expect(total.oldestOsmMs).toBe(Date.parse('2026-10-17T20:00:00Z'));
+    expect(total.latestUploadMs).toBe(Date.parse('2026-10-19T05:59:26.477688+00:00'));
+  });
+
+  it('liefert für eine leere Liste keine Zeiten und keine Dichte', () => {
+    expect(summarize([]).total).toMatchObject({ regions: 0, per1000: null, oldestOsmMs: null, latestUploadMs: null });
   });
 });
 
-describe('buildRunRows', () => {
-  const runs = buildRunRows(manifest(), metadata());
-
-  it('listet jede Datei einmal, neueste zuerst', () => {
-    expect(runs).toHaveLength(9);
-    const times = runs.map((r) => r.uploadMs);
-    expect([...times].sort((a, b) => b - a)).toEqual(times);
-    expect(runs[0].id).toBe('dachlilu');
-  });
-
-  it('führt DACHLiLu als einen gemeinsamen Build mit Gesamtzahlen', () => {
-    const d = runs.find((r) => r.id === 'dachlilu');
-    expect(d.shared).toBe(true);
-    expect(d.file).toBe('openfiremap.pmtiles');
-    expect(d.sizeMb).toBe(182.5);
-    expect(d.minzoom).toBe(12);
-    expect(d.hydrants).toBe(1000);
-    expect(d.fireStations).toBe(100);
-    expect(runs.some((r) => DACHLILU_IDS.includes(r.id))).toBe(false);
-  });
-
-  it('übernimmt Datei, Zoom und alle Ebenen der Länder-Dateien', () => {
-    const p = runs.find((r) => r.id === 'poland');
-    expect(p).toMatchObject({ file: 'eu/poland-20261018T010000Z.pmtiles', minzoom: 0, maxzoom: 14, lagH: 5, waterPoints: 2, defibrillators: 3, boundaries: 50 });
-  });
-
-  it('kommt ohne metadata.json zurecht', () => {
-    expect(buildRunRows(manifest(), null).some((r) => r.id === 'dachlilu')).toBe(false);
-  });
-});
-
-describe('timelineGroups', () => {
+describe('timelineRows', () => {
   const { rows } = buildRows({ manifest: manifest(), metadata: metadata(), snapshot, population: { populationM: pop } });
-  const groups = timelineGroups(rows);
+  const list = timelineRows(rows);
 
-  it('hält die Reihenfolge DACH, LuLi, Top-5, Rest', () => {
-    expect(groups.map((g) => g.group)).toEqual(GROUPS);
+  it('zeigt jedes Land einmal, neuester Upload zuerst', () => {
+    expect(list).toHaveLength(rows.length);
+    const times = list.map((r) => r.uploadMs);
+    expect([...times].sort((a, b) => b - a)).toEqual(times);
   });
 
-  it('sortiert den Rest nach Upload (neu zuerst), die übrigen nach Hydranten', () => {
-    expect(groups[3].rows[0].id).toBe('malta');
-    expect(groups[0].rows.map((r) => r.id)).toEqual(['germany', 'austria', 'switzerland']);
+  it('ordnet gleiche Upload-Zeiten nach Hydranten', () => {
+    expect(list.slice(0, 5).map((r) => r.id)).toEqual(['germany', 'austria', 'switzerland', 'luxembourg', 'liechtenstein']);
+    expect(list[5].id).toBe('malta');
+  });
+
+  it('lässt Länder ohne Zeitstempel aus', () => {
+    expect(timelineRows([{ id: 'x', osmMs: null, uploadMs: 5 }])).toEqual([]);
   });
 });

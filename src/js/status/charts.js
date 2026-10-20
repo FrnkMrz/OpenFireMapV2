@@ -16,10 +16,8 @@ function el(tag, attrs = {}, text) {
   return node;
 }
 
-/** Farbe einer Gruppe (CSS-Variable, folgt dem Farbschema). */
-export function groupColor(group) {
-  return `var(--g-${group === 'Top-5' ? 'top' : group.toLowerCase()})`;
-}
+/** Farbe der Diagramm-Reihe (CSS-Variable, folgt dem Farbschema). */
+const SERIES = 'var(--series)';
 
 /** Breite der längsten Beschriftung, im Browser gemessen (Rückfall: grobe Schätzung). */
 function maxTextWidth(svg, texts) {
@@ -72,52 +70,44 @@ function linearTicks(min, max, count) {
 }
 
 /**
- * Zeitleiste. groups: [{group, rows: [{id, hydrants, osmMs, uploadMs, lagH, ...}]}]
- * ctx: {t, fmt, name(row), gname(group), width}
+ * Zeitleiste, eine Zeile je Land. rows: [{id, osmMs, uploadMs, lagH, ...}]
+ * ctx: {t, fmt, name(row), width}
  */
-export function renderTimeline(box, groups, ctx) {
+export function renderTimeline(box, rows, ctx) {
   const { t, fmt } = ctx;
-  const all = groups.flatMap((g) => g.rows);
   const W = Math.max(ctx.width || box.clientWidth, 320);
   const svg = el('svg', { role: 'img', 'aria-label': t('tl_aria'), width: '100%' });
   box.replaceChildren(svg);
-  if (!all.length) return;
-  const left = maxTextWidth(svg, all.map(ctx.name)) + 14;
-  const right = 14, top = 24, rowH = 19, headH = 24, gap = 8;
-  const H = top + groups.reduce((s, g) => s + headH + g.rows.length * rowH + gap, 0);
+  if (!rows.length) return;
+  const left = maxTextWidth(svg, rows.map(ctx.name)) + 14;
+  const right = 14, top = 24, rowH = 19;
+  const H = top + rows.length * rowH + 4;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const t0 = Math.min(...all.map((r) => r.osmMs)) - 6 * 36e5;
-  const t1 = Math.max(...all.map((r) => r.uploadMs)) + 6 * 36e5;
+  const t0 = Math.min(...rows.map((r) => r.osmMs)) - 6 * 36e5;
+  const t1 = Math.max(...rows.map((r) => r.uploadMs)) + 6 * 36e5;
   const x = (ms) => left + ((ms - t0) / (t1 - t0)) * (W - left - right);
   for (const tick of linearTicks(t0, t1, Math.floor((W - left - right) / 80))) {
     svg.appendChild(el('line', { x1: x(tick), x2: x(tick), y1: top - 6, y2: H - 4, class: 'st-gridline' }));
     svg.appendChild(el('text', { x: x(tick), y: 12, 'text-anchor': 'middle', class: 'st-axis' }, fmt.dtick(tick)));
   }
   const tip = makeTip(box);
-  let y = top;
-  for (const { group, rows } of groups) {
-    svg.appendChild(el('text', { x: 0, y: y + 15, class: 'st-group' }, ctx.gname(group)));
-    y += headH;
-    for (const r of rows) {
-      const cy = y + rowH / 2;
-      const color = groupColor(group);
-      svg.appendChild(el('text', { x: left - 10, y: cy + 4, 'text-anchor': 'end', class: 'st-axis' }, ctx.name(r)));
-      svg.appendChild(el('line', { x1: x(r.osmMs), x2: x(r.uploadMs), y1: cy, y2: cy, stroke: color, 'stroke-width': 2, 'stroke-linecap': 'round', opacity: 0.55 }));
-      svg.appendChild(el('circle', { cx: x(r.osmMs), cy, r: 4, class: 'st-dot-osm', stroke: color }));
-      svg.appendChild(el('circle', { cx: x(r.uploadMs), cy, r: 4.5, fill: color }));
-      const hit = el('rect', { x: 0, y, width: W, height: rowH, fill: 'transparent' });
-      hit.addEventListener('mousemove', (ev) => tip.show([
-        ctx.name(r),
-        `${t('tip_osm')}${fmt.dshort(r.osmMs)} UTC`,
-        `${t('tip_up')}${fmt.dshort(r.uploadMs)} UTC`,
-        `${t('tip_lag')}${fmt.d1(r.lagH)} h`
-      ], ev));
-      hit.addEventListener('mouseleave', () => tip.hide());
-      svg.appendChild(hit);
-      y += rowH;
-    }
-    y += gap;
-  }
+  rows.forEach((r, i) => {
+    const y = top + i * rowH;
+    const cy = y + rowH / 2;
+    svg.appendChild(el('text', { x: left - 10, y: cy + 4, 'text-anchor': 'end', class: 'st-axis' }, ctx.name(r)));
+    svg.appendChild(el('line', { x1: x(r.osmMs), x2: x(r.uploadMs), y1: cy, y2: cy, stroke: SERIES, 'stroke-width': 2, 'stroke-linecap': 'round', opacity: 0.55 }));
+    svg.appendChild(el('circle', { cx: x(r.osmMs), cy, r: 4, class: 'st-dot-osm', stroke: SERIES }));
+    svg.appendChild(el('circle', { cx: x(r.uploadMs), cy, r: 4.5, fill: SERIES }));
+    const hit = el('rect', { x: 0, y, width: W, height: rowH, fill: 'transparent' });
+    hit.addEventListener('mousemove', (ev) => tip.show([
+      ctx.name(r),
+      `${t('tip_osm')}${fmt.dshort(r.osmMs)} UTC`,
+      `${t('tip_up')}${fmt.dshort(r.uploadMs)} UTC`,
+      `${t('tip_lag')}${fmt.d1(r.lagH)} h`
+    ], ev));
+    hit.addEventListener('mouseleave', () => tip.hide());
+    svg.appendChild(hit);
+  });
 }
 
 /**
@@ -142,7 +132,7 @@ export function renderDensity(box, rows, average, ctx) {
     const y = top + i * rowH;
     const cy = y + rowH / 2;
     svg.appendChild(el('text', { x: left - 8, y: cy + 4, 'text-anchor': 'end', class: 'st-axis' }, ctx.name(r)));
-    svg.appendChild(el('rect', { x: left, y: cy - 6, width: Math.max(2, x(r.per1000) - left), height: 12, rx: 4, fill: groupColor(r.group) }));
+    svg.appendChild(el('rect', { x: left, y: cy - 6, width: Math.max(2, x(r.per1000) - left), height: 12, rx: 4, fill: SERIES }));
     svg.appendChild(el('text', { x: x(r.per1000) + 6, y: cy + 4, class: 'st-value' }, fmt.dens(r.per1000)));
     const hit = el('rect', { x: 0, y, width: W, height: rowH, fill: 'transparent' });
     hit.addEventListener('mousemove', (ev) => tip.show([
