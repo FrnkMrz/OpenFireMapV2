@@ -1162,7 +1162,7 @@ function generateTooltip(tags, clusterMembers) {
 
 
 /**
- * Schließt den offenen Marker-Tooltip und den 100-m-Radius. Der Fokus bleibt auf dem Marker.
+ * Schließt den offenen Marker-Tooltip, den 100-m-Radius und die Distanz-Linie. Der Fokus bleibt auf dem Marker.
  * @returns {boolean} true, wenn etwas geschlossen wurde
  */
 export function closeMapOverlays() {
@@ -1174,6 +1174,11 @@ export function closeMapOverlays() {
     }
     if (State.rangeLayerGroup && State.rangeLayerGroup.getLayers().length > 0) {
         State.rangeLayerGroup.clearLayers();
+        closed = true;
+    }
+    // Die blaue Distanz-Linie gehört zur Aktivierung (wie beim Klick auf die Karte entfernt sie Escape wieder)
+    if (State.distanceTarget || (State.distanceLayerGroup && State.distanceLayerGroup.getLayers().length > 0)) {
+        clearDistanceLine();
         closed = true;
     }
     return closed;

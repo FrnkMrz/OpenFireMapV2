@@ -68,6 +68,22 @@ test.describe('Marker per Tastatur', () => {
         await expect(marker).toBeFocused();
     });
 
+    test('Escape entfernt auch die Distanz-Linie zum Standort', async ({ page }) => {
+        await openMap(page, 18);
+        // Standort-Marker setzen, damit Enter eine Linie zeichnet
+        await page.evaluate(() => {
+            window.State.userMarker = window.L.marker([40.7129, -74.0058]).addTo(window.State.map);
+        });
+        await hydrantMarker(page).focus();
+        await page.keyboard.press('Enter');
+        await expect.poll(() => page.evaluate(() => window.State.distanceLayerGroup.getLayers().length)).toBeGreaterThan(0);
+
+        await page.keyboard.press('Escape');
+        expect(await page.evaluate(() => window.State.distanceLayerGroup.getLayers().length)).toBe(0);
+        expect(await page.evaluate(() => window.State.distanceTarget)).toBeNull();
+        await expect(hydrantMarker(page)).toBeFocused();
+    });
+
     test('Leertaste wirkt wie Enter und löst nur einmal aus', async ({ page }) => {
         await openMap(page, 18);
         await hydrantMarker(page).focus();
