@@ -160,6 +160,27 @@ test.describe('Zoom nach dem Laden (Wechsel Desktop <-> mobile Oberfläche)', ()
         await expect(page.locator('#mobile-menu')).toBeHidden();
     });
 
+    test('Offenes Datenstand-Popover schließt beim Wechsel zur mobilen Oberfläche und kommt nicht von selbst wieder', async ({ page }) => {
+        await openMap(page);
+        await page.locator('#data-info-btn').click();
+        await expect(page.locator('#data-info-popover')).toBeVisible();
+        await expect(page.locator('#data-info-btn')).toHaveAttribute('aria-expanded', 'true');
+
+        await page.setViewportSize({ width: 320, height: 256 });
+        await expect(page.locator('#mobile-burger-btn')).toBeVisible();
+        await expect(page.locator('#data-info-popover')).toHaveClass(/hidden/);
+        await expect(page.locator('#data-info-btn')).toHaveAttribute('aria-expanded', 'false');
+        // Der Fokus lag im Popover und ist nicht verloren, sondern auf einem sichtbaren Element
+        await expect(page.locator('#mobile-burger-btn')).toBeFocused();
+
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await expect(page.locator('#desktop-controls')).toBeVisible();
+        await expect(page.locator('#data-info-popover')).toBeHidden();
+        await expect(page.locator('#data-info-btn')).toHaveAttribute('aria-expanded', 'false');
+        const inertCount = await page.evaluate(() => document.querySelectorAll('[inert]').length);
+        expect(inertCount).toBe(0);
+    });
+
     test('Offenes „Info & Recht“ schließt beim Wechsel zur Desktop-Oberfläche (kein inert, keine Fokus-Falle)', async ({ page }) => {
         await openMap(page);
         await page.setViewportSize({ width: 320, height: 256 });

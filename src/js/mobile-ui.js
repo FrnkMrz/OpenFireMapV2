@@ -212,6 +212,25 @@
     alignBurgerAndStatusTop();
 
     if (mobileClose) hide(mobileClose);
+
+    closeDataInfoPopover();
+  }
+
+  // Das Datenstand-Popover einer offenen Desktop-Ansicht schließen (wie closeDataInfoPopover() in data-status.js):
+  // Unter 769 px blendet nur die Media Query es aus, die Klasse "hidden" und aria-expanded blieben sonst stehen,
+  // der Fokus hinge im unsichtbaren Popover und beim Zurückzoomen stünde es wieder da.
+  function closeDataInfoPopover() {
+    const popover = $('data-info-popover');
+    if (!popover || isHidden(popover)) return;
+    const hadFocus = popover.contains(document.activeElement);
+    hide(popover);
+    const trigger = $('data-info-btn');
+    trigger?.setAttribute('aria-expanded', 'false');
+    // Fokus nicht verlieren: zurück auf den Auslöser, wenn er sichtbar ist (ab 769 px), sonst auf den Burger-Button
+    if (hadFocus) {
+      const target = trigger && trigger.getClientRects().length ? trigger : mobileBurger;
+      target.focus();
+    }
   }
 
   // Rückweg: Desktop-Oberfläche wiederherstellen (Fenster wieder breit, z. B. Zoom zurück oder Tablet gedreht)
