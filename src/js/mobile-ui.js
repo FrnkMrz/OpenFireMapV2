@@ -222,12 +222,15 @@
   function closeDataInfoPopover() {
     const popover = $('data-info-popover');
     if (!popover || isHidden(popover)) return;
-    const hadFocus = popover.contains(document.activeElement);
+    // Die Media Query blendet das Popover schon vor dem resize-Ereignis aus; dann ist der Fokus bereits auf body gefallen.
+    // Fokus gilt darum auch als verloren, wenn er auf body liegt (das Popover war offen).
+    const active = document.activeElement;
+    const focusLost = !active || active === document.body || popover.contains(active);
     hide(popover);
     const trigger = $('data-info-btn');
     trigger?.setAttribute('aria-expanded', 'false');
     // Fokus nicht verlieren: zurück auf den Auslöser, wenn er sichtbar ist (ab 769 px), sonst auf den Burger-Button
-    if (hadFocus) {
+    if (focusLost) {
       const target = trigger && trigger.getClientRects().length ? trigger : mobileBurger;
       target.focus();
     }
