@@ -85,12 +85,6 @@ test.describe('Zoom 400 % (Fenster 320 x 256)', () => {
         await expectAllControlsReachable(page, '#layer-menu');
     });
 
-    test('Export-Menü liegt im Fenster und scrollt', async ({ page }) => {
-        await openMap(page);
-        await jsClick(page, '[aria-controls="export-menu"]');
-        await expectAllControlsReachable(page, '#export-menu');
-    });
-
     test('Info & Recht liegt im Fenster, der Inhalt scrollt', async ({ page }) => {
         await openMap(page);
         await jsClick(page, '#btn-legal-trigger');
@@ -106,13 +100,64 @@ test.describe('Zoom 400 % (Fenster 320 x 256)', () => {
     });
 });
 
-test.describe('Datenstand-Popover bei geringer Fensterhöhe (Desktop)', () => {
+test.describe('Geringe Fensterhöhe in der Desktop-Oberfläche (Breite 1440 px)', () => {
     test.use({ viewport: { width: 1440, height: 300 } });
 
-    test('Popover ragt nicht über den oberen Rand und scrollt', async ({ page }) => {
+    test('Datenstand-Popover ragt nicht über den oberen Rand und scrollt', async ({ page }) => {
         await openMap(page);
         await page.locator('#data-info-btn').click();
         await expectAllControlsReachable(page, '#data-info-popover');
+    });
+
+    // Das Export-Menü gibt es nur in der Desktop-Oberfläche (ab 1370 px Fensterbreite); im mobilen Layout,
+    // auch bei 400 % Zoom, hat das Menü bewusst keinen Export-Eintrag.
+    test('Export-Menü liegt im Fenster und scrollt', async ({ page }) => {
+        await openMap(page);
+        await page.locator('#export-btn-trigger').click();
+        await expectAllControlsReachable(page, '#export-menu');
+    });
+});
+
+// Zoomen im geöffneten Browser: Das Fenster wird nach dem Laden schmal (1440 px / 4 = 360 px), die Seite lädt aber breit.
+test.describe('Zoom nach dem Laden (Wechsel Desktop <-> mobile Oberfläche)', () => {
+    test.use({ viewport: { width: 1440, height: 900 } });
+
+    test('Breit geladen, dann auf 320 x 256 gezoomt: mobile Oberfläche mit scrollbarem Menü, und zurück', async ({ page }) => {
+        await openMap(page);
+        await expect(page.locator('#desktop-controls')).toBeVisible();
+        await expect(page.locator('#mobile-burger-btn')).toBeHidden();
+
+        // Zoomen: das Fenster wird schmal
+        await page.setViewportSize({ width: 320, height: 256 });
+        await expect(page.locator('#mobile-burger-btn')).toBeVisible();
+        await expect(page.locator('#mobile-locate-btn')).toBeVisible();
+        await expect(page.locator('#desktop-controls')).toBeHidden();
+        await expect(page.locator('html')).toHaveClass(/ofm-mobile-ui/);
+
+        await page.locator('#mobile-burger-btn').click();
+        await expect(page.locator('#mobile-menu')).toBeVisible();
+        const overflowY = await page.locator('#mobile-menu').evaluate((el) => getComputedStyle(el).overflowY);
+        expect(overflowY).toBe('auto');
+        await expectAllControlsReachable(page, '#mobile-menu');
+        await page.locator('#mobile-open-legal').scrollIntoViewIfNeeded();
+        await expect(page.locator('#mobile-open-legal')).toBeInViewport();
+        await expect(page.locator('#mobile-cache-duration-select')).toBeInViewport();
+
+        // Zurück auf Desktop-Breite: Desktop-Oberfläche wieder da, mobile Steuerelemente weg, Menü zu
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await expect(page.locator('#desktop-controls')).toBeVisible();
+        await expect(page.locator('#mobile-burger-btn')).toBeHidden();
+        await expect(page.locator('#mobile-locate-btn')).toBeHidden();
+        await expect(page.locator('#mobile-menu')).toBeHidden();
+        await expect(page.locator('html')).not.toHaveClass(/ofm-mobile-ui/);
+
+        // und noch einmal schmal: nichts doppelt gebunden, Burger öffnet und schließt wie gewohnt
+        await page.setViewportSize({ width: 320, height: 256 });
+        await expect(page.locator('#mobile-burger-btn')).toBeVisible();
+        await page.locator('#mobile-burger-btn').click();
+        await expect(page.locator('#mobile-menu')).toBeVisible();
+        await page.locator('#mobile-burger-btn').click();
+        await expect(page.locator('#mobile-menu')).toBeHidden();
     });
 });
 
