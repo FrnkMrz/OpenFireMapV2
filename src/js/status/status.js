@@ -9,7 +9,7 @@
  */
 
 import { loadPipelineData } from './load.js';
-import { buildRows, summarize, timelineRows } from './model.js';
+import { buildRows, cadence, summarize, timelineRows } from './model.js';
 import { LANGS, LANG_KEY, TEXTS, countryName, createFormatters, detectLang } from './texts.js';
 import { renderDensity, renderRunBar, renderTimeline } from './charts.js';
 import population from '../../data/status-population.json';
@@ -85,6 +85,27 @@ function kpiCard(label, value, note, isDate) {
 /** Hängt an die Beschriftung, wie viele Länder in der Summe fehlen (keine Angabe im Manifest). */
 function withUnknown(note, n) {
   return n > 0 ? `${note}, ${t('k_unknown').replace('{n}', String(n))}` : note;
+}
+
+/** Rhythmus der beiden Quellen mit dem Zeitpunkt des letzten Laufs, damit klar ist, wie aktuell eine Karte sein kann. */
+function renderCadence() {
+  const f = fmt();
+  const c = cadence(S.data.rows);
+  const stat = (label, value) => [h('dt', {}, label), h('dd', {}, value)];
+  $('#st-cad-grid').replaceChildren(
+    h('article', { class: 'st-cad' },
+      h('h3', {}, t('cad_dach_t')),
+      h('p', {}, h('span', { class: 'st-pill' }, t('cad_dach_pill'))),
+      h('p', { class: 'st-muted' }, t('cad_dach_d')),
+      h('dl', { class: 'st-stats' }, ...stat(t('cad_last'), dash(c.dach.lastMs, f.dt)))),
+    h('article', { class: 'st-cad' },
+      h('h3', {}, t('cad_eu_t')),
+      h('p', {}, h('span', { class: 'st-pill' }, t('cad_eu_pill'))),
+      h('p', { class: 'st-muted' }, t('cad_eu_d')),
+      h('dl', { class: 'st-stats' },
+        ...stat(t('cad_count'), f.int(c.eu.regions)),
+        ...stat(t('cad_last'), dash(c.eu.lastMs, f.dt)),
+        ...stat(t('cad_oldest'), dash(c.eu.oldestMs, f.dt)))));
 }
 
 function renderKpis() {
@@ -255,6 +276,7 @@ function renderNotes() {
 function renderAll() {
   applyTexts();
   if (!S.data) return;
+  renderCadence();
   renderKpis();
   renderCharts();
   renderTables();

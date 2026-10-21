@@ -235,3 +235,20 @@ td.bar { background: linear-gradient(to right, color-mix(in srgb, var(--fg) 14%,
     .st-kpi .st-big { font-size: 1.5rem; }
     .st-head h1 { font-size: 1.4rem; }
 }
+
+/* Rhythmus der Aktualisierung */
+.st-cad { display: grid; gap: 0.5rem; align-content: start; }
+.st-cad h3 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+.st-cad p { margin: 0; }
+.st-pill {
+    display: inline-block;
+    padding: 0.1rem 0.7rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.st-stats { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 1rem; margin: 0; font-size: 0.9rem; }
+.st-stats dt { color: var(--muted); }
+.st-stats dd { margin: 0; text-align: right; }

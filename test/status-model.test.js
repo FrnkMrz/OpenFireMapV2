@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DACHLILU_IDS, buildDachRows, buildRegionRows, buildRows, summarize, timelineRows
+  DACHLILU_IDS, buildDachRows, cadence, buildRegionRows, buildRows, summarize, timelineRows
 } from '../src/js/status/model.js';
 
 // Aufbau wie eu/regions.json und metadata.json der Pipeline (gekürzt)
@@ -274,5 +274,28 @@ describe('timelineRows', () => {
 
   it('lässt Länder ohne Zeitstempel aus', () => {
     expect(timelineRows([{ id: 'x', osmMs: null, uploadMs: 5 }])).toEqual([]);
+  });
+});
+
+describe('cadence', () => {
+  const { rows } = buildRows({ manifest: manifest(), metadata: metadata(), snapshot, population: { populationM: pop } });
+  const c = cadence(rows);
+
+  it('nennt den letzten Lauf des gemeinsamen DACHLiLu-Builds', () => {
+    expect(c.dach.lastMs).toBe(Date.parse('2026-10-19T05:59:26.477688+00:00'));
+  });
+
+  it('nennt für die übrigen Länder Anzahl, letzten Lauf und älteste Karte', () => {
+    expect(c.eu.regions).toBe(8);
+    expect(c.eu.lastMs).toBe(Date.parse('2026-10-19T01:00:00+00:00'));      // Malta
+    expect(c.eu.oldestMs).toBe(Date.parse('2026-10-18T01:00:00.123+00:00')); // die übrigen
+  });
+
+  it('rechnet DACHLiLu nicht in die Länder-Dateien ein und umgekehrt', () => {
+    expect(c.eu.lastMs).toBeLessThan(c.dach.lastMs);
+    const noDach = cadence(rows.filter((r) => !r.shared));
+    expect(noDach.dach.lastMs).toBeNull();
+    expect(noDach.eu.regions).toBe(8);
+    expect(cadence([])).toEqual({ dach: { lastMs: null }, eu: { regions: 0, lastMs: null, oldestMs: null } });
   });
 });
