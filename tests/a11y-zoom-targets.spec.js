@@ -159,6 +159,27 @@ test.describe('Zoom nach dem Laden (Wechsel Desktop <-> mobile Oberfläche)', ()
         await page.locator('#mobile-burger-btn').click();
         await expect(page.locator('#mobile-menu')).toBeHidden();
     });
+
+    test('Offenes „Info & Recht“ schließt beim Wechsel zur Desktop-Oberfläche (kein inert, keine Fokus-Falle)', async ({ page }) => {
+        await openMap(page);
+        await page.setViewportSize({ width: 320, height: 256 });
+        await page.locator('#mobile-burger-btn').click();
+        await page.locator('#mobile-open-legal').click();
+        await expect(page.locator('#legal-modal')).toBeVisible();
+
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await expect(page.locator('#desktop-controls')).toBeVisible();
+        await expect(page.locator('#legal-modal')).toBeHidden();
+        await expect(page.locator('#btn-legal-trigger')).toHaveAttribute('aria-expanded', 'false');
+        // registerDialog sperrt den Rest per inert, solange der Dialog offen ist
+        await expect(page.locator('#desktop-controls')).not.toHaveAttribute('inert', /.*/);
+        const inertCount = await page.evaluate(() => document.querySelectorAll('[inert]').length);
+        expect(inertCount).toBe(0);
+
+        // Der Dialog lässt sich auf Desktop wieder normal öffnen
+        await page.locator('#btn-legal-trigger').click();
+        await expect(page.locator('#legal-modal')).toBeVisible();
+    });
 });
 
 test.describe('Zielgröße (WCAG 2.5.8)', () => {

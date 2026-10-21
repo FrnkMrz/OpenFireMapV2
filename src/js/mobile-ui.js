@@ -43,7 +43,11 @@
     // Nur schließen, wenn sichtbar
     if (layerMenu && !isHidden(layerMenu)) hide(layerMenu);
     if (exportMenu && !isHidden(exportMenu)) hide(exportMenu);
-    if (legalModal && !isHidden(legalModal)) hide(legalModal);
+    // Info & Recht öffnet und schließt ui.js über style.display (flex/none), nicht über die Klasse "hidden":
+    // das Inline-display überstimmt die Klasse, also hier genauso schließen (registerDialog räumt inert/Fokus auf).
+    if (legalModal && legalModal.style.display !== '' && legalModal.style.display !== 'none') {
+      legalModal.style.display = 'none';
+    }
 
     // aria state (falls vorhanden)
     $('layer-btn-trigger')?.setAttribute('aria-expanded', 'false');
