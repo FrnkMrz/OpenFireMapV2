@@ -43,7 +43,6 @@ OpenFireMap ist für die Bedienung ohne Maus ausgelegt und wird gegen WCAG 2.2 (
 
 - **Zur Karte springen**: Der erste Tab-Stopp ist der Link „Zur Karte springen“. Er setzt den Fokus auf die Karte, ohne den Link zur aktuellen Ansicht (Permalink) zu ändern.
 - **Karte**: Mit Fokus auf der Karte verschieben die Pfeiltasten den Ausschnitt, <kbd>+</kbd> und <kbd>−</kbd> zoomen. Die Seite selbst lässt sich im Browser vergrößern.
-- **Objekte im Ausschnitt**: Der Button „Objekte im Ausschnitt“ (neben „Teilen“, mobil im Burger-Menü) öffnet eine Liste der sichtbaren Objekte mit Namen und Entfernung zum Kartenmittelpunkt, nach Entfernung sortiert (höchstens 100). Ein Eintrag zoomt bei Bedarf heran und öffnet die Details. Ohne Objekte hilft ein Hinweis, näher heranzuzoomen (Objekte erscheinen ab Zoomstufe 15).
 - **Marker**: Ab Zoomstufe 17 sind Symbole per <kbd>Tab</kbd> erreichbar und haben einen Namen (Typ und Name bzw. Nummer). <kbd>Enter</kbd> oder <kbd>Leertaste</kbd> öffnet die Details, <kbd>Escape</kbd> schließt sie.
 - **Menüs und Dialoge**: Beim Öffnen springt der Fokus hinein, <kbd>Tab</kbd> bleibt im Dialog, <kbd>Escape</kbd> schließt ihn und der Fokus kehrt zum Auslöser zurück.
 - **Export ohne Maus**: Im Export-Menü übernimmt „Sichtbaren Ausschnitt übernehmen“ den aktuellen Kartenausschnitt als Auswahl. <kbd>Escape</kbd> bricht den Auswahlmodus ab. Das Ziehen eines Rechtecks mit der Maus bleibt möglich.
@@ -52,7 +51,7 @@ OpenFireMap ist für die Bedienung ohne Maus ausgelegt und wird gegen WCAG 2.2 (
 
 ## Pipeline-Statusseite
 
-Unter [openfiremap.org/status](https://openfiremap.org/status/) (Deutsch und Englisch) zeigt eine Statusseite je Land, wann der OSM-Datenstand war, wann die Karte hochgeladen wurde und wie viele Hydranten, Feuerwachen und Defibrillatoren es je Einwohner gibt. Der Link steht auch im Dialog „Info & Recht“ der Karte.
+Unter [openfiremap.org/status](https://openfiremap.org/status/) (Deutsch und Englisch) zeigt eine Statusseite je Land, wann der OSM-Datenstand war, wann die Karte hochgeladen wurde und wie viele Hydranten, Feuerwachen und Defibrillatoren es je Einwohner gibt. Der Link steht auch im Dialog „Info & Recht“ und im Popover „Datenstand & Herkunft“ der Karte.
 
 ## Cache
 

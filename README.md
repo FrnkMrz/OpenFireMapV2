@@ -2,7 +2,7 @@
 
 [![Live](https://img.shields.io/badge/Live-openfiremap.org-2ea44f)](https://openfiremap.org)
 [![Version](https://img.shields.io/badge/version-v0.10.0-1f6feb)](https://github.com/FrnkMrz/OpenFireMapV2/releases)
-[![Tests](https://img.shields.io/badge/tests-615%20Vitest%20%2B%20Playwright-6f42c1)](https://github.com/FrnkMrz/OpenFireMapV2/actions)
+[![Tests](https://img.shields.io/badge/tests-594%20Vitest%20%2B%20Playwright-6f42c1)](https://github.com/FrnkMrz/OpenFireMapV2/actions)
 [![License](https://img.shields.io/github/license/FrnkMrz/OpenFireMapV2)](./LICENSE)
 [![OSM / ODbL](https://img.shields.io/badge/data-OpenStreetMap%20%2F%20ODbL-7a7a7a)](https://www.openstreetmap.org/copyright)
 [![GitHub Pages](https://img.shields.io/badge/deployed%20with-GitHub%20Pages-222222)](https://github.com/FrnkMrz/OpenFireMapV2/actions/workflows/pages.yml)
@@ -23,7 +23,7 @@ OpenFireMapV2 ist aktuell **v0.10.0**. OpenFireMap war von Anfang an weltweit nu
 - automatische Erkennung veralteter Pipeline-Abdeckung und Rückfall auf Overpass
 - Exporte als PNG, PDF, GPX und CSV
 - mehr als 30 Sprachen, IndexedDB-Cache sowie responsive Nutzung auf Desktop und Mobilgeräten
-- Barrierefreiheit nach WCAG 2.2 (A/AA): Bedienung per Tastatur mit Skip-Link, sichtbarem Fokus und Marker-Details auf Enter, Objektliste „Objekte im Ausschnitt“ als Textalternative zur Karte, Screenreader-Beschriftungen, geprüfte Farbkontraste und Rücksicht auf „Bewegung reduzieren“ (siehe [Erste Schritte](docs/ERSTE_SCHRITTE.md#bedienung-per-tastatur-und-screenreader))
+- Barrierefreiheit nach WCAG 2.2 (A/AA): Bedienung per Tastatur mit Skip-Link, sichtbarem Fokus und Marker-Details auf Enter, Screenreader-Beschriftungen, geprüfte Farbkontraste und Rücksicht auf „Bewegung reduzieren“ (siehe [Erste Schritte](docs/ERSTE_SCHRITTE.md#bedienung-per-tastatur-und-screenreader))
 - eine öffentliche [Pipeline-Statusseite](https://openfiremap.org/status/) mit Datenstand, Upload und Objektdichte je Land
 - eine offene Grundlage, auf der OSM-Mitwirkende Daten verbessern und Feuerwehren regionale Informationen prüfen können
 
@@ -73,4 +73,4 @@ OpenFireMapV2 is a worldwide, client-side web map for fire stations, hydrants, w
 
 Version **v0.10.0** combines global Overpass access with a fast pre-built PMTiles pipeline for Germany, Austria, Switzerland, Luxembourg and Liechtenstein (DACHLiLu) plus 40 more European countries (excluding Russia, Ukraine, Belarus and Turkey; one weekly-built file per country, about 634 MB in total). The DACHLiLu file serves roughly **1.2 million objects**, the country files roughly 1.0 million more, all from Cloudflare R2 using HTTP Range Requests. An optimized MaxZoom 14 build currently keeps the PMTiles archive at about **182.4 MiB (191,243,978 bytes)**, below Cloudflare's 512 MiB free-cache limit. Objects created or changed since the pipeline's OSM data timestamp are fetched from Overpass in the background (for country files only while their OSM data is at most 10 days old; older files are still served, just without this catch-up). It accelerates those areas but does not replace worldwide Overpass coverage. See the [English project presentation](docs/PROJECT_PRESENTATION_EN.md) for a concise technical overview.
 
-The map is keyboard-accessible and checked against WCAG 2.2 (A/AA) with automated axe and contrast tests: skip link, visible focus, keyboard-operable markers and dialogs, an "objects in view" list as a text alternative to the map, labelled controls in all supported languages, and support for reduced motion. Testing with a real screen reader on a device is still pending. A public pipeline status page is available at [openfiremap.org/status](https://openfiremap.org/status/).
+The map is keyboard-accessible and checked against WCAG 2.2 (A/AA) with automated axe and contrast tests: skip link, visible focus, keyboard-operable markers and dialogs, labelled controls in all supported languages, and support for reduced motion. Testing with a real screen reader on a device is still pending. A public pipeline status page is available at [openfiremap.org/status](https://openfiremap.org/status/).
