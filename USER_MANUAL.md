@@ -15,7 +15,6 @@ OpenFireMap ist weltweit nutzbar:
 - Pfeiltasten und <kbd>+</kbd>/<kbd>−</kbd> bei fokussierter Karte: verschieben und zoomen
 - <kbd>Enter</kbd> oder <kbd>Leertaste</kbd> auf einem Marker (ab Zoomstufe 17): Details öffnen
 - <kbd>Escape</kbd>: Details, Menü, Dialog oder Auswahlmodus schließen
-- Button „Objekte im Ausschnitt“: Liste der sichtbaren Objekte als Alternative zu den Markern
 
 Mehr dazu in [docs/ERSTE_SCHRITTE.md](docs/ERSTE_SCHRITTE.md#bedienung-per-tastatur-und-screenreader).
 
