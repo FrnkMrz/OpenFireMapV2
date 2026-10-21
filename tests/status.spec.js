@@ -92,6 +92,14 @@ test.describe('Pipeline-Statusseite', () => {
         await expect(dach).toContainText('Oct 19, 2026 05:59');
     });
 
+    test('der DACHLiLu-Lauf steht auch dann da, wenn metadata.json keine Auszüge enthält', async ({ page }) => {
+        await mockPipeline(page, { metadata: { generated_at: '2026-10-19T05:59:26+00:00', extracts: {} } });
+        await open(page);
+        await expect(page.locator('#st-table tbody tr[data-key="germany"]')).toHaveCount(0);
+        await expect(page.locator('#st-cadence article').first()).toContainText('19.10.2026 05:59');
+        await expect(page.locator('#st-warn')).toBeVisible();
+    });
+
     test('ohne metadata.json zeigt der Rhythmus für DACHLiLu keinen Zeitpunkt, bricht aber nicht', async ({ page }) => {
         await mockPipeline(page, { metadata: null });
         await open(page);

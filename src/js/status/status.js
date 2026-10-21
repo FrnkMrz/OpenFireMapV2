@@ -90,7 +90,7 @@ function withUnknown(note, n) {
 /** Rhythmus der beiden Quellen mit dem Zeitpunkt des letzten Laufs, damit klar ist, wie aktuell eine Karte sein kann. */
 function renderCadence() {
   const f = fmt();
-  const c = cadence(S.data.rows);
+  const c = cadence(S.data.rows, S.data.metadata);
   const stat = (label, value) => [h('dt', {}, label), h('dd', {}, value)];
   $('#st-cad-grid').replaceChildren(
     h('article', { class: 'st-cad' },

@@ -279,7 +279,7 @@ describe('timelineRows', () => {
 
 describe('cadence', () => {
   const { rows } = buildRows({ manifest: manifest(), metadata: metadata(), snapshot, population: { populationM: pop } });
-  const c = cadence(rows);
+  const c = cadence(rows, metadata());
 
   it('nennt den letzten Lauf des gemeinsamen DACHLiLu-Builds', () => {
     expect(c.dach.lastMs).toBe(Date.parse('2026-10-19T05:59:26.477688+00:00'));
@@ -291,11 +291,21 @@ describe('cadence', () => {
     expect(c.eu.oldestMs).toBe(Date.parse('2026-10-18T01:00:00.123+00:00')); // die übrigen
   });
 
+  it('liest den DACHLiLu-Lauf direkt aus metadata.json, auch wenn dort keine Auszüge stehen', () => {
+    const md = { ...metadata(), extracts: {} };
+    const out = buildRows({ manifest: manifest(), metadata: md, snapshot, population: { populationM: pop } });
+    expect(out.rows.some((r) => r.shared)).toBe(false);            // keine Länder-Zeilen
+    expect(cadence(out.rows, md).dach.lastMs).toBe(Date.parse('2026-10-19T05:59:26.477688+00:00'));
+    // ohne metadata.json bleibt die Zeit der gemeinsamen Zeilen als Rückfall, sonst nichts
+    expect(cadence(rows, null).dach.lastMs).toBe(Date.parse('2026-10-19T05:59:26.477688+00:00'));
+    expect(cadence([], null).dach.lastMs).toBeNull();
+  });
+
   it('rechnet DACHLiLu nicht in die Länder-Dateien ein und umgekehrt', () => {
     expect(c.eu.lastMs).toBeLessThan(c.dach.lastMs);
-    const noDach = cadence(rows.filter((r) => !r.shared));
+    const noDach = cadence(rows.filter((r) => !r.shared), null);
     expect(noDach.dach.lastMs).toBeNull();
     expect(noDach.eu.regions).toBe(8);
-    expect(cadence([])).toEqual({ dach: { lastMs: null }, eu: { regions: 0, lastMs: null, oldestMs: null } });
+    expect(cadence([], null)).toEqual({ dach: { lastMs: null }, eu: { regions: 0, lastMs: null, oldestMs: null } });
   });
 });
