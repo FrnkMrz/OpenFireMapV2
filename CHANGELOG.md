@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Behoben
+- **Barrierefreiheit: Zoom 400 % und Zielgröße** (WCAG 1.4.10, 2.1.1, 2.5.8): Bei Fensterhöhen um 256 CSS-Pixel (400 % Zoom) lagen die unteren Einträge des mobilen Menüs („Info & Recht“, Cache-Dauer) unter der Fensterkante und waren weder per Touch noch per Scrollen erreichbar. Mobiles Menü, Ebenenmenü, Export-Menü und Datenstand-Popover sind jetzt auf die Fensterhöhe begrenzt und scrollen selbst (`overscroll-behavior: contain`); Ebenenmenü, Export-Menü und „Info & Recht“ sind höchstens so breit wie das Fenster (vorher bei 320 px rechts abgeschnitten). Der Standort-Button unten mittig lag bei kleiner Höhe über dem geöffneten Menü und verdeckt es nicht mehr. Der Button „Datenstand-Details“ ist mindestens 24 px hoch (vorher 16 px). Bei normaler Fenstergröße ändert sich nichts. Tests: `tests/a11y-zoom-targets.spec.js`.
+
 ## [v0.10.0] - 2026-10-20
 
 **Barrierefreiheit und Statusseite:** Die Karte ist jetzt mit Tastatur und Screenreader bedienbar und wird automatisch gegen WCAG 2.2 (A/AA) geprüft; neu ist die Pipeline-Statusseite unter `/status/`. **Noch offen:** ein Test mit einem echten Screenreader (VoiceOver, NVDA, TalkBack) am Gerät; bisher wurde mit axe, Playwright und eigenen Kontrasttests geprüft. Befunde daraus kommen in einer Folgeversion.

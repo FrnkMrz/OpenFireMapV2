@@ -148,7 +148,9 @@
       dock.style.left = '50%';
       dock.style.bottom = '32px';
       dock.style.transform = 'translateX(-50%)';
-      dock.style.zIndex = '2500';
+      // Unter den Menüs und Dialogen (Ebenen 1001, Info & Recht 2000, Menü 2500), sonst verdeckt der Button bei
+      // kleiner Fensterhöhe (400 % Zoom) deren untere Einträge.
+      dock.style.zIndex = '1000';
       dock.style.pointerEvents = 'auto';
       document.body.appendChild(dock);
     }
