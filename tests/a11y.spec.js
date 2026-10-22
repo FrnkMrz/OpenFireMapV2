@@ -381,6 +381,28 @@ test.describe('Dialoge: Fokus, Tab-Falle, Escape', () => {
         await expect(popover).toBeHidden();
         await context.close();
     });
+
+    test('Mobil (Android, hohe Pixeldichte): Datenstand-Details überdecken die skalierte Status-Box nicht', async ({ browser }) => {
+        const context = await browser.newContext({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+        const page = await context.newPage();
+        await gotoReady(page);
+        for (const dpr of [2, 3]) {
+            // dpr.js setzt Klasse und --dpr nur auf Android-Geräten; hier nachgestellt
+            await page.evaluate((d) => {
+                document.documentElement.style.setProperty('--dpr', d);
+                document.documentElement.classList.add('is-android');
+            }, dpr);
+            await page.locator('#status-box').tap();
+            const popover = page.locator('#data-info-popover');
+            await expect(popover).toBeVisible();
+            const [box, pop] = await Promise.all([page.locator('#status-box').boundingBox(), popover.boundingBox()]);
+            expect(pop.y, `dpr ${dpr}`).toBeGreaterThanOrEqual(box.y + box.height);
+            expect(pop.y + pop.height).toBeLessThanOrEqual(812);
+            await page.keyboard.press('Escape');
+            await expect(popover).toBeHidden();
+        }
+        await context.close();
+    });
 });
 
 test.describe('Live-Regionen', () => {

@@ -460,6 +460,12 @@ body {
         overflow-y: auto;
     }
 
+    /* Android skaliert die Box mit --dpr (siehe "html.is-android #status-box"): Popover unter die tatsächliche Unterkante (Box oben 18 px) */
+    html.is-android #data-info-popover {
+        top: calc(18px + 48px * var(--dpr, 1) + 0.5rem);
+        max-height: calc(100dvh - 18px - 48px * var(--dpr, 1) - 1.5rem);
+    }
+
     /* Touch-Ziele im Popover */
     #data-info-popover a,
     #data-info-popover button {
