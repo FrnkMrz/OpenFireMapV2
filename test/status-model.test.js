@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DACHLILU_IDS, buildDachRows, cadence, buildRegionRows, buildRows, summarize, timelineRows
+  DACHLILU_IDS, buildDachRows, cadence, buildRegionRows, buildRows, runDownloads, summarize, timelineRows
 } from '../src/js/status/model.js';
 
 // Aufbau wie eu/regions.json und metadata.json der Pipeline (gekürzt)
@@ -307,5 +307,28 @@ describe('cadence', () => {
     expect(noDach.dach.lastMs).toBeNull();
     expect(noDach.eu.regions).toBe(8);
     expect(cadence([], null)).toEqual({ dach: { lastMs: null }, eu: { regions: 0, lastMs: null, oldestMs: null } });
+  });
+});
+
+describe('runDownloads', () => {
+  it('unterscheidet Download, Cache und Rückfall nach dem Status des Builders', () => {
+    const md = metadata();
+    md.extracts.germany.status = 'cached_head_ok';
+    md.extracts.austria.status = 'downloaded_dated';
+    md.extracts.switzerland.status = 'cached_head_failed';
+    md.extracts.luxembourg.status = 'fallback_after_error';
+    md.extracts.liechtenstein.status = 'fresh_download';
+    expect(runDownloads(md).map((d) => [d.id, d.kind])).toEqual([
+      ['germany', 'cached'], ['austria', 'downloaded'], ['switzerland', 'fallback'], ['luxembourg', 'fallback'], ['liechtenstein', 'downloaded']
+    ]);
+  });
+
+  it('behandelt fehlenden oder fremden Status als unbekannt und übersteht kaputte Metadaten', () => {
+    const md = metadata();
+    md.extracts.germany.status = 'toString';
+    expect(runDownloads(md)[0]).toMatchObject({ id: 'germany', kind: 'unknown', sizeMb: 10, nameDe: 'Deutschland' });
+    expect(runDownloads(md)[1].kind).toBe('unknown');
+    for (const bad of [null, undefined, {}, { extracts: [] }, { extracts: 'x' }]) expect(runDownloads(bad)).toEqual([]);
+    expect(runDownloads({ extracts: { germany: null, poland: { name: 'Polen' } } })).toEqual([{ id: 'poland', nameDe: 'Polen', sizeMb: null, kind: 'unknown' }]);
   });
 });

@@ -9,7 +9,7 @@
  */
 
 import { loadPipelineData } from './load.js';
-import { buildRows, cadence, summarize, timelineRows } from './model.js';
+import { buildRows, cadence, runDownloads, summarize, timelineRows } from './model.js';
 import { LANGS, LANG_KEY, TEXTS, countryName, createFormatters, detectLang } from './texts.js';
 import { renderDensity, renderRunBar, renderTimeline } from './charts.js';
 import population from '../../data/status-population.json';
@@ -251,12 +251,30 @@ function renderRun() {
     kpiCard(t('r_pm'), f.sec(md.pmtiles.duration_sec), '', true),
     kpiCard(t('r_sz'), `${f.mb(md.pmtiles.size_mb)} MB`, '', true));
   renderRunBar($('#st-runbar'), { download_sec: md.timings.download_sec, extraction_sec: md.timings.extraction_sec }, { t, fmt: f });
-  const extracts = Object.entries(md.extracts || {}).map(([id, ex]) => ({ id, nameDe: ex.name || id, ex }));
-  $('#st-extracts tbody').replaceChildren(...extracts.map(({ id, nameDe, ex }) => h('tr', { 'data-key': id },
-    h('td', { class: 'l' }, name({ id, nameDe })),
-    h('td', {}, dash(ex.size_mb, f.d1)),
-    h('td', {}, dash(ex.osm_data_timestamp, f.dt)),
-    h('td', {}, dash(ex.mtime, f.dt)))));
+  const downloads = runDownloads(md);
+  const label = (d) => `${name(d)} (${f.d1(d.sizeMb)} MB)`;
+  const sentence = (kind, key) => {
+    const list = downloads.filter((d) => d.kind === kind);
+    return list.length ? `${t(key)}${list.map((d) => (d.sizeMb == null ? name(d) : label(d))).join(', ')}.` : '';
+  };
+  const knownKinds = downloads.filter((d) => d.kind !== 'unknown');
+  // "Nichts neuer": nur wenn für JEDEN Auszug bekannt ist, dass die Prüfung bei Geofabrik gelang (Cache ok); bei Rückfall oder
+  // unbekanntem Status wäre der Satz nicht belegt.
+  const nothingNewer = downloads.length > 0 && downloads.every((d) => d.kind === 'cached');
+  $('#st-run-dl').textContent = !knownKinds.length ? '' : [
+    sentence('downloaded', 'rd_downloaded') || (nothingNewer ? t('rd_none') : ''),
+    sentence('cached', 'rd_cached'),
+    sentence('fallback', 'rd_fallback')
+  ].filter(Boolean).join(' ');
+  $('#st-extracts tbody').replaceChildren(...downloads.map((d) => {
+    const ex = md.extracts[d.id];
+    return h('tr', { 'data-key': d.id },
+      h('td', { class: 'l' }, name(d)),
+      h('td', {}, dash(ex.size_mb, f.d1)),
+      h('td', {}, dash(ex.osm_data_timestamp, f.dt)),
+      h('td', {}, dash(ex.mtime, f.dt)),
+      h('td', {}, t(`xs_${d.kind}`)));
+  }));
 }
 
 function renderNotes() {

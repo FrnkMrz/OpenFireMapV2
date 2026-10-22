@@ -229,6 +229,8 @@ td.bar { background: linear-gradient(to right, color-mix(in srgb, var(--fg) 14%,
     font-size: 0.8rem; border-radius: 6px; white-space: nowrap; overflow: hidden; min-width: 0;
 }
 
+.st-rundl { margin: 0.5rem 0 0.75rem; }
+
 .st-notes { display: grid; gap: 0.35rem; }
 
 @media (max-width: 560px) {

@@ -221,3 +221,32 @@ export function cadence(rows, metadata) {
     }
   };
 }
+
+/** Status eines Auszugs im Builder (`extracts.<land>.status` in metadata.json) -> Art des Bezugs in diesem Lauf. */
+const DOWNLOAD_KIND = {
+  fresh_download: 'downloaded',
+  downloaded_dated: 'downloaded',
+  cached_head_ok: 'cached',
+  cached_head_failed: 'fallback',
+  fallback_after_error: 'fallback'
+};
+
+/**
+ * Was der letzte Lauf je Geofabrik-Auszug getan hat: `downloaded` (neu geladen), `cached` (Geofabrik unverändert,
+ * Auszug aus dem Cache) oder `fallback` (Geofabrik nicht erreichbar, älterer Auszug weiterverwendet); alles andere
+ * (fehlender oder unbekannter Status) ist `unknown`. Reihenfolge: DACHLiLu-Länder, dann der Rest wie in metadata.json.
+ * @returns {{id: string, nameDe: string, sizeMb: number|null, kind: string}[]}
+ */
+export function runDownloads(metadata) {
+  const extracts = metadata?.extracts && typeof metadata.extracts === 'object' && !Array.isArray(metadata.extracts) ? metadata.extracts : {};
+  const ids = [...DACHLILU_IDS.filter((id) => id in extracts), ...Object.keys(extracts).filter((id) => !DACHLILU_IDS.includes(id))];
+  return ids.filter((id) => extracts[id] && typeof extracts[id] === 'object').map((id) => {
+    const ex = extracts[id];
+    return {
+      id,
+      nameDe: typeof ex.name === 'string' ? ex.name : id,
+      sizeMb: isNum(ex.size_mb) ? ex.size_mb : null,
+      kind: Object.hasOwn(DOWNLOAD_KIND, ex.status) ? DOWNLOAD_KIND[ex.status] : 'unknown'
+    };
+  });
+}
