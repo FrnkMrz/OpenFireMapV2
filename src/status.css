@@ -226,8 +226,10 @@ td.bar { background: linear-gradient(to right, color-mix(in srgb, var(--fg) 14%,
 .st-runbar { display: flex; gap: 2px; height: 2.2rem; }
 .st-runbar > div {
     display: flex; align-items: center; padding: 0 0.6rem; color: #fff;
-    font-size: 0.8rem; border-radius: 6px; white-space: nowrap; overflow: hidden; min-width: 0;
+    font-size: 0.8rem; border-radius: 6px; white-space: nowrap; overflow: hidden; min-width: max-content;
 }
+
+.st-rundl { margin: 0.5rem 0 0.75rem; }
 
 .st-notes { display: grid; gap: 0.35rem; }
 
