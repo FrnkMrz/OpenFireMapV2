@@ -345,6 +345,42 @@ test.describe('Dialoge: Fokus, Tab-Falle, Escape', () => {
         await expect(page.locator('#mobile-burger-btn')).toBeFocused();
         await context.close();
     });
+
+    test('Mobil: Tipp auf die Status-Box öffnet die Datenstand-Details mit Link zur Statusseite', async ({ browser }) => {
+        const context = await browser.newContext({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+        const page = await context.newPage();
+        await gotoReady(page);
+        const box = page.locator('#status-box');
+        const btn = page.locator('#data-info-btn');
+        // Der Button liegt über der ganzen Box (Tipp-Fläche = Box), bleibt aber für Screenreader benannt
+        const [b, t] = await Promise.all([box.boundingBox(), btn.boundingBox()]);
+        expect(t.width).toBeGreaterThanOrEqual(b.width - 4);
+        expect(t.height).toBeGreaterThanOrEqual(b.height - 4);
+        await expect(btn).toHaveAccessibleName(/\S/);
+
+        await box.tap();
+        const popover = page.locator('#data-info-popover');
+        await expect(popover).toBeVisible();
+        await expect(btn).toHaveAttribute('aria-expanded', 'true');
+        const link = page.locator('#data-info-status-link');
+        await expect(link).toHaveAttribute('href', '/status/');
+        await expect(link).toBeVisible();
+        // Popover liegt komplett im Fenster und das Tippziel des Links ist mindestens 44 px hoch
+        const pb = await popover.boundingBox();
+        expect(pb.x).toBeGreaterThanOrEqual(0);
+        expect(pb.x + pb.width).toBeLessThanOrEqual(375);
+        expect(pb.y + pb.height).toBeLessThanOrEqual(812);
+        expect((await link.boundingBox()).height).toBeGreaterThanOrEqual(44);
+
+        await page.keyboard.press('Escape');
+        await expect(popover).toBeHidden();
+        await expect(btn).toBeFocused();
+        await box.tap();
+        await expect(popover).toBeVisible();
+        await box.tap();
+        await expect(popover).toBeHidden();
+        await context.close();
+    });
 });
 
 test.describe('Live-Regionen', () => {
