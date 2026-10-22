@@ -257,9 +257,10 @@ function renderRun() {
     const list = downloads.filter((d) => d.kind === kind);
     return list.length ? `${t(key)}${list.map((d) => (d.sizeMb == null ? name(d) : label(d))).join(', ')}.` : '';
   };
-  const knownKinds = downloads.filter((d) => d.kind !== 'unknown').map((d) => d.kind);
-  // "Nichts neuer": nur wenn bei Geofabrik jede Prüfung gelang; bei Rückfall-Auszügen wäre das ein Widerspruch zur Fehlermeldung.
-  const nothingNewer = knownKinds.length > 0 && knownKinds.every((k) => k === 'cached');
+  const knownKinds = downloads.filter((d) => d.kind !== 'unknown');
+  // "Nichts neuer": nur wenn für JEDEN Auszug bekannt ist, dass die Prüfung bei Geofabrik gelang (Cache ok); bei Rückfall oder
+  // unbekanntem Status wäre der Satz nicht belegt.
+  const nothingNewer = downloads.length > 0 && downloads.every((d) => d.kind === 'cached');
   $('#st-run-dl').textContent = !knownKinds.length ? '' : [
     sentence('downloaded', 'rd_downloaded') || (nothingNewer ? t('rd_none') : ''),
     sentence('cached', 'rd_cached'),
