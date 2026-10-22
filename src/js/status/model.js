@@ -198,3 +198,26 @@ export function timelineRows(rows) {
     .filter((r) => r.osmMs != null && r.uploadMs != null)
     .sort((a, b) => b.uploadMs - a.uploadMs || (b.hydrants ?? 0) - (a.hydrants ?? 0) || a.id.localeCompare(b.id));
 }
+
+/**
+ * Rhythmus und letzter Lauf: Die fünf DACHLiLu-Länder entstehen in einem gemeinsamen, täglich geprüften Build,
+ * alle übrigen Länder einzeln einmal pro Woche. "Letzter Lauf" ist die letzte Veröffentlichung (Upload).
+ * metadata: die geprüfte metadata.json des DACHLiLu-Builds (oder null).
+ */
+export function cadence(rows, metadata) {
+  const times = (list) => list.map((r) => r.uploadMs).filter((v) => v != null);
+  // Der Lauf des gemeinsamen Builds steht in metadata.json selbst; er gilt auch dann, wenn dort einzelne Auszüge fehlen
+  // und deshalb keine Länder-Zeilen entstehen. Ohne metadata.json bleibt die Zeit der Länder-Zeilen als Rückfall.
+  const generated = toMs(metadata?.generated_at);
+  const dach = generated != null ? [generated] : times(rows.filter((r) => r.shared));
+  const eu = rows.filter((r) => !r.shared);
+  const euTimes = times(eu);
+  return {
+    dach: { lastMs: dach.length ? Math.max(...dach) : null },
+    eu: {
+      regions: eu.length,
+      lastMs: euTimes.length ? Math.max(...euTimes) : null,
+      oldestMs: euTimes.length ? Math.min(...euTimes) : null
+    }
+  };
+}
