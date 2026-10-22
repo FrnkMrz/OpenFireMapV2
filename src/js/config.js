@@ -15,10 +15,16 @@
 
 import { DACHLILU_COVERAGE } from './coverage/dachlilu.js';
 
-// CARTO API-Key für Raster-Basemaps (Voyager, Positron, Dark). Verhindert das Wasserzeichen "API KEY REQUIRED".
-// Gehört in den Client-Code und ist damit öffentlich; Schutz nur über die Referrer-Beschränkung im CARTO-Dashboard.
+// CARTO API-Keys für Raster-Basemaps (Voyager, Positron, Dark). Verhindert das Wasserzeichen "API KEY REQUIRED".
+// Beide Keys gehören in den Client-Code und sind damit öffentlich; Schutz nur über die Referrer-Beschränkung im
+// CARTO-Dashboard. CARTO erlaubt localhost nicht auf dem Produktions-Key, darum gibt es einen eigenen Entwicklungs-Key:
+// - Produktion: nur openfiremap.org und *.openfiremap.org
+// - Entwicklung: nur localhost:5173 (`npm run dev`, Vitest, Playwright); `npm run preview` nutzt den Produktions-Key
+//   und zeigt die CARTO-Ebenen deshalb nicht an
 // Als Konstante, weil ein Objektliteral sich nicht selbst referenzieren kann.
-const CARTO_API_KEY = "cb1_3rhl_1_c46f6032a1460d7cdb99badc";
+const CARTO_API_KEY_PROD = "cb1_3rhl_1_c46f6032a1460d7cdb99badc";
+const CARTO_API_KEY_DEV = "cb1_3rhl_2_871839cfa0266fa0775520b8";
+const CARTO_API_KEY = import.meta.env?.DEV === true ? CARTO_API_KEY_DEV : CARTO_API_KEY_PROD;
 
 export const Config = {
   // ----------------------------------------------------------------------------------------
