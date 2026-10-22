@@ -257,9 +257,11 @@ function renderRun() {
     const list = downloads.filter((d) => d.kind === kind);
     return list.length ? `${t(key)}${list.map((d) => (d.sizeMb == null ? name(d) : label(d))).join(', ')}.` : '';
   };
-  const knownKinds = downloads.some((d) => d.kind !== 'unknown');
-  $('#st-run-dl').textContent = !knownKinds ? '' : [
-    sentence('downloaded', 'rd_downloaded') || (downloads.some((d) => d.kind === 'cached') ? t('rd_none') : ''),
+  const knownKinds = downloads.filter((d) => d.kind !== 'unknown').map((d) => d.kind);
+  // "Nichts neuer": nur wenn bei Geofabrik jede Prüfung gelang; bei Rückfall-Auszügen wäre das ein Widerspruch zur Fehlermeldung.
+  const nothingNewer = knownKinds.length > 0 && knownKinds.every((k) => k === 'cached');
+  $('#st-run-dl').textContent = !knownKinds.length ? '' : [
+    sentence('downloaded', 'rd_downloaded') || (nothingNewer ? t('rd_none') : ''),
     sentence('cached', 'rd_cached'),
     sentence('fallback', 'rd_fallback')
   ].filter(Boolean).join(' ');
