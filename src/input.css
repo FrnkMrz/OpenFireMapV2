@@ -339,6 +339,11 @@ body {
     display: none;
 }
 
+/* Zielgröße mindestens 24 x 24 CSS-Pixel (WCAG 2.5.8): der Button ist nur eine Textzeile hoch */
+#data-info-btn {
+    min-height: 24px;
+}
+
 @media (min-width: 769px) {
     #desktop-status-dock {
         position: absolute;
@@ -545,4 +550,67 @@ html.is-android .layer-btn {
     font-size: calc(16px * var(--dpr, 1));
     padding-top: calc(10px * var(--dpr, 1));
     padding-bottom: calc(10px * var(--dpr, 1));
+}
+
+/* ZOOM & KLEINE FENSTERHÖHE (WCAG 1.4.10 Reflow, 2.1.1)
+   ========================================================================== */
+/* Bei 400 % Zoom schrumpft das Fenster auf ca. 320 x 256 CSS-Pixel, und body hat overflow: hidden.
+   Menüs und Dialoge, die höher sind als der Platz unter ihrer Oberkante, werden darum selbst
+   scrollbar: Höhe = Fensterhöhe minus Oberkante minus 1 rem Rand (vh als Rückfall, dvh wo bekannt).
+   Das Aussehen bei normaler Höhe bleibt gleich, weil die Grenze dort nie greift.
+   Das Info-&-Recht-Fenster (#legal-modal) scrollt bereits in seinem Inhalt. */
+#mobile-menu,
+#layer-menu,
+#export-menu,
+#data-info-popover {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+#mobile-menu {
+    max-height: calc(100vh - 74px - 1rem);
+}
+
+#layer-menu,
+#export-menu {
+    max-height: calc(100vh - 5rem - 1rem);
+}
+
+/* Das Ebenenmenü sitzt 7 rem vom linken Rand: auf 320 px schmaler, statt rechts abgeschnitten zu werden */
+#layer-menu {
+    max-width: calc(100vw - 7rem - 0.5rem);
+}
+
+#export-menu,
+#legal-modal {
+    max-width: calc(100vw - 2.5rem);
+}
+
+/* Datenstand-Popover: wächst im Dock nach oben (Statusbox ca. 6,5 rem hoch + Dock-Rand 2,5 rem + Abstand),
+   im Mobile-UI-Modus hängt es unter der Statusbox (top 5,75 rem) */
+#data-info-popover {
+    max-height: calc(100vh - 11rem);
+}
+
+html.ofm-mobile-ui #data-info-popover {
+    max-height: calc(100vh - 5.75rem - 1rem);
+}
+
+@supports (height: 100dvh) {
+    #mobile-menu {
+        max-height: calc(100dvh - 74px - 1rem);
+    }
+
+    #layer-menu,
+    #export-menu {
+        max-height: calc(100dvh - 5rem - 1rem);
+    }
+
+    #data-info-popover {
+        max-height: calc(100dvh - 11rem);
+    }
+
+    html.ofm-mobile-ui #data-info-popover {
+        max-height: calc(100dvh - 5.75rem - 1rem);
+    }
 }

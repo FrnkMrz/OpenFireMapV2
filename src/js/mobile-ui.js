@@ -10,15 +10,14 @@
  */
 
 (function initMobileUI() {
-  const isMobile =
+  // Touch-Gerät oder schmales Fenster (auch durch Browser-Zoom: 400 % Zoom macht aus 1440 px ca. 360 px)
+  const isMobileNow = () =>
     window.matchMedia?.('(pointer: coarse)').matches ||
     navigator.maxTouchPoints > 0 ||
     window.innerWidth < 1370;
 
-  if (!isMobile) return;
-
-  // Marker für CSS: Mobile-UI aktiv (z. B. blendet die Desktop-only Datenstand-Details aus)
-  document.documentElement.classList.add('ofm-mobile-ui');
+  // Läuft die Mobile-Oberfläche gerade? Der Wechsel geht zur Laufzeit in beide Richtungen (siehe syncLayout).
+  let mobileActive = false;
 
   // ---------------------------
   // Helpers
@@ -44,7 +43,11 @@
     // Nur schließen, wenn sichtbar
     if (layerMenu && !isHidden(layerMenu)) hide(layerMenu);
     if (exportMenu && !isHidden(exportMenu)) hide(exportMenu);
-    if (legalModal && !isHidden(legalModal)) hide(legalModal);
+    // Info & Recht öffnet und schließt ui.js über style.display (flex/none), nicht über die Klasse "hidden":
+    // das Inline-display überstimmt die Klasse, also hier genauso schließen (registerDialog räumt inert/Fokus auf).
+    if (legalModal && legalModal.style.display !== '' && legalModal.style.display !== 'none') {
+      legalModal.style.display = 'none';
+    }
 
     // aria state (falls vorhanden)
     $('layer-btn-trigger')?.setAttribute('aria-expanded', 'false');
@@ -148,7 +151,9 @@
       dock.style.left = '50%';
       dock.style.bottom = '32px';
       dock.style.transform = 'translateX(-50%)';
-      dock.style.zIndex = '2500';
+      // Unter den Menüs und Dialogen (Ebenen 1001, Info & Recht 2000, Menü 2500), sonst verdeckt der Button bei
+      // kleiner Fensterhöhe (400 % Zoom) deren untere Einträge.
+      dock.style.zIndex = '1000';
       dock.style.pointerEvents = 'auto';
       document.body.appendChild(dock);
     }
@@ -190,17 +195,77 @@
   // ---------------------------
   // Desktop ausblenden / Mobile einblenden
   // ---------------------------
-  hide(desktopControls);
-  if (desktopLegalBtn) hide(desktopLegalBtn.parentElement || desktopLegalBtn);
+  function applyMobileLayout() {
+    // Marker für CSS: Mobile-UI aktiv (z. B. blendet die Desktop-only Datenstand-Details aus)
+    document.documentElement.classList.add('ofm-mobile-ui');
 
-  fixIPadVisibility();
-  show(mobileControls);
+    hide(desktopControls);
+    if (desktopLegalBtn) hide(desktopLegalBtn.parentElement || desktopLegalBtn);
 
-  moveLocateToBottomCenter();
+    fixIPadVisibility();
+    show(mobileControls);
 
-  alignBurgerAndStatusTop();
+    moveLocateToBottomCenter();
+    const dock = $('mobile-locate-dock');
+    if (dock) dock.style.display = '';
 
-  if (mobileClose) hide(mobileClose);
+    alignBurgerAndStatusTop();
+
+    if (mobileClose) hide(mobileClose);
+
+    closeDataInfoPopover();
+  }
+
+  // Das Datenstand-Popover einer offenen Desktop-Ansicht schließen (wie closeDataInfoPopover() in data-status.js):
+  // Beim Wechsel der Oberfläche wandert es (Dock unten rechts <-> unter die Status-Box oben rechts); offen gelassen
+  // stünde es nach dem Zurückzoomen unerwartet wieder da, und der Fokus läge in einem Popover an anderer Stelle.
+  function closeDataInfoPopover() {
+    const popover = $('data-info-popover');
+    if (!popover || isHidden(popover)) return;
+    // Fokus gilt auch dann als verloren, wenn er auf body liegt (das Popover war offen, ein Layoutwechsel kann ihn lösen).
+    const active = document.activeElement;
+    const focusLost = !active || active === document.body || popover.contains(active);
+    hide(popover);
+    const trigger = $('data-info-btn');
+    trigger?.setAttribute('aria-expanded', 'false');
+    // Fokus nicht verlieren: zurück auf den Auslöser, wenn er sichtbar ist (Zeile ab 769 px, auf Phones der Button über der
+    // Status-Box), sonst auf den Burger-Button
+    if (focusLost) {
+      const target = trigger && trigger.getClientRects().length ? trigger : mobileBurger;
+      target.focus();
+    }
+  }
+
+  // Rückweg: Desktop-Oberfläche wiederherstellen (Fenster wieder breit, z. B. Zoom zurück oder Tablet gedreht)
+  function applyDesktopLayout() {
+    document.documentElement.classList.remove('ofm-mobile-ui');
+    show(desktopControls);
+    if (desktopLegalBtn) show(desktopLegalBtn.parentElement || desktopLegalBtn);
+    hide(mobileControls);
+
+    // md:hidden wiederherstellen für Desktop
+    const targets = ['mobile-controls', 'mobile-menu', 'mobile-search-modal'];
+    targets.forEach(id => $(id)?.classList.add('md:hidden'));
+
+    closeMobileMenu();
+    closeMobileSearch();
+    closeDesktopPopupMenus();
+
+    // Der Standort-Button hängt in einem eigenen Dock außerhalb von #mobile-controls
+    const dock = $('mobile-locate-dock');
+    if (dock) dock.style.display = 'none';
+
+    // Reset mobile-specific styles for status box
+    const status = document.getElementById('status-box');
+    if (status) {
+      status.style.top = '';
+      status.style.bottom = '';
+      status.style.right = '';
+      status.style.position = '';
+      status.style.marginTop = '';
+      status.style.zIndex = '';
+    }
+  }
 
   // ---------------------------
   // Burger Menü
@@ -364,38 +429,17 @@
   }
 
   // ---------------------------
-  // Robustheit bei Rotation / Resize:
-  // - Wenn User plötzlich "Desktop" wird (z.B. Tablet), kehren wir zurück.
+  // Robustheit bei Rotation / Resize / Browser-Zoom:
+  // Der Layout-Wechsel läuft in beide Richtungen. Auf Desktop bleibt ohne Wechsel alles unberührt.
   // ---------------------------
-  window.addEventListener('resize', () => {
-    const nowMobile =
-      window.matchMedia?.('(pointer: coarse)').matches ||
-      navigator.maxTouchPoints > 0 ||
-      window.innerWidth < 1370;
+  function syncLayout() {
+    const nowMobile = isMobileNow();
+    if (nowMobile === mobileActive) return;
+    mobileActive = nowMobile;
+    if (nowMobile) applyMobileLayout();
+    else applyDesktopLayout();
+  }
 
-    if (!nowMobile) {
-      document.documentElement.classList.remove('ofm-mobile-ui');
-      // Desktop wieder herstellen
-      show(desktopControls);
-      if (desktopLegalBtn) show(desktopLegalBtn.parentElement || desktopLegalBtn);
-      hide(mobileControls);
-
-      // md:hidden wiederherstellen für Desktop
-      const targets = ['mobile-controls', 'mobile-menu', 'mobile-search-modal'];
-      targets.forEach(id => $(id)?.classList.add('md:hidden'));
-
-      closeMobileMenu();
-      closeDesktopPopupMenus();
-
-      // Reset mobile-specific styles for status box
-      const status = document.getElementById('status-box');
-      if (status) {
-        status.style.top = '';
-        status.style.bottom = '';
-        status.style.right = '';
-        status.style.position = '';
-        status.style.marginTop = '';
-      }
-    }
-  });
+  window.addEventListener('resize', syncLayout);
+  syncLayout();
 })();
