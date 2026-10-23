@@ -270,7 +270,7 @@ export function toggleDataInfoPopover(show) {
 }
 
 /**
- * Initialisiert die Event-Listener für das Datenstand-Popover (Desktop).
+ * Initialisiert die Event-Listener für das Datenstand-Popover.
  */
 export function initDataStatusUI() {
   const btn = document.getElementById('data-info-btn');
