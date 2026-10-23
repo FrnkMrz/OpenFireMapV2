@@ -170,8 +170,9 @@ test.describe('Zoom nach dem Laden (Wechsel Desktop <-> mobile Oberfläche)', ()
         await expect(page.locator('#mobile-burger-btn')).toBeVisible();
         await expect(page.locator('#data-info-popover')).toHaveClass(/hidden/);
         await expect(page.locator('#data-info-btn')).toHaveAttribute('aria-expanded', 'false');
-        // Der Fokus lag im Popover und ist nicht verloren, sondern auf einem sichtbaren Element
-        await expect(page.locator('#mobile-burger-btn')).toBeFocused();
+        // Der Fokus lag im Popover und ist nicht verloren, sondern auf einem sichtbaren Element: dem Auslöser,
+        // der auf dem Handy unsichtbar über der Status-Box liegt (PR 97)
+        await expect(page.locator('#data-info-btn')).toBeFocused();
 
         await page.setViewportSize({ width: 1440, height: 900 });
         await expect(page.locator('#desktop-controls')).toBeVisible();

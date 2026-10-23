@@ -198,3 +198,55 @@ export function timelineRows(rows) {
     .filter((r) => r.osmMs != null && r.uploadMs != null)
     .sort((a, b) => b.uploadMs - a.uploadMs || (b.hydrants ?? 0) - (a.hydrants ?? 0) || a.id.localeCompare(b.id));
 }
+
+/**
+ * Rhythmus und letzter Lauf: Die fünf DACHLiLu-Länder entstehen in einem gemeinsamen, täglich geprüften Build,
+ * alle übrigen Länder einzeln einmal pro Woche. "Letzter Lauf" ist die letzte Veröffentlichung (Upload).
+ * metadata: die geprüfte metadata.json des DACHLiLu-Builds (oder null).
+ */
+export function cadence(rows, metadata) {
+  const times = (list) => list.map((r) => r.uploadMs).filter((v) => v != null);
+  // Der Lauf des gemeinsamen Builds steht in metadata.json selbst; er gilt auch dann, wenn dort einzelne Auszüge fehlen
+  // und deshalb keine Länder-Zeilen entstehen. Ohne metadata.json bleibt die Zeit der Länder-Zeilen als Rückfall.
+  const generated = toMs(metadata?.generated_at);
+  const dach = generated != null ? [generated] : times(rows.filter((r) => r.shared));
+  const eu = rows.filter((r) => !r.shared);
+  const euTimes = times(eu);
+  return {
+    dach: { lastMs: dach.length ? Math.max(...dach) : null },
+    eu: {
+      regions: eu.length,
+      lastMs: euTimes.length ? Math.max(...euTimes) : null,
+      oldestMs: euTimes.length ? Math.min(...euTimes) : null
+    }
+  };
+}
+
+/** Status eines Auszugs im Builder (`extracts.<land>.status` in metadata.json) -> Art des Bezugs in diesem Lauf. */
+const DOWNLOAD_KIND = {
+  fresh_download: 'downloaded',
+  downloaded_dated: 'downloaded',
+  cached_head_ok: 'cached',
+  cached_head_failed: 'fallback',
+  fallback_after_error: 'fallback'
+};
+
+/**
+ * Was der letzte Lauf je Geofabrik-Auszug getan hat: `downloaded` (neu geladen), `cached` (Geofabrik unverändert,
+ * Auszug aus dem Cache) oder `fallback` (Geofabrik nicht erreichbar, älterer Auszug weiterverwendet); alles andere
+ * (fehlender oder unbekannter Status) ist `unknown`. Reihenfolge: DACHLiLu-Länder, dann der Rest wie in metadata.json.
+ * @returns {{id: string, nameDe: string, sizeMb: number|null, kind: string}[]}
+ */
+export function runDownloads(metadata) {
+  const extracts = metadata?.extracts && typeof metadata.extracts === 'object' && !Array.isArray(metadata.extracts) ? metadata.extracts : {};
+  const ids = [...DACHLILU_IDS.filter((id) => id in extracts), ...Object.keys(extracts).filter((id) => !DACHLILU_IDS.includes(id))];
+  return ids.filter((id) => extracts[id] && typeof extracts[id] === 'object').map((id) => {
+    const ex = extracts[id];
+    return {
+      id,
+      nameDe: typeof ex.name === 'string' ? ex.name : id,
+      sizeMb: isNum(ex.size_mb) ? ex.size_mb : null,
+      kind: Object.hasOwn(DOWNLOAD_KIND, ex.status) ? DOWNLOAD_KIND[ex.status] : 'unknown'
+    };
+  });
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DACHLILU_IDS, buildDachRows, buildRegionRows, buildRows, summarize, timelineRows
+  DACHLILU_IDS, buildDachRows, cadence, buildRegionRows, buildRows, runDownloads, summarize, timelineRows
 } from '../src/js/status/model.js';
 
 // Aufbau wie eu/regions.json und metadata.json der Pipeline (gekürzt)
@@ -274,5 +274,61 @@ describe('timelineRows', () => {
 
   it('lässt Länder ohne Zeitstempel aus', () => {
     expect(timelineRows([{ id: 'x', osmMs: null, uploadMs: 5 }])).toEqual([]);
+  });
+});
+
+describe('cadence', () => {
+  const { rows } = buildRows({ manifest: manifest(), metadata: metadata(), snapshot, population: { populationM: pop } });
+  const c = cadence(rows, metadata());
+
+  it('nennt den letzten Lauf des gemeinsamen DACHLiLu-Builds', () => {
+    expect(c.dach.lastMs).toBe(Date.parse('2026-10-19T05:59:26.477688+00:00'));
+  });
+
+  it('nennt für die übrigen Länder Anzahl, letzten Lauf und älteste Karte', () => {
+    expect(c.eu.regions).toBe(8);
+    expect(c.eu.lastMs).toBe(Date.parse('2026-10-19T01:00:00+00:00'));      // Malta
+    expect(c.eu.oldestMs).toBe(Date.parse('2026-10-18T01:00:00.123+00:00')); // die übrigen
+  });
+
+  it('liest den DACHLiLu-Lauf direkt aus metadata.json, auch wenn dort keine Auszüge stehen', () => {
+    const md = { ...metadata(), extracts: {} };
+    const out = buildRows({ manifest: manifest(), metadata: md, snapshot, population: { populationM: pop } });
+    expect(out.rows.some((r) => r.shared)).toBe(false);            // keine Länder-Zeilen
+    expect(cadence(out.rows, md).dach.lastMs).toBe(Date.parse('2026-10-19T05:59:26.477688+00:00'));
+    // ohne metadata.json bleibt die Zeit der gemeinsamen Zeilen als Rückfall, sonst nichts
+    expect(cadence(rows, null).dach.lastMs).toBe(Date.parse('2026-10-19T05:59:26.477688+00:00'));
+    expect(cadence([], null).dach.lastMs).toBeNull();
+  });
+
+  it('rechnet DACHLiLu nicht in die Länder-Dateien ein und umgekehrt', () => {
+    expect(c.eu.lastMs).toBeLessThan(c.dach.lastMs);
+    const noDach = cadence(rows.filter((r) => !r.shared), null);
+    expect(noDach.dach.lastMs).toBeNull();
+    expect(noDach.eu.regions).toBe(8);
+    expect(cadence([], null)).toEqual({ dach: { lastMs: null }, eu: { regions: 0, lastMs: null, oldestMs: null } });
+  });
+});
+
+describe('runDownloads', () => {
+  it('unterscheidet Download, Cache und Rückfall nach dem Status des Builders', () => {
+    const md = metadata();
+    md.extracts.germany.status = 'cached_head_ok';
+    md.extracts.austria.status = 'downloaded_dated';
+    md.extracts.switzerland.status = 'cached_head_failed';
+    md.extracts.luxembourg.status = 'fallback_after_error';
+    md.extracts.liechtenstein.status = 'fresh_download';
+    expect(runDownloads(md).map((d) => [d.id, d.kind])).toEqual([
+      ['germany', 'cached'], ['austria', 'downloaded'], ['switzerland', 'fallback'], ['luxembourg', 'fallback'], ['liechtenstein', 'downloaded']
+    ]);
+  });
+
+  it('behandelt fehlenden oder fremden Status als unbekannt und übersteht kaputte Metadaten', () => {
+    const md = metadata();
+    md.extracts.germany.status = 'toString';
+    expect(runDownloads(md)[0]).toMatchObject({ id: 'germany', kind: 'unknown', sizeMb: 10, nameDe: 'Deutschland' });
+    expect(runDownloads(md)[1].kind).toBe('unknown');
+    for (const bad of [null, undefined, {}, { extracts: [] }, { extracts: 'x' }]) expect(runDownloads(bad)).toEqual([]);
+    expect(runDownloads({ extracts: { germany: null, poland: { name: 'Polen' } } })).toEqual([{ id: 'poland', nameDe: 'Polen', sizeMb: null, kind: 'unknown' }]);
   });
 });

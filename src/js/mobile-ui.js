@@ -217,19 +217,19 @@
   }
 
   // Das Datenstand-Popover einer offenen Desktop-Ansicht schließen (wie closeDataInfoPopover() in data-status.js):
-  // Unter 769 px blendet nur die Media Query es aus, die Klasse "hidden" und aria-expanded blieben sonst stehen,
-  // der Fokus hinge im unsichtbaren Popover und beim Zurückzoomen stünde es wieder da.
+  // Beim Wechsel der Oberfläche wandert es (Dock unten rechts <-> unter die Status-Box oben rechts); offen gelassen
+  // stünde es nach dem Zurückzoomen unerwartet wieder da, und der Fokus läge in einem Popover an anderer Stelle.
   function closeDataInfoPopover() {
     const popover = $('data-info-popover');
     if (!popover || isHidden(popover)) return;
-    // Die Media Query blendet das Popover schon vor dem resize-Ereignis aus; dann ist der Fokus bereits auf body gefallen.
-    // Fokus gilt darum auch als verloren, wenn er auf body liegt (das Popover war offen).
+    // Fokus gilt auch dann als verloren, wenn er auf body liegt (das Popover war offen, ein Layoutwechsel kann ihn lösen).
     const active = document.activeElement;
     const focusLost = !active || active === document.body || popover.contains(active);
     hide(popover);
     const trigger = $('data-info-btn');
     trigger?.setAttribute('aria-expanded', 'false');
-    // Fokus nicht verlieren: zurück auf den Auslöser, wenn er sichtbar ist (ab 769 px), sonst auf den Burger-Button
+    // Fokus nicht verlieren: zurück auf den Auslöser, wenn er sichtbar ist (Zeile ab 769 px, auf Phones der Button über der
+    // Status-Box), sonst auf den Burger-Button
     if (focusLost) {
       const target = trigger && trigger.getClientRects().length ? trigger : mobileBurger;
       target.focus();

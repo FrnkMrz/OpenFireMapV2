@@ -333,7 +333,8 @@ body {
 /* =========================
    Desktop Status Dock (unten rechts)
    ========================= */
-/* Auf Phones (<= 768 px) gibt es die Datenstand-Details nicht; ab 769 px wird die Zeile eingeblendet */
+/* Ab 769 px steht die Zeile "Datenstand-Details" in der Status-Box; auf Phones (<= 768 px) liegt derselbe Button
+   unsichtbar über der ganzen Box (siehe "Mobile Statusbox only"), ein Tipp auf die Box öffnet das Popover. */
 #data-info-row {
     display: none;
 }
@@ -381,12 +382,6 @@ body {
     }
 }
 
-@media (max-width: 768px) {
-    #data-info-popover {
-        display: none !important;
-    }
-}
-
 /* =========================
    Mobile Statusbox only
    ========================= */
@@ -419,6 +414,70 @@ body {
         display: none;
     }
 
+    /* Tipp auf die Status-Box öffnet die Datenstand-Details: derselbe Button wie am Desktop (gleiches ARIA, gleiche
+       Fokus-Rückgabe), nur unsichtbar über die ganze Box gelegt. Die Beschriftung bleibt für Screenreader erhalten. */
+    #data-info-row {
+        display: block;
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    #data-info-btn {
+        width: 100%;
+        height: 100%;
+        border-radius: 0.75rem;
+    }
+
+    /* Sichtbar bleibt nur die Box selbst; der Name des Buttons bleibt für Screenreader (und axe) erhalten */
+    #data-info-btn svg {
+        display: none;
+    }
+
+    /* überstimmt "#status-box span[data-i18n] { display: none }" von oben */
+    #status-box #data-info-btn span[data-i18n] {
+        display: inline;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    #data-info-btn:focus-visible {
+        outline: 2px solid #60a5fa;
+        outline-offset: -2px;
+        text-decoration: none;
+    }
+
+    /* Popover unter der Box (die Box sitzt im Mobile-UI oben rechts, siehe mobile-ui.js), über den Menüs */
+    #data-info-popover {
+        position: fixed;
+        top: 5.75rem;
+        right: 18px;
+        z-index: 3600;
+        width: min(20rem, calc(100vw - 36px));
+        max-height: calc(100dvh - 7rem);
+        overflow-y: auto;
+    }
+
+    /* Android skaliert die Box mit --dpr (siehe "html.is-android #status-box"): Popover unter die tatsächliche Unterkante (Box oben 18 px) */
+    html.is-android #data-info-popover {
+        top: calc(18px + 48px * var(--dpr, 1) + 0.5rem);
+        max-height: calc(100dvh - 18px - 48px * var(--dpr, 1) - 1.5rem);
+    }
+
+    /* Touch-Ziele im Popover */
+    #data-info-popover a,
+    #data-info-popover button {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
 }
 
 /* Status für den asynchronen Hydranten-Download. */

@@ -74,6 +74,39 @@ test.describe('Pipeline-Statusseite', () => {
         await expect(page.locator('#st-table tbody tr')).toHaveCount(11);
     });
 
+    test('sagt, wie oft aktualisiert wird und wann der letzte Lauf war', async ({ page }) => {
+        await mockPipeline(page);
+        await open(page);
+        const card = page.locator('#st-cadence');
+        await expect(card).toContainText('Täglich geprüft');
+        await expect(card).toContainText('Einmal pro Woche');
+        await expect(card).toContainText('Deutschland, Österreich, Schweiz, Luxemburg, Liechtenstein');
+        const dach = card.locator('article').first();
+        const eu = card.locator('article').nth(1);
+        await expect(dach).toContainText('19.10.2026 05:59');                 // Upload des gemeinsamen Builds
+        await expect(eu).toContainText('19.10.2026 01:00');                   // neueste Länder-Datei (Malta)
+        await expect(eu).toContainText('18.10.2026 01:00');                   // älteste Länder-Datei
+        await page.click('.st-lang button[data-lang="en"]');
+        await expect(card).toContainText('Checked daily');
+        await expect(card).toContainText('Once a week');
+        await expect(dach).toContainText('Oct 19, 2026 05:59');
+    });
+
+    test('der DACHLiLu-Lauf steht auch dann da, wenn metadata.json keine Auszüge enthält', async ({ page }) => {
+        await mockPipeline(page, { metadata: { generated_at: '2026-10-19T05:59:26+00:00', extracts: {} } });
+        await open(page);
+        await expect(page.locator('#st-table tbody tr[data-key="germany"]')).toHaveCount(0);
+        await expect(page.locator('#st-cadence article').first()).toContainText('19.10.2026 05:59');
+        await expect(page.locator('#st-warn')).toBeVisible();
+    });
+
+    test('ohne metadata.json zeigt der Rhythmus für DACHLiLu keinen Zeitpunkt, bricht aber nicht', async ({ page }) => {
+        await mockPipeline(page, { metadata: null });
+        await open(page);
+        await expect(page.locator('#st-cadence article').first()).toContainText('—');
+        await expect(page.locator('#st-cadence article').nth(1)).toContainText('19.10.2026 01:00');
+    });
+
     test('wertet nur je Land aus, ohne DACH-, LuLi- oder DACHLiLu-Summen', async ({ page }) => {
         await mockPipeline(page);
         await open(page);

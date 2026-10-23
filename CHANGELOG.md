@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Neu
+- **Statusseite: Rhythmus der Aktualisierung und letzter Lauf**: Ein neuer Abschnitt oben auf `/status/` sagt klar, wie oft die Karten entstehen: Die fünf Länder des gemeinsamen DACHLiLu-Builds (Deutschland, Österreich, Schweiz, Luxemburg, Liechtenstein) werden **täglich geprüft** und neu gebaut, sobald Geofabrik neue Daten bereitstellt; alle übrigen europäischen Länder werden einzeln **einmal pro Woche** gebaut, jedes an einem festen Wochentag, eine Karte ist deshalb bis zu etwa eine Woche alt. Dazu stehen die Zeitpunkte des **letzten Laufs** (letzte Veröffentlichung) des DACHLiLu-Builds und der Länder-Dateien sowie die älteste Länder-Karte und die Zahl der Länder. Grund: Die Niederlande-Karte wirkte veraltet, war aber nur noch nicht wieder an der Reihe. Neu `cadence()` in `src/js/status/model.js` (rein, getestet), Texte in Deutsch und Englisch, kein Zeitplan und keine Betriebsdetails der Pipeline (die bleiben im privaten Repo). Tests: Modell (`test/status-model.test.js`), E2E (`tests/status.spec.js`: Rhythmus und Zeitpunkte in Deutsch und Englisch, ohne `metadata.json`).
+
 ## [v0.10.0] - 2026-10-21
 
 **Barrierefreiheit und Statusseite:** Die Karte ist jetzt mit Tastatur und Screenreader bedienbar und wird automatisch gegen WCAG 2.2 (A/AA) geprüft; neu ist die Pipeline-Statusseite unter `/status/`. **Noch offen:** ein Test mit einem echten Screenreader (VoiceOver, NVDA, TalkBack) am Gerät; bisher wurde mit axe, Playwright und eigenen Kontrasttests geprüft. Befunde daraus kommen in einer Folgeversion.

@@ -147,13 +147,25 @@ export function renderDensity(box, rows, average, ctx) {
   }
 }
 
+/** Ab diesem Anteil an der Gesamtdauer zeigt ein Balkenstück seine Beschriftung sichtbar. */
+const RUNBAR_MIN_LABEL_SHARE = 0.15;
+
 /** Gestapelte Zeitleiste des Builds: Download und Extraktion. */
 export function renderRunBar(box, run, ctx) {
+  const total = run.download_sec + run.extraction_sec;
   const seg = (label, sec, color) => {
     const d = document.createElement('div');
+    const text = `${label} ${ctx.fmt.sec(sec)}`;
     d.style.flex = `${sec} 1 0`;
     d.style.background = color;
-    d.textContent = `${label} ${ctx.fmt.sec(sec)}`;
+    d.title = text;
+    // Breite bleibt proportional zur Dauer; passt die Beschriftung nicht hinein, bleibt sie nur für Tooltip und Screenreader.
+    if (total > 0 && sec / total < RUNBAR_MIN_LABEL_SHARE) {
+      const hidden = document.createElement('span');
+      hidden.className = 'st-sr';
+      hidden.textContent = text;
+      d.appendChild(hidden);
+    } else d.textContent = text;
     return d;
   };
   box.replaceChildren(
