@@ -72,6 +72,8 @@ export const strings = {
   gpx_success: "GPX başarıyla oluşturuldu.",
     csv_success: "CSV başarıyla oluşturuldu.",
   too_large: "Alan çok büyük. Yakınlaştırın veya daha küçük bir alan seçin.",
+  export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+  export_area_limited: "Selection limited to {km} × {km} km.",
   locating: "Konum bulunuyor…",
   render_bounds: "Sınırlar çiziliyor…",
   render_infra: "Altyapı çiziliyor…",

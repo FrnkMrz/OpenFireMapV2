@@ -74,6 +74,8 @@ export const strings = {
         gpx_success: "Exportováno do GPX!",
     csv_success: "Exportováno do CSV!",
         too_large: "Oblast je příliš velká!",
+        export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+        export_area_limited: "Selection limited to {km} × {km} km.",
         locating: "Lokalizace oblasti...",
         render_bounds: "Vykreslování hranic...",
         render_infra: "Vykreslování infrastruktury...",

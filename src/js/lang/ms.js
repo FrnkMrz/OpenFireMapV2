@@ -74,6 +74,8 @@ export const strings = {
         gpx_success: "Objek dieksport sebagai GPX!",
     csv_success: "Objek dieksport sebagai CSV!",
         too_large: "Kawasan terlalu besar!",
+        export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+        export_area_limited: "Selection limited to {km} × {km} km.",
         locating: "Mengesan kawasan...",
         render_bounds: "Memapar sempadan...",
         render_infra: "Memapar infrastruktur...",

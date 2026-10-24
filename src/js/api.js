@@ -333,7 +333,7 @@ function buildBoundaryQuery(zoom, bbox) {
   return `[out:json][timeout:25][bbox:${bbox}];${buildBoundaryStatements(bbox)}`;
 }
 
-function buildExportQuery(zoom, bbox) {
+function buildExportQuery(zoom, bbox, { boundaries = true } = {}) {
   const queryParts = [];
   if (zoom >= 12) {
     queryParts.push(`nwr["amenity"="fire_station"];`);
@@ -343,7 +343,7 @@ function buildExportQuery(zoom, bbox) {
   // selbst wenn der Nutzer sagt "Exportiere auf Zoom 14".
   queryParts.push(`nwr["emergency"~"fire_hydrant|water_tank|suction_point|fire_water_pond|cistern"];`);
   queryParts.push(`node["emergency"="defibrillator"];`);
-  const boundaryQuery = (zoom >= 14) ? buildBoundaryStatements(bbox) : '';
+  const boundaryQuery = (boundaries && zoom >= 14) ? buildBoundaryStatements(bbox) : '';
 
   return `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;${boundaryQuery}`;
 }
@@ -1257,14 +1257,47 @@ function withDeadline(signal, ms) {
   };
 }
 
+/** Wartet auf `promise`, bricht das Warten aber mit einem AbortError ab, sobald `signal` abbricht. */
+function raceAbort(promise, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) { reject(createAbortError()); return; }
+    const onAbort = () => reject(createAbortError());
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
+}
+
+/**
+ * Overpass-Änderungen seit dem Pipeline-Stand für die Export-Fläche einmischen (wie die Karte, aber ohne deren State).
+ * Das Delta ist eine Zugabe: schlägt es fehl oder läuft in die Frist, gilt der Pipeline-Stand; nur ein Abbruch des Nutzers wirkt.
+ */
+async function applyExportPoiDelta(pois, { zoom, bbox, reqId, signal }) {
+  const since = getPipelineOsmDataUntil(pois);
+  if (!since) return pois;
+  const deltaLimit = withDeadline(signal, Config.exportPipelineTimeoutMs ?? 20000);
+  try {
+    const delta = await loadPoiDelta({ zoom, bbox, queryKind: 'pois', reqId, signal: deltaLimit.signal, since });
+    return delta ? mergePoiDelta(pois, delta.elements) : pois;
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    console.warn('[API] Export: Overpass-Änderungen nicht geladen (nicht kritisch):', err?.message);
+    return pois;
+  } finally {
+    deltaLimit.done();
+  }
+}
+
 /**
  * Daten für den Export (Hydranten, Wachen, Wasserstellen, Defibrillatoren, Gemeindegrenzen) eines Ausschnitts.
  * Unabhängig vom Kartenzoom, denn der Export enthält immer Hydranten, auch wenn die Karte darunter (Zoom < 15) noch
  * keine zeigt. Wie die Karte nimmt der Export zuerst die Pipeline (PMTiles) und erst bei Ausfall oder fehlender
  * Abdeckung Overpass, das dann ein Gesamtlimit hat (sonst warten vier Server nacheinander je 25 s).
  */
-export async function fetchDataForExport(bounds, zoom, signal) {
+export async function fetchDataForExport(bounds, zoom, signal, { boundaries: withBoundaries = true } = {}) {
   const reqId = ++REQ_SEQ;
+
+  // Overpass-Bereich (auch für das Live-Delta der Pipeline-Daten)
+  const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
 
   // 1. Pipeline: schnell und ohne Overpass-Last. Eigenständiger Abruf, damit Pufferring und aktive Grenzen der Karte unberührt bleiben.
   const europeWait = ensureEuropeReady(bounds, zoom);
@@ -1272,13 +1305,21 @@ export async function fetchDataForExport(bounds, zoom, signal) {
   if (isPipelineEligible(bounds, zoom)) {
     const pipelineLimit = withDeadline(signal, Config.exportPipelineTimeoutMs ?? 20000);
     try {
-      const pois = await fetchPipelineData(bounds, 'all', { signal: pipelineLimit.signal, zoom, standalone: true });
-      const boundaries = zoom >= 14
-        ? await fetchPipelineBoundaries(bounds, { signal: pipelineLimit.signal, zoom, standalone: true })
-        : [];
+      const loadPipeline = async () => {
+        const pois = await fetchPipelineData(bounds, 'all', { signal: pipelineLimit.signal, zoom, standalone: true });
+        const boundaries = withBoundaries && zoom >= 14
+          ? await fetchPipelineBoundaries(bounds, { signal: pipelineLimit.signal, zoom, standalone: true })
+          : [];
+        // Die Kachelabrufe schlucken Abbrüche und liefern dann leere oder halbe Listen: ein abgelaufenes Limit ist kein Erfolg
+        if (pipelineLimit.signal.aborted) throw createAbortError();
+        return { pois, boundaries };
+      };
+      // Hängt ein Schritt ohne Abbruchunterstützung (z. B. PMTiles-Header), beendet das Limit das Warten trotzdem
+      const { pois, boundaries } = await raceAbort(loadPipeline(), pipelineLimit.signal);
       if (Array.isArray(pois) && Array.isArray(boundaries)) {
-        emit({ phase: 'export_pipeline_hit', reqId, zoom, elements: pois.length, boundaries: boundaries.length });
-        return { elements: [...pois, ...boundaries], source: 'pipeline' };
+        const withDelta = await applyExportPoiDelta(pois, { zoom, bbox, reqId, signal });
+        emit({ phase: 'export_pipeline_hit', reqId, zoom, elements: withDelta.length, boundaries: boundaries.length });
+        return { elements: [...withDelta, ...boundaries], source: 'pipeline' };
       }
     } catch (err) {
       if (signal?.aborted) throw err;
@@ -1291,16 +1332,10 @@ export async function fetchDataForExport(bounds, zoom, signal) {
   }
 
   // 2. Overpass mit Gesamtlimit über alle Server
-  const s = bounds.getSouth();
-  const w = bounds.getWest();
-  const n = bounds.getNorth();
-  const e = bounds.getEast();
-  const bbox = `${s},${w},${n},${e}`;
-
-  const q = buildExportQuery(zoom, bbox);
+  const q = buildExportQuery(zoom, bbox, { boundaries: withBoundaries });
 
   // Wir nutzen v3 als Prefix, um fehlerhafte Caches der alten Version aus der lokalen DB zu umgehen.
-  const cacheKey = `export_v3:${zoom}:${bbox}`;
+  const cacheKey = `export_v3:${zoom}:${bbox}${withBoundaries ? '' : ':poi'}`;
   const overpassLimit = withDeadline(signal, Config.exportFetchTimeoutMs ?? 75000);
   try {
     return await fetchWithRetry(q, {

@@ -15,7 +15,8 @@ import { Config } from "./config.js";
 import { fetchDataForExport } from "./api.js";
 import { waitForPendingBuffers, isBoundaryElement } from "./pipeline.js";
 import { t, getLang } from "./i18n.js";
-import { showNotification, toggleExportMenu } from "./ui.js";
+import { showNotification, hideNotification, toggleExportMenu } from "./ui.js";
+import { rectSizeKm, isRectWithinKm, clampOffsetToKm } from "./geometry.js";
 import { cancelSelectionMode } from "./map.js";
 import { jsPDF } from "jspdf";
 
@@ -272,6 +273,58 @@ export function setExportZoom(z) {
   }
 }
 
+/** Leaflet-Bounds als schlichtes Rechteck (für die Größenprüfung in geometry.js) */
+function boundsToRect(bounds) {
+  return { south: bounds.getSouth(), west: bounds.getWest(), north: bounds.getNorth(), east: bounds.getEast() };
+}
+
+const withMaxKm = (text) => String(text).replaceAll("{km}", String(Config.exportMaxSideKm));
+
+/**
+ * Begrenzt die Export-Fläche (Config.exportMaxSideKm je Seite). Gilt für jede Quelle der Fläche:
+ * gezogenes Rechteck, übernommener Ausschnitt und den sichtbaren Kartenausschnitt ohne Auswahl.
+ */
+function assertExportArea(bounds) {
+  if (!isRectWithinKm(boundsToRect(bounds), Config.exportMaxSideKm)) {
+    throw new Error(withMaxKm(t("export_area_too_large")));
+  }
+}
+
+/** Meldet, dass die Auswahl auf die Höchstgröße begrenzt wurde (nur wenn sie sie erreicht). */
+function noticeIfLimited(bounds) {
+  const { widthKm, heightKm } = rectSizeKm(boundsToRect(bounds));
+  if (Math.max(widthKm, heightKm) >= Config.exportMaxSideKm * 0.995) {
+    showNotification(withMaxKm(t("export_area_limited")), 4000, "info");
+  }
+}
+
+/**
+ * Daten für GPX und CSV. Ab Kartenzoom 15 liegen Hydranten im Karten-Cache. Darunter hält der Cache nur Feuerwachen:
+ * dann lädt der Export die Daten für die Fläche selbst (Pipeline, sonst Overpass, jeweils mit Frist), ohne Grenzen.
+ */
+async function loadElementsForListExport(bounds) {
+  if (State.map.getZoom() >= 15) {
+    let waitCycles = 0;
+    while (State.isFetchingData && waitCycles < 25) {
+      await new Promise(r => setTimeout(r, 100));
+      waitCycles++;
+    }
+    await waitForPendingBuffers({ timeoutMs: 3000 });
+    return getPreparedCachedExportElements();
+  }
+
+  const noticeId = showNotification(t("loading_data"), 60000, "info");
+  try {
+    const data = await fetchDataForExport(bounds, 15, new AbortController().signal, { boundaries: false });
+    return preprocessElementsForExport(data.elements || []);
+  } catch (e) {
+    const key = typeof e?.message === "string" && e.message.startsWith("err_") ? e.message : "err_generic";
+    throw new Error(t(key), { cause: e });
+  } finally {
+    hideNotification(noticeId);
+  }
+}
+
 /**
  * Startet den "Auswahlmodus": Nutzer zieht ein Rechteck auf der Karte.
  * Das Rechteck definiert den Export-Ausschnitt (Bounds).
@@ -308,6 +361,8 @@ export function useViewAsSelection() {
     else height = (width * lngScale) / ratio;
   }
 
+  ({ dLat: height, dLng: width } = clampOffsetToKm(height, width, center.lat, Config.exportMaxSideKm));
+
   const bounds = L.latLngBounds(
     [center.lat - height / 2, center.lng - width / 2],
     [center.lat + height / 2, center.lng + width / 2],
@@ -321,6 +376,7 @@ export function useViewAsSelection() {
   State.selection.finalBounds = bounds;
   document.getElementById("selection-info").classList.remove("hidden");
   showNotification(t("area_from_view"), 3000, "success");
+  noticeIfLimited(bounds);
 }
 
 function clearSelection() {
@@ -368,7 +424,11 @@ export function handleSelectionEvents(e, type) {
       const lngDir = current.lng > start.lng ? 1 : -1;
       current = L.latLng(start.lat + latDir * dy, start.lng + lngDir * dx);
     }
-    State.selection.rect.setBounds([State.selection.startPoint, current]);
+    // Höchstgröße: die Ecke folgt der Maus nur bis zur Grenze (Seitenverhältnis bleibt)
+    const start = State.selection.startPoint;
+    const limited = clampOffsetToKm(current.lat - start.lat, current.lng - start.lng, start.lat, Config.exportMaxSideKm);
+    current = L.latLng(start.lat + limited.dLat, start.lng + limited.dLng);
+    State.selection.rect.setBounds([start, current]);
   } else if (type === "up" && State.selection.startPoint) {
     State.selection.finalBounds = State.selection.rect.getBounds();
     State.selection.active = false;
@@ -376,6 +436,7 @@ export function handleSelectionEvents(e, type) {
     State.map.dragging.enable();
     State.map.getContainer().classList.remove("selection-mode");
     document.getElementById("selection-info").classList.remove("hidden");
+    noticeIfLimited(State.selection.finalBounds);
   }
 }
 
@@ -408,15 +469,9 @@ function escapeXML(str) {
  */
 export async function exportAsGPX() {
   try {
-    let waitCycles = 0;
-    while (State.isFetchingData && waitCycles < 25) {
-      await new Promise(r => setTimeout(r, 100));
-      waitCycles++;
-    }
-    await waitForPendingBuffers({ timeoutMs: 3000 });
-
     const bounds = State.selection.finalBounds || State.map.getBounds();
-    const elementsForExport = getPreparedCachedExportElements();
+    assertExportArea(bounds);
+    const elementsForExport = await loadElementsForListExport(bounds);
     const pointsToExport = elementsForExport.filter((el) => {
       const lat = el.lat || el.center?.lat;
       const lon = el.lon || el.center?.lon;
@@ -530,15 +585,9 @@ export function getCsvSubtype(tags, isStation, isDefib) {
  */
 export async function exportAsCSV() {
   try {
-    let waitCycles = 0;
-    while (State.isFetchingData && waitCycles < 25) {
-      await new Promise(r => setTimeout(r, 100));
-      waitCycles++;
-    }
-    await waitForPendingBuffers({ timeoutMs: 3000 });
-
     const bounds = State.selection.finalBounds || State.map.getBounds();
-    const elementsForExport = getPreparedCachedExportElements();
+    assertExportArea(bounds);
+    const elementsForExport = await loadElementsForListExport(bounds);
     const pointsToExport = elementsForExport.filter((el) => {
       const lat = el.lat || el.center?.lat;
       const lon = el.lon || el.center?.lon;
@@ -718,6 +767,7 @@ async function generateMapCanvas() {
   // 2. PARAMETER
   const targetZoom = State.exportZoomLevel;
   const bounds = State.selection.finalBounds || State.map.getBounds();
+  assertExportArea(bounds);
 
   // DATEN LADEN (Explizit für diesen Ausschnitt & Zoom)
   setStatus(t("loading_data") || "Lade Daten..."); // Fallback String falls Key fehlt

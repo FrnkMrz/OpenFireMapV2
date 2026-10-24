@@ -69,6 +69,8 @@ export const strings = {
     gpx_success: "Objekte als GPX exportiert!",
     csv_success: "Objekte als CSV exportiert!",
     too_large: "Ausschnitt zu groß!",
+    export_area_too_large: "Export-Fläche zu groß! Maximal {km} × {km} km.",
+    export_area_limited: "Auswahl auf {km} × {km} km begrenzt.",
     locating: "Lokalisiere Gebiet...",
     render_bounds: "Rendere Grenzen...",
     render_infra: "Rendere Infrastruktur...",

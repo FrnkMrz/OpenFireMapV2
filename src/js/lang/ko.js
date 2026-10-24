@@ -74,6 +74,8 @@ export const strings = {
         gpx_success: "GPX로 내보내기 성공!",
     csv_success: "CSV로 내보내기 성공!",
         too_large: "영역이 너무 큽니다!",
+        export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+        export_area_limited: "Selection limited to {km} × {km} km.",
         locating: "영역 찾는 중...",
         render_bounds: "경계 렌더링 중...",
         render_infra: "인프라 렌더링 중...",

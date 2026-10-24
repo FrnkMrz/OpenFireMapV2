@@ -33,6 +33,7 @@ describe('fetchDataForExport', () => {
     pipeline.isPipelineEligible.mockReset().mockReturnValue(true);
     pipeline.fetchPipelineData.mockReset().mockResolvedValue([hydrant]);
     pipeline.fetchPipelineBoundaries.mockReset().mockResolvedValue([boundary]);
+    pipeline.getPipelineOsmDataUntil.mockReset().mockReturnValue(null);
     ({ fetchDataForExport } = await import('../src/js/api.js'));
     ({ Config } = await import('../src/js/config.js'));
   });
@@ -56,6 +57,61 @@ describe('fetchDataForExport', () => {
     const result = await fetchDataForExport(bounds, 15, new AbortController().signal);
     expect(result.elements).toEqual([hydrant]);
     expect(globalThis.fetch).toHaveBeenCalled();
+  });
+
+  it('hängende Pipeline (z. B. PMTiles-Header) beendet die Frist und fällt auf Overpass zurück', async () => {
+    pipeline.fetchPipelineData.mockReturnValue(new Promise(() => { /* ohne Abbruchunterstützung */ }));
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ elements: [hydrant] }) }));
+    const settled = fetchDataForExport(bounds, 15, new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(Config.exportPipelineTimeoutMs + 1000);
+    expect((await settled).elements).toEqual([hydrant]);
+  });
+
+  it('abgelaufenes Pipeline-Limit mit leerem Teilergebnis gilt nicht als Erfolg', async () => {
+    // Die Kachelabrufe schlucken Abbrüche und liefern dann eine leere Liste
+    pipeline.fetchPipelineData.mockImplementation(async (b, mode, { signal }) => {
+      await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }));
+      return [];
+    });
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ elements: [hydrant] }) }));
+    const settled = fetchDataForExport(bounds, 15, new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(Config.exportPipelineTimeoutMs + 1000);
+    const result = await settled;
+    expect(result.elements).toEqual([hydrant]);
+    expect(globalThis.fetch).toHaveBeenCalled();
+  });
+
+  it('mischt Overpass-Änderungen seit dem Pipeline-Stand ein (nach type:id)', async () => {
+    const oldHydrant = { ...hydrant, tags: { emergency: 'fire_hydrant', note: 'alt' } };
+    const newHydrant = { type: 'node', id: 7, lat: 49.56, lon: 11.36, tags: { emergency: 'fire_hydrant' } };
+    pipeline.fetchPipelineData.mockResolvedValue([oldHydrant]);
+    pipeline.getPipelineOsmDataUntil.mockReturnValue('2026-10-20T00:00:00Z');
+    const changed = { ...hydrant, tags: { emergency: 'fire_hydrant', note: 'neu' } };
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ elements: [changed, newHydrant] }) }));
+    const result = await fetchDataForExport(bounds, 15, new AbortController().signal);
+    expect(decodeURIComponent(globalThis.fetch.mock.calls[0][1].body)).toContain('newer:"2026-10-20T00:00:00Z"');
+    expect(result.elements).toContainEqual(changed);
+    expect(result.elements).toContainEqual(newHydrant);
+    expect(result.elements).not.toContainEqual(oldHydrant);
+    expect(result.elements).toContainEqual(boundary);
+  });
+
+  it('Fehler beim Delta ist unkritisch: es gilt der Pipeline-Stand', async () => {
+    pipeline.getPipelineOsmDataUntil.mockReturnValue('2026-10-20T00:00:00Z');
+    globalThis.fetch = vi.fn(async () => ({ ok: false, status: 500, statusText: 'x', text: async () => '', headers: new Headers() }));
+    const settled = fetchDataForExport(bounds, 15, new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(Config.exportPipelineTimeoutMs + 5000);
+    expect((await settled).elements).toEqual([hydrant, boundary]);
+  });
+
+  it('lädt ohne Grenzen (GPX/CSV): keine Grenzabfrage in Pipeline und Overpass', async () => {
+    await fetchDataForExport(bounds, 15, new AbortController().signal, { boundaries: false });
+    expect(pipeline.fetchPipelineBoundaries).not.toHaveBeenCalled();
+
+    pipeline.isPipelineEligible.mockReturnValue(false);
+    globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ elements: [hydrant] }) }));
+    await fetchDataForExport(bounds, 15, new AbortController().signal, { boundaries: false });
+    expect(decodeURIComponent(globalThis.fetch.mock.calls[0][1].body)).not.toContain('admin_level');
   });
 
   it('geht direkt an Overpass, wenn der Ausschnitt nicht in der Pipeline liegt', async () => {

@@ -72,6 +72,8 @@ export const strings = {
   gpx_success: "Tạo GPX thành công.",
     csv_success: "Tạo CSV thành công.",
   too_large: "Khu vực quá lớn. Hãy phóng to hoặc chọn khu vực nhỏ hơn.",
+  export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+  export_area_limited: "Selection limited to {km} × {km} km.",
   locating: "Đang xác định vị trí…",
   render_bounds: "Đang kết xuất ranh giới…",
   render_infra: "Đang kết xuất hạ tầng…",

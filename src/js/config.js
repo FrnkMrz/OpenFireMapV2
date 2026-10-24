@@ -212,18 +212,10 @@ export const Config = {
   exportFetchTimeoutMs: 75 * 1000,
 
   /**
-   * Export-Limits (km pro Zoomstufe).
-   * Ziel: Browser-Abstürze verhindern, wenn zu große Kartenausschnitte exportiert werden.
+   * Größte Seitenlänge einer Export-Fläche in km (10 × 10 km). Verhindert Browser-Abstürze und überlange Abrufe.
+   * Gilt für Auswahl (Rechteck ziehen, Ausschnitt übernehmen) und beim Export selbst für alle Formate.
    */
-  exportZoomLimitsKm: {
-    12: 30,
-    13: 25,
-    14: 20,
-    15: 15,
-    16: 10,
-    17: 8,
-    18: 5,
-  },
+  exportMaxSideKm: 10,
 
   // ----------------------------------------------------------------------------------------
   // 5) Farben

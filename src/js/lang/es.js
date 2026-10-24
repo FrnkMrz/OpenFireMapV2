@@ -74,6 +74,8 @@ export const strings = {
         gpx_success: "¡Objetos exportados a GPX!",
     csv_success: "¡Objetos exportados a CSV!",
         too_large: "¡Zona demasiado grande!",
+        export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+        export_area_limited: "Selection limited to {km} × {km} km.",
         locating: "Localizando zona...",
         render_bounds: "Renderizando límites...",
         render_infra: "Renderizando infraestructura...",

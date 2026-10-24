@@ -74,6 +74,8 @@ export const strings = {
         gpx_success: "对象已导出为 GPX！",
     csv_success: "对象已导出为 CSV！",
         too_large: "区域太大！",
+        export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+        export_area_limited: "Selection limited to {km} × {km} km.",
         locating: "定位区域...",
         render_bounds: "渲染边界...",
         render_infra: "渲染基础设施...",

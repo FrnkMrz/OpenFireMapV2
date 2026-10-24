@@ -54,4 +54,59 @@ test.describe('Export bei Zoom 14', () => {
         await page.locator('#cancel-export-btn').click();
         await expect(page.locator('#export-progress')).toBeHidden({ timeout: 10000 });
     });
+
+    for (const [name, button, ext, contains] of [['GPX', '#gpx-btn', 'gpx', '<wpt'], ['CSV', '#csv-btn', 'csv', 'fire_hydrant']]) {
+        test(`${name} lädt Hydranten für den Ausschnitt selbst`, async ({ page }) => {
+            await prepare(page, async (route) => route.fulfill({ json: { elements: [HYDRANT] } }));
+            const download = page.waitForEvent('download', { timeout: 30000 });
+            await page.locator(button).click();
+            await page.locator('#export-confirm-ok').click();
+            const file = await download;
+            expect(file.suggestedFilename()).toMatch(new RegExp(`\\.${ext}$`));
+            const path = await file.path();
+            const text = (await import('node:fs')).readFileSync(path, 'utf8');
+            expect(text).toContain(contains);
+        });
+    }
+});
+
+test.describe('Höchstgröße der Export-Fläche (10 × 10 km)', () => {
+    const sizeKm = (page) => page.evaluate(() => {
+        const b = window.State.selection.finalBounds;
+        const lat = (b.getNorth() + b.getSouth()) / 2;
+        return {
+            w: (b.getEast() - b.getWest()) * 111.32 * Math.cos(lat * Math.PI / 180),
+            h: (b.getNorth() - b.getSouth()) * 111.32
+        };
+    });
+
+    test('„Sichtbaren Ausschnitt übernehmen“ wird auf 10 km begrenzt', async ({ page }) => {
+        await page.route('**/pipeline.openfiremap.org/**', (route) => route.abort());
+        await page.route('**/api/interpreter', (route) => route.fulfill({ json: { elements: [] } }));
+        await page.goto('/?lang=de#12/49.555/11.35/voyager'); // sichtbar ca. 40 km breit
+        await page.waitForFunction(() => window.State && window.State.map);
+        await page.locator('#export-btn-trigger').click();
+        await page.locator('#select-view-btn').click();
+        await expect(page.locator('#selection-info')).toBeVisible(); // export.js wird beim ersten Klick nachgeladen
+        const { w, h } = await sizeKm(page);
+        expect(w).toBeLessThanOrEqual(10.05);
+        expect(h).toBeLessThanOrEqual(10.05);
+        expect(Math.max(w, h)).toBeGreaterThan(9.9);
+        await expect(page.locator('#notification-live-status')).toContainText('10 × 10 km');
+    });
+
+    test('Export ohne Auswahl bei zu großem Ausschnitt meldet einen Fehler statt zu laden', async ({ page }) => {
+        let overpassCalls = 0;
+        await page.route('**/pipeline.openfiremap.org/**', (route) => route.abort());
+        await page.route('**/api/interpreter', (route) => { overpassCalls++; return route.fulfill({ json: { elements: [HYDRANT] } }); });
+        await page.goto('/?lang=de#12/49.555/11.35/voyager');
+        await page.waitForFunction(() => window.State && window.State.map);
+        await page.locator('#export-btn-trigger').click();
+        await page.locator('#pdf-btn').click();
+        await page.locator('#export-confirm-ok').click();
+        await expect(page.locator('#notification-live-alert')).toContainText('10 × 10 km', { timeout: 10000 });
+        const before = overpassCalls;
+        await page.waitForTimeout(500);
+        expect(overpassCalls).toBe(before); // der Export selbst hat nichts geladen
+    });
 });

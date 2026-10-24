@@ -209,3 +209,41 @@ export function isRectIntersectingPolygon(south, west, north, east, polygon) {
   }
   return false;
 }
+
+// Länge eines Breitengrads in km (Kugelnäherung, reicht für die Größenbegrenzung des Exports)
+const KM_PER_DEGREE = 111.32;
+
+/**
+ * Seitenlängen eines Rechtecks in km (Breite entlang des Breitenkreises in der Mitte, Höhe entlang des Meridians).
+ * @param {{south:number, west:number, north:number, east:number}} rect
+ * @returns {{widthKm:number, heightKm:number}}
+ */
+export function rectSizeKm({ south, west, north, east }) {
+  const midLat = (south + north) / 2;
+  return {
+    widthKm: Math.abs(east - west) * KM_PER_DEGREE * Math.cos((midLat * Math.PI) / 180),
+    heightKm: Math.abs(north - south) * KM_PER_DEGREE
+  };
+}
+
+/**
+ * Prüft, ob beide Seiten eines Rechtecks höchstens `maxKm` lang sind (0,5 % Toleranz gegen Rundung).
+ */
+export function isRectWithinKm(rect, maxKm) {
+  const { widthKm, heightKm } = rectSizeKm(rect);
+  return widthKm <= maxKm * 1.005 && heightKm <= maxKm * 1.005;
+}
+
+/**
+ * Verkleinert einen Versatz (Grad Breite, Grad Länge) bei `lat` so, dass keine Seite länger als `maxKm` ist.
+ * Das Seitenverhältnis bleibt erhalten (wichtig für die DIN-Formate).
+ * @returns {{dLat:number, dLng:number, clamped:boolean}}
+ */
+export function clampOffsetToKm(dLat, dLng, lat, maxKm) {
+  const heightKm = Math.abs(dLat) * KM_PER_DEGREE;
+  const widthKm = Math.abs(dLng) * KM_PER_DEGREE * Math.cos((lat * Math.PI) / 180);
+  const longest = Math.max(heightKm, widthKm);
+  if (longest <= maxKm) return { dLat, dLng, clamped: false };
+  const f = maxKm / longest;
+  return { dLat: dLat * f, dLng: dLng * f, clamped: true };
+}

@@ -74,6 +74,8 @@ export const strings = {
         gpx_success: "Kohteet viety GPX-muodossa!",
     csv_success: "Kohteet viety CSV-muodossa!",
         too_large: "Alue on liian suuri!",
+        export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+        export_area_limited: "Selection limited to {km} × {km} km.",
         locating: "Paikannetaan aluetta...",
         render_bounds: "Renderöidään rajoja...",
         render_infra: "Renderöidään infrastruktuuria...",
