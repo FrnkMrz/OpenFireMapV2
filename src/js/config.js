@@ -207,6 +207,10 @@ export const Config = {
   // 4) Export
   // ----------------------------------------------------------------------------------------
 
+  // Export: Zeitlimits des Datenabrufs (Pipeline zuerst, danach alle Overpass-Server zusammen)
+  exportPipelineTimeoutMs: 20 * 1000,
+  exportFetchTimeoutMs: 75 * 1000,
+
   /**
    * Export-Limits (km pro Zoomstufe).
    * Ziel: Browser-Abstürze verhindern, wenn zu große Kartenausschnitte exportiert werden.

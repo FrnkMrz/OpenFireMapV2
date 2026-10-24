@@ -1229,8 +1229,68 @@ export async function fetchBoundaryData(onProgressData = null) {
  * Holt Daten spezifisch für den Export (z.B. hohe Zoomstufe + Bounds).
  * Gibt das JSON-Objekt zurück, ohne den globalen Status (Map/Cache) zu verändern.
  */
+/**
+ * Koppelt ein Zeitlimit an ein Abbruchsignal. Bricht das Limit ab (und nicht der Nutzer), wirft `rethrow` statt
+ * eines AbortError einen TimeoutError, damit der Export nicht als "vom Nutzer abgebrochen" gilt.
+ */
+function withDeadline(signal, ms) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const onAbort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener('abort', onAbort, { once: true });
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, ms);
+  return {
+    signal: controller.signal,
+    rethrow(err) {
+      if (timedOut && !signal?.aborted && err?.name === 'AbortError') {
+        const timeoutErr = new Error('err_timeout');
+        timeoutErr.name = 'TimeoutError';
+        throw timeoutErr;
+      }
+      throw err;
+    },
+    done() {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+    }
+  };
+}
+
+/**
+ * Daten für den Export (Hydranten, Wachen, Wasserstellen, Defibrillatoren, Gemeindegrenzen) eines Ausschnitts.
+ * Unabhängig vom Kartenzoom, denn der Export enthält immer Hydranten, auch wenn die Karte darunter (Zoom < 15) noch
+ * keine zeigt. Wie die Karte nimmt der Export zuerst die Pipeline (PMTiles) und erst bei Ausfall oder fehlender
+ * Abdeckung Overpass, das dann ein Gesamtlimit hat (sonst warten vier Server nacheinander je 25 s).
+ */
 export async function fetchDataForExport(bounds, zoom, signal) {
   const reqId = ++REQ_SEQ;
+
+  // 1. Pipeline: schnell und ohne Overpass-Last. Eigenständiger Abruf, damit Pufferring und aktive Grenzen der Karte unberührt bleiben.
+  const europeWait = ensureEuropeReady(bounds, zoom);
+  if (europeWait) await europeWait;
+  if (isPipelineEligible(bounds, zoom)) {
+    const pipelineLimit = withDeadline(signal, Config.exportPipelineTimeoutMs ?? 20000);
+    try {
+      const pois = await fetchPipelineData(bounds, 'all', { signal: pipelineLimit.signal, zoom, standalone: true });
+      const boundaries = zoom >= 14
+        ? await fetchPipelineBoundaries(bounds, { signal: pipelineLimit.signal, zoom, standalone: true })
+        : [];
+      if (Array.isArray(pois) && Array.isArray(boundaries)) {
+        emit({ phase: 'export_pipeline_hit', reqId, zoom, elements: pois.length, boundaries: boundaries.length });
+        return { elements: [...pois, ...boundaries], source: 'pipeline' };
+      }
+    } catch (err) {
+      if (signal?.aborted) throw err;
+      // Zeitlimit oder Pipeline-Fehler: weiter mit Overpass
+      console.warn('[API] Export: Pipeline-Abruf fehlgeschlagen, wechsle auf Overpass:', err?.message);
+      emit({ phase: 'export_pipeline_fallback', reqId, error: err?.message });
+    } finally {
+      pipelineLimit.done();
+    }
+  }
+
+  // 2. Overpass mit Gesamtlimit über alle Server
   const s = bounds.getSouth();
   const w = bounds.getWest();
   const n = bounds.getNorth();
@@ -1241,13 +1301,20 @@ export async function fetchDataForExport(bounds, zoom, signal) {
 
   // Wir nutzen v3 als Prefix, um fehlerhafte Caches der alten Version aus der lokalen DB zu umgehen.
   const cacheKey = `export_v3:${zoom}:${bbox}`;
-  return await fetchWithRetry(q, {
-    cacheKey,
-    cacheTtlMs: 1000 * 60 * 60, // 1h Cache
-    reqId,
-    skipCache: false,
-    signal
-  });
+  const overpassLimit = withDeadline(signal, Config.exportFetchTimeoutMs ?? 75000);
+  try {
+    return await fetchWithRetry(q, {
+      cacheKey,
+      cacheTtlMs: 1000 * 60 * 60, // 1h Cache
+      reqId,
+      skipCache: false,
+      signal: overpassLimit.signal
+    });
+  } catch (err) {
+    overpassLimit.rethrow(err);
+  } finally {
+    overpassLimit.done();
+  }
 }
 
 // ---- Test-Exports (nur für Unit-Tests, nicht für die App) ----
@@ -1268,6 +1335,7 @@ export const _testing = {
   mergePoiDelta,
   deltaBBoxForPipeline,
   fetchWithRetry,
+  withDeadline,
   // Server-Sperren und globalen Backoff zwischen Tests zurücksetzen
   resetOverpassState() {
     EP.clear();

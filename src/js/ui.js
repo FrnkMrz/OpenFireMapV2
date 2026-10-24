@@ -35,9 +35,14 @@ function closeExportTitleModal() {
     document.getElementById('export-title-modal')?.classList.add('hidden');
 }
 
+// PNG und PDF holen ihre Daten selbst, wenn die Karte unter der Hydranten-Stufe steht (Zoom < 15, der Karten-Cache
+// hält dort keine Hydranten); GPX und CSV nutzen nur den Karten-Cache.
+const EXPORTS_FETCHING_OWN_DATA = new Set(['exportAsPNG', 'exportAsPDF']);
+
 function openTitleConfirmation(exportFnName) {
-    // 0. Daten-Check: Haben wir überhaupt Hydranten?
-    if (!State.cachedElements || State.cachedElements.length === 0) {
+    // 0. Daten-Check: Haben wir überhaupt Hydranten? Entfällt, wenn der Export seine Daten selbst lädt.
+    const fetchesOwnData = EXPORTS_FETCHING_OWN_DATA.has(exportFnName) && State.map && State.map.getZoom() < 15;
+    if (!fetchesOwnData && (!State.cachedElements || State.cachedElements.length === 0)) {
         showNotification(t('no_objects'), 3000, 'warning');
         return;
     }

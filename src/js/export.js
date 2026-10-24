@@ -778,6 +778,12 @@ async function generateMapCanvas() {
       showNotification(`Export: ${elementsForExport.length} Objekte (Online geladen).`, 3000, 'info');
     } catch (e) {
       if (e?.name === 'AbortError') throw e;
+      // Unter Zoom 15 hält der Karten-Cache nur Feuerwachen (keine Hydranten): ein Plan daraus wäre still unvollständig.
+      // Dann lieber eine Fehlermeldung statt eines Exports ohne Hydranten (oder endlosem Warten).
+      if (needsStrictOnlineFetch && State.loadedPoiMode !== 'all') {
+        const key = typeof e?.message === 'string' && e.message.startsWith('err_') ? e.message : 'err_generic';
+        throw new Error(t(key), { cause: e });
+      }
       console.warn("Export-Fetch fehlgeschlagen, nutze Cache als Fallback", e);
       const fallbackCachedElements = getCachedExportElements();
       elementsForExport = preprocessElementsForExport(fallbackCachedElements);
