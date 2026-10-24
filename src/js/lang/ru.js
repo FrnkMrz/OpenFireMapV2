@@ -72,6 +72,8 @@ export const strings = {
   gpx_success: "GPX успешно создан.",
     csv_success: "CSV успешно создан.",
   too_large: "Область слишком большая. Увеличьте масштаб или выберите меньшую область.",
+  export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+  export_area_limited: "Selection limited to {km} × {km} km.",
   locating: "Определение местоположения…",
   render_bounds: "Отрисовка границ…",
   render_infra: "Отрисовка инфраструктуры…",

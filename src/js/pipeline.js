@@ -955,7 +955,7 @@ async function resolveRingSources(sources, plan) {
  * @param {Object} options 
  * @returns {Promise<Array<Object>>}
  */
-export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgressData, onBufferComplete } = {}) {
+export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgressData, onBufferComplete, standalone = false } = {}) {
   const baseUrl = Config.pipeline?.url;
   if (!baseUrl) throw new Error('Pipeline-URL ist nicht konfiguriert.');
 
@@ -994,8 +994,9 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
     }
   }
 
-  // 2. Pufferring (nur wenn Kachelausschnitt <= 20): die Quellen dafür werden schon jetzt parallel geplant
-  const ringPlan = rawTileCount <= 20
+  // 2. Pufferring (nur wenn Kachelausschnitt <= 20): die Quellen dafür werden schon jetzt parallel geplant.
+  // Eigenständiger Abruf (Export): kein Ring, die Kartenansicht bleibt unberührt.
+  const ringPlan = rawTileCount <= 20 && !standalone
     ? startRingPlan(sources, { minX: visMinX, maxX: visMaxX, minY: visMinY, maxY: visMaxY }, queryZoom, zoom, signal)
     : null;
 
@@ -1049,7 +1050,7 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   let bufMaxX = visMaxX;
   let bufMinY = visMinY;
   let bufMaxY = visMaxY;
-  let useBuffer = rawTileCount <= 20;
+  let useBuffer = rawTileCount <= 20 && !standalone;
   let ringSources = sources;
   if (useBuffer && ringPlan) {
     ringSources = await resolveRingSources(sources, ringPlan);
@@ -1099,7 +1100,7 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
   const activeEast = claimViewport ? east : tile2lon(bufMaxX + 1, queryZoom);
   // Bereich inklusive Pufferring: so groß wird loadedPoiBounds nach dem Nachladen (z. B. für das Overpass-Delta)
   elements.bufferBounds = { south: activeSouth, west: activeWest, north: activeNorth, east: activeEast };
-  State.activeFetchBounds = (typeof L !== 'undefined' && L.latLngBounds)
+  if (!standalone) State.activeFetchBounds = (typeof L !== 'undefined' && L.latLngBounds)
     ? L.latLngBounds([activeSouth, activeWest], [activeNorth, activeEast])
     : {
         getSouth: () => activeSouth,
@@ -1211,14 +1212,14 @@ async function loadPipelineDataset(baseUrl, mode, { signal } = {}) {
  * @param {Object} options 
  * @returns {Promise<Array<Object>>}
  */
-export async function fetchPipelineData(bounds, mode, { signal, zoom, onProgressData, onBufferComplete } = {}) {
+export async function fetchPipelineData(bounds, mode, { signal, zoom, onProgressData, onBufferComplete, standalone = false } = {}) {
   const baseUrl = Config.pipeline?.url;
   if (!baseUrl) throw new Error('Pipeline-URL ist nicht konfiguriert.');
 
   // 1. Bevorzugt: PMTiles Vektorkacheln per Range-Request
   if (Config.pipeline?.usePmtiles) {
     try {
-      const pmtilesElements = await fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgressData, onBufferComplete });
+      const pmtilesElements = await fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgressData, onBufferComplete, standalone });
       if (Array.isArray(pmtilesElements)) {
         return pmtilesElements;
       }
@@ -1271,7 +1272,7 @@ export async function fetchPipelineData(bounds, mode, { signal, zoom, onProgress
  * @param {Object} options 
  * @returns {Promise<Array<Object>>}
  */
-export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgressData, onBufferComplete } = {}) {
+export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgressData, onBufferComplete, standalone = false } = {}) {
   const baseUrl = Config.pipeline?.url;
   if (!baseUrl) throw new Error('Pipeline-URL ist nicht konfiguriert.');
 
@@ -1310,7 +1311,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       }
 
       // 2. Pufferring (nur wenn Kachelausschnitt <= 20): die Quellen dafür werden schon jetzt parallel geplant
-      const ringPlan = rawTileCount <= 20
+      const ringPlan = rawTileCount <= 20 && !standalone
         ? startRingPlan(sources, { minX: visMinX, maxX: visMaxX, minY: visMinY, maxY: visMaxY }, queryZoom, zoom, signal)
         : null;
 
@@ -1383,7 +1384,7 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       let bufMaxX = visMaxX;
       let bufMinY = visMinY;
       let bufMaxY = visMaxY;
-      let useBuffer = rawTileCount <= 20;
+      let useBuffer = rawTileCount <= 20 && !standalone;
       let ringSources = sources;
       if (useBuffer && ringPlan) {
         ringSources = await resolveRingSources(sources, ringPlan);
@@ -1442,7 +1443,9 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
               return s >= activeBufSouth && n <= activeBufNorth && w >= activeBufWest && e <= activeBufEast;
             }
           };
-      if (State.activeFetchBounds?.extend && typeof boundaryTotalBounds?.getSouthWest === 'function') {
+      if (standalone) {
+        // Eigenständiger Abruf (Export): aktive Grenzen der Karte nicht anfassen
+      } else if (State.activeFetchBounds?.extend && typeof boundaryTotalBounds?.getSouthWest === 'function') {
         State.activeFetchBounds.extend(boundaryTotalBounds);
       } else if (!State.activeFetchBounds) {
         State.activeFetchBounds = boundaryTotalBounds;

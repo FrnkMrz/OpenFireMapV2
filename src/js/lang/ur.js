@@ -72,6 +72,8 @@ export const strings = {
   gpx_success: "GPX کامیابی سے بن گیا۔",
     csv_success: "CSV کامیابی سے بن گیا۔",
   too_large: "علاقہ بہت بڑا ہے۔ زوم کریں یا چھوٹا علاقہ منتخب کریں۔",
+  export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+  export_area_limited: "Selection limited to {km} × {km} km.",
   locating: "مقام تلاش کیا جا رہا ہے…",
   render_bounds: "حدود رینڈر کی جا رہی ہیں…",
   render_infra: "انفراسٹرکچر رینڈر کیا جا رہا ہے…",

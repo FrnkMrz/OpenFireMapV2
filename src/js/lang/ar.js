@@ -72,6 +72,8 @@ export const strings = {
   gpx_success: "تم إنشاء GPX بنجاح.",
     csv_success: "تم إنشاء CSV بنجاح.",
   too_large: "المنطقة كبيرة جدًا. كبّر أو اختر منطقة أصغر.",
+  export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+  export_area_limited: "Selection limited to {km} × {km} km.",
   locating: "جارٍ تحديد الموقع…",
   render_bounds: "جارٍ رسم الحدود…",
   render_infra: "جارٍ رسم البنية التحتية…",

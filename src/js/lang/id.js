@@ -72,6 +72,8 @@ export const strings = {
   gpx_success: "GPX berhasil dibuat.",
     csv_success: "CSV berhasil dibuat.",
   too_large: "Area terlalu besar. Perbesar atau pilih area lebih kecil.",
+  export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+  export_area_limited: "Selection limited to {km} × {km} km.",
   locating: "Mencari lokasi…",
   render_bounds: "Merender batas…",
   render_infra: "Merender infrastruktur…",

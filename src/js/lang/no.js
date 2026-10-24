@@ -74,6 +74,8 @@ export const strings = {
         gpx_success: "Objekter eksportert som GPX!",
     csv_success: "Objekter eksportert som CSV!",
         too_large: "Området er for stort!",
+        export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+        export_area_limited: "Selection limited to {km} × {km} km.",
         locating: "Lokaliserer område...",
         render_bounds: "Tegner grenser...",
         render_infra: "Tegner infrastruktur...",

@@ -36,8 +36,10 @@ function closeExportTitleModal() {
 }
 
 function openTitleConfirmation(exportFnName) {
-    // 0. Daten-Check: Haben wir überhaupt Hydranten?
-    if (!State.cachedElements || State.cachedElements.length === 0) {
+    // 0. Daten-Check: Haben wir überhaupt Hydranten? Entfällt, wenn der Export seine Daten selbst lädt.
+    // Unter Zoom 15 hält der Karten-Cache keine Hydranten: alle Exporte laden ihre Daten dann selbst.
+    const fetchesOwnData = State.map && State.map.getZoom() < 15;
+    if (!fetchesOwnData && (!State.cachedElements || State.cachedElements.length === 0)) {
         showNotification(t('no_objects'), 3000, 'warning');
         return;
     }

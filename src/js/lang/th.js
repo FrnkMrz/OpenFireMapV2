@@ -74,6 +74,8 @@ export const strings = {
         gpx_success: "ส่งออกวัตถุเป็น GPX แล้ว!",
     csv_success: "ส่งออกวัตถุเป็น CSV แล้ว!",
         too_large: "พื้นที่ใหญ่เกินไป!",
+        export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+        export_area_limited: "Selection limited to {km} × {km} km.",
         locating: "กำลังระบุพื้นที่...",
         render_bounds: "กำลังแสดงผลขอบเขต...",
         render_infra: "กำลังแสดงผลโครงสร้างพื้นฐาน...",

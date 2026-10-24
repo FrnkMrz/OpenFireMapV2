@@ -74,6 +74,8 @@ export const strings = {
         gpx_success: "GPXとしてエクスポートしました！",
     csv_success: "CSVとしてエクスポートしました！",
         too_large: "範囲が広すぎます！",
+        export_area_too_large: "Export area too large! Maximum {km} × {km} km.",
+        export_area_limited: "Selection limited to {km} × {km} km.",
         locating: "エリア特定中...",
         render_bounds: "境界線を描画中...",
         render_infra: "インフラを描画中...",
