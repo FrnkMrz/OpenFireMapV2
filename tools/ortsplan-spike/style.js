@@ -127,6 +127,19 @@ export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null }) 
     },
     paint: { "text-color": "#5a3b00", "text-halo-color": "#f6f3ec", "text-halo-width": px(0.25) },
   });
+  // Einsatzwichtige Objekte mit Namen (Schulen, Kitas, Kliniken, Pflege, Rathaus, Kirchen ...), blau-kursiv wie in der Legende.
+  layers.push({
+    id: "poi-labels", type: "symbol", source: "p", "source-layer": "pois",
+    filter: ["all", ["has", "name"], ["in", ["get", "kind"], ["literal", ["school", "kindergarten", "hospital", "social_facility", "nursing_home", "townhall", "place_of_worship", "university", "college"]]]],
+    layout: {
+      "text-field": ["get", "name"],
+      "text-font": ["Noto Sans Italic"],
+      "text-size": text(plan ? 1.9 : 1.3),
+      "text-max-width": 7,
+      "text-padding": 2,
+    },
+    paint: { "text-color": "#1d4e89", "text-halo-color": "#ffffff", "text-halo-width": px(0.35) },
+  });
   layers.push({
     id: "place-labels", type: "symbol", source: "p", "source-layer": "places",
     filter: ["in", ["get", "kind"], ["literal", ["locality", "neighbourhood", "macrohood"]]],

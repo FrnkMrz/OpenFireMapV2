@@ -2,7 +2,7 @@
 // Gezeichnet wird auf ein 2D-Canvas in MILLIMETERN (ctx.scale), das Karten-Canvas wird als Bild eingesetzt.
 import { CSS_PX_PER_MM, ROAD_CLASSES } from "./style.js";
 import { loadIcons } from "./icons.js";
-import { cellsOfSegment } from "./grid.js";
+import { cellsOfSegment, colLabel, formatCells } from "./grid.js";
 import { paginate } from "./paginate.js";
 
 const FONT = "'Noto Sans', 'Liberation Sans', Arial, sans-serif";
@@ -18,7 +18,6 @@ function nearest(list, target, scale) {
   return best;
 }
 export const chooseCellM = (scale) => nearest(NICE_CELLS_M, 35, scale);
-const colLabel = (i) => (i < 26 ? String.fromCharCode(65 + i) : String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26)));
 
 /** Planquadrat-Zuordnung aller benannten Strassen im Kartenausschnitt (Pixel -> mm -> Zelle). */
 export function streetIndex(map, frame, cellMm) {
@@ -44,10 +43,10 @@ export function streetIndex(map, frame, cellMm) {
       }
     }
   }
-  const entries = [...byName.entries()].map(([name, set]) => {
-    const cells = [...set].sort((a, b) => a - b).map((k) => `${colLabel(Math.floor(k / 1000))}${(k % 1000) + 1}`);
-    return { name, cells: cells.length > 4 ? `${cells.slice(0, 4).join(", ")} …` : cells.join(", ") };
-  });
+  const entries = [...byName.entries()].map(([name, set]) => ({
+    name,
+    cells: formatCells([...set].map((k) => [Math.floor(k / 1000), k % 1000])),
+  }));
   entries.sort((a, b) => a.name.localeCompare(b.name, "de"));
   return { entries, cols, rows };
 }
@@ -94,8 +93,8 @@ export async function composeSheet(opts) {
     return [c, g];
   };
   const [c1, g] = mk();
-  const text = (s, x, y, size, { bold = false, align = "left", color = "#111" } = {}) => {
-    g.font = `${bold ? "bold " : ""}${size}px ${FONT}`; g.textAlign = align; g.fillStyle = color; g.fillText(s, x, y);
+  const text = (s, x, y, size, { bold = false, italic = false, align = "left", color = "#111" } = {}) => {
+    g.font = `${italic ? "italic " : ""}${bold ? "bold " : ""}${size}px ${FONT}`; g.textAlign = align; g.fillStyle = color; g.fillText(s, x, y);
   };
 
   // Karte
@@ -140,6 +139,9 @@ export async function composeSheet(opts) {
     g.drawImage(iconToCanvas(icons.get(item.icon)), sx, y - 4.0, 4.4, 4.4);
     text(item.text, sx + 6.2, y - 0.6, 2.4);
   }
+  // Beschriftete Einsatzobjekte
+  y += row;
+  text("Schule, Klinik, Rathaus, Kirche …", sx, y - 0.6, 2.4, { italic: true, color: "#1d4e89" });
   // Gemeindegrenze
   y += row;
   g.save(); g.strokeStyle = "rgba(51,51,51,0.7)"; g.lineWidth = 0.35; g.setLineDash([2.6, 2.6]);
@@ -226,6 +228,17 @@ export async function composeSheet(opts) {
     if (cur) out.push(cur);
     return out;
   };
+  // Planquadrate: bei vielen Zellen mehrzeilig, rechtsbuendig, hoechstens halbe Spaltenbreite
+  const wrapRefs = (refs, maxW) => {
+    const out = [];
+    let cur = "";
+    for (const part of refs.split(", ")) {
+      const t = cur ? `${cur}, ${part}` : part;
+      if (measure(t) <= maxW || !cur) cur = t; else { out.push(`${cur},`); cur = part; }
+    }
+    if (cur) out.push(cur);
+    return out;
+  };
   const fitCache = new Map();
   const fit = (i, first) => {
     const key = i * 2 + (first ? 1 : 0);
@@ -233,8 +246,10 @@ export async function composeSheet(opts) {
     if (!v) {
       const e = idx.entries[i];
       const width = first ? colW : nextW;
-      const lines = wrapName(e.name, Math.max(8, width - measure(e.cells) - 2));
-      v = { lines, h: lines.length * lineH, width };
+      const refs = wrapRefs(e.cells, width * 0.5);
+      const refW = Math.max(...refs.map(measure));
+      const lines = wrapName(e.name, Math.max(8, width - refW - 2));
+      v = { lines, refs, h: Math.max(lines.length, refs.length) * lineH, width };
       fitCache.set(key, v);
     }
     return v;
@@ -245,7 +260,7 @@ export async function composeSheet(opts) {
     for (let n = from; n < to; n++) {
       const f = fit(n, first);
       f.lines.forEach((l, k) => tf(l, x0, yy + k * lineH, fsI));
-      tf(idx.entries[n].cells, x0 + f.width, yy, fsI, { align: "right", color: "#333" });
+      f.refs.forEach((l, k) => tf(l, x0 + f.width, yy + k * lineH, fsI, { align: "right", color: "#333" }));
       yy += f.h;
     }
   };
