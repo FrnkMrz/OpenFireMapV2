@@ -20,6 +20,8 @@ const info = await page.evaluate(() => {
   return { w: c.width, h: c.height, gl: window.__map.painter?.context?.gl?.getParameter?.(window.__map.painter.context.gl.MAX_RENDERBUFFER_SIZE) };
 });
 console.log("canvas", info, "fire", await page.evaluate(() => window.__fire));
+const err = await page.evaluate(() => window.__error || null);
+if (err) { console.error("Fehler im Blatt:", err); await browser.close(); process.exit(1); }
 const pages = await page.evaluate(() => window.__sheet || null);
 if (pages) {
   console.log("sheet", await page.evaluate(() => window.__sheetInfo));

@@ -2,6 +2,7 @@
 // Gezeichnet wird auf ein 2D-Canvas in MILLIMETERN (ctx.scale), das Karten-Canvas wird als Bild eingesetzt.
 import { CSS_PX_PER_MM, ROAD_CLASSES } from "./style.js";
 import { loadIcons } from "./icons.js";
+import { cellsOfSegment } from "./grid.js";
 
 const FONT = "'Noto Sans', 'Liberation Sans', Arial, sans-serif";
 const NICE_CELLS_M = [100, 200, 250, 500, 1000, 2000, 5000];
@@ -28,14 +29,13 @@ export function streetIndex(map, frame, cellMm) {
     if (!p.name || !["highway", "major_road", "minor_road"].includes(p.kind) || p.is_tunnel === true) continue;
     const lines = f.geometry.type === "LineString" ? [f.geometry.coordinates] : f.geometry.type === "MultiLineString" ? f.geometry.coordinates : [];
     for (const line of lines) {
-      for (let i = 0; i < line.length; i++) {
-        const pts = [line[i]];
-        if (i > 0) pts.push([(line[i][0] + line[i - 1][0]) / 2, (line[i][1] + line[i - 1][1]) / 2]);
-        for (const [lng, lat] of pts) {
-          const pt = map.project([lng, lat]);
-          const x = pt.x / CSS_PX_PER_MM, y = pt.y / CSS_PX_PER_MM;
-          if (x < 0 || y < 0 || x >= frame.w || y >= frame.h) continue;
-          const c = Math.floor(x / cellMm), r = Math.floor(y / cellMm);
+      // Alle Eckpunkte in mm im Kartenfenster; jede Teilstrecke wird auf den Rahmen geschnitten und Zelle fuer Zelle verfolgt.
+      const mm = line.map(([lng, lat]) => {
+        const pt = map.project([lng, lat]);
+        return [pt.x / CSS_PX_PER_MM, pt.y / CSS_PX_PER_MM];
+      });
+      for (let i = 1; i < mm.length; i++) {
+        for (const [c, r] of cellsOfSegment(mm[i - 1][0], mm[i - 1][1], mm[i][0], mm[i][1], cellMm, frame.w, frame.h)) {
           let set = byName.get(p.name);
           if (!set) byName.set(p.name, (set = new Set()));
           set.add(c * 1000 + r);

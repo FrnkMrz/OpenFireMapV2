@@ -29,7 +29,7 @@ npm run dev          # Vite auf Port 5173, im Netz erreichbar
 node shot.mjs "scale=5000&paper=a4l&dpi=150&mode=plan" shots/test.png   # PNG ohne Browser-Fenster
 ```
 
-`shot.mjs` nutzt `playwright-core` aus dem Wurzelverzeichnis des Repos (`npm ci` dort).
+Tests für die Planquadrat-Hilfen: `node --test grid.test.mjs`. `shot.mjs` nutzt `playwright-core` aus dem Wurzelverzeichnis des Repos (`npm ci` dort).
 
 ## Parameter der Seite
 
@@ -42,6 +42,8 @@ node shot.mjs "scale=5000&paper=a4l&dpi=150&mode=plan" shots/test.png   # PNG oh
 | `lat`, `lon` | Zahl | Kartenmitte |
 | `fire` | `0` | Feuerwehr-Ebene aus |
 | `isz` | Zahl, Standard 1 | Faktor für die Symbolgröße |
+| `sheet` | `1` | Planblatt mit Rahmen, Planquadraten, Legende, Maßstabsleiste, Nordpfeil und Straßenverzeichnis (Seite 2 bei Überlauf) |
+| `place` | Text | Ortsname im Titel des Planblatts |
 | `lbl` | `top` (Standard), `avoid` | Beschriftung über den Symbolen oder ausweichend |
 
 Die Mindestbreiten und Schriftgrößen sind Schätzwerte und müssen an echten Ortsplänen gemessen werden.

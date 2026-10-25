@@ -89,6 +89,16 @@ map.once("idle", async () => {
 });
 
 async function finish() {
+  try {
+    await buildSheet();
+  } catch (err) {
+    window.__error = String(err && err.stack || err);
+    console.error(err);
+  }
+  window.__ready = true;
+}
+
+async function buildSheet() {
   if (sheet) {
     const meta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
     const res = await composeSheet({
@@ -107,10 +117,21 @@ async function finish() {
     }
     el.style.display = "none";
   }
-  window.__ready = true;
 }
 
 document.getElementById("png").addEventListener("click", () => {
+  // Blatt-Modus: die zusammengesetzten Seiten speichern (Kartenfenster allein waere unvollstaendig).
+  if (window.__sheet) {
+    window.__sheet.forEach((url, i) => {
+      setTimeout(() => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `ortsplan-blatt-${scale}-${paper}-${dpi}dpi-seite${i + 1}.png`;
+        a.click();
+      }, i * 400);
+    });
+    return;
+  }
   map.getCanvas().toBlob((b) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(b);
