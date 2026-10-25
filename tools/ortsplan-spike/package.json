@@ -1,0 +1,16 @@
+{
+  "name": "ortsplan-spike",
+  "private": true,
+  "type": "module",
+  "description": "Spike: Ortsplan-Kartenstil mit Druckmassstab (MapLibre + PMTiles). Nicht Teil der App.",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173 --strictPort"
+  },
+  "dependencies": {
+    "maplibre-gl": "^5.0.0",
+    "pmtiles": "^4.5.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.4"
+  }
+}
