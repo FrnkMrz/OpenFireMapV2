@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ortsplan-Spike</title>
+  <style>
+    body { margin: 0; font: 14px system-ui, sans-serif; background: #ddd; }
+    #bar { position: sticky; top: 0; z-index: 5; background: #fff; padding: 8px 12px; border-bottom: 1px solid #bbb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    #bar label { display: flex; gap: 4px; align-items: center; }
+    #bar input[type=number] { width: 7em; }
+    #map { margin: 12px; background: #fff; box-shadow: 0 0 8px rgba(0,0,0,.3); }
+  </style>
+</head>
+<body>
+  <form id="ctl" method="get">
+    <div id="bar">
+      <label>Maßstab 1:<select name="scale"><option>2500</option><option>5000</option><option>10000</option></select></label>
+      <label>Papier<select name="paper"><option value="a4l">A4 quer</option><option value="a4p">A4 hoch</option><option value="a3l">A3 quer</option><option value="a3p">A3 hoch</option></select></label>
+      <label>dpi<select name="dpi"><option>96</option><option>150</option><option>300</option></select></label>
+      <label>Stil<select name="mode"><option value="plan">Ortsplan (überhöht)</option><option value="real">echte Breiten</option></select></label>
+      <label>Breite<input name="lat" type="number" step="0.0001"></label>
+      <label>Länge<input name="lon" type="number" step="0.0001"></label>
+      <button type="submit">Neu laden</button>
+      <button type="button" id="png">PNG speichern</button>
+      <span id="info"></span>
+    </div>
+  </form>
+  <div id="map"></div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
