@@ -4,6 +4,7 @@ import { Protocol } from "pmtiles";
 import { buildStyle, zoomForScale, CSS_PX_PER_MM } from "./style.js";
 import { ICON_PX } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
+import { composeSheet } from "./sheet.js";
 
 const PAPER_MM = { a4l: [297, 210], a4p: [210, 297], a3l: [420, 297], a3p: [297, 420] };
 const q = new URLSearchParams(location.search);
@@ -21,9 +22,16 @@ for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon })) form
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
 
+// Blatt-Modus (sheet=1): Karte nur im Kartenfenster, daneben Seitenleiste mit Legende und Verzeichnis.
+const sheet = q.get("sheet") === "1";
+const place = q.get("place") || "Neunkirchen am Sand";
+const sidebarW = Math.min(92, Math.max(62, 0.24 * wMm));
+const frame = { x: 14, y: 14, w: wMm - 14 - 6.5 - sidebarW - 6, h: hMm - 14 - 14 };
+const mapWmm = sheet ? frame.w : wMm;
+const mapHmm = sheet ? frame.h : hMm;
 const el = document.getElementById("map");
-el.style.width = `${Math.round(wMm * CSS_PX_PER_MM)}px`;
-el.style.height = `${Math.round(hMm * CSS_PX_PER_MM)}px`;
+el.style.width = `${Math.round(mapWmm * CSS_PX_PER_MM)}px`;
+el.style.height = `${Math.round(mapHmm * CSS_PX_PER_MM)}px`;
 
 const protocol = new Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile);
@@ -73,12 +81,34 @@ map.once("idle", async () => {
     const feats = buildFeatures(els, { clusterPoi });
     const r = await addFireLayers(map, feats, sizes, lbl === "avoid" ? { beforeId: undefined, ignorePlacement: false } : { beforeId: "road-labels", ignorePlacement: true });
     window.__fire = { poiMm: +poiMm.toFixed(2), lbl, elements: els.length, symbols: r.total, stations: r.stations, defibs: feats.filter((f) => f.properties.icon === "defibrillator").length, badges: feats.filter((f) => f.properties.icon.startsWith("badge-")).length, boundaries: map.querySourceFeatures("ofm", { sourceLayer: "boundaries" }).length };
-    map.once("idle", () => { window.__ready = true; });
+    map.once("idle", () => finish());
     map.triggerRepaint();
   } else {
-    window.__ready = true;
+    finish();
   }
 });
+
+async function finish() {
+  if (sheet) {
+    const meta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
+    const res = await composeSheet({
+      map, scale, dpi, paperMm: [wMm, hMm], frame, meta,
+      title: "Orts- und Hydrantenplan",
+      subtitle: [place, `Maßstab 1 : ${scale.toLocaleString("de-DE")} · Papier ${paper.toUpperCase()}`],
+    });
+    window.__sheet = res.pages;
+    window.__sheetInfo = { index: res.indexCount, cellM: res.cellM, cols: res.cols, rows: res.rows, pages: res.pages.length };
+    const out = document.getElementById("out");
+    for (const url of res.pages) {
+      const img = new Image();
+      img.src = url;
+      img.style.cssText = "display:block;margin:12px;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.3);max-width:calc(100vw - 24px)";
+      out.appendChild(img);
+    }
+    el.style.display = "none";
+  }
+  window.__ready = true;
+}
 
 document.getElementById("png").addEventListener("click", () => {
   map.getCanvas().toBlob((b) => {

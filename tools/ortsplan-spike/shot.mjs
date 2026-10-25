@@ -20,6 +20,18 @@ const info = await page.evaluate(() => {
   return { w: c.width, h: c.height, gl: window.__map.painter?.context?.gl?.getParameter?.(window.__map.painter.context.gl.MAX_RENDERBUFFER_SIZE) };
 });
 console.log("canvas", info, "fire", await page.evaluate(() => window.__fire));
+const pages = await page.evaluate(() => window.__sheet || null);
+if (pages) {
+  console.log("sheet", await page.evaluate(() => window.__sheetInfo));
+  fs.mkdirSync(out.split("/").slice(0, -1).join("/") || ".", { recursive: true });
+  pages.forEach((u, i) => {
+    const f = i === 0 ? out : out.replace(/\.png$/, `-${i + 1}.png`);
+    fs.writeFileSync(f, Buffer.from(u.split(",")[1], "base64"));
+    console.log("gespeichert:", f, fs.statSync(f).size, "Bytes");
+  });
+  await browser.close();
+  process.exit(0);
+}
 const dataUrl = await page.evaluate(() => window.__map.getCanvas().toDataURL("image/png"));
 fs.mkdirSync(out.split("/").slice(0, -1).join("/") || ".", { recursive: true });
 fs.writeFileSync(out, Buffer.from(dataUrl.split(",")[1], "base64"));

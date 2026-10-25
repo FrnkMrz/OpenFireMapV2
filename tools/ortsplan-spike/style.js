@@ -6,13 +6,13 @@ export const CSS_PX_PER_MM = 96 / 25.4;
 const px = (mm) => +(mm * CSS_PX_PER_MM).toFixed(2);
 
 // Klassen: echte Fahrbahnbreite in Metern, Mindest-Fuellbreite in mm (Papier), Farben.
-const ROAD_CLASSES = [
+export const ROAD_CLASSES = [
   // Reihenfolge = Wichtigkeit aufsteigend (unten -> oben)
-  { id: "service",   filter: ["all", ["==", ["get", "kind"], "minor_road"], ["==", ["get", "kind_detail"], "service"]], realM: 3.5, minMm: 0.7, fill: "#ffffff", casing: "#6f685c" },
-  { id: "minor",     filter: ["all", ["==", ["get", "kind"], "minor_road"], ["!=", ["get", "kind_detail"], "service"]], realM: 5.5, minMm: 1.2, fill: "#ffffff", casing: "#5f584c" },
-  { id: "tertiary",  filter: ["all", ["==", ["get", "kind"], "major_road"], ["in", ["get", "kind_detail"], ["literal", ["tertiary", "secondary"]]]], realM: 7, minMm: 1.6, fill: "#fff0a0", casing: "#4f483c" },
-  { id: "primary",   filter: ["all", ["==", ["get", "kind"], "major_road"], ["in", ["get", "kind_detail"], ["literal", ["primary", "trunk"]]]], realM: 9, minMm: 1.9, fill: "#ffd24d", casing: "#40392e" },
-  { id: "highway",   filter: ["==", ["get", "kind"], "highway"], realM: 14, minMm: 2.3, fill: "#f4a259", casing: "#2f2a22" },
+  { id: "service", label: "Zufahrt, Erschließungsweg",   filter: ["all", ["==", ["get", "kind"], "minor_road"], ["==", ["get", "kind_detail"], "service"]], realM: 3.5, minMm: 0.7, fill: "#ffffff", casing: "#6f685c" },
+  { id: "minor", label: "Wohn- und Nebenstraße",     filter: ["all", ["==", ["get", "kind"], "minor_road"], ["!=", ["get", "kind_detail"], "service"]], realM: 5.5, minMm: 1.2, fill: "#ffffff", casing: "#5f584c" },
+  { id: "tertiary", label: "Sammelstraße (Kreis-, Staatsstraße)",  filter: ["all", ["==", ["get", "kind"], "major_road"], ["in", ["get", "kind_detail"], ["literal", ["tertiary", "secondary"]]]], realM: 7, minMm: 1.6, fill: "#fff0a0", casing: "#4f483c" },
+  { id: "primary", label: "Hauptstraße (Bundesstraße)",   filter: ["all", ["==", ["get", "kind"], "major_road"], ["in", ["get", "kind_detail"], ["literal", ["primary", "trunk"]]]], realM: 9, minMm: 1.9, fill: "#ffd24d", casing: "#40392e" },
+  { id: "highway", label: "Autobahn",   filter: ["==", ["get", "kind"], "highway"], realM: 14, minMm: 2.3, fill: "#f4a259", casing: "#2f2a22" },
 ];
 
 const NOT_TUNNEL = ["!=", ["get", "is_tunnel"], true];
