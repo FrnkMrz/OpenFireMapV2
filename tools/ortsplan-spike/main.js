@@ -29,6 +29,14 @@ const sidebarW = Math.min(92, Math.max(62, 0.24 * wMm));
 const frame = { x: 14, y: 14, w: wMm - 14 - 6.5 - sidebarW - 6, h: hMm - 14 - 14 };
 const mapWmm = sheet ? frame.w : wMm;
 const mapHmm = sheet ? frame.h : hMm;
+// Optionen ohne eigenes Eingabefeld (sheet, place, fire, isz, lbl ...) bleiben beim "Neu laden" erhalten.
+for (const [k, v] of q.entries()) {
+  if (form.elements[k]) continue;
+  const hidden = document.createElement("input");
+  hidden.type = "hidden"; hidden.name = k; hidden.value = v;
+  form.appendChild(hidden);
+}
+
 const el = document.getElementById("map");
 el.style.width = `${Math.round(mapWmm * CSS_PX_PER_MM)}px`;
 el.style.height = `${Math.round(mapHmm * CSS_PX_PER_MM)}px`;
@@ -50,6 +58,8 @@ const map = new maplibregl.Map({
   canvasContextAttributes: { preserveDrawingBuffer: true },
   attributionControl: false,
   fadeDuration: 0,
+  // Fester Massstab: Zoomen und Verschieben wuerden Massstab, Dateiname und Feuerwehr-Daten vom Bild trennen.
+  interactive: false,
 });
 window.__map = map;
 // Symbolgroesse in mm Papier, nach Massstab abgestuft (App: Wache 32 px, sonst 28 px, also Wache etwas groesser).

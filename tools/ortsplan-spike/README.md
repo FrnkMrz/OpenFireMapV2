@@ -29,7 +29,7 @@ npm run dev          # Vite auf Port 5173, im Netz erreichbar
 node shot.mjs "scale=5000&paper=a4l&dpi=150&mode=plan" shots/test.png   # PNG ohne Browser-Fenster
 ```
 
-Tests für die Planquadrat-Hilfen: `node --test grid.test.mjs`. `shot.mjs` nutzt `playwright-core` aus dem Wurzelverzeichnis des Repos (`npm ci` dort).
+Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs`, Seitenaufteilung des Verzeichnisses in `paginate.test.mjs`). `shot.mjs` nutzt `playwright-core` aus dem Wurzelverzeichnis des Repos (`npm ci` dort).
 
 ## Parameter der Seite
 
@@ -45,5 +45,7 @@ Tests für die Planquadrat-Hilfen: `node --test grid.test.mjs`. `shot.mjs` nutzt
 | `sheet` | `1` | Planblatt mit Rahmen, Planquadraten, Legende, Maßstabsleiste, Nordpfeil und Straßenverzeichnis (Seite 2 bei Überlauf) |
 | `place` | Text | Ortsname im Titel des Planblatts |
 | `lbl` | `top` (Standard), `avoid` | Beschriftung über den Symbolen oder ausweichend |
+
+Die Karte ist ein Renderer mit festem Maßstab: Mitte und Maßstab werden über das Formular gesetzt (Zoomen und Verschieben sind aus).
 
 Die Mindestbreiten und Schriftgrößen sind Schätzwerte und müssen an echten Ortsplänen gemessen werden.

@@ -3,6 +3,7 @@
 import { CSS_PX_PER_MM, ROAD_CLASSES } from "./style.js";
 import { loadIcons } from "./icons.js";
 import { cellsOfSegment } from "./grid.js";
+import { paginate } from "./paginate.js";
 
 const FONT = "'Noto Sans', 'Liberation Sans', Arial, sans-serif";
 const NICE_CELLS_M = [100, 200, 250, 500, 1000, 2000, 5000];
@@ -199,31 +200,36 @@ export async function composeSheet(opts) {
   const bottom = attrY;
   text(`Straßenverzeichnis (${idx.entries.length})`, sx, y, 3.4, { bold: true }); y += 4;
   const top0 = y;
-  let col = 0, yy = top0, i = 0;
-  while (i < idx.entries.length) {
-    if (yy + lineH > bottom) { col++; yy = top0; if (col > 1) break; }
-    const e = idx.entries[i];
-    text(e.name, sx + col * (colW + 3), yy, fsI);
-    text(e.cells, sx + col * (colW + 3) + colW, yy, fsI, { align: "right", color: "#333" });
-    yy += lineH; i++;
-  }
+  const firstCap = Math.floor((bottom - top0) / lineH);
+  const nextCols = 4, nextTop = 24, nextCap = Math.floor((H - 12 - nextTop) / lineH);
+  const layout = paginate(idx.entries.length, [firstCap, firstCap], Array(nextCols).fill(nextCap));
+
+  // Seite 1: zwei Spalten in der Seitenleiste
+  layout[0].forEach(([from, to], ci) => {
+    let yy = top0;
+    for (let n = from; n < to; n++, yy += lineH) {
+      const e = idx.entries[n];
+      text(e.name, sx + ci * (colW + 3), yy, fsI);
+      text(e.cells, sx + ci * (colW + 3) + colW, yy, fsI, { align: "right", color: "#333" });
+    }
+  });
   const pages = [c1.toDataURL("image/png")];
 
-  // Rest des Verzeichnisses auf Seite 2
-  if (i < idx.entries.length) {
+  // Folgeseiten: vier Spalten, so viele Seiten wie noetig, damit kein Eintrag verloren geht
+  for (let p = 1; p < layout.length; p++) {
     const [c2, g2] = mk();
     const t2 = (s, x, yv, size, o = {}) => { g2.font = `${o.bold ? "bold " : ""}${size}px ${FONT}`; g2.textAlign = o.align || "left"; g2.fillStyle = o.color || "#111"; g2.fillText(s, x, yv); };
-    t2(`${title} – Straßenverzeichnis (Fortsetzung)`, 12, 14, 5, { bold: true });
-    const n = 4, cw = (W - 24 - 3 * (n - 1) * 3) / n;
-    let cc = 0, y2 = 24;
-    for (; i < idx.entries.length; i++) {
-      if (y2 + lineH > H - 12) { cc++; y2 = 24; if (cc >= n) break; }
-      const e = idx.entries[i];
-      const x0 = 12 + cc * (cw + 9);
-      t2(e.name, x0, y2, fsI);
-      t2(e.cells, x0 + cw, y2, fsI, { align: "right", color: "#333" });
-      y2 += lineH;
-    }
+    t2(`${title} – Straßenverzeichnis (Fortsetzung, Seite ${p + 1})`, 12, 14, 5, { bold: true });
+    const cw = (W - 24 - 3 * (nextCols - 1) * 3) / nextCols;
+    layout[p].forEach(([from, to], ci) => {
+      const x0 = 12 + ci * (cw + 9);
+      let y2 = nextTop;
+      for (let n = from; n < to; n++, y2 += lineH) {
+        const e = idx.entries[n];
+        t2(e.name, x0, y2, fsI);
+        t2(e.cells, x0 + cw, y2, fsI, { align: "right", color: "#333" });
+      }
+    });
     pages.push(c2.toDataURL("image/png"));
   }
   return { pages, indexCount: idx.entries.length, cellM, cols, rows };
