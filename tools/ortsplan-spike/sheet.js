@@ -200,19 +200,58 @@ export async function composeSheet(opts) {
   const bottom = attrY;
   text(`Straßenverzeichnis (${idx.entries.length})`, sx, y, 3.4, { bold: true }); y += 4;
   const top0 = y;
-  const firstCap = Math.floor((bottom - top0) / lineH);
-  const nextCols = 4, nextTop = 24, nextCap = Math.floor((H - 12 - nextTop) / lineH);
-  const layout = paginate(idx.entries.length, [firstCap, firstCap], Array(nextCols).fill(nextCap));
+  const nextCols = 4, nextTop = 24, gapCol = 9;
+  const nextW = (W - 24 - gapCol * (nextCols - 1)) / nextCols;
+
+  // Name und Planquadrate teilen sich eine Spalte: erst die Planquadrate messen, dann den Namen in den Rest umbrechen
+  // (lange Woerter werden mit Bindestrich getrennt). Mehrzeilige Eintraege sind hoeher; die Seitenaufteilung zaehlt Hoehe.
+  g.font = `${fsI}px ${FONT}`;
+  const measure = (str) => g.measureText(str).width;
+  const wrapName = (name, maxW) => {
+    const out = [];
+    let cur = "";
+    for (const word of name.split(" ")) {
+      const t = cur ? `${cur} ${word}` : word;
+      if (measure(t) <= maxW) { cur = t; continue; }
+      if (cur) { out.push(cur); cur = ""; }
+      let w = word;
+      while (measure(w) > maxW && w.length > 2) {
+        let k = w.length - 1;
+        while (k > 1 && measure(`${w.slice(0, k)}-`) > maxW) k--;
+        out.push(`${w.slice(0, k)}-`);
+        w = w.slice(k);
+      }
+      cur = w;
+    }
+    if (cur) out.push(cur);
+    return out;
+  };
+  const fitCache = new Map();
+  const fit = (i, first) => {
+    const key = i * 2 + (first ? 1 : 0);
+    let v = fitCache.get(key);
+    if (!v) {
+      const e = idx.entries[i];
+      const width = first ? colW : nextW;
+      const lines = wrapName(e.name, Math.max(8, width - measure(e.cells) - 2));
+      v = { lines, h: lines.length * lineH, width };
+      fitCache.set(key, v);
+    }
+    return v;
+  };
+  const layout = paginate(idx.entries.length, (i, first) => fit(i, first).h, [bottom - top0, bottom - top0], Array(nextCols).fill(H - 12 - nextTop));
+  const drawColumn = (tf, [from, to], x0, y0, first) => {
+    let yy = y0;
+    for (let n = from; n < to; n++) {
+      const f = fit(n, first);
+      f.lines.forEach((l, k) => tf(l, x0, yy + k * lineH, fsI));
+      tf(idx.entries[n].cells, x0 + f.width, yy, fsI, { align: "right", color: "#333" });
+      yy += f.h;
+    }
+  };
 
   // Seite 1: zwei Spalten in der Seitenleiste
-  layout[0].forEach(([from, to], ci) => {
-    let yy = top0;
-    for (let n = from; n < to; n++, yy += lineH) {
-      const e = idx.entries[n];
-      text(e.name, sx + ci * (colW + 3), yy, fsI);
-      text(e.cells, sx + ci * (colW + 3) + colW, yy, fsI, { align: "right", color: "#333" });
-    }
-  });
+  layout[0].forEach((cols, ci) => drawColumn(text, cols, sx + ci * (colW + 3), top0, true));
   const pages = [c1.toDataURL("image/png")];
 
   // Folgeseiten: vier Spalten, so viele Seiten wie noetig, damit kein Eintrag verloren geht
@@ -220,16 +259,7 @@ export async function composeSheet(opts) {
     const [c2, g2] = mk();
     const t2 = (s, x, yv, size, o = {}) => { g2.font = `${o.bold ? "bold " : ""}${size}px ${FONT}`; g2.textAlign = o.align || "left"; g2.fillStyle = o.color || "#111"; g2.fillText(s, x, yv); };
     t2(`${title} – Straßenverzeichnis (Fortsetzung, Seite ${p + 1})`, 12, 14, 5, { bold: true });
-    const cw = (W - 24 - 3 * (nextCols - 1) * 3) / nextCols;
-    layout[p].forEach(([from, to], ci) => {
-      const x0 = 12 + ci * (cw + 9);
-      let y2 = nextTop;
-      for (let n = from; n < to; n++, y2 += lineH) {
-        const e = idx.entries[n];
-        t2(e.name, x0, y2, fsI);
-        t2(e.cells, x0 + cw, y2, fsI, { align: "right", color: "#333" });
-      }
-    });
+    layout[p].forEach((cols, ci) => drawColumn(t2, cols, 12 + ci * (nextW + gapCol), nextTop, false));
     pages.push(c2.toDataURL("image/png"));
   }
   return { pages, indexCount: idx.entries.length, cellM, cols, rows };
