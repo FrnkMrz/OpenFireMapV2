@@ -17,7 +17,7 @@ export const ROAD_CLASSES = [
 
 const NOT_TUNNEL = ["!=", ["get", "is_tunnel"], true];
 
-export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null }) {
+export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null, labelSpacingMm = null }) {
   const plan = mode === "plan";
   const realMm = (m) => (m / scale) * 1000;
   const fillMm = (c) => (plan ? Math.max(realMm(c.realM), c.minMm) : Math.max(realMm(c.realM), 0.1));
@@ -112,7 +112,7 @@ export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null }) 
       "text-letter-spacing": 0.03,
       "text-padding": 1,
       "text-max-angle": 40,
-      "symbol-spacing": px(plan ? 45 : 80),
+      "symbol-spacing": px(labelSpacingMm ?? (plan ? 45 : 80)),
     },
     paint: { "text-color": "#1a1a1a", "text-halo-color": "#ffffff", "text-halo-width": px(0.4) },
   });
