@@ -1,11 +1,12 @@
 // Namespace-Import: maplibre-gl 6 hat keinen Default-Export mehr (5.x kennt beide Schreibweisen)
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Protocol } from "pmtiles";
+import { Protocol, PMTiles } from "pmtiles";
 import { buildStyle, zoomForScale, CSS_PX_PER_MM } from "./style.js";
-import { ICON_PX } from "./icons.js";
+import { ICON_PX, loadIcons } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
+import { arrowsAlong } from "./oneway.js";
 
 const PAPER_MM = {
   a4l: [297, 210], a4p: [210, 297], a3l: [420, 297], a3p: [297, 420],
@@ -16,11 +17,20 @@ const scale = +(q.get("scale") || 5000);
 const paper = q.get("paper") || "a4l";
 const dpi = +(q.get("dpi") || 96);
 const mode = q.get("mode") || "plan"; // plan | real
-// Beschriftung: avoid (Standard) = Strassennamen weichen den Symbolen aus, fehlende Namen kommen danach einmal ueber die Symbole;
-// top = alle Namen ueber den Symbolen
+// Beschriftung: avoid (Standard) = Strassennamen weichen den Symbolen aus, fehlende Namen kommen danach einmal UNTER die Symbole;
+// top = Namen weichen nicht aus. Die Feuerwehr-Symbole liegen in beiden Faellen oben und werden nie von Namen verdeckt.
 const lbl = q.get("lbl") || "avoid";
-const lat = +(q.get("lat") || 49.5252);
-const lon = +(q.get("lon") || 11.3181);
+// Weiterer Ort: ?area=<name> nutzt data/<name>.pmtiles, <name>-ofm.pmtiles, <name>-oneway.geojson und <name>.json (siehe extract-area.mjs)
+const areaName = (q.get("area") || "").replace(/[^a-z0-9-]/gi, "");
+let areaInfo = null;
+if (areaName) {
+  try { areaInfo = await (await fetch(`/${areaName}.json`)).json(); } catch { /* ohne Beschreibung */ }
+}
+const baseFile = areaName ? `${areaName}.pmtiles` : "neunkirchen.pmtiles";
+const ofmFile = areaName ? `${areaName}-ofm.pmtiles` : "ofm.pmtiles";
+const onewayFile = areaName ? `${areaName}-oneway.geojson` : "oneway.geojson";
+const lat = +(q.get("lat") || areaInfo?.lat || 49.5252);
+const lon = +(q.get("lon") || areaInfo?.lon || 11.3181);
 const [wMm, hMm] = PAPER_MM[paper] || PAPER_MM.a4l;
 
 // Formular
@@ -33,7 +43,7 @@ document.getElementById("info").textContent =
 
 // Blatt-Modus (sheet=1): Karte nur im Kartenfenster, daneben Seitenleiste mit Legende und Verzeichnis.
 const sheet = q.get("sheet") === "1";
-const place = q.get("place") || "Neunkirchen am Sand";
+const place = q.get("place") || areaInfo?.title || "Neunkirchen am Sand";
 // Oberflaechen-Faktor: A3 = 1, A2 = 1,4, A1 = 2 (Schrift, Seitenleiste und Raender wachsen mit dem Papier)
 const ui = Math.max(1, Math.max(wMm, hMm) / 420);
 const sidebarW = Math.min(92 * ui, Math.max(62, 0.24 * wMm));
@@ -56,6 +66,21 @@ el.style.height = `${Math.round(mapHmm * CSS_PX_PER_MM)}px`;
 const mapRatio = Math.min(dpi / 96, 8192 / (Math.max(mapWmm, mapHmm) * CSS_PX_PER_MM));
 const mapDpi = Math.round(mapRatio * 96);
 
+// Einbahn-Pfeile: Standard bei Massstab 1:10.000 und groesser (ow=0 aus, ow=1 immer); nur, wenn die Einbahn-Datei existiert.
+// Die Pfeil-Punkte werden hier aus den Linien berechnet (Abstand in Papier-Millimetern, siehe oneway.js).
+const owWanted = q.get("ow") ? q.get("ow") === "1" : scale <= 10000;
+let owData = null;
+if (owWanted) {
+  try {
+    const r = await fetch(`/${onewayFile}`);
+    if (r.ok && (r.headers.get("content-type") || "").includes("json")) {
+      const pts = arrowsAlong(await r.json(), scale);
+      if (pts.features.length) owData = pts;
+    }
+  } catch { /* keine Datei: keine Pfeile */ }
+}
+const owImage = owData ? (await loadIcons(["oneway"])).get("oneway") : null;
+
 const protocol = new Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile);
 
@@ -63,8 +88,9 @@ const map = new maplibregl.Map({
   container: el,
   style: buildStyle({
     scale, mode,
-    pmtilesUrl: `${location.origin}/neunkirchen.pmtiles`,
-    ofmUrl: `${location.origin}/ofm.pmtiles`,
+    pmtilesUrl: `${location.origin}/${baseFile}`,
+    ofmUrl: `${location.origin}/${ofmFile}`,
+    onewayData: owData,
     labelSpacingMm: q.get("lsp") ? +q.get("lsp") : (lbl === "avoid" ? 10 : null),
   }),
   center: [lon, lat],
@@ -78,6 +104,10 @@ const map = new maplibregl.Map({
   interactive: false,
 });
 window.__map = map;
+// Pfeil-Symbol: sofort nach dem Laden des Stils eintragen (vor dem ersten Ebenen-Aufbau) und bei Bedarf nachliefern
+const addOnewayImage = () => { if (owImage && !map.hasImage("oneway")) map.addImage("oneway", owImage, { pixelRatio: 1 }); };
+map.once("style.load", addOnewayImage);
+map.on("styleimagemissing", (e) => { if (e.id === "oneway") addOnewayImage(); });
 // Messgroesse fuer Tests: wie viele verschiedene Strassennamen stehen tatsaechlich im Bild?
 window.__names = () => new Set(map.queryRenderedFeatures({ layers: ["road-labels", "road-labels-fallback"].filter((l) => map.getLayer(l)) }).map((f) => f.properties.name)).size;
 // Symbolgroesse in mm Papier, nach Massstab abgestuft (App: Wache 32 px, sonst 28 px, also Wache etwas groesser).
@@ -108,7 +138,7 @@ map.once("idle", async () => {
   if (withFire) {
     const els = collectElements(map);
     const feats = buildFeatures(els, { clusterPoi });
-    const r = await addFireLayers(map, feats, sizes, lbl === "avoid" ? { beforeId: undefined, ignorePlacement: false } : { beforeId: "road-labels", ignorePlacement: true });
+    const r = await addFireLayers(map, feats, sizes, { beforeId: undefined, ignorePlacement: lbl === "top" });
     window.__fire = { poiMm: +poiMm.toFixed(2), lbl, elements: els.length, symbols: r.total, stations: r.stations, defibs: feats.filter((f) => f.properties.icon === "defibrillator").length, badges: feats.filter((f) => f.properties.icon.startsWith("badge-")).length, boundaries: map.querySourceFeatures("ofm", { sourceLayer: "boundaries" }).length };
     await nextIdle();
     if (lbl === "avoid") {
@@ -144,10 +174,26 @@ function addFallbackLabels() {
       "symbol-placement": "line", "text-field": lay("text-field"), "text-font": lay("text-font"), "text-size": lay("text-size"),
       "text-letter-spacing": lay("text-letter-spacing"), "text-max-angle": lay("text-max-angle"), "text-padding": lay("text-padding"),
       "symbol-spacing": 400,
+      // Der Ersatz-Name liegt unter den Feuerwehr-Symbolen; er darf mit ihnen kollidieren (die Symbole bleiben vollstaendig sichtbar)
+      "text-allow-overlap": true,
     },
     paint: { "text-color": pt("text-color"), "text-halo-color": pt("text-halo-color"), "text-halo-width": pt("text-halo-width") },
-  });
+  }, map.getLayer("fire-icons") ? "fire-icons" : undefined); // unter den Symbolen: Namen duerfen Hydranten nie verdecken
   return missing.length;
+}
+
+// Liegt der Ausschnitt ausserhalb der geladenen Daten, bleibt die Karte leer. Das soll man sehen, nicht raten muessen.
+async function coverageWarning() {
+  try {
+    const h = await new PMTiles(`${location.origin}/${baseFile}`).getHeader();
+    const b = map.getBounds();
+    const inside = b.getWest() >= h.minLon && b.getEast() <= h.maxLon && b.getSouth() >= h.minLat && b.getNorth() <= h.maxLat;
+    if (inside) return "";
+    const f = (v) => v.toFixed(3).replace(".", ",");
+    return `Achtung: Der Ausschnitt liegt außerhalb der geladenen Kartendaten (${f(h.minLon)}–${f(h.maxLon)} °E, ${f(h.minLat)}–${f(h.maxLat)} °N). Daten für diesen Ort holen: node extract-area.mjs (siehe README).`;
+  } catch {
+    return "";
+  }
 }
 
 async function finish() {
@@ -161,10 +207,18 @@ async function finish() {
 }
 
 async function buildSheet() {
+  const warning = await coverageWarning();
+  window.__warning = warning;
+  if (warning) {
+    const bar = document.createElement("div");
+    bar.textContent = warning;
+    bar.style.cssText = "background:#fde8e8;color:#8a1111;padding:8px 12px;border-bottom:1px solid #d99;font:14px system-ui,sans-serif";
+    document.body.insertBefore(bar, document.getElementById("map"));
+  }
   if (sheet) {
     const meta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
     const res = await composeSheet({
-      map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, indexSize,
+      map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, indexSize, warning,
       title: "Orts- und Hydrantenplan",
       subtitle: [place, `Maßstab 1 : ${scale.toLocaleString("de-DE")} · Papier ${paper.toUpperCase()}`],
     });

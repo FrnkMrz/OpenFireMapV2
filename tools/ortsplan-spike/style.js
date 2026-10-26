@@ -2,6 +2,8 @@
 // Alle Masse sind Millimeter AUF DEM PAPIER; px() rechnet in CSS-Pixel um (96 dpi).
 // Die Werte sind vorlaeufige Platzhalter, in Phase 1 an echten Ortsplaenen zu messen.
 
+import { ICON_PX } from "./icons.js";
+
 export const CSS_PX_PER_MM = 96 / 25.4;
 const px = (mm) => +(mm * CSS_PX_PER_MM).toFixed(2);
 
@@ -16,8 +18,10 @@ export const ROAD_CLASSES = [
 ];
 
 const NOT_TUNNEL = ["!=", ["get", "is_tunnel"], true];
+const IS_BRIDGE = ["==", ["get", "is_bridge"], true];
+const NOT_BRIDGE = ["!=", ["get", "is_bridge"], true];
 
-export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null, labelSpacingMm = null }) {
+export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null, labelSpacingMm = null, onewayData = null }) {
   const plan = mode === "plan";
   const realMm = (m) => (m / scale) * 1000;
   const fillMm = (c) => (plan ? Math.max(realMm(c.realM), c.minMm) : Math.max(realMm(c.realM), 0.1));
@@ -60,29 +64,42 @@ export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null, la
   });
 
   // Wege (Fuss/Rad/Wirtschaft): duenn, gestrichelt
+  const pathPaint = { "line-color": "#9a9183", "line-width": px(plan ? 0.28 : 0.12), "line-dasharray": [1.5, 2] };
   layers.push({
     id: "paths", type: "line", source: "p", "source-layer": "roads",
-    filter: ["all", ["==", ["get", "kind"], "path"], NOT_TUNNEL],
+    filter: ["all", ["==", ["get", "kind"], "path"], NOT_TUNNEL, NOT_BRIDGE],
     layout: { "line-cap": "butt" },
-    paint: { "line-color": "#9a9183", "line-width": px(plan ? 0.28 : 0.12), "line-dasharray": [1.5, 2] },
+    paint: pathPaint,
   });
 
-  // Alle Konturen zuerst (Kreuzungen verschmelzen), danach alle Fuellungen.
-  for (const c of ROAD_CLASSES) {
-    layers.push({
-      id: `road-casing-${c.id}`, type: "line", source: "p", "source-layer": "roads",
-      filter: ["all", c.filter, NOT_TUNNEL],
-      layout: { "line-cap": "butt", "line-join": "round" },
-      paint: { "line-color": c.casing, "line-width": px(fillMm(c) + 2 * casingMm) },
-    });
-  }
-  for (const c of ROAD_CLASSES) {
-    layers.push({
-      id: `road-fill-${c.id}`, type: "line", source: "p", "source-layer": "roads",
-      filter: ["all", c.filter, NOT_TUNNEL],
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": c.fill, "line-width": px(fillMm(c)) },
-    });
+  // Strassen in zwei Durchgaengen: erst alles ohne Bruecken, danach die Bruecken obenauf. Sonst liegt zum Beispiel die Autobahn
+  // (hoechste Klasse, zuletzt gezeichnet) ueber einer Bruecke, die sie kreuzt. Je Durchgang alle Konturen zuerst, dann alle
+  // Fuellungen (Kreuzungen verschmelzen).
+  for (const [pass, bridgeFilter] of [["road", NOT_BRIDGE], ["bridge", IS_BRIDGE]]) {
+    for (const c of ROAD_CLASSES) {
+      layers.push({
+        id: `${pass}-casing-${c.id}`, type: "line", source: "p", "source-layer": "roads",
+        filter: ["all", c.filter, NOT_TUNNEL, bridgeFilter],
+        layout: { "line-cap": "butt", "line-join": "round" },
+        paint: { "line-color": c.casing, "line-width": px(fillMm(c) + 2 * casingMm) },
+      });
+    }
+    for (const c of ROAD_CLASSES) {
+      layers.push({
+        id: `${pass}-fill-${c.id}`, type: "line", source: "p", "source-layer": "roads",
+        filter: ["all", c.filter, NOT_TUNNEL, bridgeFilter],
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": c.fill, "line-width": px(fillMm(c)) },
+      });
+    }
+    if (pass === "bridge") {
+      layers.push({
+        id: "paths-bridge", type: "line", source: "p", "source-layer": "roads",
+        filter: ["all", ["==", ["get", "kind"], "path"], NOT_TUNNEL, IS_BRIDGE],
+        layout: { "line-cap": "butt" },
+        paint: pathPaint,
+      });
+    }
   }
 
   layers.push({
@@ -124,6 +141,23 @@ export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null, la
     },
     paint: { "text-color": "#1a1a1a", "text-halo-color": "#ffffff", "text-halo-width": px(0.4) },
   });
+  // Einbahnstrassen: Pfeile in Fahrtrichtung (Richtung aus OSM, siehe oneway-data.mjs), ueber der Strassenbeschriftung: Beschriftung und Hydranten-Symbole weichen/gewinnen per Kollision, sonst verdeckt der Namens-Halo die Pfeile
+  if (onewayData) {
+    layers.push({
+      id: "oneway-arrows", type: "symbol", source: "oneway",
+      layout: {
+        "icon-image": "oneway",
+        "icon-rotate": ["get", "rot"],
+        "icon-size": px(2.4) / ICON_PX,
+        "icon-rotation-alignment": "map",
+        "icon-keep-upright": false,
+        "icon-allow-overlap": false,
+        "icon-ignore-placement": false,
+        "icon-padding": 1,
+      },
+    });
+  }
+
   layers.push({
     id: "housenumbers", type: "symbol", source: "p", "source-layer": "buildings",
     filter: ["all", ["==", ["get", "kind"], "address"], ["has", "addr_housenumber"]],
@@ -164,6 +198,7 @@ export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null, la
   const sources = { p: { type: "vector", url: `pmtiles://${pmtilesUrl}`, attribution: "© OpenStreetMap contributors, Protomaps" } };
 
   // Quelle der OpenFireMap-Pipeline (Grenzen als Ebene hier, Feuerwehr-Symbole zeichnet fire.js wie die App).
+  if (onewayData) sources.oneway = { type: "geojson", data: onewayData };
   if (ofmUrl) sources.ofm = { type: "vector", url: `pmtiles://${ofmUrl}`, attribution: "OpenFireMap" };
 
   return {

@@ -78,7 +78,7 @@ const LEGEND = [
  * Rueckgabe: Liste von Daten-URLs (Seite 1 = Blatt, optional Seite 2 = Rest des Strassenverzeichnisses).
  */
 export async function composeSheet(opts) {
-  const { map, scale, dpi, paperMm, frame, title, subtitle, meta } = opts;
+  const { map, scale, dpi, paperMm, frame, title, subtitle, meta, warning } = opts;
   const [W, H] = paperMm;
   const u = opts.ui || 1; // Oberflaechen-Faktor: A3 = 1, groessere Papiere skalieren Schrift und Seitenleiste mit
   const showIndex = opts.index !== false;
@@ -135,6 +135,16 @@ export async function composeSheet(opts) {
   let y = frame.y / u + 5;
   text(title, sx, y, 5.2, { bold: true }); y += 5.6;
   for (const line of subtitle) { text(line, sx, y, 2.5, { color: "#333" }); y += 3.3; }
+  if (warning) {
+    // Hinweis in Rot (umgebrochen): der Ausschnitt hat keine Kartendaten, sonst sieht das Blatt nur leer aus
+    g.font = `bold 2.4px ${FONT}`;
+    const words = warning.split(" "); let cur = "";
+    for (const w of words) {
+      const t = cur ? `${cur} ${w}` : w;
+      if (g.measureText(t).width > sw && cur) { text(cur, sx, y, 2.4, { bold: true, color: "#b00020" }); y += 3.1; cur = w; } else cur = t;
+    }
+    if (cur) { text(cur, sx, y, 2.4, { bold: true, color: "#b00020" }); y += 3.1; }
+  }
   y += 2.5;
 
   // Was ist im sichtbaren Kartenausschnitt wirklich vorhanden? Nur das kommt in die Legende.
@@ -146,8 +156,11 @@ export async function composeSheet(opts) {
     for (const id of [...usedIcons]) if (id.startsWith("badge-")) usedIcons.add("badge-2");
   }
   const legendItems = LEGEND.filter((l) => (canQuery ? usedIcons.has(l.icon) : true));
+  const showOneway = canQuery && map.getLayer("oneway-arrows") ? map.queryRenderedFeatures({ layers: ["oneway-arrows"] }).length > 0 : false;
+  if (showOneway) legendItems.push({ icon: "oneway", text: "Einbahnstraße (Pfeil = erlaubte Fahrtrichtung)" });
   const showBoundary = present("boundaries");
-  const roadClasses = [...ROAD_CLASSES].reverse().filter((c) => present(`road-fill-${c.id}`));
+  const roadClasses = [...ROAD_CLASSES].reverse().filter((c) => present(`road-fill-${c.id}`) || present(`bridge-fill-${c.id}`));
+  // present() liefert true, wenn die Ebene fehlt; beide Ebenen existieren immer, daher reicht die Pruefung je Ebene
 
   // Legende
   text("Legende", sx, y, 3.4, { bold: true }); y += 2.2;

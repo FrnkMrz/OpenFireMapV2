@@ -21,6 +21,21 @@ pmtiles extract https://build.protomaps.com/<JJJJMMTT>.pmtiles neunkirchen.pmtil
 pmtiles extract https://pipeline.openfiremap.org/openfiremap.pmtiles ofm.pmtiles --bbox=11.28,49.49,11.41,49.58 --minzoom=12
 ```
 
+Einbahn-Pfeile (Richtung aus OSM, nicht aus den Kacheln; die Pfeil-Punkte rechnet `oneway.js` aus den Linien, Abstand in Papier-Millimetern):
+
+```bash
+node oneway-data.mjs    # schreibt data/oneway.geojson (Overpass, gleicher Ausschnitt)
+```
+
+Die Richtung der Linien in den Protomaps-Kacheln ist nicht verlässlich: Beim Zusammenfassen kehrt der Kachelbau einzelne Linien um (Stichprobe: 2 von 472 Abschnitten verkehrt). Ein Pfeil gegen die Fahrtrichtung wäre auf einem Feuerwehrplan gefährlich, deshalb kommt die Richtung aus OSM (Knotenreihenfolge, bei `oneway=-1` umgekehrt, Kreisverkehr implizit). Für den Betrieb sollte der Builder der Pipeline eine eigene Einbahn-Ebene mit gesicherter Richtung liefern.
+
+Weiterer Ort (Grundkarte und Feuerwehr-Ebenen für einen Kreis um einen Punkt, Standard 6 km):
+
+```bash
+node extract-area.mjs lauf 49.5120 11.2780 6 "Lauf an der Pegnitz"
+# danach: ?area=lauf&sheet=1&scale=5000&paper=a3l&dpi=150
+```
+
 ## Starten
 
 ```bash
@@ -39,13 +54,15 @@ Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs
 | `paper` | `a4l`/`a4p`, `a3l`/`a3p`, `a2l`/`a2p`, `a1l`/`a1p` | Papierformat (quer = `l`, hoch = `p`); Schrift und Seitenleiste wachsen mit dem Papier |
 | `dpi` | 96, 150, 200, 300 | Ausgabeauflösung. Die Karte hat je Seite höchstens 8192 px; bei sehr großen Blättern sinkt ihre Auflösung automatisch (`mapDpi` in der Ausgabe von `shot.mjs`) |
 | `mode` | `plan`, `real` | überhöhter Ortsplan oder echte Breiten |
-| `lat`, `lon` | Zahl | Kartenmitte |
+| `lat`, `lon` | Zahl | Kartenmitte. Liegt der Ausschnitt außerhalb der geladenen Daten, bleibt die Karte leer; die Seite zeigt dann einen roten Hinweis (auch auf dem Blatt) |
+| `area` | Name | weiterer Ort aus `extract-area.mjs` (nimmt dessen Mitte und Titel, wenn `lat`/`lon`/`place` fehlen) |
 | `fire` | `0` | Feuerwehr-Ebene aus |
 | `isz` | Zahl, Standard 1 | Faktor für die Symbolgröße |
 | `sheet` | `1` | Planblatt mit Rahmen, Planquadraten, Legende, Maßstabsleiste, Nordpfeil und Straßenverzeichnis (Seite 2 bei Überlauf) |
 | `place` | Text | Ortsname im Titel des Planblatts |
 | `index` | `1` (Standard), `0` | Straßenverzeichnis an oder aus |
 | `isize` | 0,5 bis 3, Standard 1 | Schriftgröße des Straßenverzeichnisses als Faktor |
+| `ow` | `0`, `1` | Einbahn-Pfeile (Standard: an bei Maßstab 1:10.000 und größer, wenn `data/oneway.geojson` existiert) |
 | `lbl` | `avoid` (Standard), `top` | Straßennamen weichen den Symbolen aus, fehlende Namen stehen danach einmal über den Symbolen (`avoid`), oder alle Namen liegen über den Symbolen (`top`) |
 | `lsp` | Zahl in mm | Abstand der Straßennamen-Wiederholung (Standard 10 bei `avoid`, sonst 45) |
 

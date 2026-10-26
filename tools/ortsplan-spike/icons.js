@@ -25,6 +25,10 @@ export function svgFor(id) {
   if (id === "station") {
     return `${open}<path d="M10 40 L50 5 L90 40 L90 90 L10 90 Z" fill="${C.station}" stroke="white" stroke-width="4"/><rect x="30" y="55" width="40" height="35" rx="2" fill="white" opacity="0.9"/></svg>`;
   }
+  if (id === "oneway") {
+    // Pfeil nach Osten (entlang der Linie ausgerichtet); schmal, damit er in eine Fahrbahn von ~1 mm passt
+    return `${open}<path d="M6 40 H56 V24 L96 50 L56 76 V60 H6 Z" fill="#2f2f2f"/></svg>`;
+  }
   const color = id === "water" ? C.water : C.hydrant;
   if (id === "wall") {
     return `${open}<circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="5"/>
