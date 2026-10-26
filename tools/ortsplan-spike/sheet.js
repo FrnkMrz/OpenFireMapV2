@@ -221,9 +221,11 @@ export async function composeSheet(opts) {
   };
 
   // ---- Block 3: Massstabsleiste, Nordpfeil, Datenstand ----
-  const scaleBlock = (x0, y0, w) => {
+  // fit < 1: der Block wird verkleinert gezeichnet; die Leiste wird dafuer entsprechend laenger gezeichnet, damit sie auf dem Papier
+  // ihre echte Laenge behaelt (sonst stimmte die Beschriftung 50 m / 100 m nicht mehr mit der Karte).
+  const scaleBlock = (x0, y0, w, fit = 1) => {
     let y = y0;
-    const barM = nearest(NICE_BAR_M, 28 * u, scale), barMm = (barM / scale) * 1000 / u; // Ziel: 28 "virtuelle" mm, also 28 mm auf A3 und 56 mm auf A1
+    const barM = nearest(NICE_BAR_M, 28 * u, scale), barMm = (barM / scale) * 1000 / u / fit; // Ziel: 28 "virtuelle" mm, also 28 mm auf A3 und 56 mm auf A1
     text(`Maßstab 1 : ${scale.toLocaleString("de-DE")}`, x0, y, 2.8, { bold: true }); y += 3.4;
     for (let i = 0; i < 2; i++) {
       g.fillStyle = i === 0 ? "#000" : "#fff";
@@ -369,11 +371,11 @@ export async function composeSheet(opts) {
       // das Verzeichnis steht auf den Folgeseiten. Vorher per Trockenlauf messen, ob alles in die Hoehe passt.
       const note = showIndex ? "Straßenverzeichnis: siehe Folgeseite" : "";
       const HEAD_W = 75;
-      const drawStacked = () => {
+      const drawStacked = (fit = 1) => {
         const y0 = P.y + 5;
         const hH = headerBlock(P.x, y0, HEAD_W, note) - y0;
         const sx = P.x + HEAD_W + 2 * GAP, sw = Math.max(SCALE_W, P.x + P.w - sx);
-        const sH = scaleBlock(sx, y0, sw);
+        const sH = scaleBlock(sx, y0, sw, fit);
         const top = y0 + Math.max(hH, sH) + 4;
         const maxCols = Math.max(1, Math.floor(P.w / LEG_COL_W));
         const room = Math.max(ROW * 3, P.y + P.h - top - 2.2);
@@ -385,7 +387,7 @@ export async function composeSheet(opts) {
       // reicht die Hoehe nicht, wird der gesamte Block gleichmaessig verkleinert (nie unter 70 %); sonst unveraendert
       panelFit = Math.max(0.7, Math.min(1, P.h / need));
       if (panelFit < 1) { g.save(); g.translate(P.x, P.y); g.scale(panelFit, panelFit); g.translate(-P.x, -P.y); }
-      drawStacked();
+      drawStacked(panelFit);
       if (panelFit < 1) g.restore();
       if (showIndex) layout = paginate(idx.entries.length, (i) => fitW(i, nextW).h, [], Array(nextCols).fill(Hv - 12 - nextTop));
     }
