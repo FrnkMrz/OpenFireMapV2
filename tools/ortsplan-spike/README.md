@@ -62,7 +62,7 @@ Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs
 | `place` | Text | Ortsname im Titel des Planblatts |
 | `side` | `right` (Standard), `left`, `top`, `bottom` | Lage von Titel, Legende, Maßstab und Verzeichnis um die Karte; oben und unten stehen sie in drei Blöcken nebeneinander |
 | `icols` | 0 bis 6, Standard 0 | Spaltenzahl des Verzeichnisses auf Seite 1 (0 = automatisch: Spalten von etwa 55 mm, gleich hoch gefüllt) |
-| `index` | `1` (Standard), `0` | Straßenverzeichnis an oder aus (zwischen Straßenname und Planquadraten steht eine Punktlinie) |
+| `index` | `1` (Standard), `0` | Straßenverzeichnis an oder aus; über dem Blatt steht, wo es steht (bei `side=top|bottom` und kleinen Papieren erst auf Seite 2, die Seiten sind beschriftet) (zwischen Straßenname und Planquadraten steht eine Punktlinie) |
 | `isize` | 0,5 bis 3, Standard 1 | Schriftgröße des Straßenverzeichnisses als Faktor |
 | `owall` | `1` | Einbahn-Pfeile auch auf Verbindungs-, Kreis-, Staats- und Bundesstraßen (Standard: nur Gemeindestraßen: Wohn-, verkehrsberuhigte und Erschließungsstraßen) |
 | `ow` | `0`, `1` | Einbahn-Pfeile (Standard: an bei Maßstab 1:10.000 und größer, wenn `data/oneway.geojson` existiert) |
