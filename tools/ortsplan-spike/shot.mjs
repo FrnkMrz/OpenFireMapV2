@@ -11,9 +11,13 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1600, height: 1200 } });
 page.on("console", (m) => { if (["error", "warning"].includes(m.type())) console.log("[browser]", m.text()); });
-page.on("pageerror", (e) => console.log("[pageerror]", e.message));
+let pageFailure = null;
+page.on("pageerror", (e) => { pageFailure = e.message; console.log("[pageerror]", e.message); });
 await page.goto(url);
-await page.waitForFunction(() => window.__ready === true, null, { timeout: 120000 });
+// Bei einem Skriptfehler beim Start (zum Beispiel "Cannot access ... before initialization") wird __ready nie gesetzt:
+// dann sofort abbrechen statt zwei Minuten zu warten.
+const failFast = new Promise((_, reject) => { const t = setInterval(() => { if (pageFailure) { clearInterval(t); reject(new Error(`Seite meldet Fehler: ${pageFailure}`)); } }, 200); });
+await Promise.race([page.waitForFunction(() => window.__ready === true, null, { timeout: 120000 }), failFast]);
 await page.waitForTimeout(1500);
 const info = await page.evaluate(() => {
   const c = window.__map.getCanvas();

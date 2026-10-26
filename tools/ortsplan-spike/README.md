@@ -62,6 +62,7 @@ Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs
 | `place` | Text | Ortsname im Titel des Planblatts |
 | `side` | `right` (Standard), `left`, `top`, `bottom` | Lage von Titel, Legende, Maßstab und Verzeichnis um die Karte; oben und unten stehen sie in drei Blöcken nebeneinander |
 | `icols` | 0 bis 6, Standard 0 | Spaltenzahl des Verzeichnisses auf Seite 1 (0 = automatisch: Spalten von etwa 55 mm, gleich hoch gefüllt) |
+| `fmt` | `fill` (Standard), `1:1`, `3:2`, `4:3`, `2:3`, `3:4` | Kartenformat: Seitenverhältnis des Kartenfensters (Quadrat, Quer, Hoch); Legende und Verzeichnis rücken direkt an die Karte |
 | `index` | `1` (Standard), `0` | Straßenverzeichnis an oder aus; über dem Blatt steht, wo es steht (bei `side=top|bottom` und kleinen Papieren erst auf Seite 2, die Seiten sind beschriftet) (zwischen Straßenname und Planquadraten steht eine Punktlinie) |
 | `isize` | 0,5 bis 3, Standard 1 | Schriftgröße des Straßenverzeichnisses als Faktor |
 | `owall` | `1` | Einbahn-Pfeile auch auf Verbindungs-, Kreis-, Staats- und Bundesstraßen (Standard: nur Gemeindestraßen: Wohn-, verkehrsberuhigte und Erschließungsstraßen) |
@@ -80,3 +81,12 @@ Die Mindestbreiten und Schriftgrößen sind Schätzwerte und müssen an echten O
 ## MapLibre-Version
 
 Der Spike läuft mit maplibre-gl 5.x und 6.x. Für 6 nötig (alle drei sind schon eingebaut): Namespace-Import in `main.js`, `optimizeDeps.exclude` in `vite.config.js` (der Worker liegt in einer eigenen Datei; gilt nur für Version 6, die Konfiguration erkennt die installierte Version selbst) und unsichtbare Ebenen je Quell-Ebene in `style.js`, damit `querySourceFeatures` die Feuerwehr-Daten behält.
+
+## Ausschnitt wählen
+
+`/pick.html` (auch über den Link „Ausschnitt wählen …“ im Formular): Übersichtskarte mit einem roten Rahmen in der Größe des Kartenfensters
+(Papier, Lage, Kartenformat und Maßstab einstellbar). Die Karte wird unter dem Rahmen verschoben und gezoomt; die Mitte wird die Mitte des
+Blatts. „Blatt erstellen“ öffnet das Blatt mit passenden Parametern. Ragt der Rahmen über die geladenen Daten hinaus, steht ein Hinweis da.
+Die Geometrie (Papier, Lage, Format, Bodenmaße) steht in `layout.js` und ist getestet.
+
+Rauchtest aller Seiten und Parameter-Kombinationen (fängt Startfehler, die die Unit-Tests nicht sehen): `SPIKE_URL=http://127.0.0.1:5173 node smoke.mjs`.
