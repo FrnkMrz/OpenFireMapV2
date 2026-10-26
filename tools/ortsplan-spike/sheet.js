@@ -147,7 +147,6 @@ export async function composeSheet(opts) {
   }
   const legendItems = LEGEND.filter((l) => (canQuery ? usedIcons.has(l.icon) : true));
   const showBoundary = present("boundaries");
-  const showPoi = present("poi-labels");
   const roadClasses = [...ROAD_CLASSES].reverse().filter((c) => present(`road-fill-${c.id}`));
 
   // Legende
@@ -169,14 +168,6 @@ export async function composeSheet(opts) {
     if (cur) out.push(cur);
     return out;
   };
-  // Beschriftete Einsatzobjekte: Musterwort in der Schriftart des Plans, daneben die Erklaerung
-  if (showPoi) {
-    y += row;
-    text("Name", sx, y - 0.6, 2.4, { italic: true, color: "#1d4e89" });
-    const lines = wrap("Einsatzwichtige Objekte mit Namen: Schule, Kita, Klinik, Pflegeheim, Rathaus, Kirche", 2.4, sw - 8.5);
-    lines.forEach((l, i) => text(l, sx + 8.5, y - 0.6 + i * 3, 2.4));
-    y += (lines.length - 1) * 3;
-  }
   if (showBoundary) {
     y += row;
     g.save(); g.strokeStyle = "rgba(51,51,51,0.7)"; g.lineWidth = 0.35; g.setLineDash([2.6, 2.6]);
@@ -230,7 +221,7 @@ export async function composeSheet(opts) {
   }
   const idx = streetIndex(map, frame, cellMm);
   indexCount = idx.entries.length;
-  const lineH = 2.75 * isz, fsI = 2.1 * isz, colW = (sw - 3) / 2;
+  const lineH = 2.75 * isz, fsI = 2.1 * isz;
   text(`Straßenverzeichnis (${idx.entries.length})`, sx, y, 3.4, { bold: true }); y += 4;
   const top0 = y;
   const nextCols = 4, nextTop = 24, gapCol = 9;
@@ -270,13 +261,15 @@ export async function composeSheet(opts) {
     if (cur) out.push(cur);
     return out;
   };
+  // Breite je Spalte: Seite 1 nutzt die volle Breite der Seitenleiste (1 Spalte, wenn alles passt, sonst 2), Folgeseiten 4 Spalten
+  const widthOf = (first, n) => (first ? (sw - 3 * (n - 1)) / n : nextW);
   const fitCache = new Map();
-  const fit = (i, first) => {
-    const key = i * 2 + (first ? 1 : 0);
+  const fit = (i, first, n = 1) => {
+    const width = widthOf(first, n);
+    const key = `${i}:${width.toFixed(2)}`;
     let v = fitCache.get(key);
     if (!v) {
       const e = idx.entries[i];
-      const width = first ? colW : nextW;
       g.font = `${fsI}px ${FONT}`;
       const refs = wrapRefs(e.cells, width * 0.5);
       const refW = Math.max(...refs.map(measure));
@@ -286,19 +279,22 @@ export async function composeSheet(opts) {
     }
     return v;
   };
-  const layout = paginate(idx.entries.length, (i, first) => fit(i, first).h, [bottom - top0, bottom - top0], Array(nextCols).fill(Hv - 12 - nextTop));
+  const plan = (n) => paginate(idx.entries.length, (i, first) => fit(i, first, n).h, Array(n).fill(bottom - top0), Array(nextCols).fill(Hv - 12 - nextTop));
+  let nCols = 1;
+  let layout = plan(1);
+  if (layout.length > 1) { nCols = 2; layout = plan(2); }
   const drawColumn = (tf, [from, to], x0, y0, first) => {
     let yy = y0;
     for (let n = from; n < to; n++) {
-      const f = fit(n, first);
+      const f = fit(n, first, nCols);
       f.lines.forEach((l, k) => tf(l, x0, yy + k * lineH, fsI));
       f.refs.forEach((l, k) => tf(l, x0 + f.width, yy + k * lineH, fsI, { align: "right", color: "#333" }));
       yy += f.h;
     }
   };
 
-  // Seite 1: zwei Spalten in der Seitenleiste
-  layout[0].forEach((cols, ci) => drawColumn(text, cols, sx + ci * (colW + 3), top0, true));
+  // Seite 1: volle Breite der Seitenleiste
+  layout[0].forEach((cols, ci) => drawColumn(text, cols, sx + ci * (widthOf(true, nCols) + 3), top0, true));
   g.restore();
   pages.push(c1.toDataURL("image/png"));
 
