@@ -17,27 +17,58 @@ export function upright(deg) {
   return d;
 }
 
-/** Punkt in der Mitte einer Linie und Richtung des Stuecks dort. */
-export function midpointOf(line) {
+/** Punkt bei Anteil t (0..1) der Linienlaenge und Richtung des Stuecks dort. */
+export function pointAt(line, t = 0.5) {
   const total = lengthM(line);
   let passed = 0;
   for (let i = 1; i < line.length; i++) {
     const len = Math.hypot(...dxdy(line[i - 1], line[i]));
-    if (passed + len >= total / 2 || i === line.length - 1) {
-      const t = len > 0 ? Math.min(1, Math.max(0, (total / 2 - passed) / len)) : 0;
+    if (passed + len >= total * t || i === line.length - 1) {
+      const u = len > 0 ? Math.min(1, Math.max(0, (total * t - passed) / len)) : 0;
       const a = line[i - 1], b = line[i];
-      return { coord: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], rot: upright(rotationDeg(a, b)) };
+      return { coord: [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], rot: upright(rotationDeg(a, b)) };
     }
     passed += len;
   }
   return null;
 }
 
+/** Punkt in der Mitte einer Linie und Richtung des Stuecks dort. */
+export const midpointOf = (line) => pointAt(line, 0.5);
+
+const FRACTIONS = [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8];
+
+/** Abstand in Metern zum naechsten Hindernis (Unendlich ohne Hindernisse). */
+export function nearestM(coord, obstacles) {
+  let best = Infinity;
+  for (const o of obstacles) best = Math.min(best, Math.hypot(...dxdy(coord, o)));
+  return best;
+}
+
+/**
+ * Stelle auf der Linie waehlen, an der der Name nicht von einem Symbol (Hydrant, Wache ...) verdeckt wird: die erste Stelle
+ * (Mitte zuerst, dann abwechselnd davor und dahinter), die mindestens clearanceM von jedem Hindernis entfernt ist,
+ * sonst die mit dem groessten Abstand.
+ */
+export function placeAvoiding(line, obstacles = [], clearanceM = 0) {
+  let best = null;
+  for (const t of FRACTIONS) {
+    const p = pointAt(line, t);
+    if (!p) continue;
+    const d = nearestM(p.coord, obstacles);
+    if (d >= clearanceM) return p;
+    if (!best || d > best.d) best = { ...p, d };
+  }
+  if (!best) return null;
+  const { d, ...p } = best;
+  return p;
+}
+
 /**
  * features: GeoJSON-Linien mit properties.name. Rueckgabe: Liste { name, coord, rot, lengthM } je Name,
  * jeweils fuer das laengste Linienstueck dieses Namens.
  */
-export function streetLabelPoints(features) {
+export function streetLabelPoints(features, { obstacles = [], clearanceOf = () => 0 } = {}) {
   const best = new Map();
   for (const f of features) {
     const name = f.properties?.name;
@@ -52,7 +83,7 @@ export function streetLabelPoints(features) {
   }
   const out = [];
   for (const [name, { len, line, kind }] of best) {
-    const mid = midpointOf(line);
+    const mid = placeAvoiding(line, obstacles, clearanceOf(name, kind));
     if (mid) out.push({ name, kind, coord: mid.coord, rot: Math.round(mid.rot * 10) / 10, lengthM: Math.round(len) });
   }
   return out;

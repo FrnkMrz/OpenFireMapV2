@@ -6,7 +6,7 @@ import { buildStyle, zoomForScale, CSS_PX_PER_MM } from "./style.js";
 import { ICON_PX, loadIcons } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
-import { arrowsAlong } from "./oneway.js";
+import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
 import { streetLabelPoints } from "./labelpoints.js";
 
 const PAPER_MM = {
@@ -95,7 +95,9 @@ if (owWanted) {
   try {
     const r = await fetch(`/${onewayFile}`);
     if (r.ok && (r.headers.get("content-type") || "").includes("json")) {
-      const pts = arrowsAlong(await r.json(), scale);
+      // Pfeile nur auf Gemeindestrassen; owall=1 zeigt sie auf allen Strassenarten
+      const all = await r.json();
+      const pts = arrowsAlong(q.get("owall") === "1" ? all : onlyLocalStreets(all), scale);
       if (pts.features.length) owData = pts;
     }
   } catch { /* keine Datei: keine Pfeile */ }
@@ -159,6 +161,7 @@ map.once("idle", async () => {
   if (withFire) {
     const els = collectElements(map);
     const feats = buildFeatures(els, { clusterPoi });
+    fireCoords = feats.map((f) => f.geometry.coordinates);
     const r = await addFireLayers(map, feats, sizes, { beforeId: undefined, ignorePlacement: lbl === "top" });
     window.__fire = { poiMm: +poiMm.toFixed(2), lbl, elements: els.length, symbols: r.total, stations: r.stations, defibs: feats.filter((f) => f.properties.icon === "defibrillator").length, badges: feats.filter((f) => f.properties.icon.startsWith("badge-")).length, boundaries: map.querySourceFeatures("ofm", { sourceLayer: "boundaries" }).length };
     await nextIdle();
@@ -174,6 +177,10 @@ const nextIdle = () => new Promise((resolve) => { map.once("idle", resolve); map
 // Strassen, deren Name nirgends platziert werden konnte (Symbole, Pfeile oder lauter zu kurze Linienstuecke), bekommen
 // ihren Namen als Punkt in der Mitte des laengsten Stuecks mit der Richtung der Strasse (siehe labelpoints.js).
 // Erst ohne Ueberlappung (weicht anderen Beschriftungen aus), danach fuer die Uebrigen mit Ueberlappung. Beides unter den Symbolen.
+// Orte der Feuerwehr-Symbole: Ersatz-Namen weichen ihnen aus, damit kein Hydrant einen Namen verdeckt (Name bleibt unter dem Symbol, aber lesbar)
+let fireCoords = [];
+const labelMmOf = (kind) => (kind === "minor_road" ? 1.75 : 2.1);
+const clearanceOf = (name, kind) => (((name.length * 0.55 * labelMmOf(kind)) / 2 + (poiMm * 1.15) / 2 + 0.6) * scale) / 1000;
 const ROAD_KINDS = ["highway", "major_road", "minor_road"];
 const labelLayers = () => ["road-labels", "road-labels-fb-a", "road-labels-fb-b"].filter((l) => map.getLayer(l));
 
@@ -189,7 +196,7 @@ function unplacedStreets() {
     if (!lines.some((l) => l.some((c) => bounds.contains(c)))) continue;
     feats.push({ properties: { name: p.name, kind: p.kind }, geometry: f.geometry });
   }
-  return streetLabelPoints(feats).filter((pt) => bounds.contains(pt.coord));
+  return streetLabelPoints(feats, { obstacles: fireCoords, clearanceOf }).filter((pt) => bounds.contains(pt.coord));
 }
 
 function addLabelPoints(id, pts, overlap) {

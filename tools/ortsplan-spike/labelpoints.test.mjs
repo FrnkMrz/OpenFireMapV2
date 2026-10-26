@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { streetLabelPoints, midpointOf, upright } from "./labelpoints.js";
+import { streetLabelPoints, midpointOf, upright, placeAvoiding, nearestM } from "./labelpoints.js";
 
 const LAT = 49.5, LON = 11.3;
 const mLon = 111320 * Math.cos((LAT * Math.PI) / 180), mLat = 110540;
@@ -52,4 +52,31 @@ test("pro Name das laengste Stueck, auch aus MultiLineString", () => {
 test("ohne Name oder ohne Linie: nichts", () => {
   assert.equal(streetLabelPoints([{ properties: {}, geometry: { type: "LineString", coordinates: line([0, 0], [1, 1]) } }]).length, 0);
   assert.equal(streetLabelPoints([{ properties: { name: "X" }, geometry: { type: "Point", coordinates: [0, 0] } }]).length, 0);
+});
+
+test("Hydrant mitten auf der Linie: der Name rutscht zur Seite (Ringstraße mit verdecktem ß)", () => {
+  const l = line([0, 0], [100, 0]);
+  const hydrant = [LON + 50 / mLon, LAT]; // genau in der Mitte
+  const p = placeAvoiding(l, [hydrant], 12);
+  assert.ok(nearestM(p.coord, [hydrant]) >= 12);
+  assert.ok(Math.abs(p.rot) < 0.5);
+});
+
+test("ohne Hindernis bleibt es bei der Mitte", () => {
+  const p = placeAvoiding(line([0, 0], [100, 0]), [], 12);
+  assert.ok(Math.abs((p.coord[0] - LON) * mLon - 50) < 0.3);
+});
+
+test("Hindernisse ueberall: die Stelle mit dem groessten Abstand", () => {
+  const l = line([0, 0], [100, 0]);
+  const obs = [0, 20, 40, 50, 60, 80, 100].map((x) => [LON + x / mLon, LAT]);
+  const p = placeAvoiding(l, obs, 500);
+  const d = nearestM(p.coord, obs);
+  assert.ok(d >= 9, `Abstand ${d}`); // Kandidaten liegen bei 20..80 m; beste Stelle hat etwa 10 m Abstand
+});
+
+test("streetLabelPoints nutzt Hindernisse und die Freiraum-Funktion je Name", () => {
+  const f = [feat("Ringstraße", line([0, 0], [100, 0]))];
+  const pts = streetLabelPoints(f, { obstacles: [[LON + 50 / mLon, LAT]], clearanceOf: (name) => (name === "Ringstraße" ? 12 : 0) });
+  assert.ok(Math.abs((pts[0].coord[0] - LON) * mLon - 50) >= 10);
 });

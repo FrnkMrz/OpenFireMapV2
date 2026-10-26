@@ -61,3 +61,11 @@ export function arrowsAlong(collection, scale, { spacingMm = 16, minLenMm = 3.5 
   }
   return { type: "FeatureCollection", features };
 }
+
+/** Strassenarten, auf denen Einbahn-Pfeile stehen: Gemeindestrassen (Wohn-, Spiel-/verkehrsberuhigte und Erschliessungsstrassen). */
+export const ARROW_HIGHWAYS = new Set(["residential", "living_street", "service"]);
+
+/** Nur Linien der Gemeindestrassen; Verbindungs-, Kreis-, Staats- und Bundesstrassen bekommen keine Pfeile. */
+export function onlyLocalStreets(collection, allowed = ARROW_HIGHWAYS) {
+  return { type: "FeatureCollection", features: (collection.features || []).filter((f) => allowed.has(f.properties?.hw)) };
+}

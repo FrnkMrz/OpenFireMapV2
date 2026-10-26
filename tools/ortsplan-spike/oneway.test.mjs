@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { arrowsAlong, rotationDeg, lengthM } from "./oneway.js";
+import { arrowsAlong, rotationDeg, lengthM, onlyLocalStreets, ARROW_HIGHWAYS } from "./oneway.js";
 
 const LAT = 49.5, LON = 11.3;
 const mLon = 111320 * Math.cos((LAT * Math.PI) / 180), mLat = 110540;
@@ -56,4 +56,12 @@ test("Linie mit Knick: Pfeil im zweiten Abschnitt dreht mit", () => {
 test("leere und ungueltige Eingaben", () => {
   assert.equal(arrowsAlong(fc(), 1000).features.length, 0);
   assert.equal(arrowsAlong({ type: "FeatureCollection", features: [{ geometry: { type: "Point", coordinates: [0, 0] } }] }, 1000).features.length, 0);
+});
+
+test("Pfeile nur auf Gemeindestrassen: Verbindungs-, Kreis- und Bundesstrassen werden ausgefiltert", () => {
+  const f = (hw) => ({ type: "Feature", properties: { hw }, geometry: { type: "LineString", coordinates: [[11.3, 49.5], [11.301, 49.5]] } });
+  const kept = onlyLocalStreets({ type: "FeatureCollection", features: ["residential", "living_street", "service", "unclassified", "tertiary", "secondary", "primary", "trunk", "primary_link", undefined].map(f) });
+  assert.deepEqual(kept.features.map((x) => x.properties.hw), ["residential", "living_street", "service"]);
+  assert.ok(ARROW_HIGHWAYS.has("residential") && !ARROW_HIGHWAYS.has("tertiary") && !ARROW_HIGHWAYS.has("unclassified"));
+  assert.equal(onlyLocalStreets({}).features.length, 0);
 });
