@@ -4,7 +4,8 @@ import fs from "node:fs";
 const out = process.argv[2] || "shots/stress";
 const browser = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage();
-await page.goto("http://127.0.0.1:5173/?fire=0&scale=10000&paper=a4l&dpi=96");
+const BASE = process.env.SPIKE_URL || "http://127.0.0.1:5173"; // Branch-Server: SPIKE_URL=http://127.0.0.1:5174
+await page.goto(`${BASE}/?fire=0&scale=10000&paper=a4l&dpi=96`);
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 120000 });
 const res = await page.evaluate(async () => {
   const { composeSheet } = await import("/sheet.js");
@@ -14,7 +15,8 @@ const res = await page.evaluate(async () => {
   const fake = { querySourceFeatures: () => feats, project: ([x, y]) => ({ x, y }), getCanvas: () => document.createElement("canvas") };
   const r = await composeSheet({ map: fake, scale: 10000, dpi: 96, paperMm: [297, 210], frame: { x: 14, y: 14, w: 190, h: 182 }, meta: null, title: "Test", subtitle: ["a", "b"] });
   window.__stress = r.pages;
-  return { index: r.indexCount, pages: r.pages.length };
+  if (r.indexCount !== 400) throw new Error(`Verzeichnis unvollstaendig: ${r.indexCount} statt 400`);
+  return { index: r.indexCount, pages: r.pages.length, panelFit: r.panelFit };
 });
 console.log(res);
 const pages = await page.evaluate(() => window.__stress);

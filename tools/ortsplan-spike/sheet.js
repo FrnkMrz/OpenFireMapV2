@@ -81,10 +81,13 @@ const LEGEND = [
 export async function composeSheet(opts) {
   const { map, scale, dpi, paperMm, frame, title, subtitle, meta, warning } = opts;
   const side = opts.side || "right"; // Lage von Legende, Massstab und Verzeichnis: right | left | top | bottom
-  const panel = opts.panel; // Bereich dafuer in mm auf dem Papier {x, y, w, h}
   const indexCols = opts.indexCols || 0; // Spaltenzahl des Verzeichnisses (0 = automatisch)
   const [W, H] = paperMm;
   const u = opts.ui || 1; // Oberflaechen-Faktor: A3 = 1, groessere Papiere skalieren Schrift und Seitenleiste mit
+  // Bereich fuer Legende, Massstab und Verzeichnis in mm auf dem Papier {x, y, w, h}. Ohne Angabe: Seitenleiste rechts neben der Karte
+  // (so rufen auch aeltere Aufrufer wie stress.mjs composeSheet ohne diese Option auf).
+  const rightX = frame.x + frame.w + 6.5 * u;
+  const panel = opts.panel || { x: rightX, y: frame.y, w: Math.max(40, W - rightX - 6 * u), h: frame.h };
   const showIndex = opts.index !== false;
   const isz = opts.indexSize || 1;
   const cellM = opts.cellM || chooseCellM(scale);
@@ -100,7 +103,14 @@ export async function composeSheet(opts) {
     g.textBaseline = "alphabetic";
     return [c, g];
   };
-  const [c1, g] = mk();
+  const [c1, g1] = mk();
+  let g = g1; // beim Trockenlauf (dry) kurzzeitig durch eine Wegwerf-Zeichenflaeche ersetzt
+  const dry = (fn) => {
+    const saved = g;
+    g = document.createElement("canvas").getContext("2d");
+    g.textBaseline = "alphabetic";
+    try { return fn(); } finally { g = saved; }
+  };
   const text = (s, x, y, size, { bold = false, italic = false, align = "left", color = "#111" } = {}) => {
     g.font = `${italic ? "italic " : ""}${bold ? "bold " : ""}${size}px ${FONT}`; g.textAlign = align; g.fillStyle = color; g.fillText(s, x, y);
   };
@@ -163,10 +173,11 @@ export async function composeSheet(opts) {
   const icons = await loadIcons([...new Set(legendItems.map((l) => l.icon))]);
 
   // ---- Block 1: Titel, Untertitel, Warnung ----
-  const headerBlock = (x0, y0, w) => {
+  const headerBlock = (x0, y0, w, extra = "") => {
     let y = y0;
     text(title, x0, y, 5.2, { bold: true }); y += 5.6;
     for (const line of subtitle) { text(line, x0, y, 2.5, { color: "#333" }); y += 3.3; }
+    if (extra) { text(extra, x0, y, 2.5, { bold: true, color: "#333" }); y += 3.3; }
     if (warning) {
       for (const l of wrap(warning, 2.4, w)) { text(l, x0, y, 2.4, { bold: true, color: "#b00020" }); y += 3.1; }
     }
@@ -334,6 +345,7 @@ export async function composeSheet(opts) {
 
   // ---- Anordnung ----
   let layout = [[]];
+  let panelFit = 1; // 1 = Bereich voll genutzt ohne Verkleinerung; kleiner = gestapelter Bereich musste verkleinert werden
   if (!horizontal) {
     let y = headerBlock(P.x, P.y + 5, P.w);
     y += legendBlock(P.x, y, Infinity).h + 9;
@@ -351,14 +363,29 @@ export async function composeSheet(opts) {
       scaleBlock(P.x + plan.legendW + GAP, P.y + 5, SCALE_W - GAP);
       if (showIndex) layout = indexBlock(P.x + plan.legendW + GAP + SCALE_W + GAP, P.y + 5, plan.indexW, P.h - 5);
     } else {
-      // zu schmal fuer nebeneinander: Titel und Legende oben, darunter der Massstab; das Verzeichnis steht auf den Folgeseiten
-      const legend2 = legendBlock(P.x, P.y + 5 + headH, Infinity, plan.legendCols);
-      const yScale = P.y + 5 + headH + legend2.h + 6;
-      scaleBlock(P.x, yScale, Math.min(P.w, SCALE_W + 40));
-      if (showIndex) {
-        text("Straßenverzeichnis: siehe Folgeseite", P.x + plan.legendW + GAP, P.y + 5 + 3.4, 3.0, { bold: true });
-        layout = paginate(idx.entries.length, (i) => fitW(i, nextW).h, [], Array(nextCols).fill(Hv - 12 - nextTop));
-      }
+      // zu schmal fuer nebeneinander: Titel und Massstab in einer Zeile, darunter die Legende ueber die ganze Breite;
+      // das Verzeichnis steht auf den Folgeseiten. Vorher per Trockenlauf messen, ob alles in die Hoehe passt.
+      const note = showIndex ? "Straßenverzeichnis: siehe Folgeseite" : "";
+      const HEAD_W = 75;
+      const drawStacked = () => {
+        const y0 = P.y + 5;
+        const hH = headerBlock(P.x, y0, HEAD_W, note) - y0;
+        const sx = P.x + HEAD_W + 2 * GAP, sw = Math.max(SCALE_W, P.x + P.w - sx);
+        const sH = scaleBlock(sx, y0, sw);
+        const top = y0 + Math.max(hH, sH) + 4;
+        const maxCols = Math.max(1, Math.floor(P.w / LEG_COL_W));
+        const room = Math.max(ROW * 3, P.y + P.h - top - 2.2);
+        const cols = Math.min(maxCols, Math.max(1, Math.ceil(totalLegH / room)));
+        const leg = legendBlock(P.x, top, Infinity, cols);
+        return top + leg.h - P.y;
+      };
+      const need = dry(drawStacked);
+      // reicht die Hoehe nicht, wird der gesamte Block gleichmaessig verkleinert (nie unter 70 %); sonst unveraendert
+      panelFit = Math.max(0.7, Math.min(1, P.h / need));
+      if (panelFit < 1) { g.save(); g.translate(P.x, P.y); g.scale(panelFit, panelFit); g.translate(-P.x, -P.y); }
+      drawStacked();
+      if (panelFit < 1) g.restore();
+      if (showIndex) layout = paginate(idx.entries.length, (i) => fitW(i, nextW).h, [], Array(nextCols).fill(Hv - 12 - nextTop));
     }
   }
   g.restore();
@@ -375,5 +402,5 @@ export async function composeSheet(opts) {
     });
     pages.push(c2.toDataURL("image/png"));
   }
-  return { pages, indexCount, cellM, cols, rows };
+  return { pages, indexCount, cellM, cols, rows, panelFit };
 }

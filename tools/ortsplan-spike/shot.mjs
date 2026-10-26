@@ -4,7 +4,7 @@ import { chromium } from "playwright-core";
 import fs from "node:fs";
 
 const [query = "", out = "shots/shot.png"] = process.argv.slice(2);
-const url = `http://127.0.0.1:5173/?${query}`;
+const url = `${process.env.SPIKE_URL || "http://127.0.0.1:5173"}/?${query}`;
 
 const browser = await chromium.launch({
   args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
@@ -24,7 +24,7 @@ const err = await page.evaluate(() => window.__error || null);
 if (err) { console.error("Fehler im Blatt:", err); await browser.close(); process.exit(1); }
 const pages = await page.evaluate(() => window.__sheet || null);
 if (pages) {
-  console.log("sheet", await page.evaluate(() => window.__sheetInfo));
+  console.log("sheet", JSON.stringify(await page.evaluate(() => window.__sheetInfo)));
   fs.mkdirSync(out.split("/").slice(0, -1).join("/") || ".", { recursive: true });
   pages.forEach((u, i) => {
     const f = i === 0 ? out : out.replace(/\.png$/, `-${i + 1}.png`);

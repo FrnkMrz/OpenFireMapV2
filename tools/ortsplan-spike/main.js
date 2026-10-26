@@ -272,7 +272,7 @@ async function buildSheet() {
       subtitle: [place, `Maßstab 1 : ${scale.toLocaleString("de-DE")} · Papier ${paper.toUpperCase()}`],
     });
     window.__sheet = res.pages;
-    window.__sheetInfo = { mapDpi, index: res.indexCount, cellM: res.cellM, cols: res.cols, rows: res.rows, pages: res.pages.length };
+    window.__sheetInfo = { panelFit: res.panelFit, mapDpi, index: res.indexCount, cellM: res.cellM, cols: res.cols, rows: res.rows, pages: res.pages.length };
     const out = document.getElementById("out");
     for (const url of res.pages) {
       const img = new Image();

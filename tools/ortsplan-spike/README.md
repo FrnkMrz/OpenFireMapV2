@@ -44,7 +44,7 @@ npm run dev          # Vite auf Port 5173, im Netz erreichbar
 node shot.mjs "scale=5000&paper=a4l&dpi=150&mode=plan" shots/test.png   # PNG ohne Browser-Fenster
 ```
 
-Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs`, Seitenaufteilung des Verzeichnisses in `paginate.test.mjs`). Belastungstest für das Straßenverzeichnis (400 lange Namen, Umbruch und Seitenaufteilung): `node stress.mjs shots/stress` bei laufendem `npm run dev`. `shot.mjs` nutzt `playwright-core` aus dem Wurzelverzeichnis des Repos (`npm ci` dort).
+Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs`, Seitenaufteilung des Verzeichnisses in `paginate.test.mjs`). Belastungstest für das Straßenverzeichnis (400 lange Namen, Umbruch und Seitenaufteilung): `node stress.mjs shots/stress` bei laufendem `npm run dev`. Die Skripte `shot.mjs`, `stress.mjs` und `names.mjs` nutzen `http://127.0.0.1:5173`; mit `SPIKE_URL=http://127.0.0.1:5174` zeigen sie auf einen anderen Server (zum Beispiel für einen Branch). `shot.mjs` nutzt `playwright-core` aus dem Wurzelverzeichnis des Repos (`npm ci` dort).
 
 ## Parameter der Seite
 
