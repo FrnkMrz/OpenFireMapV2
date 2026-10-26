@@ -1,4 +1,5 @@
-import maplibregl from "maplibre-gl";
+// Namespace-Import: maplibre-gl 6 hat keinen Default-Export mehr (5.x kennt beide Schreibweisen)
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol } from "pmtiles";
 import { buildStyle, zoomForScale, CSS_PX_PER_MM } from "./style.js";

@@ -91,6 +91,14 @@ export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null, la
     paint: { "line-color": "#5a5a5a", "line-width": px(plan ? 0.35 : 0.15), "line-dasharray": [4, 4] },
   });
 
+  // Unsichtbare Ebenen (Radius 0) halten die Feuerwehr-Ebenen der Kachelquelle fest: maplibre-gl 6 liefert aus querySourceFeatures
+  // nur Ebenen, die der Stil nutzt; fire.js liest die Objekte aber von dort (sonst fehlten Wachen, Hydranten und Wasserstellen ohne Fehlermeldung).
+  if (ofmUrl) {
+    for (const sl of ["fire_stations", "hydrants", "water_points", "defibrillators"]) {
+      layers.push({ id: `ofm-keep-${sl}`, type: "circle", source: "ofm", "source-layer": sl, paint: { "circle-radius": 0, "circle-opacity": 0 } });
+    }
+  }
+
   // Gemeindegrenzen aus der Pipeline-Ebene "boundaries" (alle Linien, wie renderBoundaries() der App)
   if (ofmUrl) {
     layers.push({
