@@ -4,7 +4,8 @@ import fs from "node:fs";
 const out = process.argv[2] || "shots/stress";
 const browser = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage();
-await page.goto("http://127.0.0.1:5173/?fire=0&scale=10000&paper=a4l&dpi=96");
+const BASE = process.env.SPIKE_URL || "http://127.0.0.1:5173"; // Branch-Server: SPIKE_URL=http://127.0.0.1:5174
+await page.goto(`${BASE}/?fire=0&scale=10000&paper=a4l&dpi=96`);
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 120000 });
 const res = await page.evaluate(async () => {
   const { composeSheet } = await import("/sheet.js");
@@ -14,7 +15,34 @@ const res = await page.evaluate(async () => {
   const fake = { querySourceFeatures: () => feats, project: ([x, y]) => ({ x, y }), getCanvas: () => document.createElement("canvas") };
   const r = await composeSheet({ map: fake, scale: 10000, dpi: 96, paperMm: [297, 210], frame: { x: 14, y: 14, w: 190, h: 182 }, meta: null, title: "Test", subtitle: ["a", "b"] });
   window.__stress = r.pages;
-  return { index: r.indexCount, pages: r.pages.length };
+  // Zweiter Lauf: waagerechter Bereich unten, erzwungene Verkleinerung (panelFit < 1). Titel und Untertitel muessen genau EINMAL
+  // auf die echte Seite gezeichnet werden (Fund aus dem Codex-Review: sie wurden vor der Verkleinerung schon einmal gezeichnet).
+  const counts = { Test: 0, "Straßenverzeichnis: siehe Folgeseite": 0 };
+  // Massstabsleiste: gemessene echte Laenge auf dem Papier (Breite * Transformation / Pixel je mm) der Balkenfelder (Hoehe 1,6 mm)
+  const bars = [];
+  const origRect = CanvasRenderingContext2D.prototype.fillRect;
+  CanvasRenderingContext2D.prototype.fillRect = function (x, y, w, h) {
+    if (this.canvas.width > 1000 && Math.abs(h - 1.6) < 1e-9) bars.push((w * this.getTransform().a) / (96 / 25.4));
+    return origRect.call(this, x, y, w, h);
+  };
+  const orig = CanvasRenderingContext2D.prototype.fillText;
+  CanvasRenderingContext2D.prototype.fillText = function (txt, ...rest) {
+    if (this.canvas.width > 1000 && txt in counts) counts[txt]++; // nur echte Seiten, nicht die Wegwerf-Flaeche des Trockenlaufs
+    return orig.call(this, txt, ...rest);
+  };
+  const r2 = await composeSheet({ map: fake, scale: 5000, dpi: 96, paperMm: [297, 210], frame: { x: 14, y: 14, w: 269, h: 110 }, meta: null, title: "Test", subtitle: ["a", "b"],
+    side: "bottom", panel: { x: 14, y: 136, w: 269, h: 50 }, ui: 1 });
+  CanvasRenderingContext2D.prototype.fillText = orig;
+  CanvasRenderingContext2D.prototype.fillRect = origRect;
+  // 1:5000, 100-m-Leiste (zwei Felder, je 50 m = 10 mm auf dem Papier), unabhaengig davon, ob der Bereich verkleinert wurde
+  const barFields = bars.filter((b) => b > 1);
+  if (barFields.length !== 2 || barFields.some((b) => Math.abs(b - 10) > 0.05)) throw new Error(`Massstabsleiste hat nicht die echte Laenge: Felder ${JSON.stringify(barFields.map((b) => +b.toFixed(2)))} mm statt 10 mm`);
+  if (!(r2.panelFit < 1)) throw new Error(`Verkleinerung nicht ausgeloest (panelFit ${r2.panelFit}), Test prueft nichts`);
+  if (counts.Test !== 1) throw new Error(`Titel ${counts.Test}-mal gezeichnet statt einmal`);
+  if (counts["Straßenverzeichnis: siehe Folgeseite"] !== 1) throw new Error(`Hinweis ${counts["Straßenverzeichnis: siehe Folgeseite"]}-mal gezeichnet statt einmal`);
+  window.__stress2 = { balkenMm: barFields.map((b) => +b.toFixed(2)), panelFit: r2.panelFit, titel: counts.Test, hinweis: counts["Straßenverzeichnis: siehe Folgeseite"], pages: r2.pages.length };
+  if (r.indexCount !== 400) throw new Error(`Verzeichnis unvollstaendig: ${r.indexCount} statt 400`);
+  return { index: r.indexCount, pages: r.pages.length, panelFit: r.panelFit, verkleinert: window.__stress2 };
 });
 console.log(res);
 const pages = await page.evaluate(() => window.__stress);
