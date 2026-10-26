@@ -17,7 +17,7 @@ export const ROAD_CLASSES = [
 
 const NOT_TUNNEL = ["!=", ["get", "is_tunnel"], true];
 
-export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null }) {
+export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null, labelSpacingMm = null }) {
   const plan = mode === "plan";
   const realMm = (m) => (m / scale) * 1000;
   const fillMm = (c) => (plan ? Math.max(realMm(c.realM), c.minMm) : Math.max(realMm(c.realM), 0.1));
@@ -91,6 +91,14 @@ export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null }) 
     paint: { "line-color": "#5a5a5a", "line-width": px(plan ? 0.35 : 0.15), "line-dasharray": [4, 4] },
   });
 
+  // Unsichtbare Ebenen (Radius 0) halten die Feuerwehr-Ebenen der Kachelquelle fest: maplibre-gl 6 liefert aus querySourceFeatures
+  // nur Ebenen, die der Stil nutzt; fire.js liest die Objekte aber von dort (sonst fehlten Wachen, Hydranten und Wasserstellen ohne Fehlermeldung).
+  if (ofmUrl) {
+    for (const sl of ["fire_stations", "hydrants", "water_points", "defibrillators"]) {
+      layers.push({ id: `ofm-keep-${sl}`, type: "circle", source: "ofm", "source-layer": sl, paint: { "circle-radius": 0, "circle-opacity": 0 } });
+    }
+  }
+
   // Gemeindegrenzen aus der Pipeline-Ebene "boundaries" (alle Linien, wie renderBoundaries() der App)
   if (ofmUrl) {
     layers.push({
@@ -112,7 +120,7 @@ export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null }) 
       "text-letter-spacing": 0.03,
       "text-padding": 1,
       "text-max-angle": 40,
-      "symbol-spacing": px(plan ? 45 : 80),
+      "symbol-spacing": px(labelSpacingMm ?? (plan ? 45 : 80)),
     },
     paint: { "text-color": "#1a1a1a", "text-halo-color": "#ffffff", "text-halo-width": px(0.4) },
   });
@@ -126,6 +134,19 @@ export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null }) 
       "text-allow-overlap": false,
     },
     paint: { "text-color": "#5a3b00", "text-halo-color": "#f6f3ec", "text-halo-width": px(0.25) },
+  });
+  // Einsatzwichtige Objekte mit Namen (Schulen, Kitas, Kliniken, Pflege, Rathaus, Kirchen ...), blau-kursiv wie in der Legende.
+  layers.push({
+    id: "poi-labels", type: "symbol", source: "p", "source-layer": "pois",
+    filter: ["all", ["has", "name"], ["in", ["get", "kind"], ["literal", ["school", "kindergarten", "hospital", "social_facility", "nursing_home", "townhall", "place_of_worship", "university", "college"]]]],
+    layout: {
+      "text-field": ["get", "name"],
+      "text-font": ["Noto Sans Italic"],
+      "text-size": text(plan ? 1.9 : 1.3),
+      "text-max-width": 7,
+      "text-padding": 2,
+    },
+    paint: { "text-color": "#1d4e89", "text-halo-color": "#ffffff", "text-halo-width": px(0.35) },
   });
   layers.push({
     id: "place-labels", type: "symbol", source: "p", "source-layer": "places",

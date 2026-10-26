@@ -1,7 +1,7 @@
 // Aufruf: node --test grid.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
-import { clipSegment, cellsOfSegment } from "./grid.js";
+import { clipSegment, cellsOfSegment, formatCells, colLabel } from "./grid.js";
 
 const keys = (cells) => cells.map(([c, r]) => `${c},${r}`).sort();
 
@@ -39,4 +39,23 @@ test("Rahmen, dessen Breite kein Vielfaches der Zelle ist (letzte Zelle angeschn
 
 test("clipSegment liefert null fuer parallele Strecken ausserhalb", () => {
   assert.equal(clipSegment(-5, -5, 50, -5, 100, 100), null);
+});
+
+test("formatCells: Bereiche je Spalte, nichts wird weggelassen", () => {
+  assert.equal(formatCells([[3, 3], [3, 4], [3, 5], [4, 3], [4, 4], [5, 5]]), "D4–6, E4, E5, F6");
+  assert.equal(formatCells([[0, 0]]), "A1");
+  assert.equal(formatCells([[1, 0], [1, 2], [1, 3]]), "B1, B3, B4");
+  assert.equal(formatCells([[1, 0], [1, 2], [1, 3], [1, 4]]), "B1, B3–5");
+  assert.equal(formatCells([]), "");
+});
+
+test("formatCells: Reihenfolge unabhaengig von der Eingabe, doppelte Zellen zaehlen einmal", () => {
+  assert.equal(formatCells([[4, 1], [3, 0], [3, 0], [4, 0]]), "D1, E1, E2");
+});
+
+test("colLabel: Z -> AA", () => {
+  assert.equal(colLabel(0), "A");
+  assert.equal(colLabel(25), "Z");
+  assert.equal(colLabel(26), "AA");
+  assert.equal(colLabel(27), "AB");
 });

@@ -43,3 +43,33 @@ export function cellsOfSegment(x0, y0, x1, y1, cellMm, w, h) {
   }
   return out;
 }
+
+/** Spaltenbuchstabe: 0 -> A ... 25 -> Z, 26 -> AA. */
+export function colLabel(i) {
+  return i < 26 ? String.fromCharCode(65 + i) : String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
+}
+
+/**
+ * Kurzschreibweise aller Planquadrate einer Strasse, ohne etwas wegzulassen:
+ * je Spalte zusammenhaengende Zeilen als Bereich, z. B. [[3,3],[3,4],[3,5],[4,3]] -> "D4–6, E4".
+ * cells: Liste [Spalte, Zeile] (0-basiert); die Ausgabe zaehlt Zeilen ab 1.
+ */
+export function formatCells(cells) {
+  const byCol = new Map();
+  for (const [c, r] of cells) {
+    if (!byCol.has(c)) byCol.set(c, new Set());
+    byCol.get(c).add(r);
+  }
+  const parts = [];
+  for (const c of [...byCol.keys()].sort((a, b) => a - b)) {
+    const rows = [...byCol.get(c)].sort((a, b) => a - b);
+    let start = rows[0], prev = rows[0];
+    const flush = () => parts.push(start === prev ? `${colLabel(c)}${start + 1}` : prev === start + 1 ? `${colLabel(c)}${start + 1}, ${colLabel(c)}${prev + 1}` : `${colLabel(c)}${start + 1}–${prev + 1}`);
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i] === prev + 1) { prev = rows[i]; continue; }
+      flush(); start = prev = rows[i];
+    }
+    flush();
+  }
+  return parts.join(", ");
+}
