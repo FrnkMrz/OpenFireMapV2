@@ -3,6 +3,7 @@
 // und lässt den Namen weg, wenn er auf kein Stueck passt. Hier wird stattdessen EIN Punkt in der Mitte des laengsten Stuecks
 // mit der Richtung der Strasse gesetzt (Schrift immer lesbar, nie auf dem Kopf).
 import { lengthM, rotationDeg } from "./oneway.js";
+import { clipSegment } from "./grid.js";
 
 const dxdy = (a, b) => {
   const lat = (((a[1] + b[1]) / 2) * Math.PI) / 180;
@@ -87,4 +88,26 @@ export function streetLabelPoints(features, { obstacles = [], clearanceOf = () =
     if (mid) out.push({ name, kind, coord: mid.coord, rot: Math.round(mid.rot * 10) / 10, lengthM: Math.round(len) });
   }
   return out;
+}
+
+/**
+ * Linie auf ein Rechteck [west, sued, ost, nord] (Grad) schneiden. Rueckgabe: zusammenhaengende Teilstuecke innerhalb.
+ * Auch Linien, die den Ausschnitt durchqueren, ohne dort einen Eckpunkt zu haben, bleiben als Stueck erhalten. Fuer so kleine
+ * Ausschnitte (Ortsplan) ist das Rechnen in Grad ausreichend genau.
+ */
+export function clipLineToBox(line, [west, south, east, north]) {
+  const w = east - west, h = north - south;
+  if (!(w > 0 && h > 0)) return [];
+  const pieces = [];
+  let cur = null;
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1], b = line[i];
+    const c = clipSegment(a[0] - west, a[1] - south, b[0] - west, b[1] - south, w, h);
+    if (!c) { cur = null; continue; }
+    const p0 = [c[0] + west, c[1] + south], p1 = [c[2] + west, c[3] + south];
+    const continues = cur && Math.abs(cur[cur.length - 1][0] - p0[0]) < 1e-12 && Math.abs(cur[cur.length - 1][1] - p0[1]) < 1e-12;
+    if (continues) cur.push(p1);
+    else { cur = [p0, p1]; pieces.push(cur); }
+  }
+  return pieces;
 }

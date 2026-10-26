@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { streetLabelPoints, midpointOf, upright, placeAvoiding, nearestM } from "./labelpoints.js";
+import { streetLabelPoints, midpointOf, upright, placeAvoiding, nearestM, clipLineToBox } from "./labelpoints.js";
 
 const LAT = 49.5, LON = 11.3;
 const mLon = 111320 * Math.cos((LAT * Math.PI) / 180), mLat = 110540;
@@ -79,4 +79,31 @@ test("streetLabelPoints nutzt Hindernisse und die Freiraum-Funktion je Name", ()
   const f = [feat("Ringstraße", line([0, 0], [100, 0]))];
   const pts = streetLabelPoints(f, { obstacles: [[LON + 50 / mLon, LAT]], clearanceOf: (name) => (name === "Ringstraße" ? 12 : 0) });
   assert.ok(Math.abs((pts[0].coord[0] - LON) * mLon - 50) >= 10);
+});
+
+const BOX = [LON, LAT, LON + 100 / mLon, LAT + 100 / mLat]; // 100 m x 100 m
+const sumLen = (pieces) => pieces.reduce((s, p) => s + Math.hypot((p[p.length - 1][0] - p[0][0]) * mLon, (p[p.length - 1][1] - p[0][1]) * mLat), 0);
+
+test("clipLineToBox: Linie durchquert den Ausschnitt, beide Endpunkte ausserhalb (Fund aus dem Codex-Review)", () => {
+  const pieces = clipLineToBox(line([-50, 50], [150, 50]), BOX);
+  assert.equal(pieces.length, 1);
+  assert.ok(Math.abs(sumLen(pieces) - 100) < 0.5);
+});
+
+test("clipLineToBox: Linie komplett ausserhalb ergibt nichts", () => {
+  assert.equal(clipLineToBox(line([-50, -50], [-10, 200]), BOX).length, 0);
+});
+
+test("clipLineToBox: Linie, die den Ausschnitt verlaesst und wieder betritt, ergibt zwei Stuecke", () => {
+  const pieces = clipLineToBox(line([10, 10], [10, 150], [60, 150], [60, 20]), BOX);
+  assert.equal(pieces.length, 2);
+});
+
+test("Name an der Stelle im sichtbaren Teil: Mitte des geschnittenen Stuecks liegt im Ausschnitt (nicht die der ganzen Linie)", () => {
+  // Linie 400 m lang, nur das erste Stueck liegt im Ausschnitt; Mitte der ganzen Linie waere ausserhalb
+  const clipped = clipLineToBox(line([0, 50], [400, 50]), BOX);
+  const pts = streetLabelPoints([{ properties: { name: "Weg" }, geometry: { type: "MultiLineString", coordinates: clipped } }]);
+  assert.equal(pts.length, 1);
+  const x = (pts[0].coord[0] - LON) * mLon;
+  assert.ok(x > 0 && x < 100, `x=${x}`);
 });

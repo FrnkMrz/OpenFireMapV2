@@ -4,6 +4,7 @@ import { CSS_PX_PER_MM, ROAD_CLASSES } from "./style.js";
 import { loadIcons } from "./icons.js";
 import { cellsOfSegment, colLabel, formatCells } from "./grid.js";
 import { paginate } from "./paginate.js";
+import { planHorizontal } from "./panelplan.js";
 
 const FONT = "'Noto Sans', 'Liberation Sans', Arial, sans-serif";
 const NICE_CELLS_M = [100, 200, 250, 500, 1000, 2000, 5000];
@@ -189,13 +190,15 @@ export async function composeSheet(opts) {
     text(c.label, x + 6.2, y - 0.6, 2.4);
   } });
   /** Zeichnet die Legende ab (x0, y0); maxH = verfuegbare Hoehe (Unendlich: eine Spalte). Rueckgabe: belegte Hoehe und Breite. */
-  const legendBlock = (x0, y0, maxH) => {
+  const legendBlock = (x0, y0, maxH, maxCols = Infinity) => {
     text("Legende", x0, y0, 3.4, { bold: true });
     const top = y0 + 2.2;
     // Spalten gleichmaessig fuellen (nicht eine volle und eine fast leere): Anzahl aus der Gesamthoehe, dann je Spalte etwa gleich viel
     const totalH = legendEntries.reduce((a, e) => a + e.h, 0);
-    const nCols = Number.isFinite(maxH) ? Math.max(1, Math.ceil(totalH / Math.max(ROW, maxH - 2.2))) : 1;
-    const cap = Number.isFinite(maxH) ? Math.min(maxH - 2.2, totalH / nCols + ROW * 0.6) : Infinity;
+    const nCols = Number.isFinite(maxH)
+      ? Math.min(maxCols, Math.max(1, Math.ceil(totalH / Math.max(ROW, maxH - 2.2))))
+      : Number.isFinite(maxCols) ? maxCols : 1;
+    const cap = nCols > 1 ? Math.min(Number.isFinite(maxH) ? maxH - 2.2 : Infinity, totalH / nCols + ROW * 0.6) : Infinity;
     let col = 0, used = 0, maxUsed = 0;
     for (const e of legendEntries) {
       if (used > 0 && used + e.h > cap) { col++; used = 0; }
@@ -337,14 +340,26 @@ export async function composeSheet(opts) {
     y += scaleBlock(P.x, y, P.w);
     if (showIndex) layout = indexBlock(P.x, y, P.w, P.y + P.h - y);
   } else {
-    // waagerecht: links Titel und Legende, in der Mitte Massstab und Nordpfeil, rechts das Verzeichnis (mehrspaltig)
+    // waagerecht: die Bloecke muessen zusammen in die Breite passen (siehe panelplan.js)
+    const SCALE_W = 70, GAP = 6, MIN_INDEX_W = 55;
     const headH = headerBlock(P.x, P.y + 5, 70) - (P.y + 5);
-    const leg = legendBlock(P.x, P.y + 5 + headH, P.h - headH - 4);
-    const wA = Math.max(leg.w, 72) + 6;
-    const wB = 70;
-    scaleBlock(P.x + wA, P.y + 5, wB - 6);
-    const cx = P.x + wA + wB;
-    if (showIndex) layout = indexBlock(cx, P.y + 5, P.x + P.w - cx, P.h - 5);
+    const totalLegH = legendEntries.reduce((a, e) => a + e.h, 0);
+    const wantCols = Math.max(1, Math.ceil(totalLegH / Math.max(ROW, P.h - headH - 4 - 2.2)));
+    const plan = planHorizontal({ panelW: P.w, legendCols: wantCols, legColW: LEG_COL_W, scaleW: SCALE_W, minIndexW: MIN_INDEX_W, gap: GAP, showIndex });
+    if (plan.mode === "row") {
+      legendBlock(P.x, P.y + 5 + headH, P.h - headH - 4, plan.legendCols);
+      scaleBlock(P.x + plan.legendW + GAP, P.y + 5, SCALE_W - GAP);
+      if (showIndex) layout = indexBlock(P.x + plan.legendW + GAP + SCALE_W + GAP, P.y + 5, plan.indexW, P.h - 5);
+    } else {
+      // zu schmal fuer nebeneinander: Titel und Legende oben, darunter der Massstab; das Verzeichnis steht auf den Folgeseiten
+      const legend2 = legendBlock(P.x, P.y + 5 + headH, Infinity, plan.legendCols);
+      const yScale = P.y + 5 + headH + legend2.h + 6;
+      scaleBlock(P.x, yScale, Math.min(P.w, SCALE_W + 40));
+      if (showIndex) {
+        text("Straßenverzeichnis: siehe Folgeseite", P.x + plan.legendW + GAP, P.y + 5 + 3.4, 3.0, { bold: true });
+        layout = paginate(idx.entries.length, (i) => fitW(i, nextW).h, [], Array(nextCols).fill(Hv - 12 - nextTop));
+      }
+    }
   }
   g.restore();
   pages.push(c1.toDataURL("image/png"));

@@ -7,7 +7,7 @@ import { ICON_PX, loadIcons } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
 import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
-import { streetLabelPoints } from "./labelpoints.js";
+import { streetLabelPoints, clipLineToBox } from "./labelpoints.js";
 
 const PAPER_MM = {
   a4l: [297, 210], a4p: [210, 297], a3l: [420, 297], a3p: [297, 420],
@@ -51,7 +51,7 @@ const ui = Math.max(1, Math.max(wMm, hMm) / 420);
 const side = ["left", "right", "top", "bottom"].includes(q.get("side")) ? q.get("side") : "right";
 const indexCols = Math.min(6, Math.max(0, Math.round(+(q.get("icols") || 0))));
 const sidebarW = Math.min(92 * ui, Math.max(62, 0.24 * wMm));
-const panelH = Math.min(0.45 * hMm, Math.max(72 * ui, 0.28 * hMm)); // oben/unten: Hoehe des Bereichs fuer Legende und Verzeichnis
+const panelH = Math.min(0.45 * hMm, Math.max(72 * ui, (wMm < hMm ? 0.36 : 0.28) * hMm)); // Hochformat: hoeher, weil Legende und Massstab untereinander stehen koennen // oben/unten: Hoehe des Bereichs fuer Legende und Verzeichnis
 let frame, panel;
 if (side === "left") {
   panel = { x: 6 * ui, y: 14 * ui, w: sidebarW, h: hMm - 28 * ui };
@@ -186,17 +186,20 @@ const labelLayers = () => ["road-labels", "road-labels-fb-a", "road-labels-fb-b"
 
 function unplacedStreets() {
   const placed = new Set(map.queryRenderedFeatures({ layers: labelLayers() }).map((f) => f.properties.name));
-  const bounds = map.getBounds();
+  // Sichtbarer Ausschnitt, innen um einen schmalen Rand verkleinert (Namen sollen nicht am Bildrand abgeschnitten werden)
+  const b = map.getBounds();
+  const m = ((3 * scale) / 1000) / 111320; // 3 mm Papier in Grad (Laengengrad, grob)
+  const box = [b.getWest() + m, b.getSouth() + m, b.getEast() - m, b.getNorth() - m];
   const feats = [];
   for (const f of map.querySourceFeatures("p", { sourceLayer: "roads" })) {
     const p = f.properties || {};
     if (!p.name || !ROAD_KINDS.includes(p.kind) || p.is_tunnel === true || placed.has(p.name)) continue;
     const lines = f.geometry.type === "LineString" ? [f.geometry.coordinates] : f.geometry.type === "MultiLineString" ? f.geometry.coordinates : [];
-    // nur Strassen, von denen etwas im sichtbaren Ausschnitt liegt (geladene Kacheln reichen darueber hinaus)
-    if (!lines.some((l) => l.some((c) => bounds.contains(c)))) continue;
-    feats.push({ properties: { name: p.name, kind: p.kind }, geometry: f.geometry });
+    // Linien auf den Ausschnitt schneiden: auch Strassen, die ihn ohne Eckpunkt darin durchqueren, bekommen einen Namen
+    const pieces = lines.flatMap((l) => clipLineToBox(l, box));
+    if (pieces.length) feats.push({ properties: { name: p.name, kind: p.kind }, geometry: { type: "MultiLineString", coordinates: pieces } });
   }
-  return streetLabelPoints(feats, { obstacles: fireCoords, clearanceOf }).filter((pt) => bounds.contains(pt.coord));
+  return streetLabelPoints(feats, { obstacles: fireCoords, clearanceOf });
 }
 
 function addLabelPoints(id, pts, overlap) {
