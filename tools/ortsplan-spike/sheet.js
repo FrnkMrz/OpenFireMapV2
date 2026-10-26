@@ -354,11 +354,13 @@ export async function composeSheet(opts) {
   } else {
     // waagerecht: die Bloecke muessen zusammen in die Breite passen (siehe panelplan.js)
     const SCALE_W = 70, GAP = 6, MIN_INDEX_W = 55;
-    const headH = headerBlock(P.x, P.y + 5, 70) - (P.y + 5);
+    // nur messen: gezeichnet wird der Titel erst im gewaehlten Zweig (sonst stuende er im gestapelten Fall doppelt im Bild)
+    const headH = dry(() => headerBlock(P.x, P.y + 5, 70)) - (P.y + 5);
     const totalLegH = legendEntries.reduce((a, e) => a + e.h, 0);
     const wantCols = Math.max(1, Math.ceil(totalLegH / Math.max(ROW, P.h - headH - 4 - 2.2)));
     const plan = planHorizontal({ panelW: P.w, legendCols: wantCols, legColW: LEG_COL_W, scaleW: SCALE_W, minIndexW: MIN_INDEX_W, gap: GAP, showIndex });
     if (plan.mode === "row") {
+      headerBlock(P.x, P.y + 5, 70);
       legendBlock(P.x, P.y + 5 + headH, P.h - headH - 4, plan.legendCols);
       scaleBlock(P.x + plan.legendW + GAP, P.y + 5, SCALE_W - GAP);
       if (showIndex) layout = indexBlock(P.x + plan.legendW + GAP + SCALE_W + GAP, P.y + 5, plan.indexW, P.h - 5);
