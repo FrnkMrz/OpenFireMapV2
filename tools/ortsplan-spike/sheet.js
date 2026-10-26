@@ -79,6 +79,9 @@ const LEGEND = [
  */
 export async function composeSheet(opts) {
   const { map, scale, dpi, paperMm, frame, title, subtitle, meta, warning } = opts;
+  const side = opts.side || "right"; // Lage von Legende, Massstab und Verzeichnis: right | left | top | bottom
+  const panel = opts.panel; // Bereich dafuer in mm auf dem Papier {x, y, w, h}
+  const indexCols = opts.indexCols || 0; // Spaltenzahl des Verzeichnisses (0 = automatisch)
   const [W, H] = paperMm;
   const u = opts.ui || 1; // Oberflaechen-Faktor: A3 = 1, groessere Papiere skalieren Schrift und Seitenleiste mit
   const showIndex = opts.index !== false;
@@ -125,27 +128,23 @@ export async function composeSheet(opts) {
     text(String(j + 1), frame.x + frame.w + 1.8 * u, cy, fs, { bold: true, align: "center" });
   }
 
-  // Seitenleiste (in "virtuellen mm": alles / u, damit Schrift und Abstaende auf grossen Papieren mitwachsen)
+  // Bereich fuer Legende, Massstab und Verzeichnis (in "virtuellen mm": alles / u, damit Schrift und Abstaende auf grossen Papieren mitwachsen)
   g.save();
   g.scale(u, u);
   const Wv = W / u, Hv = H / u;
-  const sx = (frame.x + frame.w + 6.5 * u) / u;
-  const sw = Wv - sx - 6;
-  const bottom = (frame.y + frame.h) / u;
-  let y = frame.y / u + 5;
-  text(title, sx, y, 5.2, { bold: true }); y += 5.6;
-  for (const line of subtitle) { text(line, sx, y, 2.5, { color: "#333" }); y += 3.3; }
-  if (warning) {
-    // Hinweis in Rot (umgebrochen): der Ausschnitt hat keine Kartendaten, sonst sieht das Blatt nur leer aus
-    g.font = `bold 2.4px ${FONT}`;
-    const words = warning.split(" "); let cur = "";
-    for (const w of words) {
+  const P = { x: panel.x / u, y: panel.y / u, w: panel.w / u, h: panel.h / u };
+  const horizontal = side === "top" || side === "bottom";
+
+  const wrap = (str, size, maxW) => {
+    g.font = `${size}px ${FONT}`;
+    const out = []; let cur = "";
+    for (const w of str.split(" ")) {
       const t = cur ? `${cur} ${w}` : w;
-      if (g.measureText(t).width > sw && cur) { text(cur, sx, y, 2.4, { bold: true, color: "#b00020" }); y += 3.1; cur = w; } else cur = t;
+      if (g.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t;
     }
-    if (cur) { text(cur, sx, y, 2.4, { bold: true, color: "#b00020" }); y += 3.1; }
-  }
-  y += 2.5;
+    if (cur) out.push(cur);
+    return out;
+  };
 
   // Was ist im sichtbaren Kartenausschnitt wirklich vorhanden? Nur das kommt in die Legende.
   const canQuery = typeof map.queryRenderedFeatures === "function" && !!map.getLayer?.("bg");
@@ -160,88 +159,90 @@ export async function composeSheet(opts) {
   if (showOneway) legendItems.push({ icon: "oneway", text: "Einbahnstraße (Pfeil = erlaubte Fahrtrichtung)" });
   const showBoundary = present("boundaries");
   const roadClasses = [...ROAD_CLASSES].reverse().filter((c) => present(`road-fill-${c.id}`) || present(`bridge-fill-${c.id}`));
-  // present() liefert true, wenn die Ebene fehlt; beide Ebenen existieren immer, daher reicht die Pruefung je Ebene
-
-  // Legende
-  text("Legende", sx, y, 3.4, { bold: true }); y += 2.2;
   const icons = await loadIcons([...new Set(legendItems.map((l) => l.icon))]);
-  const row = 5.4;
-  for (const item of legendItems) {
-    y += row;
-    g.drawImage(iconToCanvas(icons.get(item.icon)), sx, y - 4.0, 4.4, 4.4);
-    text(item.text, sx + 6.2, y - 0.6, 2.4);
-  }
-  const wrap = (str, size, maxW) => {
-    g.font = `${size}px ${FONT}`;
-    const out = []; let cur = "";
-    for (const w of str.split(" ")) {
-      const t = cur ? `${cur} ${w}` : w;
-      if (g.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t;
+
+  // ---- Block 1: Titel, Untertitel, Warnung ----
+  const headerBlock = (x0, y0, w) => {
+    let y = y0;
+    text(title, x0, y, 5.2, { bold: true }); y += 5.6;
+    for (const line of subtitle) { text(line, x0, y, 2.5, { color: "#333" }); y += 3.3; }
+    if (warning) {
+      for (const l of wrap(warning, 2.4, w)) { text(l, x0, y, 2.4, { bold: true, color: "#b00020" }); y += 3.1; }
     }
-    if (cur) out.push(cur);
-    return out;
+    return y + 2.5;
   };
-  if (showBoundary) {
-    y += row;
+
+  // ---- Block 2: Legende (bei waagerechtem Bereich in mehreren Spalten) ----
+  const ROW = 5.4, LEG_COL_W = 74;
+  const legendEntries = [];
+  for (const item of legendItems) legendEntries.push({ h: ROW, draw: (x, y) => { g.drawImage(iconToCanvas(icons.get(item.icon)), x, y - 4.0, 4.4, 4.4); text(item.text, x + 6.2, y - 0.6, 2.4); } });
+  if (showBoundary) legendEntries.push({ h: ROW, draw: (x, y) => {
     g.save(); g.strokeStyle = "rgba(51,51,51,0.7)"; g.lineWidth = 0.35; g.setLineDash([2.6, 2.6]);
-    g.beginPath(); g.moveTo(sx, y - 2); g.lineTo(sx + 4.4, y - 2); g.stroke(); g.restore();
-    text("Gemeindegrenze", sx + 6.2, y - 0.6, 2.4);
-  }
-  for (const c of roadClasses) {
-    y += row * 0.9;
+    g.beginPath(); g.moveTo(x, y - 2); g.lineTo(x + 4.4, y - 2); g.stroke(); g.restore();
+    text("Gemeindegrenze", x + 6.2, y - 0.6, 2.4);
+  } });
+  for (const c of roadClasses) legendEntries.push({ h: ROW * 0.9, draw: (x, y) => {
     const w = Math.max((c.realM / scale) * 1000, c.minMm);
     g.lineCap = "butt";
-    g.strokeStyle = c.casing; g.lineWidth = w + 0.44; g.beginPath(); g.moveTo(sx, y - 1.7); g.lineTo(sx + 4.4, y - 1.7); g.stroke();
-    g.strokeStyle = c.fill; g.lineWidth = w; g.beginPath(); g.moveTo(sx, y - 1.7); g.lineTo(sx + 4.4, y - 1.7); g.stroke();
-    text(c.label, sx + 6.2, y - 0.6, 2.4);
-  }
-  y += 9;
+    g.strokeStyle = c.casing; g.lineWidth = w + 0.44; g.beginPath(); g.moveTo(x, y - 1.7); g.lineTo(x + 4.4, y - 1.7); g.stroke();
+    g.strokeStyle = c.fill; g.lineWidth = w; g.beginPath(); g.moveTo(x, y - 1.7); g.lineTo(x + 4.4, y - 1.7); g.stroke();
+    text(c.label, x + 6.2, y - 0.6, 2.4);
+  } });
+  /** Zeichnet die Legende ab (x0, y0); maxH = verfuegbare Hoehe (Unendlich: eine Spalte). Rueckgabe: belegte Hoehe und Breite. */
+  const legendBlock = (x0, y0, maxH) => {
+    text("Legende", x0, y0, 3.4, { bold: true });
+    const top = y0 + 2.2;
+    // Spalten gleichmaessig fuellen (nicht eine volle und eine fast leere): Anzahl aus der Gesamthoehe, dann je Spalte etwa gleich viel
+    const totalH = legendEntries.reduce((a, e) => a + e.h, 0);
+    const nCols = Number.isFinite(maxH) ? Math.max(1, Math.ceil(totalH / Math.max(ROW, maxH - 2.2))) : 1;
+    const cap = Number.isFinite(maxH) ? Math.min(maxH - 2.2, totalH / nCols + ROW * 0.6) : Infinity;
+    let col = 0, used = 0, maxUsed = 0;
+    for (const e of legendEntries) {
+      if (used > 0 && used + e.h > cap) { col++; used = 0; }
+      used += e.h;
+      maxUsed = Math.max(maxUsed, used);
+      e.draw(x0 + col * LEG_COL_W, top + used);
+    }
+    return { h: 2.2 + maxUsed, w: (col + 1) * LEG_COL_W };
+  };
 
-  // Massstabsleiste
-  const barM = nearest(NICE_BAR_M, 28 * u, scale), barMm = (barM / scale) * 1000 / u; // Ziel: 28 "virtuelle" mm, also 28 mm auf A3 und 56 mm auf A1
-  text(`Maßstab 1 : ${scale.toLocaleString("de-DE")}`, sx, y, 2.8, { bold: true }); y += 3.4;
-  for (let i = 0; i < 2; i++) {
-    g.fillStyle = i === 0 ? "#000" : "#fff";
-    g.fillRect(sx + (i * barMm) / 2, y, barMm / 2, 1.6);
-  }
-  g.strokeStyle = "#000"; g.lineWidth = 0.25; g.strokeRect(sx, y, barMm, 1.6);
-  text("0", sx, y + 4.6, 2.2, { align: "center" });
-  text(`${barM / 2} m`, sx + barMm / 2, y + 4.6, 2.2, { align: "center" });
-  text(`${barM} m`, sx + barMm, y + 4.6, 2.2, { align: "center" });
-  text(`Planquadrat = ${cellM} × ${cellM} m`, sx + barMm + 9, y + 1.4, 2.2, { color: "#333" });
-  y += 11;
+  // ---- Block 3: Massstabsleiste, Nordpfeil, Datenstand ----
+  const scaleBlock = (x0, y0, w) => {
+    let y = y0;
+    const barM = nearest(NICE_BAR_M, 28 * u, scale), barMm = (barM / scale) * 1000 / u; // Ziel: 28 "virtuelle" mm, also 28 mm auf A3 und 56 mm auf A1
+    text(`Maßstab 1 : ${scale.toLocaleString("de-DE")}`, x0, y, 2.8, { bold: true }); y += 3.4;
+    for (let i = 0; i < 2; i++) {
+      g.fillStyle = i === 0 ? "#000" : "#fff";
+      g.fillRect(x0 + (i * barMm) / 2, y, barMm / 2, 1.6);
+    }
+    g.strokeStyle = "#000"; g.lineWidth = 0.25; g.strokeRect(x0, y, barMm, 1.6);
+    text("0", x0, y + 4.6, 2.2, { align: "center" });
+    text(`${barM / 2} m`, x0 + barMm / 2, y + 4.6, 2.2, { align: "center" });
+    text(`${barM} m`, x0 + barMm, y + 4.6, 2.2, { align: "center" });
+    text(`Planquadrat = ${cellM} × ${cellM} m`, x0, y + 8.4, 2.2, { color: "#333" });
+    y += 15;
+    // Nordpfeil
+    const nx = x0 + 5, ny = y + 8;
+    g.fillStyle = "#000"; g.beginPath(); g.moveTo(nx, ny - 8); g.lineTo(nx + 3.2, ny + 3); g.lineTo(nx, ny + 1.2); g.closePath(); g.fill();
+    g.fillStyle = "#fff"; g.strokeStyle = "#000"; g.lineWidth = 0.3;
+    g.beginPath(); g.moveTo(nx, ny - 8); g.lineTo(nx - 3.2, ny + 3); g.lineTo(nx, ny + 1.2); g.closePath(); g.fill(); g.stroke();
+    text("N", nx, ny - 9.4, 3.2, { bold: true, align: "center" });
+    let ay = ny - 5;
+    const stand = `Datenstand OSM: ${meta?.osm_data_until ? meta.osm_data_until.replace("T", " ").replace("Z", " UTC") : "unbekannt"}`;
+    for (const l of [...wrap(stand, 2.1, w - 14), ...wrap("© OpenStreetMap-Mitwirkende (ODbL) · Karte: Protomaps · Feuerwehrdaten: OpenFireMap", 1.9, w - 14)]) {
+      text(l, x0 + 14, ay, l === stand ? 2.1 : 1.9, { color: "#333" }); ay += 2.7;
+    }
+    return Math.max(ny + 9, ay + 2) - y0;
+  };
 
-  // Nordpfeil
-  const nx = sx + 5, ny = y + 8;
-  g.fillStyle = "#000"; g.beginPath(); g.moveTo(nx, ny - 8); g.lineTo(nx + 3.2, ny + 3); g.lineTo(nx, ny + 1.2); g.closePath(); g.fill();
-  g.fillStyle = "#fff"; g.strokeStyle = "#000"; g.lineWidth = 0.3;
-  g.beginPath(); g.moveTo(nx, ny - 8); g.lineTo(nx - 3.2, ny + 3); g.lineTo(nx, ny + 1.2); g.closePath(); g.fill(); g.stroke();
-  text("N", nx, ny - 9.4, 3.2, { bold: true, align: "center" });
-  let ay = ny - 5;
-  const stand = `Datenstand OSM: ${meta?.osm_data_until ? meta.osm_data_until.replace("T", " ").replace("Z", " UTC") : "unbekannt"}`;
-  for (const l of [...wrap(stand, 2.1, sw - 14), ...wrap("© OpenStreetMap-Mitwirkende (ODbL) · Karte: Protomaps · Feuerwehrdaten: OpenFireMap", 1.9, sw - 14)]) {
-    text(l, sx + 14, ay, l === stand ? 2.1 : 1.9, { color: "#333" }); ay += 2.7;
-  }
-  y = ny + 9;
-
-  // Strassenverzeichnis (optional, Schriftgroesse einstellbar)
+  // ---- Block 4: Strassenverzeichnis ----
   const pages = [];
   let indexCount = 0;
-  if (!showIndex) {
-    g.restore();
-    pages.push(c1.toDataURL("image/png"));
-    return { pages, indexCount, cellM, cols, rows };
-  }
-  const idx = streetIndex(map, frame, cellMm);
-  indexCount = idx.entries.length;
   const lineH = 2.75 * isz, fsI = 2.1 * isz;
-  text(`Straßenverzeichnis (${idx.entries.length})`, sx, y, 3.4, { bold: true }); y += 4;
-  const top0 = y;
+  const idx = showIndex ? streetIndex(map, frame, cellMm) : { entries: [] };
+  indexCount = idx.entries.length;
   const nextCols = 4, nextTop = 24, gapCol = 9;
   const nextW = (Wv - 24 - gapCol * (nextCols - 1)) / nextCols;
-
-  // Name und Planquadrate teilen sich eine Spalte: erst die Planquadrate messen, dann den Namen in den Rest umbrechen
-  // (lange Woerter werden mit Bindestrich getrennt). Mehrzeilige Eintraege sind hoeher; die Seitenaufteilung zaehlt Hoehe.
   g.font = `${fsI}px ${FONT}`;
   const measure = (str) => g.measureText(str).width;
   const wrapName = (name, maxW) => {
@@ -274,11 +275,8 @@ export async function composeSheet(opts) {
     if (cur) out.push(cur);
     return out;
   };
-  // Breite je Spalte: Seite 1 nutzt die volle Breite der Seitenleiste (1 Spalte, wenn alles passt, sonst 2), Folgeseiten 4 Spalten
-  const widthOf = (first, n) => (first ? (sw - 3 * (n - 1)) / n : nextW);
   const fitCache = new Map();
-  const fit = (i, first, n = 1) => {
-    const width = widthOf(first, n);
+  const fitW = (i, width) => {
     const key = `${i}:${width.toFixed(2)}`;
     let v = fitCache.get(key);
     if (!v) {
@@ -287,27 +285,67 @@ export async function composeSheet(opts) {
       const refs = wrapRefs(e.cells, width * 0.5);
       const refW = Math.max(...refs.map(measure));
       const lines = wrapName(e.name, Math.max(8, width - refW - 2));
-      v = { lines, refs, h: Math.max(lines.length, refs.length) * lineH, width };
+      v = { lines, refs, refW, h: Math.max(lines.length, refs.length) * lineH, width };
       fitCache.set(key, v);
     }
     return v;
   };
-  const plan = (n) => paginate(idx.entries.length, (i, first) => fit(i, first, n).h, Array(n).fill(bottom - top0), Array(nextCols).fill(Hv - 12 - nextTop));
-  let nCols = 1;
-  let layout = plan(1);
-  if (layout.length > 1) { nCols = 2; layout = plan(2); }
-  const drawColumn = (tf, [from, to], x0, y0, first) => {
-    let yy = y0;
-    for (let n = from; n < to; n++) {
-      const f = fit(n, first, nCols);
-      f.lines.forEach((l, k) => tf(l, x0, yy + k * lineH, fsI));
-      f.refs.forEach((l, k) => tf(l, x0 + f.width, yy + k * lineH, fsI, { align: "right", color: "#333" }));
-      yy += f.h;
+  // Eintrag zeichnen: Name links, Planquadrate rechts, dazwischen eine Punktlinie (Leitlinie), damit das Auge nicht springen muss
+  const drawEntry = (gc, tf, f, x0, y) => {
+    f.lines.forEach((l, k) => tf(l, x0, y + k * lineH, fsI));
+    f.refs.forEach((l, k) => tf(l, x0 + f.width, y + k * lineH, fsI, { align: "right", color: "#333" }));
+    gc.font = `${fsI}px ${FONT}`;
+    const nameEnd = x0 + gc.measureText(f.lines[0]).width + 1.2;
+    const refStart = x0 + f.width - gc.measureText(f.refs[0]).width - 1.2;
+    if (f.lines.length === 1 && refStart - nameEnd > 2.5) {
+      gc.save(); gc.strokeStyle = "#8c8c8c"; gc.lineWidth = 0.16 * isz; gc.lineCap = "round"; gc.setLineDash([0.01, 0.75 * isz]);
+      gc.beginPath(); gc.moveTo(nameEnd, y - 0.45 * isz); gc.lineTo(refStart, y - 0.45 * isz); gc.stroke(); gc.restore();
     }
   };
+  /** Zeichnet das Verzeichnis in den Bereich (x0, y0, w, h) auf Seite 1 und liefert die Aufteilung fuer Folgeseiten. */
+  const indexBlock = (x0, y0, w, h) => {
+    text(`Straßenverzeichnis (${idx.entries.length})`, x0, y0, 3.4, { bold: true });
+    const top0 = y0 + 4, avail = Math.max(lineH, h - 4);
+    // Spaltenzahl: moeglichst schmale Spalten (Ziel etwa 55 mm), damit Name und Planquadrate nahe beieinander stehen
+    const targetCols = indexCols > 0 ? indexCols : Math.max(1, Math.round(w / 55));
+    const widthN = (n) => (w - 3 * (n - 1)) / n;
+    const planFor = (n) => {
+      const wn = widthN(n);
+      const heightOf = (i, first) => fitW(i, first ? wn : nextW).h;
+      let sum = 0;
+      for (let i = 0; i < idx.entries.length; i++) sum += fitW(i, wn).h;
+      // ausgewogene Spalten: gleiche Hoehe, wenn alles auf die Seite passt
+      const balanced = Math.min(avail, Math.ceil(sum / n / lineH) * lineH + lineH * 2);
+      let lay = paginate(idx.entries.length, heightOf, Array(n).fill(balanced), Array(nextCols).fill(Hv - 12 - nextTop));
+      if (lay.length > 1) lay = paginate(idx.entries.length, heightOf, Array(n).fill(avail), Array(nextCols).fill(Hv - 12 - nextTop));
+      return { lay, n, wn };
+    };
+    let chosen = planFor(targetCols);
+    if (indexCols === 0) for (let n = targetCols + 1; n <= targetCols + 2 && chosen.lay.length > 1; n++) chosen = planFor(n);
+    chosen.lay[0].forEach(([from, to], ci) => {
+      let yy = top0;
+      for (let i = from; i < to; i++) { const f = fitW(i, chosen.wn); drawEntry(g, text, f, x0 + ci * (chosen.wn + 3), yy); yy += f.h; }
+    });
+    return chosen.lay;
+  };
 
-  // Seite 1: volle Breite der Seitenleiste
-  layout[0].forEach((cols, ci) => drawColumn(text, cols, sx + ci * (widthOf(true, nCols) + 3), top0, true));
+  // ---- Anordnung ----
+  let layout = [[]];
+  if (!horizontal) {
+    let y = headerBlock(P.x, P.y + 5, P.w);
+    y += legendBlock(P.x, y, Infinity).h + 9;
+    y += scaleBlock(P.x, y, P.w);
+    if (showIndex) layout = indexBlock(P.x, y, P.w, P.y + P.h - y);
+  } else {
+    // waagerecht: links Titel und Legende, in der Mitte Massstab und Nordpfeil, rechts das Verzeichnis (mehrspaltig)
+    const headH = headerBlock(P.x, P.y + 5, 70) - (P.y + 5);
+    const leg = legendBlock(P.x, P.y + 5 + headH, P.h - headH - 4);
+    const wA = Math.max(leg.w, 72) + 6;
+    const wB = 70;
+    scaleBlock(P.x + wA, P.y + 5, wB - 6);
+    const cx = P.x + wA + wB;
+    if (showIndex) layout = indexBlock(cx, P.y + 5, P.x + P.w - cx, P.h - 5);
+  }
   g.restore();
   pages.push(c1.toDataURL("image/png"));
 
@@ -316,7 +354,10 @@ export async function composeSheet(opts) {
     const [c2, g2] = mk(u);
     const t2 = (s, x, yv, size, o = {}) => { g2.font = `${o.bold ? "bold " : ""}${size}px ${FONT}`; g2.textAlign = o.align || "left"; g2.fillStyle = o.color || "#111"; g2.fillText(s, x, yv); };
     t2(`${title} – Straßenverzeichnis (Fortsetzung, Seite ${p + 1})`, 12, 14, 5, { bold: true });
-    layout[p].forEach((cols, ci) => drawColumn(t2, cols, 12 + ci * (nextW + gapCol), nextTop, false));
+    layout[p].forEach(([from, to], ci) => {
+      let yy = nextTop;
+      for (let i = from; i < to; i++) { const f = fitW(i, nextW); drawEntry(g2, t2, f, 12 + ci * (nextW + gapCol), yy); yy += f.h; }
+    });
     pages.push(c2.toDataURL("image/png"));
   }
   return { pages, indexCount, cellM, cols, rows };

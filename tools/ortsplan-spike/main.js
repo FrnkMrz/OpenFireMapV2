@@ -7,6 +7,7 @@ import { ICON_PX, loadIcons } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
 import { arrowsAlong } from "./oneway.js";
+import { streetLabelPoints } from "./labelpoints.js";
 
 const PAPER_MM = {
   a4l: [297, 210], a4p: [210, 297], a3l: [420, 297], a3p: [297, 420],
@@ -37,7 +38,7 @@ const [wMm, hMm] = PAPER_MM[paper] || PAPER_MM.a4l;
 const form = document.getElementById("ctl");
 const indexOn = q.get("index") !== "0";
 const indexSize = Math.min(3, Math.max(0.5, +(q.get("isize") || 1)));
-for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize })) form.elements[k].value = v;
+for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "right", icols: q.get("icols") || "0" })) form.elements[k].value = v;
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
 
@@ -46,8 +47,28 @@ const sheet = q.get("sheet") === "1";
 const place = q.get("place") || areaInfo?.title || "Neunkirchen am Sand";
 // Oberflaechen-Faktor: A3 = 1, A2 = 1,4, A1 = 2 (Schrift, Seitenleiste und Raender wachsen mit dem Papier)
 const ui = Math.max(1, Math.max(wMm, hMm) / 420);
+// Lage von Legende, Massstab und Verzeichnis: side=right (Standard) | left | top | bottom; icols = Spaltenzahl des Verzeichnisses (0 = automatisch)
+const side = ["left", "right", "top", "bottom"].includes(q.get("side")) ? q.get("side") : "right";
+const indexCols = Math.min(6, Math.max(0, Math.round(+(q.get("icols") || 0))));
 const sidebarW = Math.min(92 * ui, Math.max(62, 0.24 * wMm));
-const frame = { x: 14 * ui, y: 14 * ui, w: wMm - 14 * ui - 6.5 * ui - sidebarW - 6 * ui, h: hMm - 28 * ui };
+const panelH = Math.min(0.45 * hMm, Math.max(72 * ui, 0.28 * hMm)); // oben/unten: Hoehe des Bereichs fuer Legende und Verzeichnis
+let frame, panel;
+if (side === "left") {
+  panel = { x: 6 * ui, y: 14 * ui, w: sidebarW, h: hMm - 28 * ui };
+  const fx = panel.x + sidebarW + 9 * ui;
+  frame = { x: fx, y: 14 * ui, w: wMm - fx - 14 * ui, h: hMm - 28 * ui };
+} else if (side === "top") {
+  panel = { x: 14 * ui, y: 6 * ui, w: wMm - 28 * ui, h: panelH };
+  const fy = panel.y + panelH + 14 * ui;
+  frame = { x: 14 * ui, y: fy, w: wMm - 28 * ui, h: hMm - fy - 14 * ui };
+} else if (side === "bottom") {
+  const fh = hMm - 14 * ui - panelH - 20 * ui;
+  frame = { x: 14 * ui, y: 14 * ui, w: wMm - 28 * ui, h: fh };
+  panel = { x: 14 * ui, y: frame.y + fh + 14 * ui, w: wMm - 28 * ui, h: panelH };
+} else {
+  frame = { x: 14 * ui, y: 14 * ui, w: wMm - 14 * ui - 6.5 * ui - sidebarW - 6 * ui, h: hMm - 28 * ui };
+  panel = { x: frame.x + frame.w + 6.5 * ui, y: frame.y, w: sidebarW, h: frame.h };
+}
 const mapWmm = sheet ? frame.w : wMm;
 const mapHmm = sheet ? frame.h : hMm;
 // Optionen ohne eigenes Eingabefeld (sheet, place, fire, isz, lbl ...) bleiben beim "Neu laden" erhalten.
@@ -109,7 +130,7 @@ const addOnewayImage = () => { if (owImage && !map.hasImage("oneway")) map.addIm
 map.once("style.load", addOnewayImage);
 map.on("styleimagemissing", (e) => { if (e.id === "oneway") addOnewayImage(); });
 // Messgroesse fuer Tests: wie viele verschiedene Strassennamen stehen tatsaechlich im Bild?
-window.__names = () => new Set(map.queryRenderedFeatures({ layers: ["road-labels", "road-labels-fallback"].filter((l) => map.getLayer(l)) }).map((f) => f.properties.name)).size;
+window.__names = () => new Set(map.queryRenderedFeatures({ layers: ["road-labels", "road-labels-fb-a", "road-labels-fb-b"].filter((l) => map.getLayer(l)) }).map((f) => f.properties.name)).size;
 // Symbolgroesse in mm Papier, nach Massstab abgestuft (App: Wache 32 px, sonst 28 px, also Wache etwas groesser).
 // Zwischen den Stuetzstellen wird ueber den Logarithmus des Massstabs interpoliert; isz skaliert alles.
 const SIZE_TABLE = [[2500, 3.6], [5000, 3.2], [10000, 2.6], [20000, 2.2]];
@@ -141,45 +162,63 @@ map.once("idle", async () => {
     const r = await addFireLayers(map, feats, sizes, { beforeId: undefined, ignorePlacement: lbl === "top" });
     window.__fire = { poiMm: +poiMm.toFixed(2), lbl, elements: els.length, symbols: r.total, stations: r.stations, defibs: feats.filter((f) => f.properties.icon === "defibrillator").length, badges: feats.filter((f) => f.properties.icon.startsWith("badge-")).length, boundaries: map.querySourceFeatures("ofm", { sourceLayer: "boundaries" }).length };
     await nextIdle();
-    if (lbl === "avoid") {
-      const added = addFallbackLabels();
-      window.__fire.fallbackNames = added;
-      if (added) await nextIdle();
-    }
-    finish();
-  } else {
-    finish();
   }
+  // Ersatz-Beschriftung fuer Strassen ohne Namen im Bild (auch ohne Feuerwehr-Ebene)
+  const added = await addFallbackLabels();
+  if (window.__fire) window.__fire.fallbackNames = added;
+  finish();
 });
 
 const nextIdle = () => new Promise((resolve) => { map.once("idle", resolve); map.triggerRepaint(); });
 
-// Strassen, deren Name wegen der Symbole nirgends platziert werden konnte, bekommen ihren Namen einmal ueber den Symbolen.
-function addFallbackLabels() {
-  const KINDS = ["highway", "major_road", "minor_road"];
-  const placed = new Set(map.queryRenderedFeatures({ layers: ["road-labels"] }).map((f) => f.properties.name));
-  const all = new Set();
+// Strassen, deren Name nirgends platziert werden konnte (Symbole, Pfeile oder lauter zu kurze Linienstuecke), bekommen
+// ihren Namen als Punkt in der Mitte des laengsten Stuecks mit der Richtung der Strasse (siehe labelpoints.js).
+// Erst ohne Ueberlappung (weicht anderen Beschriftungen aus), danach fuer die Uebrigen mit Ueberlappung. Beides unter den Symbolen.
+const ROAD_KINDS = ["highway", "major_road", "minor_road"];
+const labelLayers = () => ["road-labels", "road-labels-fb-a", "road-labels-fb-b"].filter((l) => map.getLayer(l));
+
+function unplacedStreets() {
+  const placed = new Set(map.queryRenderedFeatures({ layers: labelLayers() }).map((f) => f.properties.name));
+  const bounds = map.getBounds();
+  const feats = [];
   for (const f of map.querySourceFeatures("p", { sourceLayer: "roads" })) {
     const p = f.properties || {};
-    if (p.name && KINDS.includes(p.kind) && p.is_tunnel !== true) all.add(p.name);
+    if (!p.name || !ROAD_KINDS.includes(p.kind) || p.is_tunnel === true || placed.has(p.name)) continue;
+    const lines = f.geometry.type === "LineString" ? [f.geometry.coordinates] : f.geometry.type === "MultiLineString" ? f.geometry.coordinates : [];
+    // nur Strassen, von denen etwas im sichtbaren Ausschnitt liegt (geladene Kacheln reichen darueber hinaus)
+    if (!lines.some((l) => l.some((c) => bounds.contains(c)))) continue;
+    feats.push({ properties: { name: p.name, kind: p.kind }, geometry: f.geometry });
   }
-  const missing = [...all].filter((n) => !placed.has(n));
-  if (!missing.length) return 0;
+  return streetLabelPoints(feats).filter((pt) => bounds.contains(pt.coord));
+}
+
+function addLabelPoints(id, pts, overlap) {
   const lay = (n) => map.getLayoutProperty("road-labels", n);
-  const pt = (n) => map.getPaintProperty("road-labels", n);
+  const paint = (n) => map.getPaintProperty("road-labels", n);
+  map.addSource(id, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: pts.map((p) => ({ type: "Feature", geometry: { type: "Point", coordinates: p.coord }, properties: { name: p.name, kind: p.kind, rot: p.rot, len: p.lengthM } })) },
+  });
   map.addLayer({
-    id: "road-labels-fallback", type: "symbol", source: "p", "source-layer": "roads",
-    filter: ["all", ["in", ["get", "name"], ["literal", missing]], ["in", ["get", "kind"], ["literal", KINDS]], ["!=", ["get", "is_tunnel"], true]],
+    id, type: "symbol", source: id,
     layout: {
-      "symbol-placement": "line", "text-field": lay("text-field"), "text-font": lay("text-font"), "text-size": lay("text-size"),
-      "text-letter-spacing": lay("text-letter-spacing"), "text-max-angle": lay("text-max-angle"), "text-padding": lay("text-padding"),
-      "symbol-spacing": 400,
-      // Der Ersatz-Name liegt unter den Feuerwehr-Symbolen; er darf mit ihnen kollidieren (die Symbole bleiben vollstaendig sichtbar)
-      "text-allow-overlap": true,
+      "text-field": ["get", "name"], "text-font": lay("text-font"), "text-size": lay("text-size"), "text-letter-spacing": lay("text-letter-spacing"),
+      "text-rotate": ["get", "rot"], "text-rotation-alignment": "map", "text-pitch-alignment": "map", "text-padding": lay("text-padding"),
+      "text-allow-overlap": overlap,
+      "symbol-sort-key": ["*", ["get", "len"], -1], // laengere Strassen zuerst
     },
-    paint: { "text-color": pt("text-color"), "text-halo-color": pt("text-halo-color"), "text-halo-width": pt("text-halo-width") },
+    paint: { "text-color": paint("text-color"), "text-halo-color": paint("text-halo-color"), "text-halo-width": paint("text-halo-width") },
   }, map.getLayer("fire-icons") ? "fire-icons" : undefined); // unter den Symbolen: Namen duerfen Hydranten nie verdecken
-  return missing.length;
+}
+
+async function addFallbackLabels() {
+  const first = unplacedStreets();
+  if (!first.length) return 0;
+  addLabelPoints("road-labels-fb-a", first, false);
+  await nextIdle();
+  const second = unplacedStreets();
+  if (second.length) { addLabelPoints("road-labels-fb-b", second, true); await nextIdle(); }
+  return first.length;
 }
 
 // Liegt der Ausschnitt ausserhalb der geladenen Daten, bleibt die Karte leer. Das soll man sehen, nicht raten muessen.
@@ -218,7 +257,7 @@ async function buildSheet() {
   if (sheet) {
     const meta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
     const res = await composeSheet({
-      map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, indexSize, warning,
+      map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, indexSize, warning, side, panel, indexCols,
       title: "Orts- und Hydrantenplan",
       subtitle: [place, `Maßstab 1 : ${scale.toLocaleString("de-DE")} · Papier ${paper.toUpperCase()}`],
     });
