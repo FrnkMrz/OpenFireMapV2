@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { arrowsAlong, rotationDeg, lengthM, onlyLocalStreets, ARROW_HIGHWAYS } from "./oneway.js";
+import { arrowsAlong, rotationDeg, lengthM, onlyLocalStreets, ARROW_HIGHWAYS, featureFromWay } from "./oneway.js";
 
 const LAT = 49.5, LON = 11.3;
 const mLon = 111320 * Math.cos((LAT * Math.PI) / 180), mLat = 110540;
@@ -64,4 +64,35 @@ test("Pfeile nur auf Gemeindestrassen: Verbindungs-, Kreis- und Bundesstrassen w
   assert.deepEqual(kept.features.map((x) => x.properties.hw), ["residential", "living_street", "service"]);
   assert.ok(ARROW_HIGHWAYS.has("residential") && !ARROW_HIGHWAYS.has("tertiary") && !ARROW_HIGHWAYS.has("unclassified"));
   assert.equal(onlyLocalStreets({}).features.length, 0);
+});
+
+const way = (tags, pts = [[11.3, 49.5], [11.301, 49.5], [11.302, 49.5]]) => ({ id: 1, tags, geometry: pts.map(([lon, lat]) => ({ lon, lat })) });
+
+test("Tunnel bekommen keine Pfeile (Fund aus dem Codex-Review): der Stil zeichnet Tunnel nicht, die Pfeile stuenden allein auf der Flaeche", () => {
+  assert.equal(featureFromWay(way({ highway: "residential", oneway: "yes", tunnel: "yes" })), null);
+  assert.equal(featureFromWay(way({ highway: "service", oneway: "yes", tunnel: "building_passage" })), null);
+  assert.equal(featureFromWay(way({ highway: "residential", oneway: "yes", tunnel: "culvert" })), null);
+  assert.ok(featureFromWay(way({ highway: "residential", oneway: "yes", tunnel: "no" })), "tunnel=no ist kein Tunnel");
+  assert.ok(featureFromWay(way({ highway: "residential", oneway: "yes" })));
+});
+
+test("Richtung: oneway=-1 kehrt die Knotenreihenfolge um, Kreisverkehr bleibt wie gemappt", () => {
+  const fwd = featureFromWay(way({ highway: "residential", oneway: "yes" }));
+  const rev = featureFromWay(way({ highway: "residential", oneway: "-1" }));
+  assert.deepEqual(rev.geometry.coordinates, [...fwd.geometry.coordinates].reverse());
+  const round = featureFromWay(way({ highway: "residential", junction: "roundabout" }));
+  assert.deepEqual(round.geometry.coordinates, fwd.geometry.coordinates);
+});
+
+test("nicht aufgenommen: Autobahn, Wege, Parkplatzgassen, zu kurze Geometrie", () => {
+  assert.equal(featureFromWay(way({ highway: "motorway", oneway: "yes" })), null);
+  assert.equal(featureFromWay(way({ highway: "footway", oneway: "yes" })), null);
+  assert.equal(featureFromWay(way({ highway: "service", service: "parking_aisle", oneway: "yes" })), null);
+  assert.equal(featureFromWay(way({ highway: "residential", oneway: "yes" }, [[11.3, 49.5]])), null);
+});
+
+test("Merkmale der Ausgabe: Strassenart und ID", () => {
+  const f = featureFromWay({ id: 42, tags: { highway: "living_street", oneway: "yes" }, geometry: [{ lon: 11.3, lat: 49.5 }, { lon: 11.301, lat: 49.5 }] });
+  assert.deepEqual(f.properties, { id: 42, hw: "living_street" });
+  assert.equal(f.geometry.type, "LineString");
 });

@@ -69,3 +69,22 @@ export const ARROW_HIGHWAYS = new Set(["residential", "living_street", "service"
 export function onlyLocalStreets(collection, allowed = ARROW_HIGHWAYS) {
   return { type: "FeatureCollection", features: (collection.features || []).filter((f) => allowed.has(f.properties?.hw)) };
 }
+
+// Nur Strassen fuer Kraftfahrzeuge; Autobahnen, Wege, Fussgaengerbereiche und Parkplatzgassen bleiben ohne Pfeil
+const MOTOR_HIGHWAYS = new Set(["trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link",
+  "unclassified", "residential", "living_street", "service", "road"]);
+
+/**
+ * OSM-Weg (Overpass `out geom tags`) in ein Einbahn-Feature umwandeln oder null, wenn er keinen Pfeil bekommen soll.
+ * Richtung = Knotenreihenfolge im Weg, bei oneway=-1 umgekehrt (Kreisverkehr: wie gemappt). Tunnel entfallen: der Stil zeichnet
+ * sie nicht (NOT_TUNNEL in style.js), Pfeile stuenden sonst allein ueber der Flaeche.
+ */
+export function featureFromWay(w) {
+  const t = w?.tags || {};
+  if (!MOTOR_HIGHWAYS.has(t.highway) || t.service === "parking_aisle") return null;
+  if (t.tunnel && t.tunnel !== "no") return null;
+  let pts = (w.geometry || []).map((g) => [g.lon, g.lat]);
+  if (pts.length < 2) return null;
+  if (t.oneway === "-1") pts = pts.reverse();
+  return { type: "Feature", geometry: { type: "LineString", coordinates: pts }, properties: { id: w.id, hw: t.highway } };
+}
