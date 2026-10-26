@@ -6,6 +6,7 @@ import { buildStyle, zoomForScale, CSS_PX_PER_MM } from "./style.js";
 import { ICON_PX, loadIcons } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
+import { indexNote } from "./indexnote.js";
 import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
 import { streetLabelPoints, clipLineToBox } from "./labelpoints.js";
 
@@ -272,14 +273,26 @@ async function buildSheet() {
       subtitle: [place, `Maßstab 1 : ${scale.toLocaleString("de-DE")} · Papier ${paper.toUpperCase()}`],
     });
     window.__sheet = res.pages;
-    window.__sheetInfo = { panelFit: res.panelFit, mapDpi, index: res.indexCount, cellM: res.cellM, cols: res.cols, rows: res.rows, pages: res.pages.length };
+    window.__sheetInfo = { panelFit: res.panelFit, mapDpi, index: res.indexCount, indexPage: res.indexPage, cellM: res.cellM, cols: res.cols, rows: res.rows, pages: res.pages.length };
     const out = document.getElementById("out");
-    for (const url of res.pages) {
+    // Hinweis ueber dem Blatt: wo das Strassenverzeichnis steht (bei oben/unten und kleinen Papieren erst auf Seite 2)
+    const note = document.createElement("div");
+    note.id = "index-note";
+    note.style.cssText = "margin:12px;padding:8px 12px;background:#fff8d6;border:1px solid #e0c870;font:14px system-ui,sans-serif;max-width:60em";
+    note.textContent = indexNote({ indexOn, indexPage: res.indexPage, indexCount: res.indexCount, pages: res.pages.length });
+    out.appendChild(note);
+    res.pages.forEach((url, i) => {
+      if (res.pages.length > 1) {
+        const cap = document.createElement("div");
+        cap.textContent = `Seite ${i + 1} von ${res.pages.length}`;
+        cap.style.cssText = "margin:12px 12px 0;font:600 13px system-ui,sans-serif;color:#444";
+        out.appendChild(cap);
+      }
       const img = new Image();
       img.src = url;
       img.style.cssText = "display:block;margin:12px;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.3);max-width:calc(100vw - 24px)";
       out.appendChild(img);
-    }
+    });
     el.style.display = "none";
   }
 }

@@ -406,5 +406,7 @@ export async function composeSheet(opts) {
     });
     pages.push(c2.toDataURL("image/png"));
   }
-  return { pages, indexCount, cellM, cols, rows, panelFit };
+  // Seite, auf der das Strassenverzeichnis beginnt: 1 = auf dem Blatt, 2 = erst auf der Folgeseite, null = ausgeschaltet oder leer
+  const indexPage = !showIndex || !idx.entries.length ? null : layout[0].length ? 1 : 2;
+  return { pages, indexCount, cellM, cols, rows, panelFit, indexPage };
 }
