@@ -6,19 +6,17 @@ import { buildStyle, zoomForScale, CSS_PX_PER_MM } from "./style.js";
 import { ICON_PX, loadIcons } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
+import { PAPER_MM, computeLayout, NICE_SCALES } from "./layout.js";
 import { indexNote } from "./indexnote.js";
 import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
 import { streetLabelPoints, clipLineToBox } from "./labelpoints.js";
 
-const PAPER_MM = {
-  a4l: [297, 210], a4p: [210, 297], a3l: [420, 297], a3p: [297, 420],
-  a2l: [594, 420], a2p: [420, 594], a1l: [841, 594], a1p: [594, 841],
-};
 const q = new URLSearchParams(location.search);
 const scale = +(q.get("scale") || 5000);
 const paper = q.get("paper") || "a4l";
 const dpi = +(q.get("dpi") || 96);
 const mode = q.get("mode") || "plan"; // plan | real
+const fmt = q.get("fmt") || "fill"; // Kartenformat, siehe layout.js
 // Beschriftung: avoid (Standard) = Strassennamen weichen den Symbolen aus, fehlende Namen kommen danach einmal UNTER die Symbole;
 // top = Namen weichen nicht aus. Die Feuerwehr-Symbole liegen in beiden Faellen oben und werden nie von Namen verdeckt.
 const lbl = q.get("lbl") || "avoid";
@@ -39,37 +37,32 @@ const [wMm, hMm] = PAPER_MM[paper] || PAPER_MM.a4l;
 const form = document.getElementById("ctl");
 const indexOn = q.get("index") !== "0";
 const indexSize = Math.min(3, Math.max(0.5, +(q.get("isize") || 1)));
-for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "right", icols: q.get("icols") || "0" })) form.elements[k].value = v;
+// Massstab: dieselben Werte wie die Auswahlseite (layout.js), dazu der aktuelle, falls er nicht in der Liste steht (zum Beispiel von Hand in der Adresse)
+{
+  const sel = form.elements.scale;
+  const values = [...new Set([...NICE_SCALES, scale])].sort((a, b) => a - b);
+  sel.replaceChildren(...values.map((s) => new Option(String(s), String(s))));
+}
+// Jedes Auswahlfeld behaelt seinen Wert: fehlt er in der Liste, wird er ergaenzt. Sonst bliebe das Feld leer und "Neu laden"
+// liesse den Wert still auf den Standard zurueckfallen.
+const setField = (el, v) => {
+  const val = String(v);
+  if (el.tagName === "SELECT" && ![...el.options].some((o) => o.value === val)) el.add(new Option(val, val));
+  el.value = val;
+};
+for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "right", icols: q.get("icols") || "0", fmt })) setField(form.elements[k], v);
+document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "right", fmt, scale: String(scale), lat: String(lat), lon: String(lon), ...(areaName ? { area: areaName } : {}) })}`;
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
 
 // Blatt-Modus (sheet=1): Karte nur im Kartenfenster, daneben Seitenleiste mit Legende und Verzeichnis.
 const sheet = q.get("sheet") === "1";
 const place = q.get("place") || areaInfo?.title || "Neunkirchen am Sand";
-// Oberflaechen-Faktor: A3 = 1, A2 = 1,4, A1 = 2 (Schrift, Seitenleiste und Raender wachsen mit dem Papier)
-const ui = Math.max(1, Math.max(wMm, hMm) / 420);
 // Lage von Legende, Massstab und Verzeichnis: side=right (Standard) | left | top | bottom; icols = Spaltenzahl des Verzeichnisses (0 = automatisch)
+// Kartenformat: fmt=fill (Papier fuellen, Standard) | 1:1 | 3:2 | 2:3 | 4:3 | 3:4 ... (Seitenverhaeltnis des Kartenfensters). Geometrie in layout.js.
 const side = ["left", "right", "top", "bottom"].includes(q.get("side")) ? q.get("side") : "right";
 const indexCols = Math.min(6, Math.max(0, Math.round(+(q.get("icols") || 0))));
-const sidebarW = Math.min(92 * ui, Math.max(62, 0.24 * wMm));
-const panelH = Math.min(0.45 * hMm, Math.max(72 * ui, (wMm < hMm ? 0.36 : 0.28) * hMm)); // Hochformat: hoeher, weil Legende und Massstab untereinander stehen koennen // oben/unten: Hoehe des Bereichs fuer Legende und Verzeichnis
-let frame, panel;
-if (side === "left") {
-  panel = { x: 6 * ui, y: 14 * ui, w: sidebarW, h: hMm - 28 * ui };
-  const fx = panel.x + sidebarW + 9 * ui;
-  frame = { x: fx, y: 14 * ui, w: wMm - fx - 14 * ui, h: hMm - 28 * ui };
-} else if (side === "top") {
-  panel = { x: 14 * ui, y: 6 * ui, w: wMm - 28 * ui, h: panelH };
-  const fy = panel.y + panelH + 14 * ui;
-  frame = { x: 14 * ui, y: fy, w: wMm - 28 * ui, h: hMm - fy - 14 * ui };
-} else if (side === "bottom") {
-  const fh = hMm - 14 * ui - panelH - 20 * ui;
-  frame = { x: 14 * ui, y: 14 * ui, w: wMm - 28 * ui, h: fh };
-  panel = { x: 14 * ui, y: frame.y + fh + 14 * ui, w: wMm - 28 * ui, h: panelH };
-} else {
-  frame = { x: 14 * ui, y: 14 * ui, w: wMm - 14 * ui - 6.5 * ui - sidebarW - 6 * ui, h: hMm - 28 * ui };
-  panel = { x: frame.x + frame.w + 6.5 * ui, y: frame.y, w: sidebarW, h: frame.h };
-}
+const { ui, frame, panel } = computeLayout({ wMm, hMm, side, fmt });
 const mapWmm = sheet ? frame.w : wMm;
 const mapHmm = sheet ? frame.h : hMm;
 // Optionen ohne eigenes Eingabefeld (sheet, place, fire, isz, lbl ...) bleiben beim "Neu laden" erhalten.

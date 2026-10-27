@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ortsplan-Ausschnitt wählen</title>
+  <style>
+    html, body { height: 100%; margin: 0; font: 14px system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; }
+    #bar { background: #fff; padding: 8px 12px; border-bottom: 1px solid #bbb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    #bar label { display: flex; gap: 4px; align-items: center; }
+    #bar select { max-width: 11em; }
+    #go { background: #b91c1c; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: 600; }
+    #wrap { position: relative; flex: 1; min-height: 300px; }
+    #map { position: absolute; inset: 0; }
+    #frame { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 2px solid #d00000; box-shadow: 0 0 0 100vmax rgba(0,0,0,.30); pointer-events: none; box-sizing: border-box; }
+    #frame span { position: absolute; left: 4px; top: 2px; background: rgba(208,0,0,.9); color: #fff; padding: 1px 6px; font-size: 12px; border-radius: 3px; white-space: nowrap; }
+    #msg { padding: 4px 12px; color: #444; background: #f6f6f6; border-top: 1px solid #ddd; min-height: 1.4em; }
+    #msg.warn { background: #fde8e8; color: #8a1111; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <label>Papier<select id="paper"><option value="a4l">A4 quer</option><option value="a4p">A4 hoch</option><option value="a3l">A3 quer</option><option value="a3p">A3 hoch</option><option value="a2l">A2 quer</option><option value="a2p">A2 hoch</option><option value="a1l">A1 quer</option><option value="a1p">A1 hoch</option></select></label>
+    <label>Lage<select id="side"><option value="right">rechts</option><option value="left">links</option><option value="top">oben</option><option value="bottom">unten</option></select></label>
+    <label>Kartenformat<select id="fmt"><option value="fill">Papier füllen</option><option value="1:1">Quadrat 1:1</option><option value="3:2">Quer 3:2</option><option value="4:3">Quer 4:3</option><option value="2:3">Hoch 2:3</option><option value="3:4">Hoch 3:4</option></select></label>
+    <label>Maßstab 1:<select id="scale"></select></label>
+    <button id="fit" type="button" title="Zoom so wählen, dass der Rahmen die Ansicht gut füllt">Rahmen einpassen</button>
+    <a id="go" href="/">Blatt erstellen →</a>
+  </div>
+  <div id="wrap"><div id="map"></div><div id="frame"><span id="frame-label"></span></div></div>
+  <div id="msg">Karte mit der Maus verschieben und zoomen: Der rote Rahmen zeigt, was auf das Blatt kommt. Er bleibt in der Mitte.</div>
+  <script type="module" src="./pick.js"></script>
+</body>
+</html>

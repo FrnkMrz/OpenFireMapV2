@@ -2,6 +2,7 @@
 // Aufruf: node shot.mjs "scale=5000&paper=a4l&dpi=150&mode=plan" ausgabe.png
 import { chromium } from "playwright-core";
 import fs from "node:fs";
+import { waitReady } from "./testutil.mjs";
 
 const [query = "", out = "shots/shot.png"] = process.argv.slice(2);
 const url = `${process.env.SPIKE_URL || "http://127.0.0.1:5173"}/?${query}`;
@@ -11,9 +12,10 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1600, height: 1200 } });
 page.on("console", (m) => { if (["error", "warning"].includes(m.type())) console.log("[browser]", m.text()); });
-page.on("pageerror", (e) => console.log("[pageerror]", e.message));
+let pageFailure = null;
+page.on("pageerror", (e) => { pageFailure = e.message; console.log("[pageerror]", e.message); });
 await page.goto(url);
-await page.waitForFunction(() => window.__ready === true, null, { timeout: 120000 });
+await waitReady(page, { failure: () => pageFailure }); // bricht bei Skriptfehler sofort ab, raeumt den Timer auf
 await page.waitForTimeout(1500);
 const info = await page.evaluate(() => {
   const c = window.__map.getCanvas();
