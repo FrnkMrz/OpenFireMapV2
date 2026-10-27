@@ -6,7 +6,7 @@ import { buildStyle, zoomForScale, CSS_PX_PER_MM } from "./style.js";
 import { ICON_PX, loadIcons } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
-import { PAPER_MM, computeLayout } from "./layout.js";
+import { PAPER_MM, computeLayout, NICE_SCALES } from "./layout.js";
 import { indexNote } from "./indexnote.js";
 import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
 import { streetLabelPoints, clipLineToBox } from "./labelpoints.js";
@@ -37,7 +37,20 @@ const [wMm, hMm] = PAPER_MM[paper] || PAPER_MM.a4l;
 const form = document.getElementById("ctl");
 const indexOn = q.get("index") !== "0";
 const indexSize = Math.min(3, Math.max(0.5, +(q.get("isize") || 1)));
-for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "right", icols: q.get("icols") || "0", fmt })) form.elements[k].value = v;
+// Massstab: dieselben Werte wie die Auswahlseite (layout.js), dazu der aktuelle, falls er nicht in der Liste steht (zum Beispiel von Hand in der Adresse)
+{
+  const sel = form.elements.scale;
+  const values = [...new Set([...NICE_SCALES, scale])].sort((a, b) => a - b);
+  sel.replaceChildren(...values.map((s) => new Option(String(s), String(s))));
+}
+// Jedes Auswahlfeld behaelt seinen Wert: fehlt er in der Liste, wird er ergaenzt. Sonst bliebe das Feld leer und "Neu laden"
+// liesse den Wert still auf den Standard zurueckfallen.
+const setField = (el, v) => {
+  const val = String(v);
+  if (el.tagName === "SELECT" && ![...el.options].some((o) => o.value === val)) el.add(new Option(val, val));
+  el.value = val;
+};
+for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "right", icols: q.get("icols") || "0", fmt })) setField(form.elements[k], v);
 document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "right", fmt, scale: String(scale), lat: String(lat), lon: String(lon), ...(areaName ? { area: areaName } : {}) })}`;
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
