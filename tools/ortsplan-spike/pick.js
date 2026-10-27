@@ -34,9 +34,17 @@ const map = new maplibregl.Map({
   zoom: 14,
   maxZoom: 19,
   attributionControl: false,
+  // Nur Verschieben und Zoomen: Rahmen und Blatt sind nach Norden ausgerichtet; Drehen oder Kippen wuerde den Rahmen vom Blatt trennen
+  dragRotate: false,
+  pitchWithRotate: false,
+  touchPitch: false,
+  maxPitch: 0,
   ...(header ? { maxBounds: [[header.minLon, header.minLat], [header.maxLon, header.maxLat]] } : {}),
 });
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+map.touchZoomRotate.disableRotation();
+// Auch Tastatur (Umschalt + Pfeiltasten) und Programmaufrufe duerfen die Karte nicht drehen
+map.on("rotate", () => { if (map.getBearing() !== 0) map.setBearing(0); });
 
 function state() {
   const [wMm, hMm] = PAPER_MM[$("paper").value];

@@ -2,6 +2,7 @@
 // fertig wird. Faengt Startfehler (zum Beispiel "Cannot access ... before initialization"), die die Unit-Tests nicht sehen.
 // Aufruf: SPIKE_URL=http://127.0.0.1:5173 node smoke.mjs
 import { chromium } from "playwright-core";
+import { waitReady } from "./testutil.mjs";
 
 const BASE = process.env.SPIKE_URL || "http://127.0.0.1:5173";
 const cases = [
@@ -21,11 +22,17 @@ for (const c of cases) {
   let failure = null;
   page.on("pageerror", (e) => { failure = e.message; });
   await page.goto(`${BASE}${c.path}?${c.q}`);
-  const failFast = new Promise((_, reject) => { const t = setInterval(() => { if (failure) { clearInterval(t); reject(new Error(failure)); } }, 200); });
   try {
-    await Promise.race([page.waitForFunction((k) => window[k] === true, c.ready, { timeout: 60000 }), failFast]);
+    await waitReady(page, { key: c.ready, timeout: 60000, failure: () => failure });
     const err = await page.evaluate(() => window.__error || null);
     if (err) throw new Error(String(err).split("\n")[0]);
+    if (c.ready === "__pickReady") {
+      // Auswahlkarte darf nicht drehen oder kippen: der Rahmen und das erzeugte Blatt sind nach Norden ausgerichtet (Fund aus dem Codex-Review)
+      await page.evaluate(() => { window.__pickMap.setBearing(25); window.__pickMap.setPitch(40); });
+      await page.waitForTimeout(400);
+      const cam = await page.evaluate(() => ({ bearing: window.__pickMap.getBearing(), pitch: window.__pickMap.getPitch(), dragRotate: window.__pickMap.dragRotate.isEnabled(), touchPitch: window.__pickMap.touchPitch.isEnabled(), maxPitch: window.__pickMap.getMaxPitch() }));
+      if (cam.bearing !== 0 || cam.pitch !== 0 || cam.dragRotate || cam.touchPitch || cam.maxPitch !== 0) throw new Error(`Auswahlkarte laesst Drehen/Kippen zu: ${JSON.stringify(cam)}`);
+    }
     console.log("ok     ", `${c.path}?${c.q}`);
   } catch (e) {
     failed++;

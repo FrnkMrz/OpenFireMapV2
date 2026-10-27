@@ -2,6 +2,7 @@
 // Aufruf: node shot.mjs "scale=5000&paper=a4l&dpi=150&mode=plan" ausgabe.png
 import { chromium } from "playwright-core";
 import fs from "node:fs";
+import { waitReady } from "./testutil.mjs";
 
 const [query = "", out = "shots/shot.png"] = process.argv.slice(2);
 const url = `${process.env.SPIKE_URL || "http://127.0.0.1:5173"}/?${query}`;
@@ -14,10 +15,7 @@ page.on("console", (m) => { if (["error", "warning"].includes(m.type())) console
 let pageFailure = null;
 page.on("pageerror", (e) => { pageFailure = e.message; console.log("[pageerror]", e.message); });
 await page.goto(url);
-// Bei einem Skriptfehler beim Start (zum Beispiel "Cannot access ... before initialization") wird __ready nie gesetzt:
-// dann sofort abbrechen statt zwei Minuten zu warten.
-const failFast = new Promise((_, reject) => { const t = setInterval(() => { if (pageFailure) { clearInterval(t); reject(new Error(`Seite meldet Fehler: ${pageFailure}`)); } }, 200); });
-await Promise.race([page.waitForFunction(() => window.__ready === true, null, { timeout: 120000 }), failFast]);
+await waitReady(page, { failure: () => pageFailure }); // bricht bei Skriptfehler sofort ab, raeumt den Timer auf
 await page.waitForTimeout(1500);
 const info = await page.evaluate(() => {
   const c = window.__map.getCanvas();
