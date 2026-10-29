@@ -87,6 +87,8 @@ test("ratioFmt und parseRatioFmt: Hin und zurueck, Liste bleibt Liste", () => {
   assert.equal(ratioFmt(1.5), "1.5000:1");
   assert.equal(parseRatioFmt("1.5000:1"), 1.5);
   assert.equal(parseRatioFmt("3:2"), null);
+  assert.equal(parseRatioFmt("1:1"), null); // Listenwert "Quadrat", kein freies Format (nur "1.0000:1" ist frei)
+  assert.equal(parseRatioFmt(ratioFmt(1)), 1);
   assert.equal(parseRatioFmt("fill"), null);
   assert.equal(ratioFmt(99), "4.0000:1");
 });

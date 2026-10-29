@@ -57,6 +57,16 @@ try {
   check([1000, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000, 15000, 20000].includes((await st()).scale), `Nach dem Ziehen eingerastet: 1:${(await st()).scale}`);
   await page.evaluate(() => localStorage.clear());
 
+  // Listenwert 1:1 (z. B. Rueckweg von einem quadratischen Blatt) ist ein fester Rahmen, kein freier mit Verhaeltnis 1
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=right&fmt=1:1`);
+  await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+  const sq = await st();
+  check(sq.free === false && sq.fmt === "1:1", `fmt=1:1 aus der Adresse: fester Rahmen (free=${sq.free}, fmt=${sq.fmt})`);
+  const bq = await box();
+  check(Math.abs(bq.w / bq.h - 1) < 0.01, "Rahmen ist quadratisch");
+  await page.evaluate(() => localStorage.clear());
+
   // ---- Fester Rahmen (Seitenverhaeltnis des Blatts) ----
   await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=right&fmt=fill`);
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });

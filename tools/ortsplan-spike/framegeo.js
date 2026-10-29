@@ -42,9 +42,10 @@ export function ratioFmt(ratio) {
   return `${r.toFixed(4)}:1`;
 }
 
-/** Kartenformat "B:H" zurueck in ein Seitenverhaeltnis, nur fuer freie Formate (nicht fuer die Liste 1:1, 3:2 ...): "1.6234:1" -> 1.6234, sonst null. */
+/** Kartenformat "B:H" zurueck in ein Seitenverhaeltnis, nur fuer freie Formate: "1.6234:1" -> 1.6234, sonst null.
+ *  Frei ist nur, was ratioFmt schreibt (immer mit Dezimalpunkt); der Listenwert "1:1" (Quadrat) bleibt ein fester Rahmen. */
 export function parseRatioFmt(fmt) {
-  const m = /^(\d{1,2}(?:\.\d+)?):1$/.exec(fmt || "");
+  const m = /^(\d{1,2}\.\d+):1$/.exec(fmt || "");
   return m && +m[1] >= RATIO_MIN && +m[1] <= RATIO_MAX ? +m[1] : null;
 }
 
