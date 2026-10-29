@@ -4,6 +4,8 @@
 
 Öffne [openfiremap.org](https://openfiremap.org). Die Karte kann ohne Konto genutzt werden und funktioniert weltweit, sofern eine Internetverbindung besteht.
 
+Die aktuelle Software-Version, Veröffentlichungen und das Änderungsprotokoll findest du im [Versions-Hub](https://openfiremap.org/version/).
+
 Zoome in einen Bereich hinein, um feuerwehrrelevante Objekte zu laden. Bei ausreichender Zoomstufe werden unter anderem Feuerwachen, Hydranten, Löschwasserstellen und Defibrillatoren angezeigt. Die Darstellung und die verfügbaren Tags hängen von den Daten in OpenStreetMap ab.
 
 ## Suche verwenden
@@ -17,6 +19,8 @@ Die Suche verwendet Nominatim. Bitte vermeide viele automatisierte Suchanfragen 
 ## Hydranten und Wasserstellen anzeigen
 
 Zoome in einen Bereich hinein und aktiviere die gewünschten Objektarten über die Kartensteuerung. Ein Klick auf ein Objekt öffnet die verfügbaren Details aus OSM. Je nach Eintrag können beispielsweise Typ, Durchmesser, Fördermenge, Adresse oder Hinweise angezeigt werden.
+
+Eine bebilderte Übersicht der verwendeten Hydranten-, Löschwasser-, Wachen- und AED-Symbole findest du unter [Kartenzeichen](https://openfiremap.org/symbols/). Die Seite erklärt auch, welche OSM-Tags die jeweilige Darstellung bestimmen.
 
 Die Karte lädt nur für den aktuellen Ausschnitt relevante Daten. In DACHLiLu und in 40 weiteren europäischen Ländern werden bevorzugt PMTiles-Kacheln verwendet (die Länder-Dateien werden wöchentlich neu gebaut, der Datenstand steht im Datenstand-Popover). Außerhalb dieser Gebiete und bei Pipeline-Problemen kommt Overpass zum Einsatz.
 

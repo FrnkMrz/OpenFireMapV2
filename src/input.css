@@ -624,6 +624,53 @@ body.symbols-page {
     background: #0f172a;
 }
 
+body.version-page {
+    min-height: 100vh;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: #0f172a;
+}
+
+.ofm-version-card {
+    display: block;
+    min-width: 0;
+    padding: 1.25rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 1rem;
+    background: rgba(30, 41, 59, 0.72);
+    color: #f8fafc;
+    transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.ofm-version-card:hover {
+    border-color: rgba(96, 165, 250, 0.65);
+    background: rgba(30, 41, 59, 0.95);
+}
+
+.ofm-version-card:focus-visible {
+    outline: 3px solid #60a5fa;
+    outline-offset: 3px;
+}
+
+.ofm-version-card h2 {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.ofm-version-card p {
+    margin-top: 0.4rem;
+    color: #cbd5e1;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ofm-version-card {
+        transition: none;
+    }
+}
+
 .ofm-symbol-card {
     min-width: 0;
     padding: 1.1rem;
