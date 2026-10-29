@@ -21,6 +21,8 @@ import { cancelSelectionMode } from "./map.js";
 import { getHydrantMarkerType, getWaterMarkerKind } from "./marker-symbols.js";
 import { jsPDF } from "jspdf";
 
+const OSM_DATA_ATTRIBUTION = "© OpenStreetMap contributors (ODbL; https://www.openstreetmap.org/copyright)";
+
 /**
  * Generiert den Dateinamen nach dem Muster:
  * YYYY-MM-DD_HH-mm_Z{Zoom}_{Titel}
@@ -500,7 +502,7 @@ export async function exportAsGPX() {
     let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
     gpx +=
       '<gpx version="1.1" creator="OpenFireMap V2" xmlns="http://www.topografix.com/GPX/1/1">\n';
-    gpx += `  <metadata><name>${escapeXML(displayTitle || "Hydranten Export")}</name><time>${new Date().toISOString()}</time></metadata>\n`;
+    gpx += `  <metadata><name>${escapeXML(displayTitle || "Hydranten Export")}</name><copyright author="OpenStreetMap contributors"><license>https://www.openstreetmap.org/copyright</license></copyright><time>${new Date().toISOString()}</time></metadata>\n`;
 
     pointsToExport.forEach((el) => {
       const tags = el.tags || {};
@@ -628,7 +630,9 @@ export async function exportAsCSV() {
       "Ort",
       "Betreiber",
       "OSM_ID",
-      "OSM_URL"
+      "OSM_URL",
+      "Datenquelle",
+      "Datenlizenz"
     ];
 
     const rows = [headers.map(escapeCSV).join(";")];
@@ -682,7 +686,9 @@ export async function exportAsCSV() {
         city,
         operator,
         osmId,
-        osmUrl
+        osmUrl,
+        "OpenStreetMap contributors",
+        "ODbL — https://www.openstreetmap.org/copyright"
       ];
 
       rows.push(row.map(escapeCSV).join(";"));
@@ -1134,10 +1140,12 @@ async function generateMapCanvas() {
 
   ctx.font = "italic 16px Arial, sans-serif";
   ctx.fillStyle = "#64748b";
+  ctx.fillText(OSM_DATA_ATTRIBUTION, centerX, margin + 123, mapWidth - 24);
   ctx.fillText(
-    Config.layers[State.activeLayerKey].textAttr || "© OpenStreetMap",
+    Config.layers[State.activeLayerKey].textAttr || "",
     centerX,
-    margin + 125,
+    margin + 146,
+    mapWidth - 24,
   );
 
   // Scale Bar
