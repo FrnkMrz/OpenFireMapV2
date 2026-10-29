@@ -170,6 +170,16 @@ export const strings = {
     data_sync_checking: "Sjekker nye objekter via Overpass …",
     data_sync_offline_or_failed: "Overpass-server utilgjengelig eller frakoblet",
     data_sync_disabled_hint: "Deaktivert i innstillinger",
-    data_sync_osm_direct: "Direkte fra OSM-servere"
+    data_sync_osm_direct: "Direkte fra OSM-servere",
+    symbols_page_link: "Kartsymboler",
+    symbols_title: "Kartsymboler og OSM-tagger",
+    symbols_intro: "Symbolene bygger på registrerte OpenStreetMap-tagger. Taggene vises uendret.",
+    symbols_language: "Språk",
+    symbols_tags_label: "OSM-tagger",
+    symbols_hydrants_note: "Røde symboler følger hydrant-taggene nedenfor; spesielle typer bruker ekstra tagger.",
+    symbols_water_note: "Blått markerer vannkilder. En tank vises åpen eller tildekket bare når OSM-tagger angir det.",
+    symbols_tank_unknown_note: "emergency=water_tank alene sier ikke om tanken er åpen eller tildekket.",
+    symbols_groundwater_note: "Rørsymbolet beholdes; blått angir water_source=groundwater.",
+    symbols_suction_note: "Angitt sted for å pumpe vann fra et vannområde.",
 };
 export default strings;

@@ -168,6 +168,16 @@ export const strings = {
     data_sync_checking: "Memeriksa objek baru melalui Overpass …",
     data_sync_offline_or_failed: "Server Overpass tidak dapat dijangkau atau offline",
     data_sync_disabled_hint: "Dinonaktifkan di pengaturan",
-    data_sync_osm_direct: "Langsung dari server OSM"
+    data_sync_osm_direct: "Langsung dari server OSM",
+    symbols_page_link: "Simbol peta",
+    symbols_title: "Simbol peta dan tag OSM",
+    symbols_intro: "Simbol peta berdasarkan tag OpenStreetMap yang dipetakan. Tag ditampilkan tanpa perubahan.",
+    symbols_language: "Bahasa",
+    symbols_tags_label: "Tag OSM",
+    symbols_hydrants_note: "Simbol merah mengikuti tag hidran di bawah; tipe khusus memakai tag tambahan.",
+    symbols_water_note: "Biru menandai sumber air. Tangki hanya ditampilkan terbuka atau tertutup jika tag OSM menyatakannya.",
+    symbols_tank_unknown_note: "emergency=water_tank saja tidak menunjukkan apakah tangki terbuka atau tertutup.",
+    symbols_groundwater_note: "Simbol pipa tetap; warna biru menunjukkan water_source=groundwater.",
+    symbols_suction_note: "Lokasi yang ditetapkan untuk menyedot air dari badan air.",
 };
 export default strings;

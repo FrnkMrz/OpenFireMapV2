@@ -170,6 +170,16 @@ export const strings = {
     data_sync_checking: "Kontrola nových objektů přes Overpass …",
     data_sync_offline_or_failed: "Server Overpass nedostupný nebo offline",
     data_sync_disabled_hint: "V nastavení zakázáno",
-    data_sync_osm_direct: "Přímo ze serverů OSM"
+    data_sync_osm_direct: "Přímo ze serverů OSM",
+    symbols_page_link: "Symboly mapy",
+    symbols_title: "Symboly mapy a tagy OSM",
+    symbols_intro: "Symboly mapy vycházejí ze značek OpenStreetMap. Značky jsou zobrazeny beze změny.",
+    symbols_language: "Jazyk",
+    symbols_tags_label: "Tagy OSM",
+    symbols_hydrants_note: "Červené symboly odpovídají tagům hydrantů níže; zvláštní typy používají další tagy.",
+    symbols_water_note: "Modrá označuje zdroje vody. Nádrž se zobrazí jako otevřená nebo zakrytá jen tehdy, když to určují tagy OSM.",
+    symbols_tank_unknown_note: "Samotný tag emergency=water_tank neurčuje, zda je nádrž otevřená nebo zakrytá.",
+    symbols_groundwater_note: "Symbol potrubí zůstává; modrá označuje water_source=groundwater.",
+    symbols_suction_note: "Určené místo pro čerpání vody z vodní plochy.",
 };
 export default strings;

@@ -170,6 +170,16 @@ export const strings = {
     data_sync_checking: "กำลังตรวจสอบวัตถุใหม่ผ่าน Overpass …",
     data_sync_offline_or_failed: "เซิร์ฟเวอร์ Overpass ไม่สามารถเข้าถึงได้หรือออฟไลน์",
     data_sync_disabled_hint: "ปิดใช้งานในการตั้งค่า",
-    data_sync_osm_direct: "ส่งตรงจากเซิร์ฟเวอร์ OSM"
+    data_sync_osm_direct: "ส่งตรงจากเซิร์ฟเวอร์ OSM",
+    symbols_page_link: "สัญลักษณ์แผนที่",
+    symbols_title: "สัญลักษณ์แผนที่และแท็ก OSM",
+    symbols_intro: "สัญลักษณ์อ้างอิงจากแท็ก OpenStreetMap ที่บันทึกไว้ โดยแสดงแท็กตามเดิม",
+    symbols_language: "ภาษา",
+    symbols_tags_label: "แท็ก OSM",
+    symbols_hydrants_note: "สัญลักษณ์สีแดงอ้างอิงแท็กหัวจ่ายน้ำดับเพลิงด้านล่าง ประเภทพิเศษใช้แท็กเพิ่มเติม",
+    symbols_water_note: "สีน้ำเงินหมายถึงแหล่งน้ำ จะแสดงถังว่าเปิดหรือมีฝาครอบเมื่อแท็ก OSM ระบุเท่านั้น",
+    symbols_tank_unknown_note: "แท็ก emergency=water_tank เพียงอย่างเดียวไม่ระบุว่าถังเปิดหรือมีฝาครอบ",
+    symbols_groundwater_note: "คงสัญลักษณ์ท่อไว้; สีน้ำเงินหมายถึง water_source=groundwater",
+    symbols_suction_note: "จุดที่กำหนดไว้สำหรับสูบน้ำจากแหล่งน้ำ",
 };
 export default strings;

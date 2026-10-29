@@ -168,6 +168,16 @@ export const strings = {
     data_sync_checking: "Overpass के माध्यम से नए ऑब्जेक्ट की जाँच की जा रही है …",
     data_sync_offline_or_failed: "Overpass सर्वर अनुपलब्ध या ऑफ़लाइन है",
     data_sync_disabled_hint: "सेटिंग्स में अक्षम",
-    data_sync_osm_direct: "सीधे OSM सर्वर से"
+    data_sync_osm_direct: "सीधे OSM सर्वर से",
+    symbols_page_link: "मानचित्र प्रतीक",
+    symbols_title: "मानचित्र प्रतीक और OSM टैग",
+    symbols_intro: "प्रतीक OpenStreetMap में दर्ज टैग पर आधारित हैं। टैग बिना बदलाव दिखाए जाते हैं।",
+    symbols_language: "भाषा",
+    symbols_tags_label: "OSM टैग",
+    symbols_hydrants_note: "लाल प्रतीक नीचे दिए हाइड्रेंट टैग के अनुसार हैं; विशेष प्रकारों के लिए अतिरिक्त टैग लगते हैं।",
+    symbols_water_note: "नीला रंग जल स्रोत दिखाता है। टैंक को खुला या ढका तभी दिखाया जाता है जब OSM टैग इसकी पुष्टि करें।",
+    symbols_tank_unknown_note: "केवल emergency=water_tank से यह पता नहीं चलता कि टैंक खुला है या ढका।",
+    symbols_groundwater_note: "पाइप का प्रतीक वही रहता है; नीला रंग water_source=groundwater दिखाता है।",
+    symbols_suction_note: "जलाशय से पानी खींचने के लिए निर्धारित स्थान।",
 };
 export default strings;

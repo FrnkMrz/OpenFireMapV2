@@ -168,6 +168,16 @@ export const strings = {
     data_sync_checking: "Overpass ile yeni nesneler denetleniyor …",
     data_sync_offline_or_failed: "Overpass sunucusu ulaşılamıyor veya çevrimdışı",
     data_sync_disabled_hint: "Ayarlarda devre dışı",
-    data_sync_osm_direct: "Doğrudan OSM sunucularından"
+    data_sync_osm_direct: "Doğrudan OSM sunucularından",
+    symbols_page_link: "Harita sembolleri",
+    symbols_title: "Harita sembolleri ve OSM etiketleri",
+    symbols_intro: "Semboller OpenStreetMap üzerinde kaydedilmiş etiketlere dayanır. Etiketler değiştirilmeden gösterilir.",
+    symbols_language: "Dil",
+    symbols_tags_label: "OSM etiketleri",
+    symbols_hydrants_note: "Kırmızı semboller aşağıdaki hidrant etiketlerini izler; özel türler ek etiketler kullanır.",
+    symbols_water_note: "Mavi su kaynaklarını gösterir. Depo yalnızca OSM etiketleri belirtiyorsa açık veya kapalı gösterilir.",
+    symbols_tank_unknown_note: "emergency=water_tank tek başına deponun açık mı kapalı mı olduğunu belirtmez.",
+    symbols_groundwater_note: "Boru sembolü korunur; mavi renk water_source=groundwater anlamına gelir.",
+    symbols_suction_note: "Bir su kaynağından su çekmek için belirlenmiş yer.",
 };
 export default strings;

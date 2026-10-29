@@ -170,6 +170,16 @@ export const strings = {
     data_sync_checking: "Kontrollerer nye objekter via Overpass …",
     data_sync_offline_or_failed: "Overpass-server utilgængelig eller offline",
     data_sync_disabled_hint: "Deaktiveret i indstillinger",
-    data_sync_osm_direct: "Direkte fra OSM-servere"
+    data_sync_osm_direct: "Direkte fra OSM-servere",
+    symbols_page_link: "Kortsymboler",
+    symbols_title: "Kortsymboler og OSM-tags",
+    symbols_intro: "Kortsymbolerne bygger på registrerede OpenStreetMap-tags. Tags vises uændret.",
+    symbols_language: "Sprog",
+    symbols_tags_label: "OSM-tags",
+    symbols_hydrants_note: "Røde symboler følger hydrant-tags nedenfor; særlige typer bruger ekstra tags.",
+    symbols_water_note: "Blå markerer vandkilder. En tank vises kun som åben eller dækket, når OSM-tags angiver det.",
+    symbols_tank_unknown_note: "emergency=water_tank alene fortæller ikke, om tanken er åben eller dækket.",
+    symbols_groundwater_note: "Rørsymbolet bevares; blå angiver water_source=groundwater.",
+    symbols_suction_note: "Det udpegede sted til at pumpe vand fra et vandområde.",
 };
 export default strings;

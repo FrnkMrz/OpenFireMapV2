@@ -170,6 +170,16 @@ export const strings = {
     data_sync_checking: "Comprobando nuevos objetos mediante Overpass …",
     data_sync_offline_or_failed: "Servidor Overpass no disponible o sin conexión",
     data_sync_disabled_hint: "Desactivado en los ajustes",
-    data_sync_osm_direct: "Directamente de los servidores de OSM"
+    data_sync_osm_direct: "Directamente de los servidores de OSM",
+    symbols_page_link: "Símbolos del mapa",
+    symbols_title: "Símbolos del mapa y etiquetas OSM",
+    symbols_intro: "Los símbolos se basan en las etiquetas registradas en OpenStreetMap. Las etiquetas se muestran sin cambios.",
+    symbols_language: "Idioma",
+    symbols_tags_label: "Etiquetas OSM",
+    symbols_hydrants_note: "Los símbolos rojos siguen las etiquetas de hidrantes; los tipos especiales usan etiquetas adicionales.",
+    symbols_water_note: "El azul identifica fuentes de agua. El depósito solo se muestra abierto o cubierto si las etiquetas OSM lo indican.",
+    symbols_tank_unknown_note: "emergency=water_tank por sí solo no indica si el depósito está abierto o cubierto.",
+    symbols_groundwater_note: "Se mantiene el símbolo de tubería; el azul indica water_source=groundwater.",
+    symbols_suction_note: "Lugar designado para extraer agua de una masa de agua.",
 };
 export default strings;

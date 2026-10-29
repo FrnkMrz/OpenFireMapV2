@@ -170,6 +170,16 @@ export const strings = {
     data_sync_checking: "Nei Objete via Overpass iwwerpréiwen …",
     data_sync_offline_or_failed: "Overpass-Server net erreechbar oder offline",
     data_sync_disabled_hint: "An den Astellungen desaktivéiert",
-    data_sync_osm_direct: "Direkt vun OSM-Serveren"
+    data_sync_osm_direct: "Direkt vun OSM-Serveren",
+    symbols_page_link: "Kaartesymboler",
+    symbols_title: "Kaartesymboler an OSM-Tags",
+    symbols_intro: "D’Symboler baséieren op den erfaassten OpenStreetMap-Tags. D’Tags ginn onverännert gewisen.",
+    symbols_language: "Sprooch",
+    symbols_tags_label: "OSM-Tags",
+    symbols_hydrants_note: "Rout Symboler entspriechen den Hydrant-Tags hei ënnen; speziell Zorte benotzen zousätzlech Tags.",
+    symbols_water_note: "Blo markéiert Waasserquellen. E Reservoir gëtt nëmmen als oppen oder ofgedeckt gewisen, wann OSM-Tags dat uginn.",
+    symbols_tank_unknown_note: "emergency=water_tank eleng seet net, ob de Reservoir oppen oder ofgedeckt ass.",
+    symbols_groundwater_note: "D’Päifsymbol bleift; blo weist water_source=groundwater un.",
+    symbols_suction_note: "Déi virgesinn Plaz fir Waasser aus engem Gewässer ze pompelen.",
 };
 export default strings;

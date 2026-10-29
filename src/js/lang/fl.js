@@ -170,6 +170,16 @@ export const strings = {
     data_sync_checking: "Nieuwe objecten controleren via Overpass …",
     data_sync_offline_or_failed: "Overpass-server onbereikbaar of offline",
     data_sync_disabled_hint: "Uitgeschakeld in de instellingen",
-    data_sync_osm_direct: "Rechtstreeks van OSM-servers"
+    data_sync_osm_direct: "Rechtstreeks van OSM-servers",
+    symbols_page_link: "Kaartsymbolen",
+    symbols_title: "Kaartsymbolen en OSM-tags",
+    symbols_intro: "De symbolen zijn gebaseerd op de OpenStreetMap-tags. De tags worden ongewijzigd getoond.",
+    symbols_language: "Taal",
+    symbols_tags_label: "OSM-tags",
+    symbols_hydrants_note: "Rode symbolen volgen de hydrant-tags hieronder; bijzondere types gebruiken extra tags.",
+    symbols_water_note: "Blauw duidt waterbronnen aan. Een tank wordt alleen open of afgedekt getoond als de OSM-tags dat aangeven.",
+    symbols_tank_unknown_note: "emergency=water_tank alleen zegt niet of een tank open of afgedekt is.",
+    symbols_groundwater_note: "Het buissymbool blijft; blauw duidt water_source=groundwater aan.",
+    symbols_suction_note: "Aangeduide plaats om water uit een waterloop te pompen.",
 };
 export default strings;

@@ -170,6 +170,16 @@ export const strings = {
     data_sync_checking: "Overpass で新しいオブジェクトを確認中…",
     data_sync_offline_or_failed: "Overpass サーバーに接続できないかオフラインです",
     data_sync_disabled_hint: "設定で無効化されています",
-    data_sync_osm_direct: "OSM サーバーから直接取得"
+    data_sync_osm_direct: "OSM サーバーから直接取得",
+    symbols_page_link: "地図記号",
+    symbols_title: "地図記号とOSMタグ",
+    symbols_intro: "地図記号はOpenStreetMapに登録されたタグに基づいています。タグは変更せず表示します。",
+    symbols_language: "言語",
+    symbols_tags_label: "OSMタグ",
+    symbols_hydrants_note: "赤い記号は下記の消火栓タグに対応します。特殊な形式には追加タグが必要です。",
+    symbols_water_note: "青は水源を示します。タンクの開放・被覆はOSMタグで確認できる場合のみ表示します。",
+    symbols_tank_unknown_note: "emergency=water_tankだけでは、タンクが開放型か被覆型か分かりません。",
+    symbols_groundwater_note: "パイプ記号はそのまま使い、青でwater_source=groundwaterを示します。",
+    symbols_suction_note: "水域から取水するために指定された場所です。",
 };
 export default strings;

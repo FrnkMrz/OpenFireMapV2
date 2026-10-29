@@ -170,6 +170,16 @@ export const strings = {
     data_sync_checking: "Overpass를 통해 새 객체 확인 중…",
     data_sync_offline_or_failed: "Overpass 서버에 연결할 수 없거나 오프라인입니다",
     data_sync_disabled_hint: "설정에서 비활성화됨",
-    data_sync_osm_direct: "OSM 서버에서 직접 가져옴"
+    data_sync_osm_direct: "OSM 서버에서 직접 가져옴",
+    symbols_page_link: "지도 기호",
+    symbols_title: "지도 기호와 OSM 태그",
+    symbols_intro: "지도 기호는 OpenStreetMap에 기록된 태그를 기반으로 합니다. 태그는 변경 없이 표시합니다.",
+    symbols_language: "언어",
+    symbols_tags_label: "OSM 태그",
+    symbols_hydrants_note: "빨간 기호는 아래 소화전 태그를 따르며, 특수 유형에는 추가 태그가 필요합니다.",
+    symbols_water_note: "파란색은 수원을 나타냅니다. OSM 태그로 확인되는 경우에만 탱크를 개방형 또는 덮개형으로 표시합니다.",
+    symbols_tank_unknown_note: "emergency=water_tank만으로는 탱크가 개방형인지 덮개형인지 알 수 없습니다.",
+    symbols_groundwater_note: "파이프 기호는 그대로 두고 파란색으로 water_source=groundwater를 나타냅니다.",
+    symbols_suction_note: "수역에서 물을 흡입하도록 지정된 장소입니다.",
 };
 export default strings;
