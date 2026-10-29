@@ -23,7 +23,6 @@ OpenFireMapV2 ist aktuell **v0.10.1**. OpenFireMap war von Anfang an weltweit nu
 - automatische Erkennung veralteter Pipeline-Abdeckung und Rückfall auf Overpass
 - Exporte als PNG, PDF, GPX und CSV
 - eine mehrsprachige [Übersicht der Kartenzeichen](https://openfiremap.org/symbols/) für Hydranten, Löschwasserstellen, Feuerwachen und Defibrillatoren
-- einen kompakten [Versions-Hub](https://openfiremap.org/version/) mit aktueller Version, Veröffentlichungen und Änderungsprotokoll
 - mehr als 30 Sprachen, IndexedDB-Cache sowie responsive Nutzung auf Desktop und Mobilgeräten
 - Barrierefreiheit nach WCAG 2.2 (A/AA): Bedienung per Tastatur mit Skip-Link, sichtbarem Fokus und Marker-Details auf Enter, Screenreader-Beschriftungen, geprüfte Farbkontraste und Rücksicht auf „Bewegung reduzieren“ (siehe [Erste Schritte](docs/ERSTE_SCHRITTE.md#bedienung-per-tastatur-und-screenreader))
 - eine öffentliche [Pipeline-Statusseite](https://openfiremap.org/status/) mit Datenstand, Upload und Objektdichte je Land
@@ -45,7 +44,6 @@ Der Browser lädt bei PMTiles nur die für den sichtbaren Kartenausschnitt benö
 - [Datenquellen](docs/DATENQUELLEN.md) – OSM, Geofabrik, Overpass, Nominatim und Lizenzen
 - [FAQ](docs/FAQ.md) – häufige Fragen zu Ladezeiten, Aktualität, Offline-Nutzung und Barrierefreiheit
 - [Kartenzeichen](https://openfiremap.org/symbols/) – Symbole und ihre Bedeutung in allen unterstützten Sprachen
-- [Software-Versionen](https://openfiremap.org/version/) – aktuelle Version, Veröffentlichungen und Änderungsprotokoll
 - [Pipeline-Statusseite](https://openfiremap.org/status/) – Datenstand und Upload je Land (Deutsch und Englisch)
 - [Geschichte von OpenFireMap](docs/GESCHICHTE.md) – belegbare Meilensteine seit 2010
 - [Projektvorstellung Deutsch](docs/PROJEKT_VORSTELLUNG_DE.md) / [English](docs/PROJECT_PRESENTATION_EN.md)
@@ -76,8 +74,6 @@ Der Quellcode steht unter der [MIT-Lizenz](LICENSE). Die Kartendaten stammen aus
 OpenFireMapV2 is a worldwide, client-side web map for fire stations, hydrants, water supply points and AEDs based on OpenStreetMap data. The live map is available at [openfiremap.org](https://openfiremap.org), and the source code is maintained in the [GitHub repository](https://github.com/FrnkMrz/OpenFireMapV2).
 
 The [map symbols guide](https://openfiremap.org/symbols/) explains hydrant, water-source, fire-station and AED symbols in all supported languages.
-
-The [software version hub](https://openfiremap.org/version/) shows the current app version and links to releases, the changelog, source code and project information.
 
 Version **v0.10.1** combines global Overpass access with a fast pre-built PMTiles pipeline for Germany, Austria, Switzerland, Luxembourg and Liechtenstein (DACHLiLu) plus 40 more European countries (excluding Russia, Ukraine, Belarus and Turkey; one weekly-built file per country, about 634 MB in total). The DACHLiLu file serves roughly **1.2 million objects**, the country files roughly 1.0 million more, all from Cloudflare R2 using HTTP Range Requests. An optimized MaxZoom 14 build currently keeps the PMTiles archive at about **182.4 MiB (191,243,978 bytes)**, below Cloudflare's 512 MiB free-cache limit. Objects created or changed since the pipeline's OSM data timestamp are fetched from Overpass in the background (for country files only while their OSM data is at most 10 days old; older files are still served, just without this catch-up). It accelerates those areas but does not replace worldwide Overpass coverage. See the [English project presentation](docs/PROJECT_PRESENTATION_EN.md) for a concise technical overview.
 
