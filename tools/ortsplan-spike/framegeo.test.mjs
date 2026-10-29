@@ -41,3 +41,59 @@ test("clampCenterPx: Mitte des Rahmens bleibt in der Ansicht", () => {
   assert.deepEqual(clampCenterPx({ x: -50, y: 900 }, { w: 800, h: 600 }), { x: 0, y: 600 });
   assert.deepEqual(clampCenterPx({ x: 400, y: 300 }, { w: 800, h: 600 }), { x: 400, y: 300 });
 });
+
+import { resizeFree, ratioFmt, parseRatioFmt, roundUpScale } from "./framegeo.js";
+
+const wmm = () => 200; // Kartenfenster immer 200 mm breit
+const free = { rect: { l: 100, t: 100, r: 300, b: 250 }, mpp: 1, frameWmm: wmm, pickScale: (x) => x };
+
+test("Freie Kante rechts: nur die Breite aendert sich, linke Kante und Hoehe bleiben", () => {
+  const r = resizeFree({ ...free, handle: "e", pointer: { x: 500, y: 999 } });
+  assert.equal(Math.round(r.w), 400);
+  assert.equal(Math.round(r.h), 150);
+  assert.equal(Math.round(r.center.x - r.w / 2), 100);
+  assert.equal(Math.round(r.center.y), 175);
+  assert.equal(r.ratio.toFixed(3), (400 / 150).toFixed(3));
+});
+
+test("Freie Kante oben: Hoehe aendert sich, untere Kante bleibt", () => {
+  const r = resizeFree({ ...free, handle: "n", pointer: { x: 0, y: 0 } });
+  assert.equal(Math.round(r.h), 250);
+  assert.equal(Math.round(r.center.y + r.h / 2), 250);
+  assert.equal(Math.round(r.center.x), 200);
+});
+
+test("Freie Ecke oben links: untere rechte Ecke bleibt, Massstab folgt der Breite", () => {
+  const r = resizeFree({ ...free, handle: "nw", pointer: { x: 0, y: 50 } });
+  assert.equal(Math.round(r.center.x + r.w / 2), 300);
+  assert.equal(Math.round(r.center.y + r.h / 2), 250);
+  assert.equal(r.scale, (300 * 1000) / 200);
+});
+
+test("Freier Rahmen: nicht kleiner als Mindestgroesse, Seitenverhaeltnis begrenzt", () => {
+  const r = resizeFree({ ...free, handle: "e", pointer: { x: 0, y: 0 } });
+  assert.ok(r.w >= 24);
+  const flat = resizeFree({ ...free, handle: "e", pointer: { x: 100000, y: 0 } });
+  assert.equal(flat.ratio, 4);
+});
+
+test("Rundungsfunktion beim Ziehen: gerundeter Massstab bestimmt die Rahmengroesse", () => {
+  const r = resizeFree({ ...free, handle: "e", pointer: { x: 400, y: 0 }, pickScale: roundUpScale });
+  assert.equal(r.scale, 1500); // 300 px * 1000 / 200 mm = 1500
+  assert.equal(Math.round(r.w), 300);
+});
+
+test("ratioFmt und parseRatioFmt: Hin und zurueck, Liste bleibt Liste", () => {
+  assert.equal(ratioFmt(1.5), "1.5000:1");
+  assert.equal(parseRatioFmt("1.5000:1"), 1.5);
+  assert.equal(parseRatioFmt("3:2"), null);
+  assert.equal(parseRatioFmt("fill"), null);
+  assert.equal(ratioFmt(99), "4.0000:1");
+});
+
+test("roundUpScale: naechster Standardmassstab, nie kleiner als gezeichnet", () => {
+  assert.equal(roundUpScale(4010), 5000);
+  assert.equal(roundUpScale(4000), 4000);
+  assert.equal(roundUpScale(4000.1), 4000);
+  assert.equal(roundUpScale(21111), 21200);
+});

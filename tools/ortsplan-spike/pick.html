@@ -11,12 +11,19 @@
     #app { display: flex; height: 100%; }
     #wrap { position: relative; flex: 1; min-width: 0; }
     #map { position: absolute; inset: 0; }
-    #frame { position: absolute; border: 2px solid var(--frame); box-shadow: 0 0 0 100vmax rgba(15, 23, 42, .45); pointer-events: none; }
-    #frame:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
-    #grip { position: absolute; left: -2px; top: -30px; height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 10px; background: var(--frame); color: #fff; border-radius: 6px 6px 0 0; font-size: 12px; white-space: nowrap; cursor: move; pointer-events: auto; touch-action: none; user-select: none; }
-    .handle { position: absolute; width: 18px; height: 18px; background: #fff; border: 2px solid var(--frame); border-radius: 4px; pointer-events: auto; touch-action: none; transform: translate(-50%, -50%); }
+    #frame { position: absolute; border: 2px solid #fff; border-radius: 2px; box-shadow: 0 0 0 1px rgba(37, 99, 235, .9), 0 0 0 100vmax rgba(15, 23, 42, .5); pointer-events: none; }
+    #frame:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
+    #grip { position: absolute; left: 50%; top: -44px; transform: translateX(-50%); height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: rgba(15, 23, 42, .92); border: 1px solid #60a5fa; color: #fff; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: move; pointer-events: auto; touch-action: none; user-select: none; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+    #frame.tight #grip { top: 14px; } /* Rahmen liegt oben am Bildrand: Griff innen statt darueber */
+    #grip .ic { color: #93c5fd; font-size: 14px; }
+    .handle { position: absolute; background: #fff; border: 2px solid var(--accent); pointer-events: auto; touch-action: none; transform: translate(-50%, -50%); box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+    .handle.corner { width: 18px; height: 18px; border-radius: 50%; }
+    .handle.edge { border-radius: 999px; }
+    .handle[data-c="n"], .handle[data-c="s"] { width: 34px; height: 10px; cursor: ns-resize; }
+    .handle[data-c="e"], .handle[data-c="w"] { width: 10px; height: 34px; cursor: ew-resize; }
     .handle[data-c="nw"], .handle[data-c="se"] { cursor: nwse-resize; }
     .handle[data-c="ne"], .handle[data-c="sw"] { cursor: nesw-resize; }
+    #frame.fixed .handle.edge { display: none; }
     #maphint { position: absolute; left: 12px; bottom: 12px; max-width: 60%; background: rgba(15, 23, 42, .85); color: var(--text); padding: 6px 10px; border-radius: 8px; font-size: 12px; pointer-events: none; }
     #panel { width: 360px; flex: none; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
     #panel h1 { font-size: 16px; margin: 0; padding: 14px 16px 0; }
@@ -59,14 +66,18 @@
   <div id="app">
     <div id="wrap">
       <div id="map"></div>
-      <div id="frame" tabindex="0" role="group" aria-label="Ausschnitt des Ortsplans. Pfeiltasten verschieben, Plus und Minus ändern den Maßstab.">
-        <div id="grip"><span aria-hidden="true">✥</span><span id="frame-label"></span></div>
-        <div class="handle" data-c="nw" style="left:0;top:0"></div>
-        <div class="handle" data-c="ne" style="left:100%;top:0"></div>
-        <div class="handle" data-c="sw" style="left:0;top:100%"></div>
-        <div class="handle" data-c="se" style="left:100%;top:100%"></div>
+      <div id="frame" tabindex="0" role="group" aria-label="Ausschnitt des Ortsplans. Pfeiltasten verschieben, Plus und Minus machen ihn größer oder kleiner.">
+        <div id="grip"><span class="ic" aria-hidden="true">✥</span><span id="frame-label"></span></div>
+        <div class="handle corner" data-c="nw" style="left:0;top:0"></div>
+        <div class="handle corner" data-c="ne" style="left:100%;top:0"></div>
+        <div class="handle corner" data-c="sw" style="left:0;top:100%"></div>
+        <div class="handle corner" data-c="se" style="left:100%;top:100%"></div>
+        <div class="handle edge" data-c="n" style="left:50%;top:0"></div>
+        <div class="handle edge" data-c="s" style="left:50%;top:100%"></div>
+        <div class="handle edge" data-c="w" style="left:0;top:50%"></div>
+        <div class="handle edge" data-c="e" style="left:100%;top:50%"></div>
       </div>
-      <div id="maphint">Karte ziehen und zoomen. Rahmen an der Leiste verschieben, an den Ecken größer oder kleiner machen.</div>
+      <div id="maphint">Karte ziehen und zoomen. Den Rahmen am Griff oben verschieben, an Kanten und Ecken aufziehen.</div>
     </div>
     <aside id="panel" aria-label="Ortsplan erstellen">
       <h1>Ortsplan erstellen</h1>
@@ -77,15 +88,17 @@
       </nav>
       <div id="body">
         <section class="sec" data-s="0">
-          <p class="hint">Schiebe den roten Rahmen an die gewünschte Stelle. An den Ecken ziehen macht ihn größer oder kleiner, das ändert den Maßstab.</p>
+          <p class="hint" id="hint-frame"></p>
+          <div><p class="lab">Form des Rahmens</p><div class="chips" id="g-free"></div></div>
           <div><p class="lab" id="lab-scale">Maßstab 1 :</p><select id="scale" aria-labelledby="lab-scale"></select></div>
+          <label class="row"><input type="checkbox" id="c-round"> Maßstab auf Standardwert runden (z. B. 1:4.000)</label>
           <div><button class="btn" id="fit" type="button">Rahmen einpassen</button></div>
           <p class="hint" id="area-info"></p>
         </section>
         <section class="sec" data-s="1">
           <div><p class="lab">Papier</p><div class="chips" id="g-size"></div></div>
           <div><p class="lab">Ausrichtung</p><div class="chips" id="g-orient"></div></div>
-          <div><p class="lab" id="lab-fmt">Kartenform</p>
+          <div id="fmt-wrap"><p class="lab" id="lab-fmt">Kartenform</p>
             <select id="fmt" aria-labelledby="lab-fmt"><option value="fill">Papier füllen</option><option value="1:1">Quadrat 1:1</option><option value="3:2">Quer 3:2</option><option value="4:3">Quer 4:3</option><option value="2:3">Hoch 2:3</option><option value="3:4">Hoch 3:4</option></select></div>
           <p class="hint" id="size-info"></p>
         </section>

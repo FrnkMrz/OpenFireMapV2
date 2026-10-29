@@ -86,11 +86,17 @@ Der Spike läuft mit maplibre-gl 5.x und 6.x. Für 6 nötig (alle drei sind scho
 
 `/pick.html` (auch über den Link „Ausschnitt wählen …“ im Formular): Assistent in drei Schritten, links die Karte, rechts das Panel.
 
-1. **Ausschnitt:** der rote Rahmen ist das Kartenfenster des Blatts. An der Leiste oben verschieben, an den Ecken ziehen (das ändert den
-   Druckmaßstab, er rastet auf die Liste `NICE_SCALES` ein, die gegenüberliegende Ecke bleibt stehen). Die Karte wird getrennt davon
-   verschoben und gezoomt; der Rahmen klebt am Ort. Pfeiltasten verschieben den Rahmen, `+`/`-` ändern den Maßstab. Wird der Rahmen größer
-   als die Ansicht, zoomt die Karte heraus. Ragt er über die geladenen Daten hinaus, steht ein Hinweis da.
-2. **Format:** Papier (A4 bis A1), Quer/Hoch, Kartenform.
+1. **Ausschnitt:** der Rahmen ist das Kartenfenster des Blatts. Am Griff oben verschieben. Die Karte wird getrennt davon verschoben und
+   gezoomt; der Rahmen klebt am Ort. Zwei Formen:
+   - **Frei** (Standard): Kanten und Ecken einzeln ziehen, die gegenüberliegende Kante bleibt stehen. Das Kartenfenster des Blatts nimmt das
+     Seitenverhältnis des Rahmens an (`fmt=1.6234:1`, begrenzt auf 1:4 bis 4:1), der Maßstab ergibt sich aus Papier und Rahmen (auf 10 aufgerundet,
+     sodass der Ausschnitt ganz drauf ist). Wechselt man Papier oder Lage, bleibt der Ausschnitt in Metern gleich, der Maßstab folgt. Mit dem
+     Häkchen „Maßstab auf Standardwert runden“ rastet der Rahmen beim Loslassen auf den nächsten Standardmaßstab (`NICE_SCALES`) ein, der den
+     Ausschnitt noch ganz zeigt.
+   - **Wie das Blatt:** Seitenverhältnis wie Papier, Lage und Kartenform (Schritt 2); die Ecken ändern nur den Maßstab (Standardliste).
+   Pfeiltasten verschieben den Rahmen, `+`/`-` machen ihn größer oder kleiner. Wird der Rahmen größer als die Ansicht, zoomt die Karte
+   heraus. Ragt er über die geladenen Daten hinaus, steht ein Hinweis da.
+2. **Format:** Papier (A4 bis A1), Quer/Hoch, im festen Modus auch die Kartenform.
 3. **Legende:** Lage (oben, unten, links, rechts) mit Vorschau der Blattaufteilung; Inhalte per Häkchen (Symbole, Straßenarten und
    Gemeindegrenze, Straßenverzeichnis), unter „Mehr Optionen“ Auflösung, Spalten und Schriftgröße des Verzeichnisses.
 

@@ -1,12 +1,13 @@
 // Ortsplan erstellen: Assistent in drei Schritten (Ausschnitt, Format, Legende).
-// Der rote Rahmen ist das Kartenfenster des Blatts: an der Leiste verschieben, an den Ecken ziehen (ändert den Druckmaßstab).
+// Der Rahmen ist das Kartenfenster des Blatts: am Griff oben verschieben, an Kanten und Ecken aufziehen.
+// Frei (Standard): jede Seite einzeln, das Blatt nimmt das Seitenverhältnis des Rahmens an, der Maßstab ergibt sich. Fest: Seitenverhältnis des Blatts, Ecken ändern nur den Maßstab.
 // Karte (Verschieben, Zoom) und Rahmen sind getrennt: der Rahmen klebt am Ort (Mitte in Grad), nicht am Bildschirm.
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol, PMTiles } from "pmtiles";
 import { buildStyle } from "./style.js";
 import { PAPER_MM, SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES } from "./layout.js";
-import { resizeFromCorner, snapScale, clampCenterPx } from "./framegeo.js";
+import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parseRatioFmt, roundUpScale, RATIO_MIN, RATIO_MAX } from "./framegeo.js";
 
 const q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -19,7 +20,7 @@ const startLon = +(q.get("lon") || areaInfo?.lon || 11.3181);
 
 // ---- Einstellungen: Standard, zuletzt benutzt (localStorage, darf fehlen), Adresse gewinnt ----
 const KEY = "ofm_ortsplan_wizard";
-const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", side: "left", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, dpi: 150 };
+const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "left", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, dpi: 150 };
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { /* ohne Speicher */ }
 const S = { ...DEFAULTS };
@@ -27,16 +28,21 @@ const num = (v, lo, hi, d) => (Number.isFinite(+v) && v !== "" && v !== null && 
 function apply(src) {
   const paper = PAPER_MM[src.paper] ? src.paper : PAPER_MM[`${src.size}${src.orient}`] ? `${src.size}${src.orient}` : null;
   if (paper) { S.size = paper.slice(0, 2); S.orient = paper.slice(2); }
-  if ([...$("fmt").options].some((o) => o.value === src.fmt)) S.fmt = src.fmt;
+  // Kartenformat: ein Wert aus der Liste heißt fester Rahmen, "1.6234:1" ein freier Rahmen (so kommt es auch vom Blatt zurück)
+  const rf = parseRatioFmt(src.fmt);
+  if (rf) { S.free = true; S.ratio = rf; } else if ([...$("fmt").options].some((o) => o.value === src.fmt)) { S.fmt = src.fmt; S.free = false; }
+  if (src.free !== undefined && src.free !== null) S.free = src.free === true || src.free === "1";
+  if (+src.ratio >= RATIO_MIN && +src.ratio <= RATIO_MAX) S.ratio = +src.ratio;
   if (SIDES.includes(src.side)) S.side = src.side;
-  if (src.scale) S.scale = snapScale(+src.scale);
-  for (const k of ["lsym", "lroad", "index"]) if (src[k] !== undefined && src[k] !== null) S[k] = src[k] === true || src[k] === "1";
+  if (+src.scale > 0) S.scale = Math.max(100, Math.round(+src.scale));
+  for (const k of ["lsym", "lroad", "index", "round"]) if (src[k] !== undefined && src[k] !== null) S[k] = src[k] === true || src[k] === "1";
   S.icols = Math.round(num(src.icols, 0, 6, S.icols));
   S.isize = num(src.isize, 0.5, 3, S.isize);
   if ([96, 150, 200, 300].includes(+src.dpi)) S.dpi = +src.dpi;
 }
 apply(saved);
 apply(Object.fromEntries(q.entries()));
+if (!S.free) S.scale = snapScale(S.scale);
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* ohne Speicher */ } };
 
 for (const s of NICE_SCALES) $("scale").add(new Option(s.toLocaleString("de-DE"), String(s)));
@@ -70,10 +76,23 @@ map.on("rotate", () => { if (map.getBearing() !== 0) map.setBearing(0); });
 let fc = { lng: startLon, lat: startLat };
 
 const paperKey = () => `${S.size}${S.orient}`;
+const layoutFmt = () => (S.free ? ratioFmt(S.ratio) : S.fmt);
 function layout() {
   const [wMm, hMm] = PAPER_MM[paperKey()];
-  const L = computeLayout({ wMm, hMm, side: S.side, fmt: S.fmt });
+  const L = computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt() });
   return { wMm, hMm, L, ground: groundSizeM(L.frame, S.scale) };
+}
+// Freier Rahmen: Seitenverhältnis zuerst vom Blatt (Papier füllen), danach vom Rahmen
+if (!(S.ratio > 0)) { const f = computeLayout({ wMm: PAPER_MM[paperKey()][0], hMm: PAPER_MM[paperKey()][1], side: S.side, fmt: "fill" }).frame; S.ratio = f.w / f.h; }
+/** Breite des Kartenfensters in mm bei einem Seitenverhältnis (Papier und Lage der Legende wie gewählt). */
+const windowWmm = (ratio) => { const [wMm, hMm] = PAPER_MM[paperKey()]; return computeLayout({ wMm, hMm, side: S.side, fmt: ratioFmt(ratio) }).frame.w; };
+/** Gewünschten Maßstab auf einen druckbaren abbilden: beim Ziehen auf 10 aufgerundet, mit Runden auf einen Standardmaßstab. */
+const pickScale = (exact, final = false) => (S.round && final ? roundUpScale(exact) : Math.max(100, Math.ceil(exact / 10) * 10));
+/** Ändert fn Papier oder Lage, bleibt im freien Modus der Ausschnitt in Metern gleich; der Maßstab folgt. */
+function keepGround(fn) {
+  const g = layout().ground;
+  fn();
+  if (S.free) S.scale = pickScale((g.w * 1000) / layout().L.frame.w, true);
 }
 const km = (m) => (m / 1000).toLocaleString("de-DE", { maximumFractionDigits: 2 });
 
@@ -92,11 +111,12 @@ function drawFrame() {
   f.style.top = `${b.cy - b.h / 2}px`;
   f.style.width = `${b.w}px`;
   f.style.height = `${b.h}px`;
+  f.classList.toggle("tight", b.cy - b.h / 2 < 56);
 }
 
 function goLink() {
   const p = new URLSearchParams({
-    sheet: "1", dpi: String(S.dpi), paper: paperKey(), side: S.side, fmt: S.fmt, scale: String(S.scale),
+    sheet: "1", dpi: String(S.dpi), paper: paperKey(), side: S.side, fmt: layoutFmt(), scale: String(S.scale),
     lat: fc.lat.toFixed(5), lon: fc.lng.toFixed(5), index: S.index ? "1" : "0", lsym: S.lsym ? "1" : "0", lroad: S.lroad ? "1" : "0",
     icols: String(S.icols), isize: String(S.isize),
   });
@@ -107,7 +127,7 @@ function goLink() {
 function updateText() {
   const { wMm, hMm, ground } = layout();
   $("frame-label").textContent = `${km(ground.w)} × ${km(ground.h)} km · 1:${S.scale.toLocaleString("de-DE")}`;
-  $("size-info").textContent = `${wMm} × ${hMm} mm · die Karte deckt ${km(ground.w)} × ${km(ground.h)} km ab`;
+  $("size-info").textContent = `${wMm} × ${hMm} mm · die Karte deckt ${km(ground.w)} × ${km(ground.h)} km ab${S.free ? ", mit dem Seitenverhältnis des Rahmens" : ""}`;
   $("area-info").textContent = `Mitte ${fc.lat.toFixed(5)} N, ${fc.lng.toFixed(5)} E`;
   $("go").href = goLink();
   // Liegt der Rahmen nicht ganz in den geladenen Daten, bleibt das Blatt dort leer
@@ -140,8 +160,17 @@ function refresh() {
   for (const [id, key] of [["g-size", "size"], ["g-orient", "orient"], ["g-side", "side"]]) {
     for (const b of $(id).children) b.setAttribute("aria-pressed", String(b.dataset.v === S[key]));
   }
+  const scales = [...new Set([...NICE_SCALES, S.scale])].sort((a, b) => a - b);
+  $("scale").replaceChildren(...scales.map((v) => new Option(v.toLocaleString("de-DE"), String(v))));
   $("scale").value = String(S.scale);
   $("fmt").value = S.fmt;
+  for (const b of $("g-free").children) b.setAttribute("aria-pressed", String((b.dataset.v === "1") === S.free));
+  $("frame").classList.toggle("fixed", !S.free);
+  $("fmt-wrap").hidden = S.free;
+  $("c-round").checked = S.round; $("c-round").closest("label").hidden = !S.free;
+  $("hint-frame").textContent = S.free
+    ? "Ziehe den Rahmen an den Kanten und Ecken so auf, wie du den Ausschnitt brauchst. Papier und Rahmen bestimmen den Maßstab."
+    : "Der Rahmen hat das Seitenverhältnis des Blatts (Schritt 2). An den Ecken ziehen macht ihn größer oder kleiner und ändert den Maßstab.";
   $("c-sym").checked = S.lsym; $("c-road").checked = S.lroad; $("c-index").checked = S.index;
   $("o-dpi").value = String(S.dpi); $("o-icols").value = String(S.icols); $("o-isize").value = String(S.isize);
   drawFrame(); updateText(); drawPreview();
@@ -159,7 +188,7 @@ const chips = (id, items, key, refit) => {
   $(id).replaceChildren(...items.map(([v, t]) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "chip"; b.dataset.v = v; b.textContent = t;
-    b.addEventListener("click", () => { S[key] = v; if (refit) fit(); refresh(); });
+    b.addEventListener("click", () => { keepGround(() => { S[key] = v; }); if (refit) fit(); refresh(); });
     return b;
   }));
 };
@@ -168,6 +197,19 @@ chips("g-orient", [["l", "Quer"], ["p", "Hoch"]], "orient", true);
 chips("g-side", [["top", "Oben"], ["bottom", "Unten"], ["left", "Links"], ["right", "Rechts"]], "side", true);
 $("scale").addEventListener("change", () => { S.scale = +$("scale").value; fit(); refresh(); });
 $("fmt").addEventListener("change", () => { S.fmt = $("fmt").value; fit(); refresh(); });
+// Rahmenform: Frei oder wie das Blatt. Beim Umschalten bleibt der Rahmen, wie er ist (frei übernimmt das Seitenverhältnis des Blatts, fest rastet den Maßstab ein)
+function setFree(free) {
+  if (free === S.free) return;
+  if (free) { const { L } = layout(); S.ratio = L.frame.w / L.frame.h; } else S.scale = snapScale(S.scale);
+  S.free = free; fit(); refresh();
+}
+$("g-free").replaceChildren(...[["1", "Frei"], ["0", "Wie das Blatt"]].map(([v, t]) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.dataset.v = v; b.textContent = t;
+  b.addEventListener("click", () => setFree(v === "1"));
+  return b;
+}));
+$("c-round").addEventListener("change", () => { S.round = $("c-round").checked; if (S.round && S.free) S.scale = roundUpScale(S.scale); fit(); refresh(); });
 $("fit").addEventListener("click", () => { fit(); refresh(); });
 for (const [id, key] of [["c-sym", "lsym"], ["c-road", "lroad"], ["c-index", "index"]]) $(id).addEventListener("change", () => { S[key] = $(id).checked; refresh(); });
 $("o-dpi").addEventListener("change", () => { S.dpi = +$("o-dpi").value; refresh(); });
@@ -204,14 +246,24 @@ document.querySelectorAll(".handle").forEach((h) => h.addEventListener("pointerd
   e.preventDefault();
   h.setPointerCapture(e.pointerId);
   const b = frameBox(), c = h.dataset.c;
-  const anchor = { x: c.includes("w") ? b.cx + b.w / 2 : b.cx - b.w / 2, y: c.includes("n") ? b.cy + b.h / 2 : b.cy - b.h / 2 };
+  const rect = { l: b.cx - b.w / 2, t: b.cy - b.h / 2, r: b.cx + b.w / 2, b: b.cy + b.h / 2 };
+  // Wo der Griff beim Anfassen sitzt: der Rahmen springt nicht um die Griffgröße
+  const grab = { x: c.includes("w") ? rect.l : c.includes("e") ? rect.r : b.cx, y: c.includes("n") ? rect.t : c.includes("s") ? rect.b : b.cy };
+  const start = wrapPt(e), off = { x: start.x - grab.x, y: start.y - grab.y };
+  const anchor = { x: c.includes("w") ? rect.r : rect.l, y: c.includes("n") ? rect.b : rect.t };
   const { L } = layout();
-  const move = (ev) => {
-    const r = resizeFromCorner({ anchor, pointer: wrapPt(ev), aspect: L.frame.w / L.frame.h, mpp: b.mpp, frameWmm: L.frame.w });
-    S.scale = r.scale; setCenterPx(r.center); refresh();
+  let last = start;
+  const resize = (final) => {
+    const pointer = { x: last.x - off.x, y: last.y - off.y };
+    const r = S.free
+      ? resizeFree({ rect, handle: c, pointer, mpp: b.mpp, frameWmm: windowWmm, pickScale: (x) => pickScale(x, final) })
+      : resizeFromCorner({ anchor, pointer: last, aspect: L.frame.w / L.frame.h, mpp: b.mpp, frameWmm: L.frame.w });
+    S.scale = r.scale; if (S.free) S.ratio = r.ratio; setCenterPx(r.center); refresh();
   };
+  const move = (ev) => { last = wrapPt(ev); resize(false); };
   const up = () => {
     h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up); h.removeEventListener("pointercancel", up);
+    if (S.free && S.round) resize(true); // erst beim Loslassen auf den Standardmaßstab einrasten
     // Wurde der Rahmen groesser als die Ansicht, zoomt die Karte heraus: sonst lägen die Ecken ausserhalb und liessen sich nicht mehr greifen
     const bb = frameBox(), wrap = $("wrap");
     if (bb.w > 0.9 * wrap.clientWidth || bb.h > 0.9 * (wrap.clientHeight - 40)) { fit(); refresh(); }
@@ -225,8 +277,12 @@ $("frame").addEventListener("keydown", (e) => {
   const dir = { ArrowLeft: [-d, 0], ArrowRight: [d, 0], ArrowUp: [0, -d], ArrowDown: [0, d] }[e.key];
   if (dir) setCenterPx(clampCenterPx({ x: b.cx + dir[0], y: b.cy + dir[1] }, view));
   else if (e.key === "+" || e.key === "-") {
-    const i = NICE_SCALES.indexOf(S.scale) + (e.key === "+" ? 1 : -1); // + = Rahmen größer (größere Maßstabszahl), - = kleiner
-    if (i >= 0 && i < NICE_SCALES.length) S.scale = NICE_SCALES[i];
+    // + = Rahmen größer (größere Maßstabszahl), - = kleiner; frei ohne Runden in Viertelschritten, sonst von Standardwert zu Standardwert
+    if (S.free && !S.round) S.scale = pickScale(S.scale * (e.key === "+" ? 1.25 : 0.8));
+    else {
+      const i = NICE_SCALES.indexOf(snapScale(S.scale)) + (e.key === "+" ? 1 : -1);
+      if (i >= 0 && i < NICE_SCALES.length) S.scale = NICE_SCALES[i];
+    }
   } else return;
   e.preventDefault(); refresh();
 });

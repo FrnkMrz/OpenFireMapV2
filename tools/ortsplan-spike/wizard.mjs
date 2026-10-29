@@ -18,6 +18,46 @@ const box = () => page.evaluate(() => window.__wizard.frameBox());
 const center = async (sel) => { const r = await page.locator(sel).boundingBox(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
 
 try {
+  // ---- Freier Rahmen: Kanten einzeln ziehen, das Seitenverhaeltnis folgt ----
+  await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=right&fmt=1.5000:1`);
+  await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+  await page.waitForTimeout(1500);
+  const f0 = await box(), t0 = await st();
+  check(t0.free === true && Math.abs(f0.w / f0.h - 1.5) < 0.01, `Freier Rahmen aus der Adresse (fmt=1.5:1): ${(f0.w / f0.h).toFixed(3)}`);
+  check(await page.isVisible('.handle[data-c="e"]'), "Freier Rahmen: Kantengriffe sichtbar");
+  const he = await center('.handle[data-c="e"]');
+  await page.mouse.move(he.x, he.y); await page.mouse.down(); await page.mouse.move(he.x + 150, he.y, { steps: 8 }); await page.mouse.up();
+  const f1 = await box(), t1 = await st();
+  check(f1.w / f1.h > 1.7 && Math.abs(f1.h - f0.h) < 4, `Rechte Kante: breiter (${(f1.w / f1.h).toFixed(2)}), Hoehe bleibt (${Math.round(f0.h)} -> ${Math.round(f1.h)})`);
+  check(Math.abs(f1.cx - f1.w / 2 - (f0.cx - f0.w / 2)) < 2, "Linke Kante bleibt stehen");
+  check(Math.abs(t1.ratio - f1.w / f1.h) < 0.01, `Seitenverhaeltnis im Zustand: ${t1.ratio.toFixed(3)}`);
+  const hs = await center('.handle[data-c="s"]');
+  await page.mouse.move(hs.x, hs.y); await page.mouse.down(); await page.mouse.move(hs.x, hs.y - 120, { steps: 8 }); await page.mouse.up();
+  const f2 = await box();
+  check(f2.h < f1.h - 80 && Math.abs(f2.w - f1.w) < 4, `Untere Kante: niedriger (${Math.round(f1.h)} -> ${Math.round(f2.h)}), Breite bleibt`);
+  const hc = await center('.handle[data-c="nw"]');
+  await page.mouse.move(hc.x, hc.y); await page.mouse.down(); await page.mouse.move(hc.x + 60, hc.y - 40, { steps: 6 }); await page.mouse.up();
+  const f3 = await box();
+  check(Math.abs(f3.cx + f3.w / 2 - (f2.cx + f2.w / 2)) < 2 && Math.abs(f3.cy + f3.h / 2 - (f2.cy + f2.h / 2)) < 2, "Freie Ecke: Gegenecke unten rechts bleibt stehen");
+  // Papier wechseln: der Ausschnitt in Metern bleibt, der Massstab folgt
+  const g0 = (await box()); const ground0 = g0.w * g0.mpp, sc0 = (await st()).scale;
+  await page.click('.st[data-s="1"]');
+  await page.click('#g-size button[data-v="a4"]');
+  const g1 = await box(), sc1 = (await st()).scale;
+  check(Math.abs(g1.w * g1.mpp - ground0) / ground0 < 0.01 && sc1 > sc0, `Papier A4: Ausschnitt bleibt (${Math.round(ground0)} m), Massstab ${sc0} -> ${sc1}`);
+  const fl = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]);
+  check(/^\d\.\d+:1$/.test(fl.get("fmt")), `Link traegt das freie Format: ${fl.get("fmt")}`);
+  await page.screenshot({ path: `${OUT}/0-frei.png` });
+  // Runden auf Standardmassstab: rastet beim Loslassen ein
+  await page.click('.st[data-s="0"]');
+  await page.check("#c-round");
+  check([1000, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000, 15000, 20000].includes((await st()).scale), `Runden: Massstab ${(await st()).scale} ist ein Standardmassstab`);
+  const hr = await center('.handle[data-c="e"]');
+  await page.mouse.move(hr.x, hr.y); await page.mouse.down(); await page.mouse.move(hr.x - 70, hr.y, { steps: 6 }); await page.mouse.up();
+  check([1000, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000, 15000, 20000].includes((await st()).scale), `Nach dem Ziehen eingerastet: 1:${(await st()).scale}`);
+  await page.evaluate(() => localStorage.clear());
+
+  // ---- Fester Rahmen (Seitenverhaeltnis des Blatts) ----
   await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=right&fmt=fill`);
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
   await page.waitForTimeout(1500);

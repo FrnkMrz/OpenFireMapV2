@@ -21,6 +21,9 @@ const cases = [
   { path: "/", q: "sheet=1&scale=7500&paper=a3l&dpi=96", ready: "__ready", reload: { change: ["side", "left"], keep: { scale: "7500", side: "left" } } },
   { path: "/", q: "scale=5000&paper=a4l&dpi=200&side=top&fmt=3:4", ready: "__ready", form: { scale: "5000", paper: "a4l", dpi: "200", side: "top", fmt: "3:4" } },
   { path: "/pick.html", q: "paper=a3l&side=right&fmt=1:1&scale=5000", ready: "__pickReady" },
+  { path: "/", q: "sheet=1&scale=4350&paper=a3l&dpi=96&side=left&fmt=2.1000:1", ready: "__ready" },
+  { path: "/", q: "sheet=1&scale=6200&paper=a4p&dpi=96&side=bottom&fmt=0.5000:1", ready: "__ready" },
+  { path: "/pick.html", q: "paper=a3l&side=right&fmt=2.1000:1&scale=4350", ready: "__pickReady" },
   { path: "/pick.html", q: "", ready: "__pickReady" },
 ];
 
