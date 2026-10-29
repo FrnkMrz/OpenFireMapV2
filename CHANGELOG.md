@@ -5,16 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [v0.10.1] - 2026-10-29
 
 ### Neu
+- **Statusseite: Rhythmus der Aktualisierung und letzter Lauf**: Ein neuer Abschnitt oben auf `/status/` sagt klar, wie oft die Karten entstehen: Die fünf Länder des gemeinsamen DACHLiLu-Builds (Deutschland, Österreich, Schweiz, Luxemburg, Liechtenstein) werden **täglich geprüft** und neu gebaut, sobald Geofabrik neue Daten bereitstellt; alle übrigen europäischen Länder werden einzeln **einmal pro Woche** gebaut, jedes an einem festen Wochentag, eine Karte ist deshalb bis zu etwa eine Woche alt. Dazu stehen die Zeitpunkte des **letzten Laufs** (letzte Veröffentlichung) des DACHLiLu-Builds und der Länder-Dateien sowie die älteste Länder-Karte und die Zahl der Länder. Grund: Die Niederlande-Karte wirkte veraltet, war aber nur noch nicht wieder an der Reihe. Neu `cadence()` in `src/js/status/model.js` (rein, getestet), Texte in Deutsch und Englisch, kein Zeitplan und keine Betriebsdetails der Pipeline (die bleiben im privaten Repo). Tests: Modell (`test/status-model.test.js`), E2E (`tests/status.spec.js`: Rhythmus und Zeitpunkte in Deutsch und Englisch, ohne `metadata.json`).
 - **Kartenzeichen-Übersicht**: Neue, mehrsprachige Unterseite mit den in der Karte verwendeten Hydranten-, Wasserstellen-, Wachen- und AED-Symbolen sowie den zugehörigen OSM-Tags. Die Symbole werden auch in der Kartendarstellung verwendet.
 - **Versions-Hub**: Neue Unterseite `/version/` mit der aktuellen App-Version und Links zu Releases, Changelog, Projektdokumentation, Kartenzeichen und Datenstatus. Die Versionsanzeige kommt aus einer zentralen Versionsdatei.
 
 ### Geändert
 - Der OpenStreetMap-Wiki-Link und der „OSM-Tags“-Hinweis unter den Symbolkarten wurden entfernt; die OSM-Tags direkt bei den Symbolen bleiben sichtbar.
-
-## [Unreleased]
-
-### Neu
-- **Statusseite: Rhythmus der Aktualisierung und letzter Lauf**: Ein neuer Abschnitt oben auf `/status/` sagt klar, wie oft die Karten entstehen: Die fünf Länder des gemeinsamen DACHLiLu-Builds (Deutschland, Österreich, Schweiz, Luxemburg, Liechtenstein) werden **täglich geprüft** und neu gebaut, sobald Geofabrik neue Daten bereitstellt; alle übrigen europäischen Länder werden einzeln **einmal pro Woche** gebaut, jedes an einem festen Wochentag, eine Karte ist deshalb bis zu etwa eine Woche alt. Dazu stehen die Zeitpunkte des **letzten Laufs** (letzte Veröffentlichung) des DACHLiLu-Builds und der Länder-Dateien sowie die älteste Länder-Karte und die Zahl der Länder. Grund: Die Niederlande-Karte wirkte veraltet, war aber nur noch nicht wieder an der Reihe. Neu `cadence()` in `src/js/status/model.js` (rein, getestet), Texte in Deutsch und Englisch, kein Zeitplan und keine Betriebsdetails der Pipeline (die bleiben im privaten Repo). Tests: Modell (`test/status-model.test.js`), E2E (`tests/status.spec.js`: Rhythmus und Zeitpunkte in Deutsch und Englisch, ohne `metadata.json`).
 
 ## [v0.10.0] - 2026-10-21
 
