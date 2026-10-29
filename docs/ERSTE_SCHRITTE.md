@@ -4,8 +4,6 @@
 
 Öffne [openfiremap.org](https://openfiremap.org). Die Karte kann ohne Konto genutzt werden und funktioniert weltweit, sofern eine Internetverbindung besteht.
 
-Die aktuelle Software-Version, Veröffentlichungen und das Änderungsprotokoll findest du im [Versions-Hub](https://openfiremap.org/version/).
-
 Zoome in einen Bereich hinein, um feuerwehrrelevante Objekte zu laden. Bei ausreichender Zoomstufe werden unter anderem Feuerwachen, Hydranten, Löschwasserstellen und Defibrillatoren angezeigt. Die Darstellung und die verfügbaren Tags hängen von den Daten in OpenStreetMap ab.
 
 ## Suche verwenden

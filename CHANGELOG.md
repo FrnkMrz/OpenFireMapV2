@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Entfernt
+- Die eigenständige Software-Versionsseite `/version/` samt Navigation, Seitenskript, Build-Eintrag, Seitenübersetzungen und Dokumentationslinks wurde entfernt. Die aktuelle Versionsnummer bleibt in der Info der Kartenanwendung sichtbar.
+
 ## [v0.10.1] - 2026-10-29
 
 ### Neu
