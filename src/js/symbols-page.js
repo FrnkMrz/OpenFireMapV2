@@ -2,12 +2,12 @@ import { initI18n, updatePageLanguage, setLang, getLang } from './i18n.js';
 import { getHydrantMarkerType, getMarkerSvg } from './marker-symbols.js';
 
 const hydrantSymbols = [
-    { type: 'underground', label: 'hydrant', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'underground' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=underground'] },
+    { type: 'underground', label: 'symbol_underground_hydrant', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'underground' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=underground'] },
     { type: 'underground', label: 'wsh_hint', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'underground', 'fire_hydrant:style': 'wsh' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=underground', 'fire_hydrant:style=wsh'] },
-    { type: 'pillar', label: 'hydrant', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'pillar' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=pillar'] },
-    { type: 'pillar', label: 'hydrant', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'pillar', 'pillar:type': 'dry_barrel' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=pillar', 'pillar:type=dry_barrel'] },
-    { type: 'wall', label: 'hydrant', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'wall' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=wall'] },
-    { type: 'pipe', label: 'hydrant', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'pipe' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=pipe'] }
+    { type: 'pillar', label: 'symbol_pillar_hydrant', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'pillar' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=pillar'] },
+    { type: 'pillar', label: 'symbol_dry_barrel_hydrant', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'pillar', 'pillar:type': 'dry_barrel' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=pillar', 'pillar:type=dry_barrel'] },
+    { type: 'wall', label: 'symbol_wall_hydrant', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'wall' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=wall'] },
+    { type: 'pipe', label: 'symbol_pipe_hydrant', tags: { emergency: 'fire_hydrant', 'fire_hydrant:type': 'pipe' }, lines: ['emergency=fire_hydrant', 'fire_hydrant:type=pipe'] }
 ];
 
 const waterSymbols = [
