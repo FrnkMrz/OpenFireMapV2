@@ -67,6 +67,15 @@ try {
   check(Math.abs(bq.w / bq.h - 1) < 0.01, "Rahmen ist quadratisch");
   await page.evaluate(() => localStorage.clear());
 
+  // Kleinster Massstab 1:1000: eine Adresse mit scale=100 und ein stark zusammengezogener Rahmen bleiben darueber (Massstabsleiste des Blatts)
+  await page.goto(`${BASE}/pick.html?paper=a4l&side=left&fmt=1.5000:1&scale=100`);
+  await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+  check((await st()).scale >= 1000, `scale=100 aus der Adresse wird auf ${(await st()).scale} angehoben`);
+  const hs2 = await center('.handle[data-c="se"]'); const hn2 = await center('.handle[data-c="nw"]');
+  await page.mouse.move(hs2.x, hs2.y); await page.mouse.down(); await page.mouse.move(hn2.x + 6, hn2.y + 4, { steps: 8 }); await page.mouse.up();
+  check((await st()).scale >= 1000, `Rahmen stark zusammengezogen: Massstab ${(await st()).scale} bleibt >= 1000`);
+  await page.evaluate(() => localStorage.clear());
+
   // ---- Fester Rahmen (Seitenverhaeltnis des Blatts) ----
   await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=right&fmt=fill`);
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });

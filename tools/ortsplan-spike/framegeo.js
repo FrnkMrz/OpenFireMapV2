@@ -49,6 +49,14 @@ export function parseRatioFmt(fmt) {
   return m && +m[1] >= RATIO_MIN && +m[1] <= RATIO_MAX ? +m[1] : null;
 }
 
+export const MIN_SCALE = NICE_SCALES[0]; // kleinster Massstab (1:1000): darunter passt die Massstabsleiste des Blatts (sheet.js, kleinste Leiste 20 m) nicht mehr in die Seitenleiste
+
+/** Gewuenschten Massstab des freien Rahmens auf einen druckbaren abbilden: nie unter MIN_SCALE, sonst auf 10 aufgerundet (oder auf einen Standardmassstab). */
+export function pickFreeScale(exact, round = false) {
+  const e = Math.max(MIN_SCALE, exact);
+  return round ? roundUpScale(e) : Math.ceil(e / 10) * 10;
+}
+
 /** Kleinster Standardmassstab, der mindestens den gezeichneten Ausschnitt zeigt; darueber hinaus aufgerundet auf 100. */
 export function roundUpScale(exact, list = NICE_SCALES) {
   const e = exact * 0.9995; // Rundungsrauschen: 4000,0001 soll 4000 bleiben

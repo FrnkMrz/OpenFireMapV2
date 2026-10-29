@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol, PMTiles } from "pmtiles";
 import { buildStyle } from "./style.js";
 import { PAPER_MM, SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES } from "./layout.js";
-import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parseRatioFmt, roundUpScale, RATIO_MIN, RATIO_MAX } from "./framegeo.js";
+import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE, RATIO_MIN, RATIO_MAX } from "./framegeo.js";
 
 const q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -34,7 +34,7 @@ function apply(src) {
   if (src.free !== undefined && src.free !== null) S.free = src.free === true || src.free === "1";
   if (+src.ratio >= RATIO_MIN && +src.ratio <= RATIO_MAX) S.ratio = +src.ratio;
   if (SIDES.includes(src.side)) S.side = src.side;
-  if (+src.scale > 0) S.scale = Math.max(100, Math.round(+src.scale));
+  if (+src.scale > 0) S.scale = Math.max(MIN_SCALE, Math.round(+src.scale));
   for (const k of ["lsym", "lroad", "index", "round"]) if (src[k] !== undefined && src[k] !== null) S[k] = src[k] === true || src[k] === "1";
   S.icols = Math.round(num(src.icols, 0, 6, S.icols));
   S.isize = num(src.isize, 0.5, 3, S.isize);
@@ -86,8 +86,8 @@ function layout() {
 if (!(S.ratio > 0)) { const f = computeLayout({ wMm: PAPER_MM[paperKey()][0], hMm: PAPER_MM[paperKey()][1], side: S.side, fmt: "fill" }).frame; S.ratio = f.w / f.h; }
 /** Breite des Kartenfensters in mm bei einem Seitenverhältnis (Papier und Lage der Legende wie gewählt). */
 const windowWmm = (ratio) => { const [wMm, hMm] = PAPER_MM[paperKey()]; return computeLayout({ wMm, hMm, side: S.side, fmt: ratioFmt(ratio) }).frame.w; };
-/** Gewünschten Maßstab auf einen druckbaren abbilden: beim Ziehen auf 10 aufgerundet, mit Runden auf einen Standardmaßstab. */
-const pickScale = (exact, final = false) => (S.round && final ? roundUpScale(exact) : Math.max(100, Math.ceil(exact / 10) * 10));
+/** Gewünschten Maßstab auf einen druckbaren abbilden (nie unter 1:1000): beim Ziehen auf 10 aufgerundet, mit Runden auf einen Standardmaßstab. */
+const pickScale = (exact, final = false) => pickFreeScale(exact, S.round && final);
 /** Ändert fn Papier oder Lage, bleibt im freien Modus der Ausschnitt in Metern gleich; der Maßstab folgt. */
 function keepGround(fn) {
   const g = layout().ground;

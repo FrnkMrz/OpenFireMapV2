@@ -89,7 +89,7 @@ Der Spike läuft mit maplibre-gl 5.x und 6.x. Für 6 nötig (alle drei sind scho
 1. **Ausschnitt:** der Rahmen ist das Kartenfenster des Blatts. Am Griff oben verschieben. Die Karte wird getrennt davon verschoben und
    gezoomt; der Rahmen klebt am Ort. Zwei Formen:
    - **Frei** (Standard): Kanten und Ecken einzeln ziehen, die gegenüberliegende Kante bleibt stehen. Das Kartenfenster des Blatts nimmt das
-     Seitenverhältnis des Rahmens an (`fmt=1.6234:1`, begrenzt auf 1:4 bis 4:1), der Maßstab ergibt sich aus Papier und Rahmen (auf 10 aufgerundet,
+     Seitenverhältnis des Rahmens an (`fmt=1.6234:1`, begrenzt auf 1:4 bis 4:1), der Maßstab ergibt sich aus Papier und Rahmen (mindestens 1:1000, auf 10 aufgerundet,
      sodass der Ausschnitt ganz drauf ist). Wechselt man Papier oder Lage, bleibt der Ausschnitt in Metern gleich, der Maßstab folgt. Mit dem
      Häkchen „Maßstab auf Standardwert runden“ rastet der Rahmen beim Loslassen auf den nächsten Standardmaßstab (`NICE_SCALES`) ein, der den
      Ausschnitt noch ganz zeigt.

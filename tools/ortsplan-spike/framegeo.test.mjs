@@ -42,7 +42,7 @@ test("clampCenterPx: Mitte des Rahmens bleibt in der Ansicht", () => {
   assert.deepEqual(clampCenterPx({ x: 400, y: 300 }, { w: 800, h: 600 }), { x: 400, y: 300 });
 });
 
-import { resizeFree, ratioFmt, parseRatioFmt, roundUpScale } from "./framegeo.js";
+import { resizeFree, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE } from "./framegeo.js";
 
 const wmm = () => 200; // Kartenfenster immer 200 mm breit
 const free = { rect: { l: 100, t: 100, r: 300, b: 250 }, mpp: 1, frameWmm: wmm, pickScale: (x) => x };
@@ -98,4 +98,18 @@ test("roundUpScale: naechster Standardmassstab, nie kleiner als gezeichnet", () 
   assert.equal(roundUpScale(4000), 4000);
   assert.equal(roundUpScale(4000.1), 4000);
   assert.equal(roundUpScale(21111), 21200);
+});
+
+test("pickFreeScale: nie unter 1:1000 (Massstabsleiste), sonst auf 10 aufgerundet oder auf Standardmassstab", () => {
+  assert.equal(MIN_SCALE, 1000);
+  assert.equal(pickFreeScale(100), 1000);
+  assert.equal(pickFreeScale(1), 1000);
+  assert.equal(pickFreeScale(4351), 4360);
+  assert.equal(pickFreeScale(4351, true), 5000);
+  assert.equal(pickFreeScale(50, true), 1000);
+});
+
+test("Freier Rahmen zusammenziehen: Massstab bleibt bei mindestens 1:1000", () => {
+  const r = resizeFree({ ...free, handle: "se", pointer: { x: 105, y: 105 }, pickScale: (x) => pickFreeScale(x) });
+  assert.equal(r.scale, 1000);
 });
