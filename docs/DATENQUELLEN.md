@@ -53,9 +53,16 @@ Wer Cloudflare-Funktionen wie Bot Fight Mode, Web Analytics oder Zaraz aktiviert
 
 ## Lizenzen und Quellenhinweise
 
-- OSM-Daten: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), verfügbar unter der [ODbL](https://opendatacommons.org/licenses/odbl/).
+- OSM-Daten: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), verfügbar unter der [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/). Die OSM-Daten stehen **nicht** unter CC BY-SA.
 - Geofabrik-Extrakte: [Geofabrik Download Server](https://download.geofabrik.de/), auf Basis von OSM-Daten.
 - Nominatim und Overpass: Dienste der OSM-Community; bitte die jeweiligen Nutzungsregeln beachten.
-- Basiskarten können zusätzliche Quellen wie CARTO, Esri, OpenTopoMap oder amtliche regionale Dienste enthalten. Die konkrete Attribution wird in der Karte und im Export angezeigt.
+- Basiskarten können zusätzliche Quellen wie CARTO, Esri, OpenTopoMap oder amtliche regionale Dienste enthalten. Die ausgewählte Basiskarte wird zusätzlich zur OSM-Datenquelle attribuiert. Bei OpenTopoMap gilt CC BY-SA 3.0 für deren Kartendarstellung; diese Lizenz ist nicht die Lizenz der OSM-Daten.
+
+### Hinweise auf der Karte und in Exporten
+
+- Die interaktive Karte zeigt die OSM-Attribution mit einem Link auf die Copyright- und Lizenzseite von OpenStreetMap.
+- PNG- und PDF-Karten enthalten direkt am Kartenbild die OSM-Attribution, den Hinweis auf die ODbL samt ausgeschriebener URL sowie die Attribution der gewählten Basiskarte.
+- GPX-Dateien führen OpenStreetMap als Copyright-Inhaber in den Metadaten und verlinken die Lizenzseite. CSV-Dateien weisen Quelle und Lizenz in eigenen Spalten aus.
+- Beim Weitergeben oder Veröffentlichen eines Exports müssen diese Quellenhinweise erhalten bleiben.
 
 OpenFireMapV2 selbst ist als Software unter der [MIT-Lizenz](../LICENSE) veröffentlicht. Die Softwarelizenz ändert nichts an den Lizenzbedingungen der Kartendaten und Basiskarten.

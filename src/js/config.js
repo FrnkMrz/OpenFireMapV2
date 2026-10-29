@@ -15,6 +15,9 @@
 
 import { DACHLILU_COVERAGE } from './coverage/dachlilu.js';
 
+const OSM_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
+
 // CARTO API-Keys für Raster-Basemaps (Voyager, Positron, Dark). Verhindert das Wasserzeichen "API KEY REQUIRED".
 // Beide Keys gehören in den Client-Code und sind damit öffentlich; Schutz nur über die Referrer-Beschränkung im
 // CARTO-Dashboard. CARTO erlaubt localhost nicht auf dem Produktions-Key, darum gibt es einen eigenen Entwicklungs-Key:
@@ -135,32 +138,34 @@ export const Config = {
     voyager: {
       url: `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`,
       attr:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
+        OSM_ATTRIBUTION + ' ' +
         '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
-      textAttr: "© OpenStreetMap contributors, © CARTO",
+      textAttr: "© CARTO",
       maxZoom: 18,
     },
     positron: {
       url: `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`,
       attr:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
+        OSM_ATTRIBUTION + ' ' +
         '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
-      textAttr: "© OpenStreetMap contributors, © CARTO",
+      textAttr: "© CARTO",
       maxZoom: 18,
     },
     dark: {
       url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`,
       attr:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
+        OSM_ATTRIBUTION + ' ' +
         '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
-      textAttr: "© OpenStreetMap contributors, © CARTO",
+      textAttr: "© CARTO",
       maxZoom: 18,
     },
     satellite: {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       attr:
+        OSM_ATTRIBUTION + ' | ' +
         "Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, " +
         "Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+      textAttr: "Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
       maxZoom: 18,
       maxNativeZoom: 17
     },
@@ -170,35 +175,33 @@ export const Config = {
         'Daten: &copy; <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>-Mitwirkende, SRTM | ' +
         'Darstellung: &copy; <a href="http://opentopomap.org">OpenTopoMap</a> ' +
         '(<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-      textAttr: "Daten: © OpenStreetMap-Mitwirkende, SRTM | Darstellung: © OpenTopoMap (CC-BY-SA)",
+      textAttr: "© SRTM | Darstellung: © OpenTopoMap (CC BY-SA 3.0)",
       maxZoom: 17
     },
     osm: {
       url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-      attr:
-        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+      attr: OSM_ATTRIBUTION,
       textAttr: "© OpenStreetMap contributors",
       maxZoom: 18,
     },
     osmde: {
       url: "https://tile.openstreetmap.de/{z}/{x}/{y}.png",
-      attr:
-        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+      attr: OSM_ATTRIBUTION,
       textAttr: "© OpenStreetMap contributors",
       maxZoom: 18,
     },
     bayern: {
       url: "https://wmtsod{s}.bayernwolke.de/wmts/by_webkarte/smerc/{z}/{x}/{y}",
       subdomains: ["1","2","3","4"],
-      attr: "Kartendaten: &copy; Bayerische Vermessungsverwaltung (OpenData)",
-      textAttr: "© Bayerische Vermessungsverwaltung",
+      attr: OSM_ATTRIBUTION + " | Kartendaten: &copy; Bayerische Vermessungsverwaltung (OpenData)",
+      textAttr: "© Bayerische Vermessungsverwaltung (OpenData)",
       maxZoom: 19
     },
     bayern_dop: {
       url: "https://wmtsod{s}.bayernwolke.de/wmts/by_dop/smerc/{z}/{x}/{y}",
       subdomains: ["1","2","3","4"],
-      attr: "Kartendaten: &copy; Bayerische Vermessungsverwaltung (DOP)",
-      textAttr: "© Bayerische Vermessungsverwaltung",
+      attr: OSM_ATTRIBUTION + " | Kartendaten: &copy; Bayerische Vermessungsverwaltung (DOP)",
+      textAttr: "© Bayerische Vermessungsverwaltung (DOP)",
       maxZoom: 19
     }
   },
