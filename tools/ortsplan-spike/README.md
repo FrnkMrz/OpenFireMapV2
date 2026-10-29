@@ -82,11 +82,27 @@ Die Mindestbreiten und Schriftgrößen sind Schätzwerte und müssen an echten O
 
 Der Spike läuft mit maplibre-gl 5.x und 6.x. Für 6 nötig (alle drei sind schon eingebaut): Namespace-Import in `main.js`, `optimizeDeps.exclude` in `vite.config.js` (der Worker liegt in einer eigenen Datei; gilt nur für Version 6, die Konfiguration erkennt die installierte Version selbst) und unsichtbare Ebenen je Quell-Ebene in `style.js`, damit `querySourceFeatures` die Feuerwehr-Daten behält.
 
-## Ausschnitt wählen
+## Ortsplan erstellen (Assistent)
 
-`/pick.html` (auch über den Link „Ausschnitt wählen …“ im Formular): Übersichtskarte mit einem roten Rahmen in der Größe des Kartenfensters
-(Papier, Lage, Kartenformat und Maßstab einstellbar). Die Karte wird unter dem Rahmen verschoben und gezoomt; die Mitte wird die Mitte des
-Blatts. „Blatt erstellen“ öffnet das Blatt mit passenden Parametern. Ragt der Rahmen über die geladenen Daten hinaus, steht ein Hinweis da.
-Die Geometrie (Papier, Lage, Format, Bodenmaße) steht in `layout.js` und ist getestet.
+`/pick.html` (auch über den Link „Ausschnitt wählen …“ im Formular): Assistent in drei Schritten, links die Karte, rechts das Panel.
+
+1. **Ausschnitt:** der Rahmen ist das Kartenfenster des Blatts. Am Griff oben verschieben. Die Karte wird getrennt davon verschoben und
+   gezoomt; der Rahmen klebt am Ort. Zwei Formen:
+   - **Frei** (Standard): Kanten und Ecken einzeln ziehen, die gegenüberliegende Kante bleibt stehen. Das Kartenfenster des Blatts nimmt das
+     Seitenverhältnis des Rahmens an (`fmt=1.6234:1`, begrenzt auf 1:4 bis 4:1), der Maßstab ergibt sich aus Papier und Rahmen (mindestens 1:1000, auf 10 aufgerundet,
+     sodass der Ausschnitt ganz drauf ist). Wechselt man Papier oder Lage, bleibt der Ausschnitt in Metern gleich, der Maßstab folgt. Mit dem
+     Häkchen „Maßstab auf Standardwert runden“ rastet der Rahmen beim Loslassen auf den nächsten Standardmaßstab (`NICE_SCALES`) ein, der den
+     Ausschnitt noch ganz zeigt.
+   - **Wie das Blatt:** Seitenverhältnis wie Papier, Lage und Kartenform (Schritt 2); die Ecken ändern nur den Maßstab (Standardliste).
+   Pfeiltasten verschieben den Rahmen, `+`/`-` machen ihn größer oder kleiner. Wird der Rahmen größer als die Ansicht, zoomt die Karte
+   heraus. Ragt er über die geladenen Daten hinaus, steht ein Hinweis da.
+2. **Format:** Papier (A4 bis A1), Quer/Hoch, im festen Modus auch die Kartenform.
+3. **Legende:** Lage (oben, unten, links, rechts) mit Vorschau der Blattaufteilung; Inhalte per Häkchen (Symbole, Straßenarten und
+   Gemeindegrenze, Straßenverzeichnis), unter „Mehr Optionen“ Auflösung, Spalten und Schriftgröße des Verzeichnisses.
+
+„Ortsplan erstellen“ öffnet das Blatt (`/?sheet=1&...`). Neue Blattparameter dafür: `lsym=0` (ohne Symbole in der Legende), `lroad=0`
+(ohne Straßenarten und Gemeindegrenze); sind beide aus, entfällt die Legende samt Platz. Die letzte Wahl merkt sich der Browser
+(`localStorage`); Angaben in der Adresse haben Vorrang. Die Geometrie steht in `layout.js`, die Rahmenrechnung in `framegeo.js`, beide getestet.
+Bedienprobe im echten Browser (Rahmen ziehen, Schritte, Blatt erzeugen): `SPIKE_URL=http://127.0.0.1:5173 node wizard.mjs`.
 
 Rauchtest aller Seiten und Parameter-Kombinationen (fängt Startfehler, die die Unit-Tests nicht sehen): `SPIKE_URL=http://127.0.0.1:5173 node smoke.mjs`.

@@ -51,7 +51,7 @@ const setField = (el, v) => {
   el.value = val;
 };
 for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "right", icols: q.get("icols") || "0", fmt })) setField(form.elements[k], v);
-document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "right", fmt, scale: String(scale), lat: String(lat), lon: String(lon), ...(areaName ? { area: areaName } : {}) })}`;
+document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "right", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), dpi: String(dpi), ...(areaName ? { area: areaName } : {}) })}`;
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
 
@@ -261,7 +261,7 @@ async function buildSheet() {
   if (sheet) {
     const meta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
     const res = await composeSheet({
-      map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, indexSize, warning, side, panel, indexCols,
+      map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, legendSymbols: q.get("lsym") !== "0", legendRoads: q.get("lroad") !== "0", indexSize, warning, side, panel, indexCols,
       title: "Orts- und Hydrantenplan",
       subtitle: [place, `Maßstab 1 : ${scale.toLocaleString("de-DE")} · Papier ${paper.toUpperCase()}`],
     });

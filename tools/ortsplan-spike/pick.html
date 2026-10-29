@@ -3,33 +3,132 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ortsplan-Ausschnitt wählen</title>
+  <title>Ortsplan erstellen</title>
   <style>
-    html, body { height: 100%; margin: 0; font: 14px system-ui, sans-serif; }
-    body { display: flex; flex-direction: column; }
-    #bar { background: #fff; padding: 8px 12px; border-bottom: 1px solid #bbb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    #bar label { display: flex; gap: 4px; align-items: center; }
-    #bar select { max-width: 11em; }
-    #go { background: #b91c1c; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: 600; }
-    #wrap { position: relative; flex: 1; min-height: 300px; }
+    :root { --bg: #0f172a; --panel: #111c33; --line: #334155; --text: #e2e8f0; --muted: #94a3b8; --accent: #2563eb; --accent-text: #fff; --frame: #ef4444; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    #app { display: flex; height: 100%; }
+    #wrap { position: relative; flex: 1; min-width: 0; }
     #map { position: absolute; inset: 0; }
-    #frame { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 2px solid #d00000; box-shadow: 0 0 0 100vmax rgba(0,0,0,.30); pointer-events: none; box-sizing: border-box; }
-    #frame span { position: absolute; left: 4px; top: 2px; background: rgba(208,0,0,.9); color: #fff; padding: 1px 6px; font-size: 12px; border-radius: 3px; white-space: nowrap; }
-    #msg { padding: 4px 12px; color: #444; background: #f6f6f6; border-top: 1px solid #ddd; min-height: 1.4em; }
-    #msg.warn { background: #fde8e8; color: #8a1111; }
+    #frame { position: absolute; border: 2px solid #fff; border-radius: 2px; box-shadow: 0 0 0 1px rgba(37, 99, 235, .9), 0 0 0 100vmax rgba(15, 23, 42, .5); pointer-events: none; }
+    #frame:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
+    #grip { position: absolute; left: 50%; top: -44px; transform: translateX(-50%); height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: rgba(15, 23, 42, .92); border: 1px solid #60a5fa; color: #fff; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: move; pointer-events: auto; touch-action: none; user-select: none; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+    #frame.tight #grip { top: 14px; } /* Rahmen liegt oben am Bildrand: Griff innen statt darueber */
+    #grip .ic { color: #93c5fd; font-size: 14px; }
+    .handle { position: absolute; background: #fff; border: 2px solid var(--accent); pointer-events: auto; touch-action: none; transform: translate(-50%, -50%); box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+    .handle.corner { width: 18px; height: 18px; border-radius: 50%; }
+    .handle.edge { border-radius: 999px; }
+    .handle[data-c="n"], .handle[data-c="s"] { width: 34px; height: 10px; cursor: ns-resize; }
+    .handle[data-c="e"], .handle[data-c="w"] { width: 10px; height: 34px; cursor: ew-resize; }
+    .handle[data-c="nw"], .handle[data-c="se"] { cursor: nwse-resize; }
+    .handle[data-c="ne"], .handle[data-c="sw"] { cursor: nesw-resize; }
+    #frame.fixed .handle.edge { display: none; }
+    #maphint { position: absolute; left: 12px; bottom: 12px; max-width: 60%; background: rgba(15, 23, 42, .85); color: var(--text); padding: 6px 10px; border-radius: 8px; font-size: 12px; pointer-events: none; }
+    #panel { width: 360px; flex: none; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+    #panel h1 { font-size: 16px; margin: 0; padding: 14px 16px 0; }
+    #steps { display: flex; gap: 6px; padding: 12px 16px; }
+    .st { flex: 1; font: inherit; font-size: 12px; padding: 7px 6px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+    .st[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+    #body { flex: 1; overflow: auto; padding: 4px 16px 12px; min-height: 0; }
+    .sec { display: none; flex-direction: column; gap: 14px; }
+    .sec.on { display: flex; }
+    .lab { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+    .hint { margin: 0; color: var(--muted); font-size: 13px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
+    .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+    select, input[type=number] { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: #0b1428; color: var(--text); }
+    label.row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+    button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+    #prev { position: relative; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+    #prev div { position: absolute; border-radius: 2px; overflow: hidden; }
+    #pv-map { background: #cfe3c4; color: #27500a; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+    #pv-panel { background: #fde9c8; color: #633806; font-size: 10px; display: flex; gap: 3px; padding: 3px; }
+    #pv-panel span { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 255, 255, .55); border-radius: 2px; }
+    details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+    details summary { cursor: pointer; color: var(--muted); }
+    details .opts { display: grid; grid-template-columns: 1fr auto; gap: 8px 10px; align-items: center; margin-top: 10px; }
+    #msg { margin: 0 16px; padding: 8px 10px; border-radius: 8px; font-size: 13px; background: #0b1428; color: var(--muted); }
+    #msg.warn { background: #7f1d1d; color: #fee2e2; }
+    #foot { display: flex; gap: 8px; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); margin-top: 12px; }
+    .btn { font: inherit; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; text-decoration: none; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+    [hidden] { display: none !important; }
+    @media (max-width: 760px) {
+      #app { flex-direction: column; }
+      #panel { width: 100%; max-height: 52vh; border-left: 0; border-top: 1px solid var(--line); }
+      #maphint { display: none; }
+    }
   </style>
 </head>
 <body>
-  <div id="bar">
-    <label>Papier<select id="paper"><option value="a4l">A4 quer</option><option value="a4p">A4 hoch</option><option value="a3l">A3 quer</option><option value="a3p">A3 hoch</option><option value="a2l">A2 quer</option><option value="a2p">A2 hoch</option><option value="a1l">A1 quer</option><option value="a1p">A1 hoch</option></select></label>
-    <label>Lage<select id="side"><option value="right">rechts</option><option value="left">links</option><option value="top">oben</option><option value="bottom">unten</option></select></label>
-    <label>Kartenformat<select id="fmt"><option value="fill">Papier füllen</option><option value="1:1">Quadrat 1:1</option><option value="3:2">Quer 3:2</option><option value="4:3">Quer 4:3</option><option value="2:3">Hoch 2:3</option><option value="3:4">Hoch 3:4</option></select></label>
-    <label>Maßstab 1:<select id="scale"></select></label>
-    <button id="fit" type="button" title="Zoom so wählen, dass der Rahmen die Ansicht gut füllt">Rahmen einpassen</button>
-    <a id="go" href="/">Blatt erstellen →</a>
+  <div id="app">
+    <div id="wrap">
+      <div id="map"></div>
+      <div id="frame" tabindex="0" role="group" aria-label="Ausschnitt des Ortsplans. Pfeiltasten verschieben, Plus und Minus machen ihn größer oder kleiner.">
+        <div id="grip"><span class="ic" aria-hidden="true">✥</span><span id="frame-label"></span></div>
+        <div class="handle corner" data-c="nw" style="left:0;top:0"></div>
+        <div class="handle corner" data-c="ne" style="left:100%;top:0"></div>
+        <div class="handle corner" data-c="sw" style="left:0;top:100%"></div>
+        <div class="handle corner" data-c="se" style="left:100%;top:100%"></div>
+        <div class="handle edge" data-c="n" style="left:50%;top:0"></div>
+        <div class="handle edge" data-c="s" style="left:50%;top:100%"></div>
+        <div class="handle edge" data-c="w" style="left:0;top:50%"></div>
+        <div class="handle edge" data-c="e" style="left:100%;top:50%"></div>
+      </div>
+      <div id="maphint">Karte ziehen und zoomen. Den Rahmen am Griff oben verschieben, an Kanten und Ecken aufziehen.</div>
+    </div>
+    <aside id="panel" aria-label="Ortsplan erstellen">
+      <h1>Ortsplan erstellen</h1>
+      <nav id="steps" aria-label="Schritte">
+        <button class="st" type="button" data-s="0">1 Ausschnitt</button>
+        <button class="st" type="button" data-s="1">2 Format</button>
+        <button class="st" type="button" data-s="2">3 Legende</button>
+      </nav>
+      <div id="body">
+        <section class="sec" data-s="0">
+          <p class="hint" id="hint-frame"></p>
+          <div><p class="lab">Form des Rahmens</p><div class="chips" id="g-free"></div></div>
+          <div><p class="lab" id="lab-scale">Maßstab 1 :</p><select id="scale" aria-labelledby="lab-scale"></select></div>
+          <label class="row"><input type="checkbox" id="c-round"> Maßstab auf Standardwert runden (z. B. 1:4.000)</label>
+          <div><button class="btn" id="fit" type="button">Rahmen einpassen</button></div>
+          <p class="hint" id="area-info"></p>
+        </section>
+        <section class="sec" data-s="1">
+          <div><p class="lab">Papier</p><div class="chips" id="g-size"></div></div>
+          <div><p class="lab">Ausrichtung</p><div class="chips" id="g-orient"></div></div>
+          <div id="fmt-wrap"><p class="lab" id="lab-fmt">Kartenform</p>
+            <select id="fmt" aria-labelledby="lab-fmt"><option value="fill">Papier füllen</option><option value="1:1">Quadrat 1:1</option><option value="3:2">Quer 3:2</option><option value="4:3">Quer 4:3</option><option value="2:3">Hoch 2:3</option><option value="3:4">Hoch 3:4</option></select></div>
+          <p class="hint" id="size-info"></p>
+        </section>
+        <section class="sec" data-s="2">
+          <div><p class="lab">Wo steht die Legende?</p><div class="chips" id="g-side"></div></div>
+          <div id="prev" role="img" aria-label="Vorschau der Blattaufteilung"><div id="pv-map"></div><div id="pv-panel"></div></div>
+          <div>
+            <p class="lab">Was steht darin?</p>
+            <label class="row"><input type="checkbox" id="c-sym"> Symbole (Feuerwehr, Hydranten, Einbahn)</label>
+            <label class="row"><input type="checkbox" id="c-road"> Straßenarten und Gemeindegrenze</label>
+            <label class="row"><input type="checkbox" id="c-index"> Straßenverzeichnis</label>
+          </div>
+          <details>
+            <summary>Mehr Optionen</summary>
+            <div class="opts">
+              <label for="o-dpi">Auflösung (dpi)</label><select id="o-dpi"><option>96</option><option>150</option><option>200</option><option>300</option></select>
+              <label for="o-icols">Verzeichnis: Spalten (0 = automatisch)</label><input id="o-icols" type="number" min="0" max="6" step="1" style="width:4.5em">
+              <label for="o-isize">Verzeichnis: Schriftgröße</label><input id="o-isize" type="number" min="0.5" max="3" step="0.1" style="width:4.5em">
+            </div>
+          </details>
+        </section>
+      </div>
+      <p id="msg" role="status"></p>
+      <div id="foot">
+        <button class="btn" id="back" type="button">Zurück</button>
+        <button class="btn primary" id="next" type="button">Weiter</button>
+        <a class="btn primary" id="go" href="/" hidden>Ortsplan erstellen</a>
+      </div>
+    </aside>
   </div>
-  <div id="wrap"><div id="map"></div><div id="frame"><span id="frame-label"></span></div></div>
-  <div id="msg">Karte mit der Maus verschieben und zoomen: Der rote Rahmen zeigt, was auf das Blatt kommt. Er bleibt in der Mitte.</div>
   <script type="module" src="./pick.js"></script>
 </body>
 </html>

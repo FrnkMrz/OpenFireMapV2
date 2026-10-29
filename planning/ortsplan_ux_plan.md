@@ -61,6 +61,20 @@ Links die Karte, rechts ein schmales Panel mit Schrittanzeige (1 Ausschnitt, 2 F
 
 Aufbau und Hosting der Basiskarte gehören zur Pipeline im privaten Repo; hier im öffentlichen Repo steht nur die Client-Seite. Keine Hosts, Pfade oder Zugänge in dieses Dokument schreiben.
 
+### Entscheidung zur Basiskarte (29.10.2026)
+
+Die Basiskarte kommt auf Cloudflare R2, wo die Pipeline-Dateien schon liegen. Geprüft und vorerst verworfen:
+
+- **Öffentliche Kachel-Dienste (z. B. OpenFreeMap):** nichts zu hosten, aber Stil müsste auf ein anderes Kachelschema umgebaut werden, Abhängigkeit von einem Fremddienst, Nutzungsbedingungen für die Last (einige hundert Kacheln je Plan) und Einbahn-Attribute nicht geprüft.
+- **Nur den Plan-Ausschnitt live von Overpass holen und selbst rendern:** keine Basiskarte nötig, passt zur App, aber großer Umbau (OSM-Tags auf unsere Kartenebenen abbilden) und abhängig von der Overpass-Verfügbarkeit bei großen Blättern. Bleibt die Rückfalloption, falls R2 nicht trägt.
+- **Eigene verkleinerte Karte** (nur Straßen, Gebäude, Wasser, Flächen; zuerst Deutschland): bleibt als Möglichkeit, die Größe zu senken.
+
+Kosten (Preise nach Stand des Verfassers, vor der Entscheidung auf der Cloudflare-Preisseite prüfen): Speicher rund 1,5 Cent je GB und Monat, also für 10 GB etwa 15 Cent, ein Teil davon im Gratis-Kontingent; Abrufe ohne Datenvolumen-Gebühr, nur Anfragen (rund 36 Cent je Million). Ein Plan lädt grob 300 bis 600 Kacheln, auch bei tausenden Plänen im Monat bleibt es bei wenigen Euro.
+
+Technischer Haken: Der Cloudflare-Zwischenspeicher liefert Dateien über 512 MiB nicht zuverlässig aus (deshalb sind die Pipeline-Dateien kleiner). Eine Datei von mehreren GB würde nicht zwischengespeichert, jeder Kachelabruf ginge direkt an R2: langsamer, aber billig und funktionsfähig. Alternative: Aufteilen in Dateien je Region unter 512 MiB (wie bei den Länder-Dateien) und/oder einen schlankeren Stil (weniger Namen und Ebenen).
+
+Vorgehen: zuerst Schritt B (Einbau in die App, die VM-Karte genügt), danach Test mit Neunkirchen auf R2 und die Ladezeit ohne Zwischenspeicher messen, erst dann entscheiden, ob die Karte aufgeteilt wird.
+
 **Die VM bleibt für Entwicklung und Tests.** Dort laufen Playwright, Stress- und Lasttests mit lokalen Daten. Der Assistent lässt sich dort vollständig prüfen, weil er nur eine Datenquelle (URL aus `config.js`) braucht. Nicht auf der VM prüfbar: Safari und iPhone (Test am Gerät), echte Ladezeiten über R2 und das Cache-Verhalten (erst nach dem Hochladen).
 
 ## Reihenfolge
@@ -79,7 +93,7 @@ A und C hängen nicht voneinander ab und können parallel laufen. B braucht A; D
 - Gebiet: nur DACHLiLu oder auch Europa? Europa wäre ein Mehrfaches an Basiskarten-Daten.
 - Ausgabe: reichen PDF und PNG, oder braucht es früh einen Druckauftrag mit Beschnitt und Rand?
 - Sichtbarkeit: für alle Nutzer, oder zunächst nur für Feuerwehren über einen Link?
-- Freies Rahmenzeichnen (Rechteck aufziehen) in Schritt 1: nötig oder genügt Verschieben/Zoomen mit Rahmen?
+- ~~Freies Rahmenzeichnen~~ entschieden: nötig, umgesetzt im Assistenten (Kanten und Ecken einzeln ziehen, Blatt nimmt das Seitenverhältnis an; PR #113).
 - Soll der Ortsplan-Stil auch als Bildschirm-Ebene sichtbar sein (offene Frage aus dem Hauptplan)?
 
 ## Nicht Teil dieses Plans

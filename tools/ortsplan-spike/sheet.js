@@ -89,6 +89,8 @@ export async function composeSheet(opts) {
   const rightX = frame.x + frame.w + 6.5 * u;
   const panel = opts.panel || { x: rightX, y: frame.y, w: Math.max(40, W - rightX - 6 * u), h: frame.h };
   const showIndex = opts.index !== false;
+  const legendSymbols = opts.legendSymbols !== false; // Legende: Feuerwehr-Symbole und Einbahnpfeil
+  const legendRoads = opts.legendRoads !== false; // Legende: Strassenarten und Gemeindegrenze
   const isz = opts.indexSize || 1;
   const cellM = opts.cellM || chooseCellM(scale);
   const cellMm = (cellM / scale) * 1000;
@@ -165,11 +167,11 @@ export async function composeSheet(opts) {
     for (const f of map.queryRenderedFeatures({ layers: ["fire-icons"] })) usedIcons.add(f.properties.icon);
     for (const id of [...usedIcons]) if (id.startsWith("badge-")) usedIcons.add("badge-2");
   }
-  const legendItems = LEGEND.filter((l) => (canQuery ? usedIcons.has(l.icon) : true));
-  const showOneway = canQuery && map.getLayer("oneway-arrows") ? map.queryRenderedFeatures({ layers: ["oneway-arrows"] }).length > 0 : false;
+  const legendItems = legendSymbols ? LEGEND.filter((l) => (canQuery ? usedIcons.has(l.icon) : true)) : [];
+  const showOneway = legendSymbols && canQuery && map.getLayer("oneway-arrows") ? map.queryRenderedFeatures({ layers: ["oneway-arrows"] }).length > 0 : false;
   if (showOneway) legendItems.push({ icon: "oneway", text: "Einbahnstraße (Pfeil = erlaubte Fahrtrichtung)" });
-  const showBoundary = present("boundaries");
-  const roadClasses = [...ROAD_CLASSES].reverse().filter((c) => present(`road-fill-${c.id}`) || present(`bridge-fill-${c.id}`));
+  const showBoundary = legendRoads && present("boundaries");
+  const roadClasses = !legendRoads ? [] : [...ROAD_CLASSES].reverse().filter((c) => present(`road-fill-${c.id}`) || present(`bridge-fill-${c.id}`));
   const icons = await loadIcons([...new Set(legendItems.map((l) => l.icon))]);
 
   // ---- Block 1: Titel, Untertitel, Warnung ----
@@ -202,6 +204,7 @@ export async function composeSheet(opts) {
   } });
   /** Zeichnet die Legende ab (x0, y0); maxH = verfuegbare Hoehe (Unendlich: eine Spalte). Rueckgabe: belegte Hoehe und Breite. */
   const legendBlock = (x0, y0, maxH, maxCols = Infinity) => {
+    if (!legendEntries.length) return { h: 0, w: 0 }; // Legende abgewaehlt: weder Ueberschrift noch Platz
     text("Legende", x0, y0, 3.4, { bold: true });
     const top = y0 + 2.2;
     // Spalten gleichmaessig fuellen (nicht eine volle und eine fast leere): Anzahl aus der Gesamthoehe, dann je Spalte etwa gleich viel
@@ -350,7 +353,8 @@ export async function composeSheet(opts) {
   let panelFit = 1; // 1 = Bereich voll genutzt ohne Verkleinerung; kleiner = gestapelter Bereich musste verkleinert werden
   if (!horizontal) {
     let y = headerBlock(P.x, P.y + 5, P.w);
-    y += legendBlock(P.x, y, Infinity).h + 9;
+    const lg = legendBlock(P.x, y, Infinity);
+    if (lg.h) y += lg.h + 9;
     y += scaleBlock(P.x, y, P.w);
     if (showIndex) layout = indexBlock(P.x, y, P.w, P.y + P.h - y);
   } else {
@@ -359,7 +363,7 @@ export async function composeSheet(opts) {
     // nur messen: gezeichnet wird der Titel erst im gewaehlten Zweig (sonst stuende er im gestapelten Fall doppelt im Bild)
     const headH = dry(() => headerBlock(P.x, P.y + 5, 70)) - (P.y + 5);
     const totalLegH = legendEntries.reduce((a, e) => a + e.h, 0);
-    const wantCols = Math.max(1, Math.ceil(totalLegH / Math.max(ROW, P.h - headH - 4 - 2.2)));
+    const wantCols = Math.max(1, Math.ceil(totalLegH / Math.max(ROW, P.h - headH - 4 - 2.2))); // mindestens eine Spalte: darin steht auch der Titel
     const plan = planHorizontal({ panelW: P.w, legendCols: wantCols, legColW: LEG_COL_W, scaleW: SCALE_W, minIndexW: MIN_INDEX_W, gap: GAP, showIndex });
     if (plan.mode === "row") {
       headerBlock(P.x, P.y + 5, 70);
