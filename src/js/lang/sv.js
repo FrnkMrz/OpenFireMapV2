@@ -172,7 +172,7 @@ export const strings = {
     data_sync_disabled_hint: "Inaktiverad i inställningarna",
     data_sync_osm_direct: "Direkt från OSM-servrar",
     symbol_underground_hydrant: 'Underjordisk brandpost',
-    symbol_pillar_hydrant: 'Pelarlbrandpost',
+    symbol_pillar_hydrant: 'Pelarbrandpost',
     symbol_dry_barrel_hydrant: 'Dry-barrel-brandpost',
     symbol_wall_hydrant: 'Väggbrandpost',
     symbol_pipe_hydrant: 'Rörbrandpost med lock',
