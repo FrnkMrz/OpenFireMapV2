@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.10.2] - 2026-10-29
+
 ### Geändert
 - OSM-Daten werden auf allen Kartenebenen und in PNG-, PDF-, GPX- und CSV-Exporten mit passendem ODbL-Hinweis attribuiert. Die Lizenz der OpenTopoMap-Darstellung (CC BY-SA 3.0) wird davon getrennt ausgewiesen.
 
