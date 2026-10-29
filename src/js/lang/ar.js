@@ -168,6 +168,21 @@ export const strings = {
     data_sync_checking: "جاري التحقق من العناصر الجديدة عبر Overpass …",
     data_sync_offline_or_failed: "خادم Overpass غير متاح أو غير متصل بالإنترنت",
     data_sync_disabled_hint: "معطل في الإعدادات",
-    data_sync_osm_direct: "مباشرة من خوادم OSM"
+    data_sync_osm_direct: "مباشرة من خوادم OSM",
+    symbol_underground_hydrant: 'صنبور حريق تحت الأرض',
+    symbol_pillar_hydrant: 'صنبور حريق عمودي',
+    symbol_dry_barrel_hydrant: 'صنبور حريق جاف الأسطوانة',
+    symbol_wall_hydrant: 'صنبور حريق جداري',
+    symbol_pipe_hydrant: 'صنبور حريق أنبوبي',
+    symbols_page_link: "رموز الخريطة",
+    symbols_title: "رموز الخريطة ووسوم OSM",
+    symbols_intro: "تعتمد الرموز على وسوم OpenStreetMap المسجلة. تظهر الوسوم كما هي.",
+    symbols_language: "اللغة",
+    symbols_tags_label: "وسوم OSM",
+    symbols_hydrants_note: "تتبع الرموز الحمراء وسوم صنابير الحريق أدناه؛ وتستخدم الأنواع الخاصة وسوماً إضافية.",
+    symbols_water_note: "يشير اللون الأزرق إلى مصادر المياه. لا يظهر الخزان مفتوحاً أو مغطى إلا إذا أوضحت الوسوم ذلك.",
+    symbols_tank_unknown_note: "لا يحدد الوسم emergency=water_tank وحده ما إذا كان الخزان مفتوحاً أو مغطى.",
+    symbols_groundwater_note: "يبقى رمز الأنبوب؛ ويشير اللون الأزرق إلى water_source=groundwater.",
+    symbols_suction_note: "المكان المحدد لسحب المياه من مسطح مائي.",
 };
 export default strings;

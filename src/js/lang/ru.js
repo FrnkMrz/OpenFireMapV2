@@ -168,6 +168,21 @@ export const strings = {
     data_sync_checking: "Проверка новых объектов через Overpass …",
     data_sync_offline_or_failed: "Сервер Overpass недоступен или не в сети",
     data_sync_disabled_hint: "Отключено в настройках",
-    data_sync_osm_direct: "Напрямую с серверов OSM"
+    data_sync_osm_direct: "Напрямую с серверов OSM",
+    symbol_underground_hydrant: 'Подземный пожарный гидрант',
+    symbol_pillar_hydrant: 'Колонный пожарный гидрант',
+    symbol_dry_barrel_hydrant: 'Сухотрубный гидрант',
+    symbol_wall_hydrant: 'Настенный гидрант',
+    symbol_pipe_hydrant: 'Трубный гидрант с заглушкой',
+    symbols_page_link: "Символы карты",
+    symbols_title: "Символы карты и теги OSM",
+    symbols_intro: "Символы основаны на тегах OpenStreetMap. Теги показаны без изменений.",
+    symbols_language: "Язык",
+    symbols_tags_label: "Теги OSM",
+    symbols_hydrants_note: "Красные символы соответствуют тегам гидрантов; для особых типов нужны дополнительные теги.",
+    symbols_water_note: "Синий цвет обозначает источники воды. Открытая или закрытая форма резервуара показывается только при наличии соответствующих тегов OSM.",
+    symbols_tank_unknown_note: "Сам тег emergency=water_tank не указывает, открыт резервуар или закрыт.",
+    symbols_groundwater_note: "Символ трубы остается прежним; синий цвет обозначает water_source=groundwater.",
+    symbols_suction_note: "Обозначенное место для забора воды из водоема.",
 };
 export default strings;

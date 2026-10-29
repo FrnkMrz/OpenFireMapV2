@@ -168,6 +168,21 @@ export const strings = {
     data_sync_checking: "Đang kiểm tra đối tượng mới qua Overpass …",
     data_sync_offline_or_failed: "Máy chủ Overpass không thể truy cập hoặc ngoại tuyến",
     data_sync_disabled_hint: "Đã tắt trong cài đặt",
-    data_sync_osm_direct: "Trực tiếp từ máy chủ OSM"
+    data_sync_osm_direct: "Trực tiếp từ máy chủ OSM",
+    symbol_underground_hydrant: 'Trụ cứu hỏa ngầm',
+    symbol_pillar_hydrant: 'Trụ cứu hỏa nổi',
+    symbol_dry_barrel_hydrant: 'Trụ cứu hỏa thùng khô',
+    symbol_wall_hydrant: 'Trụ cứu hỏa gắn tường',
+    symbol_pipe_hydrant: 'Trụ cứu hỏa dạng ống có nắp',
+    symbols_page_link: "Ký hiệu bản đồ",
+    symbols_title: "Ký hiệu bản đồ và thẻ OSM",
+    symbols_intro: "Ký hiệu dựa trên các thẻ OpenStreetMap đã được lập bản đồ. Thẻ được hiển thị nguyên dạng.",
+    symbols_language: "Ngôn ngữ",
+    symbols_tags_label: "Thẻ OSM",
+    symbols_hydrants_note: "Ký hiệu màu đỏ theo thẻ trụ nước bên dưới; loại đặc biệt dùng thêm thẻ.",
+    symbols_water_note: "Màu xanh biểu thị nguồn nước. Chỉ hiển thị bể hở hoặc có nắp khi thẻ OSM xác định điều đó.",
+    symbols_tank_unknown_note: "Chỉ emergency=water_tank không cho biết bể hở hay có nắp.",
+    symbols_groundwater_note: "Giữ ký hiệu đường ống; màu xanh biểu thị water_source=groundwater.",
+    symbols_suction_note: "Vị trí được chỉ định để hút nước từ vùng nước.",
 };
 export default strings;

@@ -167,6 +167,21 @@ export const strings = {
     data_sync_checking: "Prüfe neue Objekte per Overpass …",
     data_sync_offline_or_failed: "Overpass-Server nicht erreichbar oder offline",
     data_sync_disabled_hint: "In den Einstellungen deaktiviert",
-    data_sync_osm_direct: "Direkt von OSM-Servern"
+    data_sync_osm_direct: "Direkt von OSM-Servern",
+    symbol_underground_hydrant: 'Unterflurhydrant',
+    symbol_pillar_hydrant: 'Oberflurhydrant',
+    symbol_dry_barrel_hydrant: 'Trockenhydrant',
+    symbol_wall_hydrant: 'Wandhydrant',
+    symbol_pipe_hydrant: 'Rohrhydrant mit Verschlusskappe',
+    symbols_page_link: "Kartenzeichen",
+    symbols_title: "Kartenzeichen & OSM-Tags",
+    symbols_intro: "Die Symbole in der Karte basieren auf erfassten OpenStreetMap-Tags. Die Tags werden unverändert angezeigt.",
+    symbols_language: "Sprache",
+    symbols_tags_label: "OSM-Tags",
+    symbols_hydrants_note: "Rote Symbole folgen den Hydranten-Tags unten; WSH und Trockenläufer nutzen Zusatztags.",
+    symbols_water_note: "Blau kennzeichnet Wasserquellen. Offen oder abgedeckt wird ein Speicher nur unterschieden, wenn OSM-Tags es belegen.",
+    symbols_tank_unknown_note: "emergency=water_tank allein verrät nicht, ob ein Speicher offen oder abgedeckt ist.",
+    symbols_groundwater_note: "Das Rohrsymbol bleibt; Blau zeigt water_source=groundwater.",
+    symbols_suction_note: "Vorgesehener Ort, um Wasser aus einem Gewässer anzusaugen.",
 };
 export default strings;

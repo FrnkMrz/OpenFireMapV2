@@ -170,6 +170,21 @@ export const strings = {
     data_sync_checking: "Söker efter nya objekt via Overpass …",
     data_sync_offline_or_failed: "Overpass-servern är inte tillgänglig eller offline",
     data_sync_disabled_hint: "Inaktiverad i inställningarna",
-    data_sync_osm_direct: "Direkt från OSM-servrar"
+    data_sync_osm_direct: "Direkt från OSM-servrar",
+    symbol_underground_hydrant: 'Underjordisk brandpost',
+    symbol_pillar_hydrant: 'Pelarbrandpost',
+    symbol_dry_barrel_hydrant: 'Dry-barrel-brandpost',
+    symbol_wall_hydrant: 'Väggbrandpost',
+    symbol_pipe_hydrant: 'Rörbrandpost med lock',
+    symbols_page_link: "Kartsymboler",
+    symbols_title: "Kartsymboler och OSM-taggar",
+    symbols_intro: "Symbolerna bygger på registrerade OpenStreetMap-taggar. Taggarna visas oförändrade.",
+    symbols_language: "Språk",
+    symbols_tags_label: "OSM-taggar",
+    symbols_hydrants_note: "Röda symboler följer hydranttaggarna nedan; särskilda typer använder extra taggar.",
+    symbols_water_note: "Blått markerar vattenkällor. En tank visas som öppen eller täckt endast när OSM-taggarna anger det.",
+    symbols_tank_unknown_note: "emergency=water_tank ensamt visar inte om tanken är öppen eller täckt.",
+    symbols_groundwater_note: "Rörsymbolen behålls; blått anger water_source=groundwater.",
+    symbols_suction_note: "Anvisad plats för att ta upp vatten från ett vattendrag.",
 };
 export default strings;

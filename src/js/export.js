@@ -18,6 +18,7 @@ import { t, getLang } from "./i18n.js";
 import { showNotification, hideNotification, toggleExportMenu } from "./ui.js";
 import { rectSizeKm, isRectWithinKm, clampOffsetToKm } from "./geometry.js";
 import { cancelSelectionMode } from "./map.js";
+import { getHydrantMarkerType, getWaterMarkerKind } from "./marker-symbols.js";
 import { jsPDF } from "jspdf";
 
 /**
@@ -1086,9 +1087,7 @@ async function generateMapCanvas() {
       : tags.emergency === "defibrillator"
         ? "defibrillator"
         : tags["fire_hydrant:type"] || tags.emergency || "fire_hydrant";
-    if (type === 'underground' && tags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
-      type = 'wsh';
-    }
+    type = getHydrantMarkerType(type, tags);
 
     if (
       tx < margin ||
@@ -1100,7 +1099,7 @@ async function generateMapCanvas() {
 
     // Wir zeichnen jetzt IMMER das volle Icon, egal welche Zoomstufe der Export ist. 
     // Der Nutzer wünscht explizit gut lesbare Hydranten auf allen Plänen.
-    drawCanvasIcon(ctx, tx, ty, type, isStation, type === 'defibrillator');
+    drawCanvasIcon(ctx, tx, ty, type, isStation, type === 'defibrillator', tags);
   }
   ctx.restore();
 
@@ -1330,9 +1329,10 @@ const iconCache = {};
  * Nutzt Offscreen-Caching zur Performance-Steigerung und Vermeidung
  * von Safari-Bugs (fillText auf riesigen Canvases wird oft verschluckt).
  */
-function drawCanvasIcon(ctx, x, y, type, isStation, isDefib) {
+function drawCanvasIcon(ctx, x, y, type, isStation, isDefib, tags = {}) {
   const c = Config.colors;
-  const cacheKey = isStation ? 'station' : (isDefib ? 'defib' : type);
+  const waterKind = getWaterMarkerKind(type, tags);
+  const cacheKey = isStation ? 'station' : (isDefib ? 'defib' : `${type}:${waterKind || ''}`);
 
   // Icon generieren und cachen, falls noch nicht vorhanden
   if (!iconCache[cacheKey]) {
@@ -1368,7 +1368,7 @@ function drawCanvasIcon(ctx, x, y, type, isStation, isDefib) {
       offCtx.beginPath(); offCtx.moveTo(55, 45); offCtx.lineTo(45, 55); offCtx.lineTo(55, 55); offCtx.lineTo(45, 65); offCtx.stroke();
     } else {
       // Hydrant / Wasser
-      const isWater = ['water_tank', 'cistern', 'fire_water_pond', 'suction_point'].includes(type);
+      const isWater = Boolean(waterKind);
       const color = isWater ? c.water : c.hydrant;
 
       // Kreis
@@ -1377,7 +1377,31 @@ function drawCanvasIcon(ctx, x, y, type, isStation, isDefib) {
       offCtx.lineWidth = 5;
       offCtx.beginPath(); offCtx.arc(50, 50, 45, 0, Math.PI * 2); offCtx.fill(); offCtx.stroke();
 
-      if (type === 'wall') {
+      if (waterKind && waterKind !== 'groundwater_pipe') {
+        offCtx.strokeStyle = "white";
+        offCtx.lineWidth = 6;
+        offCtx.lineCap = "round";
+        offCtx.lineJoin = "round";
+        if (waterKind === 'closed_water_tank') {
+          offCtx.strokeRect(27, 31, 46, 39);
+          offCtx.beginPath(); offCtx.moveTo(34, 25); offCtx.lineTo(66, 25); offCtx.stroke();
+          offCtx.beginPath(); offCtx.moveTo(31, 53); offCtx.quadraticCurveTo(40, 47, 50, 53); offCtx.quadraticCurveTo(60, 59, 69, 53); offCtx.stroke();
+        } else if (waterKind === 'water_tank') {
+          offCtx.strokeRect(27, 34, 46, 38);
+          offCtx.beginPath(); offCtx.moveTo(31, 54); offCtx.quadraticCurveTo(40, 48, 50, 54); offCtx.quadraticCurveTo(60, 60, 69, 54); offCtx.stroke();
+        } else if (waterKind === 'open_water') {
+          for (const y of [43, 57, 71]) {
+            offCtx.beginPath(); offCtx.moveTo(25, y);
+            offCtx.quadraticCurveTo(37, y - 10, 50, y);
+            offCtx.quadraticCurveTo(63, y + 10, 75, y);
+            offCtx.stroke();
+          }
+        } else if (waterKind === 'suction_point') {
+          offCtx.beginPath(); offCtx.moveTo(72, 24); offCtx.lineTo(48, 58); offCtx.stroke();
+          offCtx.beginPath(); offCtx.arc(45, 62, 7, 0, 2 * Math.PI); offCtx.stroke();
+          offCtx.beginPath(); offCtx.moveTo(25, 70); offCtx.quadraticCurveTo(37, 62, 50, 70); offCtx.quadraticCurveTo(63, 78, 75, 70); offCtx.stroke();
+        }
+      } else if (type === 'wall') {
         offCtx.fillStyle = "none";
         offCtx.strokeStyle = "white";
         offCtx.lineWidth = 6;

@@ -59,10 +59,11 @@ export default defineConfig({
     target: ['chrome107', 'edge107', 'firefox104', 'safari16', 'ios16'],
     outDir: 'docs',
     emptyOutDir: true,
-    // Zwei Seiten: die Karte (index.html) und die Pipeline-Statusseite (status/index.html → /status/)
+    // Kartenstart, Symbol-Legende und Pipeline-Statusseite
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        symbols: fileURLToPath(new URL('./symbols/index.html', import.meta.url)),
         status: fileURLToPath(new URL('./status/index.html', import.meta.url))
       }
     }
