@@ -59,12 +59,11 @@ export default defineConfig({
     target: ['chrome107', 'edge107', 'firefox104', 'safari16', 'ios16'],
     outDir: 'docs',
     emptyOutDir: true,
-    // Kartenstart, Symbol-Legende, Versions-Hub und Pipeline-Statusseite
+    // Kartenstart, Symbol-Legende und Pipeline-Statusseite
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         symbols: fileURLToPath(new URL('./symbols/index.html', import.meta.url)),
-        version: fileURLToPath(new URL('./version/index.html', import.meta.url)),
         status: fileURLToPath(new URL('./status/index.html', import.meta.url))
       }
     }

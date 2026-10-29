@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
 ### Geändert
 - OSM-Daten werden auf allen Kartenebenen und in PNG-, PDF-, GPX- und CSV-Exporten mit passendem ODbL-Hinweis attribuiert. Die Lizenz der OpenTopoMap-Darstellung (CC BY-SA 3.0) wird davon getrennt ausgewiesen.
 
+### Entfernt
+- Die eigenständige Software-Versionsseite `/version/` samt Navigation, Seitenskript, Build-Eintrag, Seitenübersetzungen und Dokumentationslinks wurde entfernt. Die aktuelle Versionsnummer bleibt in der Info der Kartenanwendung sichtbar.
+
 ## [v0.10.1] - 2026-10-29
 
 ### Neu
