@@ -170,6 +170,21 @@ export const strings = {
     data_sync_checking: "Vérification des nouveaux objets via Overpass …",
     data_sync_offline_or_failed: "Serveur Overpass inaccessible ou hors ligne",
     data_sync_disabled_hint: "Désactivé dans les paramètres",
-    data_sync_osm_direct: "Directement depuis les serveurs OSM"
+    data_sync_osm_direct: "Directement depuis les serveurs OSM",
+    symbol_underground_hydrant: 'Poteau incendie souterrain',
+    symbol_pillar_hydrant: 'Poteau incendie',
+    symbol_dry_barrel_hydrant: 'Poteau incendie à colonne sèche',
+    symbol_wall_hydrant: 'Bouche incendie murale',
+    symbol_pipe_hydrant: 'Bouche incendie à tuyau bouchonné',
+    symbols_page_link: "Symboles de la carte",
+    symbols_title: "Symboles de la carte et tags OSM",
+    symbols_intro: "Les symboles reposent sur les tags OpenStreetMap cartographiés. Les tags sont affichés sans modification.",
+    symbols_language: "Langue",
+    symbols_tags_label: "Tags OSM",
+    symbols_hydrants_note: "Les symboles rouges suivent les tags de borne ci-dessous ; les types spéciaux utilisent des tags supplémentaires.",
+    symbols_water_note: "Le bleu désigne les sources d’eau. Un réservoir n’est affiché comme ouvert ou couvert que si les tags OSM le précisent.",
+    symbols_tank_unknown_note: "emergency=water_tank seul ne précise pas si la réserve est ouverte ou couverte.",
+    symbols_groundwater_note: "Le symbole de conduite reste le même ; le bleu indique water_source=groundwater.",
+    symbols_suction_note: "Emplacement prévu pour pomper l’eau d’un plan d’eau.",
 };
 export default strings;

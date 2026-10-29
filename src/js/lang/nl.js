@@ -170,6 +170,21 @@ export const strings = {
     data_sync_checking: "Nieuwe objecten controleren via Overpass …",
     data_sync_offline_or_failed: "Overpass-server onbereikbaar of offline",
     data_sync_disabled_hint: "Uitgeschakeld in instellingen",
-    data_sync_osm_direct: "Rechtstreeks van OSM-servers"
+    data_sync_osm_direct: "Rechtstreeks van OSM-servers",
+    symbol_underground_hydrant: 'Ondergrondse brandkraan',
+    symbol_pillar_hydrant: 'Bovengrondse brandkraan',
+    symbol_dry_barrel_hydrant: 'Droogvatbrandkraan',
+    symbol_wall_hydrant: 'Muurbrandkraan',
+    symbol_pipe_hydrant: 'Brandkraan met afgedopte buis',
+    symbols_page_link: "Kaartsymbolen",
+    symbols_title: "Kaartsymbolen en OSM-tags",
+    symbols_intro: "De symbolen zijn gebaseerd op de vastgelegde OpenStreetMap-tags. Tags worden ongewijzigd getoond.",
+    symbols_language: "Taal",
+    symbols_tags_label: "OSM-tags",
+    symbols_hydrants_note: "Rode symbolen volgen de hydrant-tags hieronder; speciale typen gebruiken extra tags.",
+    symbols_water_note: "Blauw staat voor waterbronnen. Een tank wordt alleen open of afgedekt getoond als OSM-tags dat aangeven.",
+    symbols_tank_unknown_note: "emergency=water_tank alleen vertelt niet of de tank open of afgedekt is.",
+    symbols_groundwater_note: "Het buissymbool blijft; blauw staat voor water_source=groundwater.",
+    symbols_suction_note: "Aangewezen plek om water uit een waterlichaam op te pompen.",
 };
 export default strings;

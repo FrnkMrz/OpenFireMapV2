@@ -170,6 +170,21 @@ export const strings = {
     data_sync_checking: "Tarkistetaan uusia kohteita Overpassin kautta …",
     data_sync_offline_or_failed: "Overpass-palvelin ei tavoitettavissa tai offline",
     data_sync_disabled_hint: "Pois käytöstä asetuksissa",
-    data_sync_osm_direct: "Suoraan OSM-palvelimilta"
+    data_sync_osm_direct: "Suoraan OSM-palvelimilta",
+    symbol_underground_hydrant: 'Maanalainen paloposti',
+    symbol_pillar_hydrant: 'Pylväspaloposti',
+    symbol_dry_barrel_hydrant: 'Kuivapylväspaloposti',
+    symbol_wall_hydrant: 'Seinäpaloposti',
+    symbol_pipe_hydrant: 'Putkipaloposti',
+    symbols_page_link: "Karttasymbolit",
+    symbols_title: "Karttasymbolit ja OSM-tunnisteet",
+    symbols_intro: "Karttasymbolit perustuvat OpenStreetMapiin merkittyihin tunnisteisiin. Tunnisteet näytetään muuttamattomina.",
+    symbols_language: "Kieli",
+    symbols_tags_label: "OSM-tunnisteet",
+    symbols_hydrants_note: "Punaiset symbolit noudattavat alla olevia palopostitunnisteita; erikoistyypit käyttävät lisätunnisteita.",
+    symbols_water_note: "Sininen merkitsee vesilähteitä. Säiliö näytetään avoimena tai katettuna vain, jos OSM-tunnisteet kertovat sen.",
+    symbols_tank_unknown_note: "Pelkkä emergency=water_tank ei kerro, onko säiliö avoin vai katettu.",
+    symbols_groundwater_note: "Putkisymboli säilyy; sininen ilmaisee water_source=groundwater.",
+    symbols_suction_note: "Määritetty paikka veden pumppaamiseen vesistöstä.",
 };
 export default strings;

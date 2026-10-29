@@ -168,6 +168,21 @@ export const strings = {
     data_sync_checking: "Overpass-এর মাধ্যমে নতুন অবজেক্ট পরীক্ষা করা হচ্ছে …",
     data_sync_offline_or_failed: "Overpass সার্ভার অনুপলব্ধ বা অফলাইন",
     data_sync_disabled_hint: "সেটিংসে নিষ্ক্রিয় করা হয়েছে",
-    data_sync_osm_direct: "সরাসরি OSM সার্ভার থেকে"
+    data_sync_osm_direct: "সরাসরি OSM সার্ভার থেকে",
+    symbol_underground_hydrant: 'ভূগর্ভস্থ ফায়ার হাইড্র্যান্ট',
+    symbol_pillar_hydrant: 'স্তম্ভাকার ফায়ার হাইড্র্যান্ট',
+    symbol_dry_barrel_hydrant: 'ড্রাই-ব্যারেল হাইড্র্যান্ট',
+    symbol_wall_hydrant: 'দেয়ালে লাগানো হাইড্র্যান্ট',
+    symbol_pipe_hydrant: 'পাইপ ফায়ার হাইড্র্যান্ট',
+    symbols_page_link: "মানচিত্রের প্রতীক",
+    symbols_title: "মানচিত্রের প্রতীক ও OSM ট্যাগ",
+    symbols_intro: "মানচিত্রের প্রতীকগুলো OpenStreetMap-এ নথিভুক্ত ট্যাগের ওপর ভিত্তি করে। ট্যাগগুলো অপরিবর্তিত দেখানো হয়েছে।",
+    symbols_language: "ভাষা",
+    symbols_tags_label: "OSM ট্যাগ",
+    symbols_hydrants_note: "লাল প্রতীকগুলো নিচের হাইড্র্যান্ট ট্যাগ অনুসরণ করে; বিশেষ ধরনগুলোতে অতিরিক্ত ট্যাগ লাগে।",
+    symbols_water_note: "নীল রং পানির উৎস বোঝায়। OSM ট্যাগে উল্লেখ থাকলেই ট্যাংক খোলা বা ঢাকা হিসেবে দেখানো হয়।",
+    symbols_tank_unknown_note: "শুধু emergency=water_tank ট্যাগে ট্যাংক খোলা না ঢাকা তা জানা যায় না।",
+    symbols_groundwater_note: "পাইপের প্রতীক অপরিবর্তিত থাকে; নীল রং water_source=groundwater বোঝায়।",
+    symbols_suction_note: "জলাশয় থেকে পানি তোলার জন্য নির্ধারিত স্থান।",
 };
 export default strings;

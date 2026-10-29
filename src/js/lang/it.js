@@ -170,6 +170,21 @@ export const strings = {
     data_sync_checking: "Verifica di nuovi oggetti tramite Overpass …",
     data_sync_offline_or_failed: "Server Overpass non raggiungibile o offline",
     data_sync_disabled_hint: "Disattivato nelle impostazioni",
-    data_sync_osm_direct: "Direttamente dai server OSM"
+    data_sync_osm_direct: "Direttamente dai server OSM",
+    symbol_underground_hydrant: 'Idrante sottosuolo',
+    symbol_pillar_hydrant: 'Idrante a colonna',
+    symbol_dry_barrel_hydrant: 'Idrante a colonna secca',
+    symbol_wall_hydrant: 'Idrante a parete',
+    symbol_pipe_hydrant: 'Idrante a tubo con tappo',
+    symbols_page_link: "Simboli della mappa",
+    symbols_title: "Simboli della mappa e tag OSM",
+    symbols_intro: "I simboli si basano sui tag OpenStreetMap mappati. I tag sono mostrati senza modifiche.",
+    symbols_language: "Lingua",
+    symbols_tags_label: "Tag OSM",
+    symbols_hydrants_note: "I simboli rossi seguono i tag degli idranti; i tipi speciali usano tag aggiuntivi.",
+    symbols_water_note: "Il blu indica le fonti d’acqua. Un serbatoio è mostrato aperto o coperto solo se i tag OSM lo specificano.",
+    symbols_tank_unknown_note: "Il solo tag emergency=water_tank non indica se il serbatoio è aperto o coperto.",
+    symbols_groundwater_note: "Il simbolo del tubo resta invariato; il blu indica water_source=groundwater.",
+    symbols_suction_note: "Punto designato per aspirare acqua da uno specchio d’acqua.",
 };
 export default strings;

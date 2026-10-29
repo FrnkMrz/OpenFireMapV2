@@ -170,6 +170,21 @@ export const strings = {
     data_sync_checking: "正在通过 Overpass 检查新对象…",
     data_sync_offline_or_failed: "Overpass 服务器不可用或离线",
     data_sync_disabled_hint: "已在设置中禁用",
-    data_sync_osm_direct: "直接来自 OSM 服务器"
+    data_sync_osm_direct: "直接来自 OSM 服务器",
+    symbol_underground_hydrant: '地下式消防栓',
+    symbol_pillar_hydrant: '地上柱式消防栓',
+    symbol_dry_barrel_hydrant: '干式消防栓',
+    symbol_wall_hydrant: '壁挂式消防栓',
+    symbol_pipe_hydrant: '带管帽的管式消防栓',
+    symbols_page_link: "地图符号",
+    symbols_title: "地图符号与 OSM 标签",
+    symbols_intro: "地图符号依据 OpenStreetMap 中记录的标签。标签保持原样显示。",
+    symbols_language: "语言",
+    symbols_tags_label: "OSM 标签",
+    symbols_hydrants_note: "红色符号对应下面的消防栓标签；特殊类型需要额外标签。",
+    symbols_water_note: "蓝色表示水源。只有 OSM 标签说明时，才会显示水池为开放或有盖。",
+    symbols_tank_unknown_note: "仅凭 emergency=water_tank 无法判断水池是开放还是有盖。",
+    symbols_groundwater_note: "保留管道符号；蓝色表示 water_source=groundwater。",
+    symbols_suction_note: "从水域取水的指定地点。",
 };
 export default strings;

@@ -169,6 +169,21 @@ export const strings = {
     data_sync_checking: "Checking for new objects via Overpass …",
     data_sync_offline_or_failed: "Overpass server unreachable or offline",
     data_sync_disabled_hint: "Disabled in settings",
-    data_sync_osm_direct: "Directly from OSM servers"
+    data_sync_osm_direct: "Directly from OSM servers",
+    symbol_underground_hydrant: 'Underground hydrant',
+    symbol_pillar_hydrant: 'Pillar hydrant',
+    symbol_dry_barrel_hydrant: 'Dry-barrel hydrant',
+    symbol_wall_hydrant: 'Wall hydrant',
+    symbol_pipe_hydrant: 'Capped-pipe hydrant',
+    symbols_page_link: "Map symbols",
+    symbols_title: "Map symbols & OSM tags",
+    symbols_intro: "The map symbols are based on mapped OpenStreetMap tags. Tags are shown unchanged.",
+    symbols_language: "Language",
+    symbols_tags_label: "OSM tags",
+    symbols_hydrants_note: "Red symbols follow the hydrant tags below; WSH and dry-barrel types use additional tags.",
+    symbols_water_note: "Blue marks water sources. A tank is shown as open or covered only when OSM tags say so.",
+    symbols_tank_unknown_note: "emergency=water_tank alone does not say whether a tank is open or covered.",
+    symbols_groundwater_note: "The pipe symbol stays; blue indicates water_source=groundwater.",
+    symbols_suction_note: "The designated place to draw water from a body of water.",
 };
 export default strings;
