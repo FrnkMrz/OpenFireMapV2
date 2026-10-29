@@ -11,6 +11,9 @@ const cases = [
   ...["1:1", "3:2", "4:3", "2:3", "3:4", "fill", "wirr"].map((fmt) => ({ path: "/", q: `sheet=1&scale=5000&paper=a3l&dpi=96&fmt=${fmt}`, ready: "__ready" })),
   ...["right", "left", "top", "bottom"].map((side) => ({ path: "/", q: `sheet=1&scale=5000&paper=a4l&dpi=96&side=${side}&fmt=1:1`, ready: "__ready" })),
   { path: "/", q: "sheet=1&scale=5000&paper=a4p&dpi=96&index=0", ready: "__ready" },
+  // Legende ganz abgewaehlt (Assistent, Schritt 3): auf jeder Seite weder Platz noch Ueberschrift dafuer, das Blatt entsteht trotzdem
+  ...["right", "left", "top", "bottom"].map((side) => ({ path: "/", q: `sheet=1&scale=5000&paper=a3l&dpi=96&side=${side}&lsym=0&lroad=0`, ready: "__ready" })),
+  { path: "/", q: "sheet=1&scale=5000&paper=a4p&dpi=96&side=top&lsym=0&lroad=1&index=1", ready: "__ready" },
   // Das Formular muss jeden Wert behalten, auch Massstaebe, die die Auswahlseite anbietet (7500) oder per Hand in der Adresse stehen (1234):
   // sonst bliebe das Feld leer und "Neu laden" faellt still auf 1:5000 zurueck (Fund aus dem Codex-Review)
   ...["7500", "1500", "20000", "1234"].map((s) => ({ path: "/", q: `sheet=1&scale=${s}&paper=a3l&dpi=96`, ready: "__ready", form: { scale: s } })),
