@@ -23,6 +23,8 @@ const cases = [
   { path: "/pick.html", q: "paper=a3l&side=right&fmt=1:1&scale=5000", ready: "__pickReady" },
   { path: "/", q: "sheet=1&scale=4350&paper=a3l&dpi=96&side=left&fmt=2.1000:1", ready: "__ready" },
   { path: "/", q: "sheet=1&scale=6200&paper=a4p&dpi=96&side=bottom&fmt=0.5000:1", ready: "__ready" },
+  { path: "/", q: "sheet=1&scale=1500&paper=a4l&dpi=96&side=left&fmt=4.0000:1", ready: "__ready" },
+  { path: "/", q: "sheet=1&scale=1500&paper=a4l&dpi=96&side=right&fmt=4.0000:1", ready: "__ready" },
   { path: "/pick.html", q: "paper=a3l&side=right&fmt=2.1000:1&scale=4350", ready: "__pickReady" },
   { path: "/pick.html", q: "", ready: "__pickReady" },
 ];

@@ -99,3 +99,17 @@ test("metersPerPx halbiert sich je Zoomstufe", () => {
   assert.ok(Math.abs(metersPerPx(15, 49.5) / metersPerPx(16, 49.5) - 2) < 1e-9);
   assert.ok(metersPerPx(15, 49.5) < metersPerPx(15, 0));
 });
+
+test("Breites Kartenformat bei Seitenleiste: der Bereich behaelt die volle Hoehe (Legende darf nicht aus dem Blatt laufen)", () => {
+  for (const [w, h] of [[297, 210], [420, 297], [594, 420]]) {
+    for (const side of ["left", "right"]) {
+      const full = computeLayout({ wMm: w, hMm: h, side, fmt: "fill" });
+      const wide = computeLayout({ wMm: w, hMm: h, side, fmt: "4.0000:1" });
+      assert.ok(wide.frame.h < full.frame.h / 2, `${w}x${h} ${side}: Karte ist flach`);
+      assert.equal(wide.panel.h, full.panel.h, `${w}x${h} ${side}: Bereich so hoch wie ohne Zuschnitt`);
+      assert.equal(wide.panel.y, full.panel.y, `${w}x${h} ${side}: Bereich beginnt oben`);
+      assert.ok(wide.panel.y + wide.panel.h <= h, `${w}x${h} ${side}: Bereich liegt im Blatt`);
+      assert.ok(wide.frame.y >= full.frame.y - 1e-9 && wide.frame.y + wide.frame.h <= full.frame.y + full.frame.h + 1e-9, "Karte bleibt im Kartenfenster");
+    }
+  }
+});
