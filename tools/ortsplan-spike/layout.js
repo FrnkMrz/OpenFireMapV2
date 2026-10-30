@@ -53,12 +53,13 @@ export function computeLayout({ wMm, hMm, side = "right", fmt = "fill" }) {
   const ratio = parseFormat(fmt);
   if (ratio) {
     // Kartenfenster auf das Format zuschneiden; der Bereich fuer Legende usw. rueckt direkt an die Karte
+    // Seitenleiste: der Bereich behaelt die volle Hoehe, auch wenn die Karte flach wird (breites Format); sonst liefen Legende
+    // und Massstab unten aus dem Blatt. Die Karte sitzt oben buendig mit dem Bereich.
     if (sd === "right") {
-      frame = fitRatio(frame, ratio, 0, 0.5);
-      panel = { ...panel, x: frame.x + frame.w + 6.5 * ui, y: frame.y, h: frame.h };
+      frame = fitRatio(frame, ratio, 0, 0);
+      panel = { ...panel, x: frame.x + frame.w + 6.5 * ui };
     } else if (sd === "left") {
-      frame = fitRatio(frame, ratio, 0, 0.5);
-      panel = { ...panel, y: frame.y, h: frame.h };
+      frame = fitRatio(frame, ratio, 0, 0);
     } else if (sd === "top") {
       frame = fitRatio(frame, ratio, 0.5, 0);
     } else {
