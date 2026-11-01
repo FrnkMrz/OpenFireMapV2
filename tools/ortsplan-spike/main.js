@@ -37,6 +37,9 @@ const [wMm, hMm] = PAPER_MM[paper] || PAPER_MM.a4l;
 const form = document.getElementById("ctl");
 const indexOn = q.get("index") !== "0";
 const indexSize = Math.min(3, Math.max(0.5, +(q.get("isize") || 1)));
+// Texte auf dem Blatt: Ortsname (Zeile unter der Ueberschrift) und Ueberschrift; beide aenderbar, ohne Angabe gilt der Name des Gebiets
+const place = q.get("place") || areaInfo?.title || "Neunkirchen am Sand";
+const sheetTitle = q.get("title") || "Orts- und Hydrantenplan";
 // Massstab: dieselben Werte wie die Auswahlseite (layout.js), dazu der aktuelle, falls er nicht in der Liste steht (zum Beispiel von Hand in der Adresse)
 {
   const sel = form.elements.scale;
@@ -50,14 +53,13 @@ const setField = (el, v) => {
   if (el.tagName === "SELECT" && ![...el.options].some((o) => o.value === val)) el.add(new Option(val, val));
   el.value = val;
 };
-for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "right", icols: q.get("icols") || "0", fmt })) setField(form.elements[k], v);
-document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "right", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), dpi: String(dpi), ...(areaName ? { area: areaName } : {}) })}`;
+for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "right", icols: q.get("icols") || "0", fmt, place, title: sheetTitle })) setField(form.elements[k], v);
+document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "right", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), iauto: q.get("iauto") === "0" ? "0" : "1", dpi: String(dpi), ...(areaName ? { area: areaName } : {}), ...(q.get("place") ? { place: q.get("place") } : {}), ...(q.get("title") ? { title: q.get("title") } : {}) })}`;
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
 
 // Blatt-Modus (sheet=1): Karte nur im Kartenfenster, daneben Seitenleiste mit Legende und Verzeichnis.
 const sheet = q.get("sheet") === "1";
-const place = q.get("place") || areaInfo?.title || "Neunkirchen am Sand";
 // Lage von Legende, Massstab und Verzeichnis: side=right (Standard) | left | top | bottom; icols = Spaltenzahl des Verzeichnisses (0 = automatisch)
 // Kartenformat: fmt=fill (Papier fuellen, Standard) | 1:1 | 3:2 | 2:3 | 4:3 | 3:4 ... (Seitenverhaeltnis des Kartenfensters). Geometrie in layout.js.
 const side = ["left", "right", "top", "bottom"].includes(q.get("side")) ? q.get("side") : "right";
@@ -262,8 +264,8 @@ async function buildSheet() {
     const meta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
     const res = await composeSheet({
       map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, legendSymbols: q.get("lsym") !== "0", legendRoads: q.get("lroad") !== "0", indexSize, warning, side, panel, indexCols,
-      title: "Orts- und Hydrantenplan",
-      subtitle: [place, `Maßstab 1 : ${scale.toLocaleString("de-DE")} · Papier ${paper.toUpperCase()}`],
+      title: sheetTitle, place,
+      indexAuto: q.get("iauto") !== "0",
     });
     window.__sheet = res.pages;
     window.__sheetInfo = { panelFit: res.panelFit, mapDpi, index: res.indexCount, indexPage: res.indexPage, cellM: res.cellM, cols: res.cols, rows: res.rows, pages: res.pages.length };

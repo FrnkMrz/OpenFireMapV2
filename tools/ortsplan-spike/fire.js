@@ -110,7 +110,7 @@ export function buildFeatures(elements, { clusterPoi }) {
     feats.push({ type: "Feature", geometry: { type: "Point", coordinates: [e.lon, e.lat] }, properties: { icon, cls, sortKey } });
   for (const p of pois) {
     const type = appType(p.tags, false, false);
-    add(p, p.count > 1 ? `badge-${p.count}` : iconIdForType(type), "poi", 0);
+    add(p, p.count > 1 ? `badge-${p.count}` : iconIdForType(type, p.tags), "poi", 0);
   }
   for (const s of stationEls) add(s, "station", "station", 1000);
   for (const d of defibs) add(d, "defibrillator", "poi", 2000);

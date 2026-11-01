@@ -9,7 +9,7 @@
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--text); }
     #app { display: flex; height: 100%; }
-    #wrap { position: relative; flex: 1; min-width: 0; }
+    #wrap { position: relative; flex: 1; min-width: 0; overflow: hidden; } /* das Abdunkeln um den Rahmen (box-shadow) darf nur die Karte treffen, nicht den Dialog */
     #map { position: absolute; inset: 0; }
     #frame { position: absolute; border: 2px solid #fff; border-radius: 2px; box-shadow: 0 0 0 1px rgba(37, 99, 235, .9), 0 0 0 100vmax rgba(15, 23, 42, .5); pointer-events: none; }
     #frame:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
@@ -25,7 +25,7 @@
     .handle[data-c="ne"], .handle[data-c="sw"] { cursor: nesw-resize; }
     #frame.fixed .handle.edge { display: none; }
     #maphint { position: absolute; left: 12px; bottom: 12px; max-width: 60%; background: rgba(15, 23, 42, .85); color: var(--text); padding: 6px 10px; border-radius: 8px; font-size: 12px; pointer-events: none; }
-    #panel { width: 360px; flex: none; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+    #panel { position: relative; z-index: 3; width: 360px; flex: none; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
     #panel h1 { font-size: 16px; margin: 0; padding: 14px 16px 0; }
     #steps { display: flex; gap: 6px; padding: 12px 16px; }
     .st { flex: 1; font: inherit; font-size: 12px; padding: 7px 6px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
@@ -38,13 +38,14 @@
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
     .chip { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
     .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
-    select, input[type=number] { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: #0b1428; color: var(--text); }
+    select, input[type=number], input[type=text] { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: #0b1428; color: var(--text); }
     label.row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
     button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
     #prev { position: relative; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 4px; }
     #prev div { position: absolute; border-radius: 2px; overflow: hidden; }
     #pv-map { background: #cfe3c4; color: #27500a; font-size: 11px; display: flex; align-items: center; justify-content: center; }
     #pv-panel { background: #fde9c8; color: #633806; font-size: 10px; display: flex; gap: 3px; padding: 3px; }
+    #pv-title { background: #fde9c8; color: #633806; font-size: 10px; display: flex; align-items: center; justify-content: space-between; padding: 0 6px; font-weight: 600; }
     #pv-panel span { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 255, 255, .55); border-radius: 2px; }
     details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
     details summary { cursor: pointer; color: var(--muted); }
@@ -103,8 +104,14 @@
           <p class="hint" id="size-info"></p>
         </section>
         <section class="sec" data-s="2">
+          <div>
+            <p class="lab">Texte auf dem Blatt</p>
+            <label class="lab" for="o-place">Ortsname</label><input id="o-place" type="text" maxlength="60" autocomplete="off" style="width:100%;box-sizing:border-box">
+            <p class="hint" id="place-hint" style="margin-top:4px"></p>
+            <label class="lab" for="o-title" style="margin-top:8px;display:block">Überschrift</label><input id="o-title" type="text" maxlength="60" placeholder="Orts- und Hydrantenplan" autocomplete="off" style="width:100%;box-sizing:border-box">
+          </div>
           <div><p class="lab">Wo steht die Legende?</p><div class="chips" id="g-side"></div></div>
-          <div id="prev" role="img" aria-label="Vorschau der Blattaufteilung"><div id="pv-map"></div><div id="pv-panel"></div></div>
+          <div id="prev" role="img" aria-label="Vorschau der Blattaufteilung"><div id="pv-title"></div><div id="pv-map"></div><div id="pv-panel"></div></div>
           <div>
             <p class="lab">Was steht darin?</p>
             <label class="row"><input type="checkbox" id="c-sym"> Symbole (Feuerwehr, Hydranten, Einbahn)</label>
@@ -116,7 +123,8 @@
             <div class="opts">
               <label for="o-dpi">Auflösung (dpi)</label><select id="o-dpi"><option>96</option><option>150</option><option>200</option><option>300</option></select>
               <label for="o-icols">Verzeichnis: Spalten (0 = automatisch)</label><input id="o-icols" type="number" min="0" max="6" step="1" style="width:4.5em">
-              <label for="o-isize">Verzeichnis: Schriftgröße</label><input id="o-isize" type="number" min="0.5" max="3" step="0.1" style="width:4.5em">
+              <label for="o-iauto">Verzeichnis: Schrift automatisch größer, wenn Platz ist</label><input id="o-iauto" type="checkbox">
+              <label for="o-isize">Verzeichnis: Grundgröße der Schrift</label><input id="o-isize" type="number" min="0.5" max="3" step="0.1" style="width:4.5em">
             </div>
           </details>
         </section>

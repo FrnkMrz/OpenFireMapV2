@@ -20,7 +20,7 @@ const startLon = +(q.get("lon") || areaInfo?.lon || 11.3181);
 
 // ---- Einstellungen: Standard, zuletzt benutzt (localStorage, darf fehlen), Adresse gewinnt ----
 const KEY = "ofm_ortsplan_wizard";
-const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "left", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, dpi: 150 };
+const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "left", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, iauto: true, dpi: 150 };
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { /* ohne Speicher */ }
 const S = { ...DEFAULTS };
@@ -35,7 +35,7 @@ function apply(src) {
   if (+src.ratio >= RATIO_MIN && +src.ratio <= RATIO_MAX) S.ratio = +src.ratio;
   if (SIDES.includes(src.side)) S.side = src.side;
   if (+src.scale > 0) S.scale = Math.max(MIN_SCALE, Math.round(+src.scale));
-  for (const k of ["lsym", "lroad", "index", "round"]) if (src[k] !== undefined && src[k] !== null) S[k] = src[k] === true || src[k] === "1";
+  for (const k of ["lsym", "lroad", "index", "round", "iauto"]) if (src[k] !== undefined && src[k] !== null) S[k] = src[k] === true || src[k] === "1";
   S.icols = Math.round(num(src.icols, 0, 6, S.icols));
   S.isize = num(src.isize, 0.5, 3, S.isize);
   if ([96, 150, 200, 300].includes(+src.dpi)) S.dpi = +src.dpi;
@@ -43,6 +43,8 @@ function apply(src) {
 apply(saved);
 apply(Object.fromEntries(q.entries()));
 if (!S.free) S.scale = snapScale(S.scale);
+// Texte des Blatts: gehoeren zum Ort und werden darum nicht gemerkt; der Ortsname wird aus der Kartenmitte vorgeschlagen, bis man ihn selbst aendert
+const T = { place: q.get("place") || "", title: q.get("title") || "", placeEdited: !!q.get("place") };
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* ohne Speicher */ } };
 
 for (const s of NICE_SCALES) $("scale").add(new Option(s.toLocaleString("de-DE"), String(s)));
@@ -118,9 +120,11 @@ function goLink() {
   const p = new URLSearchParams({
     sheet: "1", dpi: String(S.dpi), paper: paperKey(), side: S.side, fmt: layoutFmt(), scale: String(S.scale),
     lat: fc.lat.toFixed(5), lon: fc.lng.toFixed(5), index: S.index ? "1" : "0", lsym: S.lsym ? "1" : "0", lroad: S.lroad ? "1" : "0",
-    icols: String(S.icols), isize: String(S.isize),
+    icols: String(S.icols), isize: String(S.isize), iauto: S.iauto ? "1" : "0",
   });
   if (areaName) p.set("area", areaName);
+  if (T.place) p.set("place", T.place);
+  if (T.title) p.set("title", T.title);
   return `/?${p}`;
 }
 
@@ -148,10 +152,12 @@ function drawPreview() {
   pct(L.frame, $("pv-map"));
   $("pv-map").textContent = `Karte 1:${S.scale.toLocaleString("de-DE")}`;
   pct(L.panel, $("pv-panel"));
+  pct({ x: L.frame.x, y: 3 * L.ui, w: L.frame.w, h: 9 * L.ui }, $("pv-title")); // Titelzeile ueber der Karte
+  $("pv-title").replaceChildren(...[T.title || "Orts- und Hydrantenplan", T.place || "Ortsname"].map((t) => { const s = document.createElement("span"); s.textContent = t; return s; }));
   const horizontal = S.side === "top" || S.side === "bottom";
   const pn = $("pv-panel");
   pn.style.flexDirection = horizontal ? "row" : "column";
-  const blocks = ["Titel", ...(S.lsym || S.lroad ? ["Legende"] : []), "Maßstab", ...(S.index ? ["Verzeichnis"] : [])];
+  const blocks = [...(S.lsym || S.lroad ? ["Legende"] : []), "Maßstab", ...(S.index ? ["Verzeichnis"] : [])];
   pn.replaceChildren(...blocks.map((t) => { const s = document.createElement("span"); s.textContent = t; if (t === "Verzeichnis") s.style.flex = "2"; return s; }));
 }
 
@@ -172,7 +178,7 @@ function refresh() {
     ? "Ziehe den Rahmen an den Kanten und Ecken so auf, wie du den Ausschnitt brauchst. Papier und Rahmen bestimmen den Maßstab."
     : "Der Rahmen hat das Seitenverhältnis des Blatts (Schritt 2). An den Ecken ziehen macht ihn größer oder kleiner und ändert den Maßstab.";
   $("c-sym").checked = S.lsym; $("c-road").checked = S.lroad; $("c-index").checked = S.index;
-  $("o-dpi").value = String(S.dpi); $("o-icols").value = String(S.icols); $("o-isize").value = String(S.isize);
+  $("o-place").value = T.place; $("o-title").value = T.title; $("o-dpi").value = String(S.dpi); $("o-iauto").checked = S.iauto; $("o-icols").value = String(S.icols); $("o-isize").value = String(S.isize);
   drawFrame(); updateText(); drawPreview();
 }
 
@@ -212,7 +218,28 @@ $("g-free").replaceChildren(...[["1", "Frei"], ["0", "Wie das Blatt"]].map(([v, 
 $("c-round").addEventListener("change", () => { S.round = $("c-round").checked; if (S.round && S.free) S.scale = roundUpScale(S.scale); fit(); refresh(); });
 $("fit").addEventListener("click", () => { fit(); refresh(); });
 for (const [id, key] of [["c-sym", "lsym"], ["c-road", "lroad"], ["c-index", "index"]]) $(id).addEventListener("change", () => { S[key] = $(id).checked; refresh(); });
+$("o-place").addEventListener("input", () => { T.place = $("o-place").value.trim(); T.placeEdited = true; $("place-hint").textContent = ""; drawPreview(); updateText(); });
+$("o-title").addEventListener("input", () => { T.title = $("o-title").value.trim(); drawPreview(); updateText(); });
+let suggestKey = "";
+/** Schlaegt den Ortsnamen der Kartenmitte vor (Nominatim, wie die Hauptkarte); eigene Eingaben werden nie ueberschrieben. */
+async function suggestPlace() {
+  if (T.placeEdited) return;
+  const key = `${fc.lat.toFixed(3)},${fc.lng.toFixed(3)}`;
+  if (key === suggestKey) return;
+  suggestKey = key;
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=de&lat=${fc.lat.toFixed(5)}&lon=${fc.lng.toFixed(5)}`, { signal: AbortSignal.timeout(8000) });
+    const a = (await r.json()).address || {};
+    const name = a.village || a.town || a.city || a.municipality || a.hamlet || a.suburb || "";
+    if (name && !T.placeEdited && key === suggestKey) {
+      T.place = name; $("o-place").value = name;
+      $("place-hint").textContent = "Vorschlag aus der Kartenmitte, du kannst ihn ändern.";
+      drawPreview(); updateText();
+    }
+  } catch { /* ohne Vorschlag: auf dem Blatt steht dann der Name des Gebiets */ }
+}
 $("o-dpi").addEventListener("change", () => { S.dpi = +$("o-dpi").value; refresh(); });
+$("o-iauto").addEventListener("change", () => { S.iauto = $("o-iauto").checked; refresh(); });
 $("o-icols").addEventListener("change", () => { S.icols = Math.round(num($("o-icols").value, 0, 6, 0)); refresh(); });
 $("o-isize").addEventListener("change", () => { S.isize = num($("o-isize").value, 0.5, 3, 1); refresh(); });
 
@@ -225,6 +252,7 @@ function go(n) {
   $("back").hidden = step === 0;
   $("next").hidden = step === 2;
   $("go").hidden = step !== 2;
+  if (step === 2) suggestPlace();
 }
 document.querySelectorAll(".st").forEach((b) => b.addEventListener("click", () => go(+b.dataset.s)));
 $("back").addEventListener("click", () => go(step - 1));

@@ -113,7 +113,8 @@ try {
   check(fcBefore.lng === fcAfter.lng && fcBefore.lat === fcAfter.lat, "Karte schieben: Rahmen bleibt am Ort");
   check(Math.abs(bAfter.cx - bBefore.cx) > 20, "Karte schieben: Rahmen wandert mit der Karte auf dem Bildschirm");
 
-  // Tastatur
+  // Tastatur (erst warten, bis die Karte nach dem Schieben ausgelaufen ist, sonst verschiebt ihr Nachlauf den Rahmen mit)
+  await page.waitForTimeout(1500);
   await page.focus("#frame");
   const bk = await box();
   await page.keyboard.press("ArrowRight");
