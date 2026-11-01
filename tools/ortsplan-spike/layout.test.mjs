@@ -1,21 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PAPER_MM, TOP_BAND, computeLayout, parseFormat, fitRatio, groundSizeM, boundsAround, metersPerPx, SIDES } from "./layout.js";
+import { PAPER_MM, TOP_BAND, TOP_PANEL_Y, computeLayout, parseFormat, fitRatio, groundSizeM, boundsAround, metersPerPx, SIDES } from "./layout.js";
 
-// Referenzrechnung der Blattaufteilung, unabhaengig von layout.js aufgeschrieben (Stand mit Titelzeile: oben 18 ui Rand statt 14 ui;
-// bei Lage "oben" beginnt der Bereich bei 11 ui). Die Rechnung steht hier ausgeschrieben, damit eine versehentliche Aenderung auffaellt.
+// Referenzrechnung der Blattaufteilung, unabhaengig von layout.js aufgeschrieben (Stand mit Titelzeile: oben 27 ui Rand statt 14 ui;
+// bei Lage "oben" beginnt der Bereich bei 21 ui). Die Rechnung steht hier ausgeschrieben, damit eine versehentliche Aenderung auffaellt.
 function oldLayout(wMm, hMm, side) {
   const ui = Math.max(1, Math.max(wMm, hMm) / 420);
   const sidebarW = Math.min(92 * ui, Math.max(62, 0.24 * wMm));
   const panelH = Math.min(0.45 * hMm, Math.max(72 * ui, (wMm < hMm ? 0.36 : 0.28) * hMm));
-  const top = 18 * ui;
+  const top = 27 * ui;
   let frame, panel;
   if (side === "left") {
     panel = { x: 6 * ui, y: top, w: sidebarW, h: hMm - top - 14 * ui };
     const fx = panel.x + sidebarW + 9 * ui;
     frame = { x: fx, y: top, w: wMm - fx - 14 * ui, h: hMm - top - 14 * ui };
   } else if (side === "top") {
-    panel = { x: 14 * ui, y: 11 * ui, w: wMm - 28 * ui, h: panelH };
+    panel = { x: 14 * ui, y: 21 * ui, w: wMm - 28 * ui, h: panelH };
     const fy = panel.y + panelH + 14 * ui;
     frame = { x: 14 * ui, y: fy, w: wMm - 28 * ui, h: hMm - fy - 14 * ui };
   } else if (side === "bottom") {
@@ -91,7 +91,7 @@ test("unbekannte Lage und Format fallen auf die Standardwerte zurueck", () => {
 test("Bodenmasse und Rechteck: A3 quer 1:5000 Standard", () => {
   const L = computeLayout({ wMm: 420, hMm: 297, side: "right" });
   const g = groundSizeM(L.frame, 5000);
-  assert.ok(Math.abs(g.w - 301.5 * 5) < 1e-6 && Math.abs(g.h - 265 * 5) < 1e-6);
+  assert.ok(Math.abs(g.w - 301.5 * 5) < 1e-6 && Math.abs(g.h - 256 * 5) < 1e-6);
   const [w, s, e, n] = boundsAround(49.5, 11.3, 1000, 600);
   assert.ok(Math.abs((e - w) * 111320 * Math.cos((49.5 * Math.PI) / 180) - 1000) < 0.5);
   assert.ok(Math.abs((n - s) * 110540 - 600) < 0.5);
@@ -120,7 +120,7 @@ test("Titelzeile: der Kartenrahmen beginnt bei jeder Lage unter dem Titelband, n
   for (const [name, [w, h]] of Object.entries(PAPER_MM)) for (const side of SIDES) {
     const L = computeLayout({ wMm: w, hMm: h, side });
     assert.ok(L.frame.y >= TOP_BAND * L.ui - 1e-9 || side === "top", `${name} ${side}: Rahmen unter dem Titelband`);
-    assert.ok(L.panel.y >= 11 * L.ui - 1e-9, `${name} ${side}: Bereich unter der Titelzeile`);
+    assert.ok(L.panel.y >= TOP_PANEL_Y * L.ui - 1e-9, `${name} ${side}: Bereich unter der Titelzeile`);
     for (const r of [L.frame, L.panel]) assert.ok(r.x >= 0 && r.y >= 0 && r.x + r.w <= w + 1e-9 && r.y + r.h <= h + 1e-9, `${name} ${side}`);
   }
 });

@@ -152,7 +152,7 @@ function drawPreview() {
   pct(L.frame, $("pv-map"));
   $("pv-map").textContent = `Karte 1:${S.scale.toLocaleString("de-DE")}`;
   pct(L.panel, $("pv-panel"));
-  pct({ x: L.frame.x, y: 3 * L.ui, w: L.frame.w, h: 9 * L.ui }, $("pv-title")); // Titelzeile ueber der Karte
+  pct({ x: L.frame.x, y: 3 * L.ui, w: L.frame.w, h: 21 * L.ui }, $("pv-title")); // Titelzeile ueber der Karte
   $("pv-title").replaceChildren(...[T.title || "Orts- und Hydrantenplan", T.place || "Ortsname"].map((t) => { const s = document.createElement("span"); s.textContent = t; return s; }));
   const horizontal = S.side === "top" || S.side === "bottom";
   const pn = $("pv-panel");
@@ -163,6 +163,7 @@ function drawPreview() {
 
 function refresh() {
   persist();
+  if (step === 2) scheduleSuggest();
   for (const [id, key] of [["g-size", "size"], ["g-orient", "orient"], ["g-side", "side"]]) {
     for (const b of $(id).children) b.setAttribute("aria-pressed", String(b.dataset.v === S[key]));
   }
@@ -220,23 +221,30 @@ $("fit").addEventListener("click", () => { fit(); refresh(); });
 for (const [id, key] of [["c-sym", "lsym"], ["c-road", "lroad"], ["c-index", "index"]]) $(id).addEventListener("change", () => { S[key] = $(id).checked; refresh(); });
 $("o-place").addEventListener("input", () => { T.place = $("o-place").value.trim(); T.placeEdited = true; $("place-hint").textContent = ""; drawPreview(); updateText(); });
 $("o-title").addEventListener("input", () => { T.title = $("o-title").value.trim(); drawPreview(); updateText(); });
-let suggestKey = "";
-/** Schlaegt den Ortsnamen der Kartenmitte vor (Nominatim, wie die Hauptkarte); eigene Eingaben werden nie ueberschrieben. */
+let suggestTimer = 0, appliedKey = "";
+const centerKey = () => `${fc.lat.toFixed(3)},${fc.lng.toFixed(3)}`; // etwa 100 m genau
+/** Schlaegt den Ortsnamen der Kartenmitte vor (Nominatim, wie die Hauptkarte). Eigene Eingaben werden nie ueberschrieben; wandert der
+ *  Rahmen an einen anderen Ort, gilt der alte Vorschlag nicht mehr, und eine verspaetete Antwort fuer den alten Ort wird verworfen. */
 async function suggestPlace() {
   if (T.placeEdited) return;
-  const key = `${fc.lat.toFixed(3)},${fc.lng.toFixed(3)}`;
-  if (key === suggestKey) return;
-  suggestKey = key;
+  const key = centerKey();
+  if (key === appliedKey) return;
+  if (T.place) { T.place = ""; $("o-place").value = ""; $("place-hint").textContent = ""; drawPreview(); updateText(); }
   try {
     const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=de&lat=${fc.lat.toFixed(5)}&lon=${fc.lng.toFixed(5)}`, { signal: AbortSignal.timeout(8000) });
     const a = (await r.json()).address || {};
     const name = a.village || a.town || a.city || a.municipality || a.hamlet || a.suburb || "";
-    if (name && !T.placeEdited && key === suggestKey) {
-      T.place = name; $("o-place").value = name;
+    if (name && !T.placeEdited && key === centerKey()) {
+      T.place = name; appliedKey = key; $("o-place").value = name;
       $("place-hint").textContent = "Vorschlag aus der Kartenmitte, du kannst ihn ändern.";
       drawPreview(); updateText();
     }
   } catch { /* ohne Vorschlag: auf dem Blatt steht dann der Name des Gebiets */ }
+}
+/** Bei jeder Bewegung des Rahmens im letzten Schritt: kurz warten, dann neu vorschlagen. */
+function scheduleSuggest() {
+  clearTimeout(suggestTimer);
+  if (!T.placeEdited) suggestTimer = setTimeout(suggestPlace, 700);
 }
 $("o-dpi").addEventListener("change", () => { S.dpi = +$("o-dpi").value; refresh(); });
 $("o-iauto").addEventListener("change", () => { S.iauto = $("o-iauto").checked; refresh(); });

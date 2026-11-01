@@ -4,6 +4,7 @@ import { CSS_PX_PER_MM, ROAD_CLASSES } from "./style.js";
 import { loadIcons } from "./icons.js";
 import { cellsOfSegment, colLabel, formatCells } from "./grid.js";
 import { makeFitter, planBlock, drawColumns } from "./indexblock.js";
+import { fitText } from "./fittext.js";
 import { planHorizontal } from "./panelplan.js";
 
 const FONT = "'Noto Sans', 'Liberation Sans', Arial, sans-serif";
@@ -146,18 +147,15 @@ export async function composeSheet(opts) {
     text(String(j + 1), frame.x + frame.w + 1.8 * u, cy, fs, { bold: true, align: "center" });
   }
 
-  // Titelzeile ueber der Karte: Ueberschrift links, Ortsname rechts (verkleinert, kuerzer gesetzt, wenn er nicht daneben passt)
+  // Titel ueber der Karte, linksbuendig: Ueberschrift, darunter der Ortsname groesser. Beide werden in die Breite bis zum Blattrand
+  // gepasst (erst verkleinert, dann gekuerzt), auch bei sehr schmalen Kartenformaten (fittext.js).
   {
-    const base = 9.5 * u, big = 6.8 * u;
-    g.font = `bold ${big}px ${FONT}`;
-    const room = frame.w - g.measureText(title).width - 8 * u;
-    text(title, frame.x, base, big, { bold: true });
-    let name = String(place || "").trim();
-    let ps = big;
-    const wide = (str) => { g.font = `bold ${ps}px ${FONT}`; return g.measureText(str).width; };
-    while (name && ps > 3.4 * u && wide(name) > room) ps -= 0.2 * u;
-    while (name.length > 1 && wide(name) > room) name = `${name.slice(0, -2)}…`;
-    if (name) text(name, frame.x + frame.w, base, ps, { bold: true, align: "right" });
+    const availW = W - frame.x - 6 * u;
+    const m = (str, size) => { g.font = `bold ${size}px ${FONT}`; return g.measureText(str).width; };
+    const head = fitText({ text: title, size: 6 * u, minSize: 3.4 * u, maxW: availW, measure: m });
+    text(head.text, frame.x, 8.4 * u, head.size, { bold: true });
+    const name = fitText({ text: place, size: 9 * u, minSize: 4.5 * u, maxW: availW, measure: m });
+    if (name.text) text(name.text, frame.x, 18.8 * u, name.size, { bold: true });
   }
 
   // Bereich fuer Legende, Massstab und Verzeichnis (in "virtuellen mm": alles / u, damit Schrift und Abstaende auf grossen Papieren mitwachsen)
