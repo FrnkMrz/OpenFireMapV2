@@ -67,6 +67,7 @@ const heightOfColumns = (columns, heightOf) => Math.max(0, ...columns.map(([a, b
  * Plant den Block fuer `total` Eintraege.
  * @param {object} o
  * @param {number} o.total                  Anzahl Eintraege
+ * @param {number} [o.from]                 erster Eintrag, der geplant wird (0 = von vorn; >0, wenn davor schon ein anderer Bereich des Blatts gefuellt wurde)
  * @param {(i:number, w:number)=>{h:number}} o.fitW  Hoehe des Eintrags i in einer Spalte der Breite w (siehe makeFitter)
  * @param {{w:number,h:number}|null} o.box  Platz auf dem Blatt (ohne Ueberschrift); null oder zu klein: nichts steht auf dem Blatt
  * @param {{w:number,h:number}} o.cont      Platz einer Folgeseite
@@ -84,34 +85,34 @@ const heightOfColumns = (columns, heightOf) => Math.max(0, ...columns.map(([a, b
  *   und der Block nur so gross gemacht wie noetig. Sonst kommen so viele Eintraege wie moeglich auf das Blatt (Spalten nie schmaler als
  *   minColW) und der Rest auf Folgeseiten mit Spalten um idealColW.
  */
-export function planBlock({ total, fitW, box, cont, lineH, minColW, idealColW, maxColW, gap = 3, contGap = 6, cols = 0, minFirst = 8 }) {
-  if (!total) return { first: null, rest: null, placedFirst: 0 };
+export function planBlock({ total, from = 0, fitW, box, cont, lineH, minColW, idealColW, maxColW, gap = 3, contGap = 6, cols = 0, minFirst = 8 }) {
+  if (from >= total) return { first: null, rest: null, placedFirst: from };
   const colWFor = (w, n, g) => Math.min(maxColW, (w - (n - 1) * g) / n);
   let first = null;
-  let placed = 0;
+  let placed = from;
   if (box && box.w > 0 && box.h >= lineH) {
     const nMax = cols > 0 ? cols : Math.max(1, Math.floor((box.w + gap) / (minColW + gap)));
     let best = null;
     for (let n = cols > 0 ? cols : 1; n <= nMax; n++) {
       const colW = colWFor(box.w, n, gap);
-      const r = fillColumns(0, total, (i) => fitW(i, colW).h, Array(n).fill(box.h));
+      const r = fillColumns(from, total, (i) => fitW(i, colW).h, Array(n).fill(box.h));
       if (r.end >= total) { best = { n, colW, fits: true, end: r.end }; break; } // kleinste Spaltenzahl, die alles aufnimmt
       if (!best || r.end > best.end) best = { n, colW, fits: false, end: r.end };
     }
-    if (best && (best.fits || best.end >= minFirst)) {
+    if (best && (best.fits || best.end - from >= minFirst)) {
       const { n, colW } = best;
       const heightOf = (i) => fitW(i, colW).h;
       let cap = box.h;
       if (best.fits) {
         // gleich hohe Spalten: kleinste Spaltenhoehe (in Zeilenschritten), in die noch alles passt
         let sum = 0;
-        for (let i = 0; i < total; i++) sum += heightOf(i);
+        for (let i = from; i < total; i++) sum += heightOf(i);
         for (cap = Math.max(lineH, Math.ceil(sum / n / lineH) * lineH); cap < box.h; cap += lineH) {
-          if (fillColumns(0, total, heightOf, Array(n).fill(cap)).end >= total) break;
+          if (fillColumns(from, total, heightOf, Array(n).fill(cap)).end >= total) break;
         }
         cap = Math.min(cap, box.h);
       }
-      const r = fillColumns(0, total, heightOf, Array(n).fill(cap));
+      const r = fillColumns(from, total, heightOf, Array(n).fill(cap));
       placed = r.end;
       first = { n, colW, gap, columns: r.cols, width: r.cols.length * colW + (r.cols.length - 1) * gap, height: heightOfColumns(r.cols, heightOf) };
     }
@@ -123,10 +124,10 @@ export function planBlock({ total, fitW, box, cont, lineH, minColW, idealColW, m
     const colW = colWFor(cont.w, n, contGap);
     const heightOf = (i) => fitW(i, colW).h;
     const pages = [];
-    for (let from = placed; from < total;) {
-      const r = fillColumns(from, total, heightOf, Array(n).fill(Math.max(cont.h, lineH)), false);
+    for (let start = placed; start < total;) {
+      const r = fillColumns(start, total, heightOf, Array(n).fill(Math.max(cont.h, lineH)), false);
       pages.push(r.cols);
-      from = r.end;
+      start = r.end;
     }
     rest = { n, colW, gap: contGap, pages };
   }
