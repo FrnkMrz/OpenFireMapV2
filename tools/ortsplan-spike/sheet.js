@@ -3,7 +3,8 @@
 import { CSS_PX_PER_MM, ROAD_CLASSES } from "./style.js";
 import { loadIcons } from "./icons.js";
 import { cellsOfSegment, colLabel, formatCells } from "./grid.js";
-import { paginate } from "./paginate.js";
+import { makeFitter, planBlock, drawColumns } from "./indexblock.js";
+import { fitText } from "./fittext.js";
 import { planHorizontal } from "./panelplan.js";
 
 const FONT = "'Noto Sans', 'Liberation Sans', Arial, sans-serif";
@@ -68,7 +69,11 @@ const LEGEND = [
   { icon: "pipe", text: "Hydrant Typ Rohr (I)" },
   { icon: "dry_barrel", text: "Hydrant Typ Trockensäule (Ø)" },
   { icon: "plain", text: "Hydrant, Typ unbekannt" },
-  { icon: "water", text: "Löschwasser (Tank, Zisterne, Teich, Saugstelle)" },
+  { icon: "water_tank", text: "Löschwasserbehälter" },
+  { icon: "closed_water_tank", text: "Löschwasserbehälter, abgedeckt" },
+  { icon: "open_water", text: "Offenes Löschwasser (Teich, Becken)" },
+  { icon: "suction_point", text: "Saugstelle" },
+  { icon: "groundwater_pipe", text: "Rohrhydrant, Grundwasser (I)" },
   { icon: "defibrillator", text: "Defibrillator (AED)" },
   { icon: "badge-2", text: "Objekte innerhalb 5 m (Zahl = Anzahl)" },
 ];
@@ -79,7 +84,7 @@ const LEGEND = [
  * Rueckgabe: Liste von Daten-URLs (Seite 1 = Blatt, optional Seite 2 = Rest des Strassenverzeichnisses).
  */
 export async function composeSheet(opts) {
-  const { map, scale, dpi, paperMm, frame, title, subtitle, meta, warning } = opts;
+  const { map, scale, dpi, paperMm, frame, title, place = "", meta, warning } = opts;
   const side = opts.side || "right"; // Lage von Legende, Massstab und Verzeichnis: right | left | top | bottom
   const indexCols = opts.indexCols || 0; // Spaltenzahl des Verzeichnisses (0 = automatisch)
   const [W, H] = paperMm;
@@ -92,6 +97,7 @@ export async function composeSheet(opts) {
   const legendSymbols = opts.legendSymbols !== false; // Legende: Feuerwehr-Symbole und Einbahnpfeil
   const legendRoads = opts.legendRoads !== false; // Legende: Strassenarten und Gemeindegrenze
   const isz = opts.indexSize || 1;
+  const indexAuto = opts.indexAuto !== false; // Schrift des Verzeichnisses wird groesser, solange alles auf das Blatt passt
   const cellM = opts.cellM || chooseCellM(scale);
   const cellMm = (cellM / scale) * 1000;
   const k = (dpi / 96) * CSS_PX_PER_MM; // Pixel je mm
@@ -141,6 +147,17 @@ export async function composeSheet(opts) {
     text(String(j + 1), frame.x + frame.w + 1.8 * u, cy, fs, { bold: true, align: "center" });
   }
 
+  // Titel ueber der Karte, linksbuendig: Ueberschrift, darunter der Ortsname groesser. Beide werden in die Breite bis zum Blattrand
+  // gepasst (erst verkleinert, dann gekuerzt), auch bei sehr schmalen Kartenformaten (fittext.js).
+  {
+    const availW = W - frame.x - 6 * u;
+    const m = (str, size) => { g.font = `bold ${size}px ${FONT}`; return g.measureText(str).width; };
+    const head = fitText({ text: title, size: 6 * u, minSize: 3.4 * u, maxW: availW, measure: m });
+    text(head.text, frame.x, 8.4 * u, head.size, { bold: true });
+    const name = fitText({ text: place, size: 9 * u, minSize: 4.5 * u, maxW: availW, measure: m });
+    if (name.text) text(name.text, frame.x, 18.8 * u, name.size, { bold: true });
+  }
+
   // Bereich fuer Legende, Massstab und Verzeichnis (in "virtuellen mm": alles / u, damit Schrift und Abstaende auf grossen Papieren mitwachsen)
   g.save();
   g.scale(u, u);
@@ -174,16 +191,14 @@ export async function composeSheet(opts) {
   const roadClasses = !legendRoads ? [] : [...ROAD_CLASSES].reverse().filter((c) => present(`road-fill-${c.id}`) || present(`bridge-fill-${c.id}`));
   const icons = await loadIcons([...new Set(legendItems.map((l) => l.icon))]);
 
-  // ---- Block 1: Titel, Untertitel, Warnung ----
+  // ---- Block 1: Hinweise (Warnung, Verweis auf Folgeseite); der Titel steht in der Titelzeile ueber der Karte ----
   const headerBlock = (x0, y0, w, extra = "") => {
     let y = y0;
-    text(title, x0, y, 5.2, { bold: true }); y += 5.6;
-    for (const line of subtitle) { text(line, x0, y, 2.5, { color: "#333" }); y += 3.3; }
     if (extra) { text(extra, x0, y, 2.5, { bold: true, color: "#333" }); y += 3.3; }
     if (warning) {
       for (const l of wrap(warning, 2.4, w)) { text(l, x0, y, 2.4, { bold: true, color: "#b00020" }); y += 3.1; }
     }
-    return y + 2.5;
+    return y > y0 ? y + 2.5 : y0;
   };
 
   // ---- Block 2: Legende (bei waagerechtem Bereich in mehreren Spalten) ----
@@ -248,115 +263,53 @@ export async function composeSheet(opts) {
     text("N", nx, ny - 9.4, 3.2, { bold: true, align: "center" });
     let ay = ny - 5;
     const stand = `Datenstand OSM: ${meta?.osm_data_until ? meta.osm_data_until.replace("T", " ").replace("Z", " UTC") : "unbekannt"}`;
-    for (const l of [...wrap(stand, 2.1, w - 14), ...wrap("© OpenStreetMap-Mitwirkende (ODbL) · Karte: Protomaps · Feuerwehrdaten: OpenFireMap", 1.9, w - 14)]) {
+    for (const l of [...wrap(stand, 2.1, w - 14), ...wrap("© OpenStreetMap contributors (ODbL; openstreetmap.org/copyright) · Basiskarte: Protomaps © OpenStreetMap · Feuerwehr- und Wasserstellen-Daten: OpenFireMap.org auf Basis von OpenStreetMap", 1.9, w - 14)]) {
       text(l, x0 + 14, ay, l === stand ? 2.1 : 1.9, { color: "#333" }); ay += 2.7;
     }
     return Math.max(ny + 9, ay + 2) - y0;
   };
 
-  // ---- Block 4: Strassenverzeichnis ----
+  // ---- Block 4: Strassenverzeichnis (indexblock.js: der Block plant Spalten, Breite und Folgeseiten selbst) ----
   const pages = [];
-  let indexCount = 0;
-  const lineH = 2.75 * isz, fsI = 2.1 * isz;
   const idx = showIndex ? streetIndex(map, frame, cellMm) : { entries: [] };
-  indexCount = idx.entries.length;
-  const nextCols = 4, nextTop = 24, gapCol = 9;
-  const nextW = (Wv - 24 - gapCol * (nextCols - 1)) / nextCols;
-  g.font = `${fsI}px ${FONT}`;
-  const measure = (str) => g.measureText(str).width;
-  const wrapName = (name, maxW) => {
-    const out = [];
-    let cur = "";
-    for (const word of name.split(" ")) {
-      const t = cur ? `${cur} ${word}` : word;
-      if (measure(t) <= maxW) { cur = t; continue; }
-      if (cur) { out.push(cur); cur = ""; }
-      let w = word;
-      while (measure(w) > maxW && w.length > 2) {
-        let k = w.length - 1;
-        while (k > 1 && measure(`${w.slice(0, k)}-`) > maxW) k--;
-        out.push(`${w.slice(0, k)}-`);
-        w = w.slice(k);
-      }
-      cur = w;
-    }
-    if (cur) out.push(cur);
-    return out;
-  };
-  // Planquadrate: bei vielen Zellen mehrzeilig, rechtsbuendig, hoechstens halbe Spaltenbreite
-  const wrapRefs = (refs, maxW) => {
-    const out = [];
-    let cur = "";
-    for (const part of refs.split(", ")) {
-      const t = cur ? `${cur}, ${part}` : part;
-      if (measure(t) <= maxW || !cur) cur = t; else { out.push(`${cur},`); cur = part; }
-    }
-    if (cur) out.push(cur);
-    return out;
-  };
-  const fitCache = new Map();
-  const fitW = (i, width) => {
-    const key = `${i}:${width.toFixed(2)}`;
-    let v = fitCache.get(key);
-    if (!v) {
-      const e = idx.entries[i];
-      g.font = `${fsI}px ${FONT}`;
-      const refs = wrapRefs(e.cells, width * 0.5);
-      const refW = Math.max(...refs.map(measure));
-      const lines = wrapName(e.name, Math.max(8, width - refW - 2));
-      v = { lines, refs, refW, h: Math.max(lines.length, refs.length) * lineH, width };
-      fitCache.set(key, v);
-    }
-    return v;
-  };
-  // Eintrag zeichnen: Name links, Planquadrate rechts, dazwischen eine Punktlinie (Leitlinie), damit das Auge nicht springen muss
-  const drawEntry = (gc, tf, f, x0, y) => {
-    f.lines.forEach((l, k) => tf(l, x0, y + k * lineH, fsI));
-    f.refs.forEach((l, k) => tf(l, x0 + f.width, y + k * lineH, fsI, { align: "right", color: "#333" }));
-    gc.font = `${fsI}px ${FONT}`;
-    const nameEnd = x0 + gc.measureText(f.lines[0]).width + 1.2;
-    const refStart = x0 + f.width - gc.measureText(f.refs[0]).width - 1.2;
-    if (f.lines.length === 1 && refStart - nameEnd > 2.5) {
-      gc.save(); gc.strokeStyle = "#8c8c8c"; gc.lineWidth = 0.16 * isz; gc.lineCap = "round"; gc.setLineDash([0.01, 0.75 * isz]);
-      gc.beginPath(); gc.moveTo(nameEnd, y - 0.45 * isz); gc.lineTo(refStart, y - 0.45 * isz); gc.stroke(); gc.restore();
-    }
-  };
-  /** Zeichnet das Verzeichnis in den Bereich (x0, y0, w, h) auf Seite 1 und liefert die Aufteilung fuer Folgeseiten. */
-  const indexBlock = (x0, y0, w, h) => {
-    text(`Straßenverzeichnis (${idx.entries.length})`, x0, y0, 3.4, { bold: true });
-    const top0 = y0 + 4, avail = Math.max(lineH, h - 4);
-    // Spaltenzahl: moeglichst schmale Spalten (Ziel etwa 55 mm), damit Name und Planquadrate nahe beieinander stehen
-    const targetCols = indexCols > 0 ? indexCols : Math.max(1, Math.round(w / 55));
-    const widthN = (n) => (w - 3 * (n - 1)) / n;
-    const planFor = (n) => {
-      const wn = widthN(n);
-      const heightOf = (i, first) => fitW(i, first ? wn : nextW).h;
-      let sum = 0;
-      for (let i = 0; i < idx.entries.length; i++) sum += fitW(i, wn).h;
-      // ausgewogene Spalten: gleiche Hoehe, wenn alles auf die Seite passt
-      const balanced = Math.min(avail, Math.ceil(sum / n / lineH) * lineH + lineH * 2);
-      let lay = paginate(idx.entries.length, heightOf, Array(n).fill(balanced), Array(nextCols).fill(Hv - 12 - nextTop));
-      if (lay.length > 1) lay = paginate(idx.entries.length, heightOf, Array(n).fill(avail), Array(nextCols).fill(Hv - 12 - nextTop));
-      return { lay, n, wn };
+  const indexCount = idx.entries.length;
+  const nextTop = 24;
+  /** Schrift, Zeilenhoehe, Spaltenregeln und Zeilenumbruch fuer den Groessenfaktor f (1 = Grundgroesse isz). */
+  const indexSetup = (f) => {
+    const lineH = 2.75 * isz * f, fsI = 2.1 * isz * f;
+    const measure = (str) => { g.font = `${fsI}px ${FONT}`; return g.measureText(str).width; };
+    const fitW = makeFitter({ entries: idx.entries, measure, lineH });
+    const opts = {
+      total: indexCount, fitW, lineH, cols: indexCols,
+      cont: { w: Wv - 24, h: Hv - 12 - nextTop }, // Folgeseite: Rand 12 mm, Titelzeile darueber
+      minColW: 17 * fsI, idealColW: 26 * fsI, maxColW: 40 * fsI, // etwa 36 / 55 / 84 mm bei Standardschrift
     };
-    let chosen = planFor(targetCols);
-    if (indexCols === 0) for (let n = targetCols + 1; n <= targetCols + 2 && chosen.lay.length > 1; n++) chosen = planFor(n);
-    chosen.lay[0].forEach(([from, to], ci) => {
-      let yy = top0;
-      for (let i = from; i < to; i++) { const f = fitW(i, chosen.wn); drawEntry(g, text, f, x0 + ci * (chosen.wn + 3), yy); yy += f.h; }
-    });
-    return chosen.lay;
+    return { f, lineH, fsI, fitW, opts };
+  };
+  let setup = indexSetup(1);
+  let plan = planBlock({ ...setup.opts, box: null });
+  const headOff = (fsI) => 1.6 + 1.1 * fsI; // Abstand von der Ueberschrift bis zur ersten Zeile: waechst mit der Schrift
+  /** Plant das Verzeichnis fuer den Bereich (x0, y0, w, h) und zeichnet es dort. Mit Automatik wird die Schrift groesser (bis Faktor 1,5),
+   *  solange noch alles auf das Blatt passt; sonst gilt die Grundgroesse und der Rest steht auf Folgeseiten. */
+  const indexBlock = (x0, y0, w, h) => {
+    for (const f of indexAuto ? [1.5, 1.3, 1.15, 1] : [1]) {
+      const cand = indexSetup(f);
+      const p = planBlock({ ...cand.opts, box: { w, h: h - headOff(cand.fsI) } }); // Platz unter der Ueberschrift
+      if (f === 1 || (p.first && !p.rest)) { setup = cand; plan = p; break; }
+    }
+    if (!plan.first) return;
+    text(`Straßenverzeichnis (${indexCount})`, x0, y0, 3.4, { bold: true });
+    drawColumns({ gc: g, tf: text, fitW: setup.fitW, columns: plan.first.columns, colW: plan.first.colW, gap: plan.first.gap, x0, y0: y0 + headOff(setup.fsI), fsI: setup.fsI, isz: isz * setup.f, lineH: setup.lineH });
   };
 
   // ---- Anordnung ----
-  let layout = [[]];
   let panelFit = 1; // 1 = Bereich voll genutzt ohne Verkleinerung; kleiner = gestapelter Bereich musste verkleinert werden
   if (!horizontal) {
     let y = headerBlock(P.x, P.y + 5, P.w);
     const lg = legendBlock(P.x, y, Infinity);
     if (lg.h) y += lg.h + 9;
     y += scaleBlock(P.x, y, P.w);
-    if (showIndex) layout = indexBlock(P.x, y, P.w, P.y + P.h - y);
+    if (showIndex) indexBlock(P.x, y, P.w, P.y + P.h - y);
   } else {
     // waagerecht: die Bloecke muessen zusammen in die Breite passen (siehe panelplan.js)
     const SCALE_W = 70, GAP = 6, MIN_INDEX_W = 55;
@@ -364,22 +317,22 @@ export async function composeSheet(opts) {
     const headH = dry(() => headerBlock(P.x, P.y + 5, 70)) - (P.y + 5);
     const totalLegH = legendEntries.reduce((a, e) => a + e.h, 0);
     const wantCols = Math.max(1, Math.ceil(totalLegH / Math.max(ROW, P.h - headH - 4 - 2.2))); // mindestens eine Spalte: darin steht auch der Titel
-    const plan = planHorizontal({ panelW: P.w, legendCols: wantCols, legColW: LEG_COL_W, scaleW: SCALE_W, minIndexW: MIN_INDEX_W, gap: GAP, showIndex });
-    if (plan.mode === "row") {
+    const horizPlan = planHorizontal({ panelW: P.w, legendCols: wantCols, legColW: LEG_COL_W, scaleW: SCALE_W, minIndexW: MIN_INDEX_W, gap: GAP, showIndex });
+    if (horizPlan.mode === "row") {
       headerBlock(P.x, P.y + 5, 70);
-      legendBlock(P.x, P.y + 5 + headH, P.h - headH - 4, plan.legendCols);
-      scaleBlock(P.x + plan.legendW + GAP, P.y + 5, SCALE_W - GAP);
-      if (showIndex) layout = indexBlock(P.x + plan.legendW + GAP + SCALE_W + GAP, P.y + 5, plan.indexW, P.h - 5);
+      legendBlock(P.x, P.y + 5 + headH, P.h - headH - 4, horizPlan.legendCols);
+      scaleBlock(P.x + horizPlan.legendW + GAP, P.y + 5, SCALE_W - GAP);
+      if (showIndex) indexBlock(P.x + horizPlan.legendW + GAP + SCALE_W + GAP, P.y + 5, horizPlan.indexW, P.h - 5);
     } else {
       // zu schmal fuer nebeneinander: Titel und Massstab in einer Zeile, darunter die Legende ueber die ganze Breite;
       // das Verzeichnis steht auf den Folgeseiten. Vorher per Trockenlauf messen, ob alles in die Hoehe passt.
       const note = showIndex ? "Straßenverzeichnis: siehe Folgeseite" : "";
-      const HEAD_W = 75;
       const drawStacked = (fit = 1) => {
         const y0 = P.y + 5;
-        const hH = headerBlock(P.x, y0, HEAD_W, note) - y0;
-        const sx = P.x + HEAD_W + 2 * GAP, sw = Math.max(SCALE_W, P.x + P.w - sx);
-        const sH = scaleBlock(sx, y0, sw, fit);
+        const sw = Math.max(SCALE_W, Math.min(150, P.w - 60));
+        const sH = scaleBlock(P.x, y0, sw, fit);
+        const nx = P.x + sw + 2 * GAP;
+        const hH = headerBlock(nx, y0, Math.max(40, P.x + P.w - nx), note) - y0;
         const top = y0 + Math.max(hH, sH) + 4;
         const maxCols = Math.max(1, Math.floor(P.w / LEG_COL_W));
         const room = Math.max(ROW * 3, P.y + P.h - top - 2.2);
@@ -393,24 +346,21 @@ export async function composeSheet(opts) {
       if (panelFit < 1) { g.save(); g.translate(P.x, P.y); g.scale(panelFit, panelFit); g.translate(-P.x, -P.y); }
       drawStacked(panelFit);
       if (panelFit < 1) g.restore();
-      if (showIndex) layout = paginate(idx.entries.length, (i) => fitW(i, nextW).h, [], Array(nextCols).fill(Hv - 12 - nextTop));
     }
   }
   g.restore();
   pages.push(c1.toDataURL("image/png"));
 
-  // Folgeseiten: vier Spalten, so viele Seiten wie noetig, damit kein Eintrag verloren geht
-  for (let p = 1; p < layout.length; p++) {
+  // Folgeseiten: so viele wie noetig, damit kein Eintrag verloren geht
+  (plan.rest?.pages || []).forEach((columns, p) => {
     const [c2, g2] = mk(u);
     const t2 = (s, x, yv, size, o = {}) => { g2.font = `${o.bold ? "bold " : ""}${size}px ${FONT}`; g2.textAlign = o.align || "left"; g2.fillStyle = o.color || "#111"; g2.fillText(s, x, yv); };
-    t2(`${title} – Straßenverzeichnis (Fortsetzung, Seite ${p + 1})`, 12, 14, 5, { bold: true });
-    layout[p].forEach(([from, to], ci) => {
-      let yy = nextTop;
-      for (let i = from; i < to; i++) { const f = fitW(i, nextW); drawEntry(g2, t2, f, 12 + ci * (nextW + gapCol), yy); yy += f.h; }
-    });
+    t2(`${title} – Straßenverzeichnis (Fortsetzung, Seite ${p + 2})`, 12, 14, 5, { bold: true });
+    drawColumns({ gc: g2, tf: t2, fitW: setup.fitW, columns, colW: plan.rest.colW, gap: plan.rest.gap, x0: 12, y0: nextTop, fsI: setup.fsI, isz: isz * setup.f, lineH: setup.lineH });
     pages.push(c2.toDataURL("image/png"));
-  }
+  });
   // Seite, auf der das Strassenverzeichnis beginnt: 1 = auf dem Blatt, 2 = erst auf der Folgeseite, null = ausgeschaltet oder leer
-  const indexPage = !showIndex || !idx.entries.length ? null : layout[0].length ? 1 : 2;
-  return { pages, indexCount, cellM, cols, rows, panelFit, indexPage };
+  const indexPage = !showIndex || !indexCount ? null : plan.first ? 1 : 2;
+  const indexLayout = plan.first ? { size: setup.f, cols: plan.first.columns.length, colW: plan.first.colW, width: plan.first.width, height: plan.first.height, onSheet: plan.placedFirst } : null;
+  return { pages, indexCount, cellM, cols, rows, panelFit, indexPage, indexLayout };
 }

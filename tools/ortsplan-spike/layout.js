@@ -6,6 +6,11 @@ export const PAPER_MM = {
   a2l: [594, 420], a2p: [420, 594], a1l: [841, 594], a1p: [594, 841],
 };
 
+/** Oberer Rand in Einheiten von ui: darin stehen untereinander Ueberschrift und Ortsname (linksbuendig) ueber den Planquadrat-Buchstaben. */
+export const TOP_BAND = 27;
+/** Bei Lage "oben" beginnt der Bereich fuer Legende usw. unter dem Titel (Einheiten von ui). */
+export const TOP_PANEL_Y = 21;
+
 export const SIDES = ["right", "left", "top", "bottom"];
 
 /** Kartenformat: "fill" (Papier fuellen, Standard) oder ein Seitenverhaeltnis "B:H" wie "1:1", "3:2", "2:3". Rueckgabe: Breite/Hoehe oder null. */
@@ -35,19 +40,19 @@ export function computeLayout({ wMm, hMm, side = "right", fmt = "fill" }) {
   const panelH = Math.min(0.45 * hMm, Math.max(72 * ui, (wMm < hMm ? 0.36 : 0.28) * hMm)); // Hochformat hoeher: Legende und Massstab koennen untereinander stehen
   let frame, panel;
   if (sd === "left") {
-    panel = { x: 6 * ui, y: 14 * ui, w: sidebarW, h: hMm - 28 * ui };
+    panel = { x: 6 * ui, y: TOP_BAND * ui, w: sidebarW, h: hMm - TOP_BAND * ui - 14 * ui };
     const fx = panel.x + sidebarW + 9 * ui;
-    frame = { x: fx, y: 14 * ui, w: wMm - fx - 14 * ui, h: hMm - 28 * ui };
+    frame = { x: fx, y: TOP_BAND * ui, w: wMm - fx - 14 * ui, h: hMm - TOP_BAND * ui - 14 * ui };
   } else if (sd === "top") {
-    panel = { x: 14 * ui, y: 6 * ui, w: wMm - 28 * ui, h: panelH };
+    panel = { x: 14 * ui, y: TOP_PANEL_Y * ui, w: wMm - 28 * ui, h: panelH };
     const fy = panel.y + panelH + 14 * ui;
     frame = { x: 14 * ui, y: fy, w: wMm - 28 * ui, h: hMm - fy - 14 * ui };
   } else if (sd === "bottom") {
-    const fh = hMm - 14 * ui - panelH - 20 * ui;
-    frame = { x: 14 * ui, y: 14 * ui, w: wMm - 28 * ui, h: fh };
+    const fh = hMm - TOP_BAND * ui - panelH - 20 * ui;
+    frame = { x: 14 * ui, y: TOP_BAND * ui, w: wMm - 28 * ui, h: fh };
     panel = { x: 14 * ui, y: frame.y + fh + 14 * ui, w: wMm - 28 * ui, h: panelH };
   } else {
-    frame = { x: 14 * ui, y: 14 * ui, w: wMm - 14 * ui - 6.5 * ui - sidebarW - 6 * ui, h: hMm - 28 * ui };
+    frame = { x: 14 * ui, y: TOP_BAND * ui, w: wMm - 14 * ui - 6.5 * ui - sidebarW - 6 * ui, h: hMm - TOP_BAND * ui - 14 * ui };
     panel = { x: frame.x + frame.w + 6.5 * ui, y: frame.y, w: sidebarW, h: frame.h };
   }
   const ratio = parseFormat(fmt);

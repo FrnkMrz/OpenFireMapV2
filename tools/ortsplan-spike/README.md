@@ -59,18 +59,22 @@ Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs
 | `fire` | `0` | Feuerwehr-Ebene aus |
 | `isz` | Zahl, Standard 1 | Faktor für die Symbolgröße |
 | `sheet` | `1` | Planblatt mit Rahmen, Planquadraten, Legende, Maßstabsleiste, Nordpfeil und Straßenverzeichnis (Seite 2 bei Überlauf) |
-| `place` | Text | Ortsname im Titel des Planblatts |
+| `place` | Text | Ortsname, steht rechts in der Titelzeile über der Karte (im Assistenten wird er aus der Kartenmitte vorgeschlagen und ist änderbar; ohne Angabe gilt der Name des Gebiets) |
+| `title` | Text, Standard „Orts- und Hydrantenplan“ | Überschrift links in der Titelzeile über der Karte |
+| `iauto` | `0`, `1` (Standard) | Schrift des Straßenverzeichnisses wird bis Faktor 1,5 größer, solange noch alles auf das Blatt passt (`isize` bleibt die Grundgröße) |
 | `side` | `right` (Standard), `left`, `top`, `bottom` | Lage von Titel, Legende, Maßstab und Verzeichnis um die Karte; oben und unten stehen sie in drei Blöcken nebeneinander |
 | `icols` | 0 bis 6, Standard 0 | Spaltenzahl des Verzeichnisses auf Seite 1 (0 = automatisch: Spalten von etwa 55 mm, gleich hoch gefüllt) |
 | `fmt` | `fill` (Standard), `1:1`, `3:2`, `4:3`, `2:3`, `3:4` | Kartenformat: Seitenverhältnis des Kartenfensters (Quadrat, Quer, Hoch); Legende und Verzeichnis rücken direkt an die Karte |
 | `index` | `1` (Standard), `0` | Straßenverzeichnis an oder aus; über dem Blatt steht, wo es steht (bei `side=top|bottom` und kleinen Papieren erst auf Seite 2, die Seiten sind beschriftet) (zwischen Straßenname und Planquadraten steht eine Punktlinie) |
-| `isize` | 0,5 bis 3, Standard 1 | Schriftgröße des Straßenverzeichnisses als Faktor |
+| `isize` | 0,5 bis 3, Standard 1 | Grundgröße der Schrift des Straßenverzeichnisses als Faktor |
 | `owall` | `1` | Einbahn-Pfeile auch auf Verbindungs-, Kreis-, Staats- und Bundesstraßen (Standard: nur Gemeindestraßen: Wohn-, verkehrsberuhigte und Erschließungsstraßen) |
 | `ow` | `0`, `1` | Einbahn-Pfeile (Standard: an bei Maßstab 1:10.000 und größer, wenn `data/oneway.geojson` existiert) |
 | `lbl` | `avoid` (Standard), `top` | Straßennamen weichen den Symbolen aus, fehlende Namen stehen danach einmal über den Symbolen (`avoid`), oder alle Namen liegen über den Symbolen (`top`) |
 | `lsp` | Zahl in mm | Abstand der Straßennamen-Wiederholung (Standard 10 bei `avoid`, sonst 45) |
 
 Straßennamen, die entlang der Linie nirgends Platz finden (lauter kurze Linienstücke, Symbole, Pfeile), bekommen ihren Namen als Punkt in der Mitte des längsten Stücks, mit der Richtung der Straße (`labelpoints.js`): erst ohne, dann mit Überlappung, immer unter den Feuerwehr-Symbolen. So steht jede Straße des Verzeichnisses auch im Plan.
+
+Das Straßenverzeichnis ist ein eigener Block (`indexblock.js`): Er bekommt den verfügbaren Platz, wählt Spaltenzahl und Spaltenbreite selbst (breiteste Spalten, in die noch alles passt; nie schmaler als etwa 36 mm, damit Namen nicht mitten im Wort brechen), gleicht die Spaltenhöhen aus und wird nur so groß wie nötig. Was nicht auf das Blatt passt, steht auf Folgeseiten. Die Lage auf dem Blatt bestimmt der Aufruf in `sheet.js`.
 
 Die Legende zeigt nur Symbole, Linien und Straßenarten, die im Kartenausschnitt wirklich vorkommen. Die Feuerwehrhäuser sind 60 % größer als die übrigen Symbole.
 

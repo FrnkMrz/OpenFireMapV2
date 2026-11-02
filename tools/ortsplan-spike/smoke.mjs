@@ -25,6 +25,7 @@ const cases = [
   { path: "/", q: "sheet=1&scale=6200&paper=a4p&dpi=96&side=bottom&fmt=0.5000:1", ready: "__ready" },
   { path: "/", q: "sheet=1&scale=1500&paper=a4l&dpi=96&side=left&fmt=4.0000:1", ready: "__ready" },
   { path: "/", q: "sheet=1&scale=1500&paper=a4l&dpi=96&side=right&fmt=4.0000:1", ready: "__ready" },
+  { path: "/", q: "sheet=1&scale=2500&paper=a4l&dpi=96&side=right&fmt=0.2500:1&place=Hersbruck%20an%20der%20Pegnitz%20und%20Umgebung&title=Ortsplan%20und%20Hydrantenkarte%20Nuernberger%20Land", ready: "__ready" },
   { path: "/pick.html", q: "paper=a3l&side=right&fmt=2.1000:1&scale=4350", ready: "__pickReady" },
   { path: "/pick.html", q: "", ready: "__pickReady" },
 ];
