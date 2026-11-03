@@ -12,6 +12,9 @@ export const TOP_BAND = 27;
 export const TOP_PANEL_Y = 21;
 
 export const SIDES = ["right", "left", "top", "bottom"];
+/** Zusaetzliche Lage "none": keine Seitenleiste, die Karte fuellt das Blatt; Legende und Co. liegen frei verschiebbar (freelayout.js). */
+export const NO_SIDE = "none";
+export const ALL_SIDES = [...SIDES, NO_SIDE];
 
 /** Kartenformat: "fill" (Papier fuellen, Standard) oder ein Seitenverhaeltnis "B:H" wie "1:1", "3:2", "2:3". Rueckgabe: Breite/Hoehe oder null. */
 export function parseFormat(fmt) {
@@ -35,11 +38,14 @@ export function fitRatio(slot, ratio, ax = 0.5, ay = 0.5) {
  */
 export function computeLayout({ wMm, hMm, side = "right", fmt = "fill" }) {
   const ui = Math.max(1, Math.max(wMm, hMm) / 420); // A3 = 1, A2 = 1,4, A1 = 2
-  const sd = SIDES.includes(side) ? side : "right";
+  const sd = ALL_SIDES.includes(side) ? side : "right";
   const sidebarW = Math.min(92 * ui, Math.max(62, 0.24 * wMm));
   const panelH = Math.min(0.45 * hMm, Math.max(72 * ui, (wMm < hMm ? 0.36 : 0.28) * hMm)); // Hochformat hoeher: Legende und Massstab koennen untereinander stehen
   let frame, panel;
-  if (sd === "left") {
+  if (sd === NO_SIDE) {
+    frame = { x: 14 * ui, y: TOP_BAND * ui, w: wMm - 28 * ui, h: hMm - TOP_BAND * ui - 14 * ui };
+    panel = { x: wMm - 14 * ui, y: frame.y, w: 0, h: 0 };
+  } else if (sd === "left") {
     panel = { x: 6 * ui, y: TOP_BAND * ui, w: sidebarW, h: hMm - TOP_BAND * ui - 14 * ui };
     const fx = panel.x + sidebarW + 9 * ui;
     frame = { x: fx, y: TOP_BAND * ui, w: wMm - fx - 14 * ui, h: hMm - TOP_BAND * ui - 14 * ui };
@@ -60,7 +66,10 @@ export function computeLayout({ wMm, hMm, side = "right", fmt = "fill" }) {
     // Kartenfenster auf das Format zuschneiden; der Bereich fuer Legende usw. rueckt direkt an die Karte
     // Seitenleiste: der Bereich behaelt die volle Hoehe, auch wenn die Karte flach wird (breites Format); sonst liefen Legende
     // und Massstab unten aus dem Blatt. Die Karte sitzt oben buendig mit dem Bereich.
-    if (sd === "right") {
+    if (sd === NO_SIDE) {
+      frame = fitRatio(frame, ratio, 0, 0);
+      panel = { ...panel, x: frame.x + frame.w };
+    } else if (sd === "right") {
       frame = fitRatio(frame, ratio, 0, 0);
       panel = { ...panel, x: frame.x + frame.w + 6.5 * ui };
     } else if (sd === "left") {

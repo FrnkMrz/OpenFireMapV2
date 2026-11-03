@@ -47,6 +47,10 @@
     #pv-panel { background: #fde9c8; color: #633806; font-size: 10px; display: flex; gap: 3px; padding: 3px; }
     #pv-title { background: #fde9c8; color: #633806; font-size: 9px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0 6px; font-weight: 600; line-height: 1.15; }
     #pv-title span:last-child { font-size: 12px; font-weight: 700; }
+    #prev .blk { z-index: 2; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; line-height: 1.1; font-weight: 600; border: 1px solid rgba(15, 23, 42, .55); cursor: grab; touch-action: none; user-select: none; color: #0f172a; border-radius: 2px; }
+    #prev .blk:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+    #prev .blk.drag { cursor: grabbing; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+    #prev .blk .rz { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; background: #0f172a; opacity: .75; cursor: nwse-resize; border-radius: 2px 0 0 0; }
     #pv-panel span { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 255, 255, .55); border-radius: 2px; }
     details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
     details summary { cursor: pointer; color: var(--muted); }
@@ -117,7 +121,20 @@
             <label class="lab" for="o-title" style="margin-top:8px;display:block">Überschrift</label><input id="o-title" type="text" maxlength="60" placeholder="Orts- und Hydrantenplan" autocomplete="off" style="width:100%;box-sizing:border-box">
           </div>
           <div><p class="lab">Wo steht die Legende?</p><div class="chips" id="g-side"></div></div>
-          <div id="prev" role="img" aria-label="Vorschau der Blattaufteilung"><div id="pv-title"></div><div id="pv-map"></div><div id="pv-panel"></div></div>
+          <label class="row"><input type="checkbox" id="c-manual"> Blöcke selbst anordnen</label>
+          <div id="onmap-wrap" hidden>
+            <label class="row"><input type="checkbox" id="c-onmap"> Blöcke dürfen auf der Karte liegen</label>
+            <div id="obg-wrap" hidden style="margin-top:6px"><p class="lab">Untergrund auf der Karte</p><div class="chips" id="g-obg"></div></div>
+          </div>
+          <p class="hint" id="pos-hint" hidden>Ziehe die Kästen in die freien Flächen der Vorschau (oder Pfeiltasten, mit Umschalt weiter). Das Straßenverzeichnis lässt sich an der Ecke unten rechts größer ziehen (mit Tastatur: Alt + Pfeiltasten). Die Größe der Kästen ist geschätzt.</p>
+          <div id="pos-reset-wrap" hidden><button class="btn" id="pos-reset" type="button">Anordnung zurücksetzen</button></div>
+          <div id="prev" role="group" aria-label="Vorschau der Blattaufteilung">
+            <div id="pv-title"></div><div id="pv-map"></div><div id="pv-panel"></div>
+            <div class="blk" id="pv-b-legend" data-b="legend" tabindex="0" role="button" aria-label="Legende verschieben" style="background:#dbeafe">Legende</div>
+            <div class="blk" id="pv-b-scale" data-b="scale" tabindex="0" role="button" aria-label="Maßstab und Nordpfeil verschieben" style="background:#fef3c7">Maßstab, Nord</div>
+            <div class="blk" id="pv-b-source" data-b="source" tabindex="0" role="button" aria-label="Quellenangabe verschieben" style="background:#ede9fe">Quellen</div>
+            <div class="blk" id="pv-b-index" data-b="index" tabindex="0" role="button" aria-label="Straßenverzeichnis verschieben" style="background:#dcfce7">Verzeichnis<span class="rz" data-rz="1" aria-hidden="true"></span></div>
+          </div>
           <div>
             <p class="lab">Was steht darin?</p>
             <label class="row"><input type="checkbox" id="c-sym"> Symbole (Feuerwehr, Hydranten, Einbahn)</label>

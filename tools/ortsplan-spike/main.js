@@ -6,7 +6,8 @@ import { buildStyle, zoomForScale, CSS_PX_PER_MM } from "./style.js";
 import { ICON_PX, loadIcons } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
-import { PAPER_MM, computeLayout, NICE_SCALES } from "./layout.js";
+import { PAPER_MM, ALL_SIDES, NO_SIDE, computeLayout, NICE_SCALES } from "./layout.js";
+import { parsePos, defaultPos, clampPos, blockDims } from "./freelayout.js";
 import { indexNote } from "./indexnote.js";
 import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
 import { streetLabelPoints, clipLineToBox } from "./labelpoints.js";
@@ -54,7 +55,7 @@ const setField = (el, v) => {
   el.value = val;
 };
 for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "right", icols: q.get("icols") || "0", fmt, place, title: sheetTitle })) setField(form.elements[k], v);
-document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "right", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), iauto: q.get("iauto") === "0" ? "0" : "1", dpi: String(dpi), ...(areaName ? { area: areaName } : {}), ...(q.get("place") ? { place: q.get("place") } : {}), ...(q.get("title") ? { title: q.get("title") } : {}) })}`;
+document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "right", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), iauto: q.get("iauto") === "0" ? "0" : "1", dpi: String(dpi), ...(areaName ? { area: areaName } : {}), ...(q.get("place") ? { place: q.get("place") } : {}), ...(q.get("title") ? { title: q.get("title") } : {}), ...(q.get("pos") ? { pos: q.get("pos") } : {}), ...(q.get("onmap") ? { onmap: q.get("onmap") } : {}), ...(q.get("obg") ? { obg: q.get("obg") } : {}) })}`;
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
 
@@ -62,7 +63,12 @@ document.getElementById("info").textContent =
 const sheet = q.get("sheet") === "1";
 // Lage von Legende, Massstab und Verzeichnis: side=right (Standard) | left | top | bottom; icols = Spaltenzahl des Verzeichnisses (0 = automatisch)
 // Kartenformat: fmt=fill (Papier fuellen, Standard) | 1:1 | 3:2 | 2:3 | 4:3 | 3:4 ... (Seitenverhaeltnis des Kartenfensters). Geometrie in layout.js.
-const side = ["left", "right", "top", "bottom"].includes(q.get("side")) ? q.get("side") : "right";
+const side = ALL_SIDES.includes(q.get("side")) ? q.get("side") : "right"; // "none": keine Seitenleiste, Karte fuellt das Blatt
+// Freie Lage der Bloecke (pos=l:x,y;s:x,y;q:x,y;i:x,y,b,h als Anteile des Papiers, siehe freelayout.js). Bei side=none immer, sonst nur mit pos.
+const posParam = parsePos(q.get("pos"));
+const freePos = side === NO_SIDE || posParam
+  ? clampPos({ ...defaultPos({ paper, side, fmt, lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0" }), ...(posParam || {}) }, blockDims({ lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0", ui: Math.max(1, Math.max(...PAPER_MM[paper] || PAPER_MM.a4l) / 420), W: PAPER_MM[paper]?.[0] ?? PAPER_MM.a4l[0], H: PAPER_MM[paper]?.[1] ?? PAPER_MM.a4l[1] }))
+  : null;
 const indexCols = Math.min(6, Math.max(0, Math.round(+(q.get("icols") || 0))));
 const { ui, frame, panel } = computeLayout({ wMm, hMm, side, fmt });
 const mapWmm = sheet ? frame.w : wMm;
@@ -263,7 +269,7 @@ async function buildSheet() {
   if (sheet) {
     const meta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
     const res = await composeSheet({
-      map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, legendSymbols: q.get("lsym") !== "0", legendRoads: q.get("lroad") !== "0", indexSize, warning, side, panel, indexCols,
+      map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, legendSymbols: q.get("lsym") !== "0", legendRoads: q.get("lroad") !== "0", indexSize, warning, side, panel, indexCols, pos: freePos, overBg: q.get("obg") === "clear" ? "clear" : "white",
       title: sheetTitle, place,
       indexAuto: q.get("iauto") !== "0",
     });
