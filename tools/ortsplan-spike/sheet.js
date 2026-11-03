@@ -363,8 +363,9 @@ export async function composeSheet(opts) {
     const place = (name, draw) => {
       const p = pos[name];
       if (!p) return;
-      const x = p.x * Wv, y = p.y * Hv;
-      const sz = dry(() => draw(x, y));
+      const sz = dry(() => draw(0, 0)); // das Mass haengt nicht von der Lage ab
+      // Ein Block bleibt mit seinem echten Mass ganz im Papier (die Lage im Assistenten beruht auf einer Schaetzung)
+      const x = Math.max(0, Math.min(p.x * Wv, Wv - sz.w - 2)), y = Math.max(0, Math.min(p.y * Hv, Hv - sz.h - 2));
       box({ x: x - 2, y: y - 1.5, w: sz.w + 4, h: sz.h + 3 });
       draw(x, y);
       halo = false;

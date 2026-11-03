@@ -70,9 +70,11 @@ export function blockDims({ lsym = true, lroad = true, ui = 1, W = 420, H = 297 
   return out;
 }
 
-/** Grobe Groesse der Bloecke in "virtuellen mm" (mal ui = mm auf dem Papier). Nur fuer die Vorschau und die Standardlage; gezeichnet wird mit den echten Massen. */
-export function estimateSizes({ lsym = true, lroad = true } = {}) {
-  const rows = (lsym ? 8 : 0) * 5.4 + (lroad ? 6 : 0) * 4.9;
+/** Grobe Groesse der Bloecke in "virtuellen mm" (mal ui = mm auf dem Papier). Nur fuer die Vorschau und die Standardlage; gezeichnet wird mit den echten Massen.
+ *  worst: Legende mit allen moeglichen Eintraegen (16 Symbole, Gemeindegrenze, 5 Strassenarten); sie fuellt sich je nach Kartenausschnitt nur zum Teil.
+ *  Die Standardlage reserviert diesen Platz, damit die Bloecke darunter nie in die Legende ragen; die Vorschau zeigt einen typischen Umfang. */
+export function estimateSizes({ lsym = true, lroad = true, worst = false } = {}) {
+  const rows = (lsym ? (worst ? 16 : 10) : 0) * 5.4 + (lroad ? (worst ? 5.4 + 5 * 4.86 : 6 * 4.9) : 0);
   const legend = lsym || lroad ? { w: 62, h: 5.6 + rows } : null;
   return { legend, scale: { w: 40, h: 38 }, source: { w: 62, h: 17 } };
 }
@@ -84,7 +86,7 @@ export function estimateSizes({ lsym = true, lroad = true } = {}) {
 export function defaultPos({ paper = "a3l", side = "right", fmt = "fill", lsym = true, lroad = true } = {}) {
   const [W, H] = PAPER_MM[paper] || PAPER_MM.a3l;
   const { ui, frame, panel } = computeLayout({ wMm: W, hMm: H, side, fmt });
-  const sz = estimateSizes({ lsym, lroad });
+  const sz = estimateSizes({ lsym, lroad, worst: true });
   const gap = 6 * ui;
   const out = {};
   const put = (name, x, y) => { out[name] = { x: x / W, y: y / H }; };
@@ -113,13 +115,14 @@ export function defaultPos({ paper = "a3l", side = "right", fmt = "fill", lsym =
     // ohne Seitenleiste: im Rand rechts von der Karte, wenn er breit genug ist, sonst innen an der rechten Kartenkante
     const margin = W - (frame.x + frame.w + 8 * ui) - 6 * ui;
     const x = side !== "none" ? panel.x : margin >= colW ? frame.x + frame.w + 8 * ui : frame.x + frame.w - colW - 4 * ui;
-    let y = side === "none" ? frame.y + 4 * ui : panel.y;
-    for (const name of ["legend", "scale", "source"]) {
-      if (!sz[name]) continue;
-      put(name, x, y);
-      y += sz[name].h * ui + gap;
-    }
+    const y0 = side === "none" ? frame.y + 4 * ui : panel.y;
     const bottom = H - 14 * ui;
+    // Platz fuer die volle Legende reservieren; passt der Stapel so nicht aufs Blatt (kleine Papiere), gilt der typische Umfang
+    const stack = (sizes) => { let yy = y0; const at = {}; for (const name of ["legend", "scale", "source"]) { if (!sizes[name]) continue; at[name] = yy; yy += sizes[name].h * ui + gap; } return { at, end: yy }; };
+    let st = stack(sz);
+    if (st.end - gap > bottom) st = stack(estimateSizes({ lsym, lroad }));
+    for (const [name, yy] of Object.entries(st.at)) put(name, x, yy);
+    const y = st.end;
     out.index = { x: x / W, y: y / H, w: colW / W, h: Math.max(30 * ui, bottom - y) / H };
   }
   return clampPos(out, blockDims({ lsym, lroad, ui, W, H }));

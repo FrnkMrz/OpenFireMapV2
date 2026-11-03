@@ -115,3 +115,13 @@ test("defaultPos: oben/unten - das Verzeichnis ueberdeckt keinen anderen Block (
     }
   }
 });
+
+test("defaultPos: die Legende hat Platz fuer alle moeglichen Eintraege, der Massstab steht darunter (A3 quer, Seitenleiste)", () => {
+  const [W, H] = PAPER_MM.a3l;
+  const worst = estimateSizes({ worst: true }).legend, typical = estimateSizes().legend;
+  assert.ok(worst.h > typical.h);
+  for (const side of ["right", "left", "none"]) {
+    const p = defaultPos({ paper: "a3l", side });
+    assert.ok(p.scale.y * H >= p.legend.y * H + worst.h, `${side}: Massstab beginnt unter der vollen Legende`);
+  }
+});
