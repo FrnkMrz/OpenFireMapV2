@@ -57,7 +57,8 @@
     .btn { font: inherit; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; text-decoration: none; }
     .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
     [hidden] { display: none !important; }
-    @media (max-width: 760px) {
+    @media (max-width: 900px) { #panel { width: 320px; } } /* schmale Fenster: das Menue bleibt rechts neben der Karte */
+    @media (max-width: 540px) { /* erst auf dem Handy liegt es unter der Karte */
       #app { flex-direction: column; }
       #panel { width: 100%; max-height: 52vh; border-left: 0; border-top: 1px solid var(--line); }
       #maphint { display: none; }
@@ -92,6 +93,10 @@
         <section class="sec" data-s="0">
           <p class="hint" id="hint-frame"></p>
           <div><p class="lab">Form des Rahmens</p><div class="chips" id="g-free"></div></div>
+          <div id="paper-wrap">
+            <p class="lab">Papier</p><div class="chips" id="g-size1"></div>
+            <p class="lab" style="margin-top:10px">Ausrichtung</p><div class="chips" id="g-orient1"></div>
+          </div>
           <div><p class="lab" id="lab-scale">Maßstab 1 :</p><select id="scale" aria-labelledby="lab-scale"></select></div>
           <label class="row"><input type="checkbox" id="c-round"> Maßstab auf Standardwert runden (z. B. 1:4.000)</label>
           <div><button class="btn" id="fit" type="button">Rahmen einpassen</button></div>

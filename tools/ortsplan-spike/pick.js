@@ -164,7 +164,7 @@ function drawPreview() {
 function refresh() {
   persist();
   if (step === 2) scheduleSuggest();
-  for (const [id, key] of [["g-size", "size"], ["g-orient", "orient"], ["g-side", "side"]]) {
+  for (const [id, key] of [["g-size", "size"], ["g-orient", "orient"], ["g-size1", "size"], ["g-orient1", "orient"], ["g-side", "side"]]) {
     for (const b of $(id).children) b.setAttribute("aria-pressed", String(b.dataset.v === S[key]));
   }
   const scales = [...new Set([...NICE_SCALES, S.scale])].sort((a, b) => a - b);
@@ -174,10 +174,11 @@ function refresh() {
   for (const b of $("g-free").children) b.setAttribute("aria-pressed", String((b.dataset.v === "1") === S.free));
   $("frame").classList.toggle("fixed", !S.free);
   $("fmt-wrap").hidden = S.free;
+  $("paper-wrap").hidden = S.free; // "Wie das Blatt": das Papier bestimmt die Rahmenform, also gleich hier waehlbar
   $("c-round").checked = S.round; $("c-round").closest("label").hidden = !S.free;
   $("hint-frame").textContent = S.free
     ? "Ziehe den Rahmen an den Kanten und Ecken so auf, wie du den Ausschnitt brauchst. Papier und Rahmen bestimmen den Maßstab."
-    : "Der Rahmen hat das Seitenverhältnis des Blatts (Schritt 2). An den Ecken ziehen macht ihn größer oder kleiner und ändert den Maßstab.";
+    : "Der Rahmen hat das Seitenverhältnis des gewählten Blatts (Papier und Ausrichtung oben, weitere Formen in Schritt 2). An den Ecken ziehen macht ihn größer oder kleiner und ändert den Maßstab.";
   $("c-sym").checked = S.lsym; $("c-road").checked = S.lroad; $("c-index").checked = S.index;
   $("o-place").value = T.place; $("o-title").value = T.title; $("o-dpi").value = String(S.dpi); $("o-iauto").checked = S.iauto; $("o-icols").value = String(S.icols); $("o-isize").value = String(S.isize);
   drawFrame(); updateText(); drawPreview();
@@ -199,8 +200,10 @@ const chips = (id, items, key, refit) => {
     return b;
   }));
 };
-chips("g-size", [["a4", "A4"], ["a3", "A3"], ["a2", "A2"], ["a1", "A1"]], "size", true);
-chips("g-orient", [["l", "Quer"], ["p", "Hoch"]], "orient", true);
+for (const sfx of ["", "1"]) { // dieselben Auswahlen in Schritt 2 und (bei "Wie das Blatt") in Schritt 1
+  chips(`g-size${sfx}`, [["a4", "A4"], ["a3", "A3"], ["a2", "A2"], ["a1", "A1"]], "size", true);
+  chips(`g-orient${sfx}`, [["l", "Quer"], ["p", "Hoch"]], "orient", true);
+}
 chips("g-side", [["top", "Oben"], ["bottom", "Unten"], ["left", "Links"], ["right", "Rechts"]], "side", true);
 $("scale").addEventListener("change", () => { S.scale = +$("scale").value; fit(); refresh(); });
 $("fmt").addEventListener("change", () => { S.fmt = $("fmt").value; fit(); refresh(); });
