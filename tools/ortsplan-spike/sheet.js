@@ -340,8 +340,9 @@ export async function composeSheet(opts) {
       const stripY = Math.max(F.y + F.h + 10, y + 4); // unter den Planquadrat-Buchstaben und unter dem, was die Seitenleiste schon belegt (flache Karten)
       const strip = { x: Math.min(P.x, F.x), y: stripY, w: Math.max(P.x + P.w, F.x + F.w) - Math.min(P.x, F.x), h: Hv - 10 - stripY };
       const hasStrip = strip.h >= 25;
-      const sidebar = { x: P.x, y, w: P.w, h: (hasStrip ? Math.min(P.y + P.h, F.y + F.h) : P.y + P.h) - y };
-      indexBlock(hasStrip ? [[sidebar], [sidebar, strip], [strip]] : [[sidebar]]);
+      const sidebar = { x: P.x, y, w: P.w, h: P.y + P.h - y }; // volle Hoehe: gilt, wenn das Verzeichnis allein in die Seitenleiste passt
+      const sidebarCut = { ...sidebar, h: Math.min(P.y + P.h, F.y + F.h) - y }; // bis zur Unterkante der Karte, darunter beginnt der Streifen
+      indexBlock(hasStrip ? [[sidebar], [sidebarCut, strip], [strip]] : [[sidebar]]);
     }
   } else {
     // waagerecht: die Bloecke muessen zusammen in die Breite passen (siehe panelplan.js)
