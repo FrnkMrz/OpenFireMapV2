@@ -87,6 +87,8 @@ export async function composeSheet(opts) {
   const { map, scale, dpi, paperMm, frame, title, place = "", meta, warning } = opts;
   const side = opts.side || "right"; // Lage von Legende, Massstab und Verzeichnis: right | left | top | bottom
   const indexCols = opts.indexCols || 0; // Spaltenzahl des Verzeichnisses (0 = automatisch)
+  const overClear = opts.overBg === "clear"; // Bloecke ueber der Karte: durchsichtig (Schrift mit weissem Rand) statt heller Untergrund
+  const pos = opts.pos || null; // freie Lage der Bloecke (Anteile des Papiers, siehe freelayout.js); ohne Angabe ordnet das Blatt sie nach `side` an
   const [W, H] = paperMm;
   const u = opts.ui || 1; // Oberflaechen-Faktor: A3 = 1, groessere Papiere skalieren Schrift und Seitenleiste mit
   // Bereich fuer Legende, Massstab und Verzeichnis in mm auf dem Papier {x, y, w, h}. Ohne Angabe: Seitenleiste rechts neben der Karte
@@ -119,8 +121,11 @@ export async function composeSheet(opts) {
     g.textBaseline = "alphabetic";
     try { return fn(); } finally { g = saved; }
   };
+  let halo = false; // Schrift mit weissem Rand: fuer durchsichtige Bloecke ueber der Karte
   const text = (s, x, y, size, { bold = false, italic = false, align = "left", color = "#111" } = {}) => {
-    g.font = `${italic ? "italic " : ""}${bold ? "bold " : ""}${size}px ${FONT}`; g.textAlign = align; g.fillStyle = color; g.fillText(s, x, y);
+    g.font = `${italic ? "italic " : ""}${bold ? "bold " : ""}${size}px ${FONT}`; g.textAlign = align;
+    if (halo) { g.save(); g.strokeStyle = "rgba(255,255,255,0.92)"; g.lineWidth = size * 0.3; g.lineJoin = "round"; g.strokeText(s, x, y); g.restore(); }
+    g.fillStyle = color; g.fillText(s, x, y);
   };
 
   // Karte
@@ -204,13 +209,14 @@ export async function composeSheet(opts) {
   // ---- Block 2: Legende (bei waagerechtem Bereich in mehreren Spalten) ----
   const ROW = 5.4, LEG_COL_W = 74;
   const legendEntries = [];
-  for (const item of legendItems) legendEntries.push({ h: ROW, draw: (x, y) => { g.drawImage(iconToCanvas(icons.get(item.icon)), x, y - 4.0, 4.4, 4.4); text(item.text, x + 6.2, y - 0.6, 2.4); } });
-  if (showBoundary) legendEntries.push({ h: ROW, draw: (x, y) => {
+  const tw = (str) => { g.font = `2.4px ${FONT}`; return g.measureText(str).width + 6.2; }; // Breite einer Zeile samt Symbol
+  for (const item of legendItems) legendEntries.push({ h: ROW, tw: tw(item.text), draw: (x, y) => { g.drawImage(iconToCanvas(icons.get(item.icon)), x, y - 4.0, 4.4, 4.4); text(item.text, x + 6.2, y - 0.6, 2.4); } });
+  if (showBoundary) legendEntries.push({ h: ROW, tw: tw("Gemeindegrenze"), draw: (x, y) => {
     g.save(); g.strokeStyle = "rgba(51,51,51,0.7)"; g.lineWidth = 0.35; g.setLineDash([2.6, 2.6]);
     g.beginPath(); g.moveTo(x, y - 2); g.lineTo(x + 4.4, y - 2); g.stroke(); g.restore();
     text("Gemeindegrenze", x + 6.2, y - 0.6, 2.4);
   } });
-  for (const c of roadClasses) legendEntries.push({ h: ROW * 0.9, draw: (x, y) => {
+  for (const c of roadClasses) legendEntries.push({ h: ROW * 0.9, tw: tw(c.label), draw: (x, y) => {
     const w = Math.max((c.realM / scale) * 1000, c.minMm);
     g.lineCap = "butt";
     g.strokeStyle = c.casing; g.lineWidth = w + 0.44; g.beginPath(); g.moveTo(x, y - 1.7); g.lineTo(x + 4.4, y - 1.7); g.stroke();
@@ -219,7 +225,7 @@ export async function composeSheet(opts) {
   } });
   /** Zeichnet die Legende ab (x0, y0); maxH = verfuegbare Hoehe (Unendlich: eine Spalte). Rueckgabe: belegte Hoehe und Breite. */
   const legendBlock = (x0, y0, maxH, maxCols = Infinity) => {
-    if (!legendEntries.length) return { h: 0, w: 0 }; // Legende abgewaehlt: weder Ueberschrift noch Platz
+    if (!legendEntries.length) return { h: 0, w: 0, tw: 0 }; // Legende abgewaehlt: weder Ueberschrift noch Platz
     text("Legende", x0, y0, 3.4, { bold: true });
     const top = y0 + 2.2;
     // Spalten gleichmaessig fuellen (nicht eine volle und eine fast leere): Anzahl aus der Gesamthoehe, dann je Spalte etwa gleich viel
@@ -235,13 +241,24 @@ export async function composeSheet(opts) {
       maxUsed = Math.max(maxUsed, used);
       e.draw(x0 + col * LEG_COL_W, top + used);
     }
-    return { h: 2.2 + maxUsed, w: (col + 1) * LEG_COL_W };
+    return { h: 2.2 + maxUsed, w: (col + 1) * LEG_COL_W, tw: Math.max(...legendEntries.map((e) => e.tw)) };
   };
 
-  // ---- Block 3: Massstabsleiste, Nordpfeil, Datenstand ----
+  // ---- Block 3: Massstabsleiste und Nordpfeil; Block 3b: Datenstand und Quellenangabe ----
   // fit < 1: der Block wird verkleinert gezeichnet; die Leiste wird dafuer entsprechend laenger gezeichnet, damit sie auf dem Papier
   // ihre echte Laenge behaelt (sonst stimmte die Beschriftung 50 m / 100 m nicht mehr mit der Karte).
-  const scaleBlock = (x0, y0, w, fit = 1) => {
+  const ATTRIBUTION = "© OpenStreetMap contributors (ODbL; openstreetmap.org/copyright) · Basiskarte: Protomaps © OpenStreetMap · Feuerwehr- und Wasserstellen-Daten: OpenFireMap.org auf Basis von OpenStreetMap";
+  /** Datenstand und Quellenangabe ab Grundlinie y0, auf Breite w umgebrochen. Rueckgabe: Grundlinie nach der letzten Zeile. */
+  const sourceBlock = (x0, y0, w) => {
+    let ay = y0;
+    const stand = `Datenstand OSM: ${meta?.osm_data_until ? meta.osm_data_until.replace("T", " ").replace("Z", " UTC") : "unbekannt"}`;
+    for (const l of [...wrap(stand, 2.1, w), ...wrap(ATTRIBUTION, 1.9, w)]) {
+      text(l, x0, ay, l === stand ? 2.1 : 1.9, { color: "#333" }); ay += 2.7;
+    }
+    return ay;
+  };
+  /** Massstab, Nordpfeil und (source) daneben die Quellenangabe. Rueckgabe: belegte Hoehe ab y0 und Breite. */
+  const scaleParts = (x0, y0, w, fit = 1, source = true) => {
     let y = y0;
     const barM = nearest(NICE_BAR_M, 28 * u, scale), barMm = (barM / scale) * 1000 / u / fit; // Ziel: 28 "virtuelle" mm, also 28 mm auf A3 und 56 mm auf A1
     text(`Maßstab 1 : ${scale.toLocaleString("de-DE")}`, x0, y, 2.8, { bold: true }); y += 3.4;
@@ -261,13 +278,11 @@ export async function composeSheet(opts) {
     g.fillStyle = "#fff"; g.strokeStyle = "#000"; g.lineWidth = 0.3;
     g.beginPath(); g.moveTo(nx, ny - 8); g.lineTo(nx - 3.2, ny + 3); g.lineTo(nx, ny + 1.2); g.closePath(); g.fill(); g.stroke();
     text("N", nx, ny - 9.4, 3.2, { bold: true, align: "center" });
-    let ay = ny - 5;
-    const stand = `Datenstand OSM: ${meta?.osm_data_until ? meta.osm_data_until.replace("T", " ").replace("Z", " UTC") : "unbekannt"}`;
-    for (const l of [...wrap(stand, 2.1, w - 14), ...wrap("© OpenStreetMap contributors (ODbL; openstreetmap.org/copyright) · Basiskarte: Protomaps © OpenStreetMap · Feuerwehr- und Wasserstellen-Daten: OpenFireMap.org auf Basis von OpenStreetMap", 1.9, w - 14)]) {
-      text(l, x0 + 14, ay, l === stand ? 2.1 : 1.9, { color: "#333" }); ay += 2.7;
-    }
-    return Math.max(ny + 9, ay + 2) - y0;
+    const own = Math.max(barMm + 6, 38); // Breite von Leiste und Beschriftung
+    if (!source) return { h: ny + 9 - y0, w: own };
+    return { h: Math.max(ny + 9, sourceBlock(x0 + 14, ny - 5, w - 14) + 2) - y0, w };
   };
+  const scaleBlock = (x0, y0, w, fit = 1) => scaleParts(x0, y0, w, fit, true).h;
 
   // ---- Block 4: Strassenverzeichnis (indexblock.js: der Block plant Spalten, Breite und Folgeseiten selbst) ----
   const pages = [];
@@ -307,7 +322,7 @@ export async function composeSheet(opts) {
    *  Flaeche unter der Karte). Mit Automatik wird die Schrift groesser (bis Faktor 1,5), solange noch alles auf das Blatt passt; je Schriftgroesse
    *  gilt die erste Bereichsfolge, die alles aufnimmt. Passt es auch in Grundgroesse nicht, gilt die Folge mit den meisten Eintraegen
    *  auf dem Blatt und der Rest steht auf Folgeseiten. */
-  const indexBlock = (sets) => {
+  const indexBlock = (sets, bg = null) => {
     let best = null;
     outer: for (const f of indexAuto ? [1.5, 1.3, 1.15, 1] : [1]) {
       const cand = indexSetup(f);
@@ -322,6 +337,10 @@ export async function composeSheet(opts) {
     indexParts = best.parts;
     plan = { first: best.parts[0]?.plan.first || null, rest: best.rest, placedFirst: best.end };
     best.parts.forEach(({ region, plan: p }, k) => {
+      if (bg) { // frei platziert: liegt das Verzeichnis ueber der Karte, bekommt es einen hellen Untergrund
+        g.font = `bold 3.4px ${FONT}`;
+        bg({ x: region.x - 2, y: region.y - 4.6, w: Math.max(p.first.width, g.measureText(`Straßenverzeichnis (${indexCount})`).width) + 4, h: headOff(setup.fsI) + p.first.height + 4.6 + 1.5 });
+      }
       text(k === 0 ? `Straßenverzeichnis (${indexCount})` : "Straßenverzeichnis (Fortsetzung)", region.x, region.y, 3.4, { bold: true });
       drawColumns({ gc: g, tf: text, fitW: setup.fitW, columns: p.first.columns, colW: p.first.colW, gap: p.first.gap, x0: region.x, y0: region.y + headOff(setup.fsI), fsI: setup.fsI, isz: isz * setup.f, lineH: setup.lineH });
     });
@@ -329,7 +348,42 @@ export async function composeSheet(opts) {
 
   // ---- Anordnung ----
   let panelFit = 1; // 1 = Bereich voll genutzt ohne Verkleinerung; kleiner = gestapelter Bereich musste verkleinert werden
-  if (!horizontal) {
+  if (pos) {
+    // Freie Anordnung: jeder Block steht an seiner Lage (linke obere Ecke, Anteil des Papiers); ragt er in die Karte, bekommt er einen hellen Untergrund
+    const F = { x: frame.x / u, y: frame.y / u, w: frame.w / u, h: frame.h / u };
+    const overMap = (r) => r.x < F.x + F.w && r.x + r.w > F.x && r.y < F.y + F.h && r.y + r.h > F.y;
+    const box = (r) => {
+      halo = false;
+      if (!overMap(r)) return;
+      if (overClear) { halo = true; return; }
+      g.save(); g.fillStyle = "rgba(255,255,255,0.93)"; g.strokeStyle = "rgba(0,0,0,0.4)"; g.lineWidth = 0.25;
+      g.beginPath(); g.roundRect(r.x, r.y, r.w, r.h, 1.2); g.fill(); g.stroke(); g.restore();
+    };
+    /** Mass ({w, h} ab der linken oberen Ecke) im Trockenlauf, Untergrund, dann der Block selbst. */
+    const place = (name, draw) => {
+      const p = pos[name];
+      if (!p) return;
+      const x = p.x * Wv, y = p.y * Hv;
+      const sz = dry(() => draw(x, y));
+      box({ x: x - 2, y: y - 1.5, w: sz.w + 4, h: sz.h + 3 });
+      draw(x, y);
+      halo = false;
+    };
+    if (warning) {
+      const w = Math.min(130, F.w - 8), h = dry(() => headerBlock(F.x + 4, F.y + 7, w)) - (F.y + 7);
+      box({ x: F.x + 2, y: F.y + 2, w: w + 4, h: h + 2 });
+      headerBlock(F.x + 4, F.y + 7, w);
+      halo = false;
+    }
+    place("legend", (x, y) => { const r = legendBlock(x, y + 3.2, Infinity); return { w: r.tw, h: 3.2 + r.h }; });
+    place("scale", (x, y) => { const r = scaleParts(x, y + 2.8, 0, 1, false); return { w: r.w, h: 2.8 + r.h }; });
+    place("source", (x, y) => { const w = 62; return { w, h: sourceBlock(x, y + 2.2, w) - y }; });
+    if (showIndex && pos.index) {
+      const r = pos.index;
+      indexBlock([[{ x: r.x * Wv, y: r.y * Hv + 3.4, w: r.w * Wv, h: r.h * Hv - 3.4 }]], box);
+      halo = false;
+    }
+  } else if (!horizontal) {
     let y = headerBlock(P.x, P.y + 5, P.w);
     const lg = legendBlock(P.x, y, Infinity);
     if (lg.h) y += lg.h + 9;

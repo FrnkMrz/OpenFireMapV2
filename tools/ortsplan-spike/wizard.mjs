@@ -141,6 +141,52 @@ try {
   check(sp.get("side") === "top" && sp.get("lsym") === "0" && sp.get("index") === "0" && sp.get("lroad") === "1" && sp.get("paper") === "a2p", `Link traegt die Wahl: ${link}`);
   check(await page.isVisible("#go") && !(await page.isVisible("#next")), "Schritt 3: Knopf 'Ortsplan erstellen' statt 'Weiter'");
 
+  // Freie Anordnung: "Ohne Leiste" setzt Positionen, ein Kasten laesst sich ziehen, eine andere Lage setzt zurueck
+  await page.click('#g-side button[data-v="none"]');
+  const posOf = async () => new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos");
+  check(await page.isChecked("#c-manual") && await page.isDisabled("#c-manual"), "Ohne Leiste: Bloecke frei, Schalter fest an");
+  const pos0 = await posOf();
+  check(/^l:[\d.]+,[\d.]+;s:/.test(pos0 || ""), `Link traegt Positionen: ${pos0}`);
+  await page.check("#c-sym"); // Legende wieder an, sonst gibt es keinen Kasten
+  const lb = await page.locator("#pv-b-scale").boundingBox();
+  await page.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(lb.x - 60, lb.y + 30, { steps: 6 });
+  await page.mouse.up();
+  const pos1 = await posOf();
+  check(pos1 !== pos0 && pos1.split(";")[1] !== pos0.split(";")[1] && pos1.split(";")[0] === pos0.split(";")[0], `Maßstab-Kasten gezogen: ${pos1}`);
+  await page.focus("#pv-b-source");
+  const q0 = (await posOf()).split(";")[2];
+  await page.keyboard.press("ArrowLeft");
+  check((await posOf()).split(";")[2] !== q0, "Pfeiltaste verschiebt den Quellen-Kasten");
+  await page.click('#g-side button[data-v="top"]');
+  check(!(await posOf()) && !(await page.isChecked("#c-manual")), "andere Lage: wieder automatisch, keine Positionen");
+  // Bloecke nicht auf der Karte (Standard): der Kasten laesst sich nicht ueber das Kartenfenster ziehen; erlaubt man es, geht es
+  await page.click('#g-side button[data-v="right"]');
+  await page.check("#c-manual");
+  check(!(await page.isChecked("#c-onmap")), "Bloecke auf der Karte sind standardmaessig nicht erlaubt");
+  const overlaps = () => page.evaluate(() => { const a = document.getElementById("pv-b-legend").getBoundingClientRect(), b = document.getElementById("pv-map").getBoundingClientRect(); return a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1; });
+  const dragLegendOverMap = async () => {
+    await page.locator("#prev").scrollIntoViewIfNeeded(); // sonst liegt die Vorschau unter dem sichtbaren Bereich und der Zug ginge ins Leere
+    const l = await page.locator("#pv-b-legend").boundingBox(), m = await page.locator("#pv-map").boundingBox();
+    await page.mouse.move(l.x + l.width / 2, l.y + l.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(m.x + m.width / 2, m.y + m.height / 2, { steps: 8 });
+    await page.mouse.up();
+  };
+  await dragLegendOverMap();
+  check(!(await overlaps()), "Legende bleibt neben dem Kartenfenster, wenn Bloecke nicht auf die Karte duerfen");
+  await page.check("#c-onmap");
+  await page.click('#g-obg button[data-v="clear"]');
+  await dragLegendOverMap();
+  check(await overlaps(), "mit Erlaubnis liegt die Legende auf der Karte");
+  const sp2 = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]);
+  check(sp2.get("onmap") === "1" && sp2.get("obg") === "clear", "Link traegt Erlaubnis und durchsichtigen Untergrund");
+  await page.uncheck("#c-onmap");
+  check(!(await overlaps()), "Erlaubnis zurueckgenommen: Legende wieder in der Standardlage");
+  await page.click('#g-side button[data-v="top"]');
+  await page.uncheck("#c-sym");
+
   // Einstellungen bleiben beim Neuladen (localStorage)
   await page.goto(`${BASE}/pick.html`); // ohne Adresse: zuletzt benutzte Wahl (eine Adresse mit Angaben haette Vorrang)
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });

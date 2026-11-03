@@ -6,7 +6,8 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol, PMTiles } from "pmtiles";
 import { buildStyle } from "./style.js";
-import { PAPER_MM, SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES } from "./layout.js";
+import { PAPER_MM, ALL_SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES } from "./layout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect } from "./freelayout.js";
 import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE, RATIO_MIN, RATIO_MAX } from "./framegeo.js";
 
 const q = new URLSearchParams(location.search);
@@ -20,7 +21,7 @@ const startLon = +(q.get("lon") || areaInfo?.lon || 11.3181);
 
 // ---- Einstellungen: Standard, zuletzt benutzt (localStorage, darf fehlen), Adresse gewinnt ----
 const KEY = "ofm_ortsplan_wizard";
-const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "left", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, iauto: true, dpi: 150 };
+const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "left", manual: false, pos: null, onmap: false, obg: "white", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, iauto: true, dpi: 150 };
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { /* ohne Speicher */ }
 const S = { ...DEFAULTS };
@@ -33,7 +34,13 @@ function apply(src) {
   if (rf) { S.free = true; S.ratio = rf; } else if ([...$("fmt").options].some((o) => o.value === src.fmt)) { S.fmt = src.fmt; S.free = false; }
   if (src.free !== undefined && src.free !== null) S.free = src.free === true || src.free === "1";
   if (+src.ratio >= RATIO_MIN && +src.ratio <= RATIO_MAX) S.ratio = +src.ratio;
-  if (SIDES.includes(src.side)) S.side = src.side;
+  if (ALL_SIDES.includes(src.side)) S.side = src.side;
+  // freie Lage der Bloecke: aus der Adresse als Text (pos=l:..), aus dem Speicher als Objekt
+  const pp = typeof src.pos === "string" ? parsePos(src.pos) : src.pos && typeof src.pos === "object" ? clampPos(src.pos) : null;
+  if (pp) { S.pos = pp; S.posKey = typeof src.posKey === "string" ? src.posKey : null; S.manual = true; } // posKey null: gehoert zum Layout, das die Adresse beschreibt (wird unten gesetzt)
+  if (src.manual !== undefined && src.manual !== null) S.manual = src.manual === true || src.manual === "1";
+  if (src.onmap !== undefined && src.onmap !== null) S.onmap = src.onmap === true || src.onmap === "1";
+  if (["white", "clear"].includes(src.obg)) S.obg = src.obg;
   if (+src.scale > 0) S.scale = Math.max(MIN_SCALE, Math.round(+src.scale));
   for (const k of ["lsym", "lroad", "index", "round", "iauto"]) if (src[k] !== undefined && src[k] !== null) S[k] = src[k] === true || src[k] === "1";
   S.icols = Math.round(num(src.icols, 0, 6, S.icols));
@@ -116,12 +123,34 @@ function drawFrame() {
   f.classList.toggle("tight", b.cy - b.h / 2 < 56);
 }
 
+// ---- Freie Anordnung der Bloecke: Standardlage nach der gewaehlten Seite, eigene Lage darueber ----
+const isManual = () => S.manual || S.side === "none";
+// Eigene Lagen gelten nur zu dem Layout (Papier, Seite, Kartenformat), mit dem sie gemerkt wurden; sonst gilt wieder die Standardlage
+const layoutKey = () => `${paperKey()}|${S.side}|${layoutFmt()}`;
+if (S.pos && S.posKey === null) S.posKey = layoutKey();
+const ownPos = () => (S.pos && S.posKey === layoutKey() ? S.pos : null);
+const curPos = () => ({ ...defaultPos({ paper: paperKey(), side: S.side, fmt: layoutFmt(), lsym: S.lsym, lroad: S.lroad }), ...(ownPos() || {}) });
+const resetPos = () => { S.pos = null; S.posKey = undefined; };
+const onMapOk = () => S.side === "none" || S.onmap; // ohne Leiste liegen die Bloecke zwangslaeufig auf der Karte
+/** Liegt ein Block (geschaetzt) ganz oder teilweise auf dem Kartenfenster? */
+function overlapsMap(pos, name) {
+  const { L, wMm, hMm } = layout();
+  const r = blockRect(name, pos, { lsym: S.lsym, lroad: S.lroad, ui: L.ui, W: wMm, H: hMm });
+  return !!r && rectsOverlap(r, { x: L.frame.x / wMm, y: L.frame.y / hMm, w: L.frame.w / wMm, h: L.frame.h / hMm });
+}
+const anyOnMap = (pos) => ["legend", "scale", "source", "index"].some((n) => (n !== "index" || S.index) && overlapsMap(pos, n));
+
 function goLink() {
   const p = new URLSearchParams({
     sheet: "1", dpi: String(S.dpi), paper: paperKey(), side: S.side, fmt: layoutFmt(), scale: String(S.scale),
     lat: fc.lat.toFixed(5), lon: fc.lng.toFixed(5), index: S.index ? "1" : "0", lsym: S.lsym ? "1" : "0", lroad: S.lroad ? "1" : "0",
     icols: String(S.icols), isize: String(S.isize), iauto: S.iauto ? "1" : "0",
   });
+  if (isManual()) {
+    p.set("pos", formatPos(curPos()));
+    if (onMapOk()) p.set("onmap", "1");
+    if (S.obg === "clear") p.set("obg", "clear");
+  }
   if (areaName) p.set("area", areaName);
   if (T.place) p.set("place", T.place);
   if (T.title) p.set("title", T.title);
@@ -154,11 +183,32 @@ function drawPreview() {
   pct(L.panel, $("pv-panel"));
   pct({ x: L.frame.x, y: 3 * L.ui, w: L.frame.w, h: 21 * L.ui }, $("pv-title")); // Titelzeile ueber der Karte
   $("pv-title").replaceChildren(...[T.title || "Orts- und Hydrantenplan", T.place || "Ortsname"].map((t) => { const s = document.createElement("span"); s.textContent = t; return s; }));
+  const manual = isManual();
+  $("pv-panel").hidden = manual;
+  drawBlocks(manual, L, wMm, hMm);
   const horizontal = S.side === "top" || S.side === "bottom";
   const pn = $("pv-panel");
   pn.style.flexDirection = horizontal ? "row" : "column";
   const blocks = [...(S.lsym || S.lroad ? ["Legende"] : []), "Maßstab", ...(S.index ? ["Verzeichnis"] : [])];
   pn.replaceChildren(...blocks.map((t) => { const s = document.createElement("span"); s.textContent = t; if (t === "Verzeichnis") s.style.flex = "2"; return s; }));
+}
+
+/** Kaesten der vier Bloecke in der Vorschau (nur bei freier Anordnung): Lage aus S.pos, Groesse geschaetzt (das Blatt zeichnet die echten Masse). */
+function drawBlocks(manual, L, wMm, hMm) {
+  const pos = curPos(), sz = estimateSizes({ lsym: S.lsym, lroad: S.lroad });
+  for (const name of ["legend", "scale", "source", "index"]) {
+    const el = $(`pv-b-${name}`), p = pos[name];
+    const show = manual && p && (name !== "legend" || sz.legend) && (name !== "index" || S.index);
+    el.hidden = !show;
+    if (!show) continue;
+    const w = name === "index" ? p.w : (sz[name].w * L.ui) / wMm, h = name === "index" ? p.h : (sz[name].h * L.ui) / hMm;
+    el.style.left = `${p.x * 100}%`; el.style.top = `${p.y * 100}%`; el.style.width = `${w * 100}%`; el.style.height = `${h * 100}%`;
+  }
+  $("pos-hint").hidden = !manual; $("pos-reset-wrap").hidden = !manual;
+  $("onmap-wrap").hidden = !manual; $("obg-wrap").hidden = !(manual && onMapOk());
+  $("c-onmap").checked = onMapOk(); $("c-onmap").disabled = S.side === "none";
+  for (const b of $("g-obg").children) b.setAttribute("aria-pressed", String(b.dataset.v === S.obg));
+  $("c-manual").checked = manual; $("c-manual").disabled = S.side === "none";
 }
 
 function refresh() {
@@ -196,7 +246,7 @@ const chips = (id, items, key, refit) => {
   $(id).replaceChildren(...items.map(([v, t]) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "chip"; b.dataset.v = v; b.textContent = t;
-    b.addEventListener("click", () => { keepGround(() => { S[key] = v; }); if (refit) fit(); refresh(); });
+    b.addEventListener("click", () => { keepGround(() => { S[key] = v; resetPos(); }); if (refit) fit(); refresh(); }); // andere Lage oder anderes Papier: Bloecke wieder in die Standardlage
     return b;
   }));
 };
@@ -204,9 +254,51 @@ for (const sfx of ["", "1"]) { // dieselben Auswahlen in Schritt 2 und (bei "Wie
   chips(`g-size${sfx}`, [["a4", "A4"], ["a3", "A3"], ["a2", "A2"], ["a1", "A1"]], "size", true);
   chips(`g-orient${sfx}`, [["l", "Quer"], ["p", "Hoch"]], "orient", true);
 }
-chips("g-side", [["top", "Oben"], ["bottom", "Unten"], ["left", "Links"], ["right", "Rechts"]], "side", true);
+chips("g-side", [["top", "Oben"], ["bottom", "Unten"], ["left", "Links"], ["right", "Rechts"], ["none", "Ohne Leiste"]], "side", true);
 $("scale").addEventListener("change", () => { S.scale = +$("scale").value; fit(); refresh(); });
-$("fmt").addEventListener("change", () => { S.fmt = $("fmt").value; fit(); refresh(); });
+$("fmt").addEventListener("change", () => { S.fmt = $("fmt").value; resetPos(); fit(); refresh(); });
+$("c-manual").addEventListener("change", () => { S.manual = $("c-manual").checked; if (S.manual) S.pos = null; refresh(); });
+$("pos-reset").addEventListener("click", () => { resetPos(); refresh(); });
+$("c-onmap").addEventListener("change", () => { S.onmap = $("c-onmap").checked; if (!S.onmap && anyOnMap(curPos())) resetPos(); refresh(); }); // Block lag auf der Karte: zurueck in die Standardlage
+$("g-obg").replaceChildren(...[["white", "Weiß"], ["clear", "Durchsichtig"]].map(([v, t]) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.dataset.v = v; b.textContent = t;
+  b.addEventListener("click", () => { S.obg = v; refresh(); });
+  return b;
+}));
+// Kaesten ziehen (Maus, Finger) oder mit Pfeiltasten schieben; das Verzeichnis zusaetzlich an der Ecke unten rechts in der Groesse aendern
+function movePos(name, dx, dy, resize) {
+  const pos = curPos(), b = pos[name];
+  if (!b) return;
+  // Wo es nicht auf die Karte darf, gilt die Bewegung nur, solange der Block ausserhalb des Kartenfensters bleibt (sonst wenigstens eine Achse)
+  const tries = resize ? [[dx, dy]] : [[dx, dy], [dx, 0], [0, dy]];
+  for (const [ax, ay] of tries) {
+    const cand = clampPos({ ...pos, [name]: resize ? { ...b, w: b.w + ax, h: b.h + ay } : { ...b, x: b.x + ax, y: b.y + ay } });
+    if (onMapOk() || !overlapsMap(cand, name)) { S.pos = cand; S.posKey = layoutKey(); return; }
+  }
+}
+for (const el of document.querySelectorAll("#prev .blk")) {
+  const name = el.dataset.b;
+  el.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); el.focus();
+    el.setPointerCapture(e.pointerId); el.classList.add("drag");
+    const rect = $("prev").getBoundingClientRect(), resize = !!e.target.dataset.rz;
+    let last = { x: e.clientX, y: e.clientY };
+    const move = (ev) => {
+      movePos(name, (ev.clientX - last.x) / rect.width, (ev.clientY - last.y) / rect.height, resize);
+      last = { x: ev.clientX, y: ev.clientY };
+      const { L, wMm, hMm } = layout(); drawBlocks(true, L, wMm, hMm); $("go").href = goLink();
+    };
+    const up = () => { el.classList.remove("drag"); el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up); refresh(); };
+    el.addEventListener("pointermove", move); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+  });
+  el.addEventListener("keydown", (e) => {
+    const d = e.shiftKey ? 0.05 : 0.01;
+    const v = { ArrowLeft: [-d, 0], ArrowRight: [d, 0], ArrowUp: [0, -d], ArrowDown: [0, d] }[e.key];
+    if (!v) return;
+    e.preventDefault(); movePos(name, v[0], v[1], name === "index" && e.altKey); refresh(); $(`pv-b-${name}`).focus();
+  });
+}
 // Rahmenform: Frei oder wie das Blatt. Beim Umschalten bleibt der Rahmen, wie er ist (frei übernimmt das Seitenverhältnis des Blatts, fest rastet den Maßstab ein)
 function setFree(free) {
   if (free === S.free) return;
