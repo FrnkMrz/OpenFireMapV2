@@ -141,3 +141,27 @@ test("Fitter: Name und Planquadrate passen in die Spaltenbreite, Hoehe zaehlt di
   assert.equal(f.h, Math.max(f.lines.length, f.refs.length) * lineH);
   assert.equal(fit(0, width), f, "zwischengespeichert");
 });
+
+test("Block: from - ein zweiter Bereich setzt dort fort, wo der erste aufgehoert hat, nichts geht verloren", () => {
+  const entries = make(120);
+  const fitW = makeFitter({ entries, measure, lineH });
+  const common = { total: 120, fitW, cont: { w: 186, h: 261 }, ...OPTS };
+  const a = planBlock({ ...common, box: { w: 90, h: 60 } });
+  assert.ok(a.first && a.placedFirst > 8 && a.placedFirst < 120);
+  const b = planBlock({ ...common, from: a.placedFirst, box: { w: 280, h: 100 } });
+  assert.equal(b.first.columns[0][0], a.placedFirst, "beginnt beim ersten Eintrag ohne Platz");
+  assert.equal(b.rest, null, "der grosse Bereich nimmt den Rest auf");
+  assert.equal(b.placedFirst, 120);
+  const idx = [...a.first.columns, ...b.first.columns].flatMap(([x, y]) => Array.from({ length: y - x }, (_, i) => x + i));
+  assert.deepEqual(idx, Array.from({ length: 120 }, (_, i) => i));
+});
+
+test("Block: from - ein Bereich, in den kaum etwas passt, bleibt leer und der Rest wandert weiter", () => {
+  const entries = make(50);
+  const fitW = makeFitter({ entries, measure, lineH });
+  const p = planBlock({ total: 50, from: 20, fitW, box: { w: 90, h: 3 * lineH }, cont: { w: 186, h: 261 }, ...OPTS });
+  assert.equal(p.first, null);
+  assert.equal(p.placedFirst, 20);
+  assert.equal(p.rest.pages.flat().flatMap(([x, y]) => Array.from({ length: y - x }, (_, i) => x + i))[0], 20);
+  assert.equal(planBlock({ total: 50, from: 50, fitW, box: { w: 90, h: 100 }, cont: { w: 186, h: 261 }, ...OPTS }).rest, null);
+});

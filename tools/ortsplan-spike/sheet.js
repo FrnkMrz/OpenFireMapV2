@@ -288,18 +288,43 @@ export async function composeSheet(opts) {
   };
   let setup = indexSetup(1);
   let plan = planBlock({ ...setup.opts, box: null });
+  let indexParts = []; // belegte Bereiche des Blatts: { region, plan }
   const headOff = (fsI) => 1.6 + 1.1 * fsI; // Abstand von der Ueberschrift bis zur ersten Zeile: waechst mit der Schrift
-  /** Plant das Verzeichnis fuer den Bereich (x0, y0, w, h) und zeichnet es dort. Mit Automatik wird die Schrift groesser (bis Faktor 1,5),
-   *  solange noch alles auf das Blatt passt; sonst gilt die Grundgroesse und der Rest steht auf Folgeseiten. */
-  const indexBlock = (x0, y0, w, h) => {
-    for (const f of indexAuto ? [1.5, 1.3, 1.15, 1] : [1]) {
-      const cand = indexSetup(f);
-      const p = planBlock({ ...cand.opts, box: { w, h: h - headOff(cand.fsI) } }); // Platz unter der Ueberschrift
-      if (f === 1 || (p.first && !p.rest)) { setup = cand; plan = p; break; }
+  /** Fuellt die Bereiche der Reihe nach (jeder bekommt so viele Eintraege wie hineinpassen, der letzte gleich hohe Spalten). Ein Bereich, in den
+   *  kaum etwas passt, bleibt leer. Rueckgabe: belegte Bereiche, der Rest fuer die Folgeseiten und die Nummer des ersten Eintrags ohne Platz. */
+  const planRegions = (cand, regions) => {
+    const parts = [];
+    let from = 0;
+    let last = null;
+    for (const region of regions) {
+      last = planBlock({ ...cand.opts, from, box: { w: region.w, h: region.h - headOff(cand.fsI) } }); // Platz unter der Ueberschrift
+      if (last.first) parts.push({ region, plan: last });
+      from = last.placedFirst;
     }
-    if (!plan.first) return;
-    text(`Straßenverzeichnis (${indexCount})`, x0, y0, 3.4, { bold: true });
-    drawColumns({ gc: g, tf: text, fitW: setup.fitW, columns: plan.first.columns, colW: plan.first.colW, gap: plan.first.gap, x0, y0: y0 + headOff(setup.fsI), fsI: setup.fsI, isz: isz * setup.f, lineH: setup.lineH });
+    return { parts, rest: last ? last.rest : plan.rest, end: from };
+  };
+  /** Plant und zeichnet das Verzeichnis. `sets` sind Bereichsfolgen in Reihenfolge der Vorliebe (z. B. nur Seitenleiste, Seitenleiste und freie
+   *  Flaeche unter der Karte). Mit Automatik wird die Schrift groesser (bis Faktor 1,5), solange noch alles auf das Blatt passt; je Schriftgroesse
+   *  gilt die erste Bereichsfolge, die alles aufnimmt. Passt es auch in Grundgroesse nicht, gilt die Folge mit den meisten Eintraegen
+   *  auf dem Blatt und der Rest steht auf Folgeseiten. */
+  const indexBlock = (sets) => {
+    let best = null;
+    outer: for (const f of indexAuto ? [1.5, 1.3, 1.15, 1] : [1]) {
+      const cand = indexSetup(f);
+      for (const regions of sets) {
+        const r = planRegions(cand, regions);
+        if (!r.rest) { best = { cand, ...r }; break outer; }
+        if (f === 1 && (!best || r.end > best.end)) best = { cand, ...r };
+      }
+    }
+    if (!best) return;
+    setup = best.cand;
+    indexParts = best.parts;
+    plan = { first: best.parts[0]?.plan.first || null, rest: best.rest, placedFirst: best.end };
+    best.parts.forEach(({ region, plan: p }, k) => {
+      text(k === 0 ? `Straßenverzeichnis (${indexCount})` : "Straßenverzeichnis (Fortsetzung)", region.x, region.y, 3.4, { bold: true });
+      drawColumns({ gc: g, tf: text, fitW: setup.fitW, columns: p.first.columns, colW: p.first.colW, gap: p.first.gap, x0: region.x, y0: region.y + headOff(setup.fsI), fsI: setup.fsI, isz: isz * setup.f, lineH: setup.lineH });
+    });
   };
 
   // ---- Anordnung ----
@@ -309,7 +334,16 @@ export async function composeSheet(opts) {
     const lg = legendBlock(P.x, y, Infinity);
     if (lg.h) y += lg.h + 9;
     y += scaleBlock(P.x, y, P.w);
-    if (showIndex) indexBlock(P.x, y, P.w, P.y + P.h - y);
+    if (showIndex) {
+      // Hat die Karte ein festes Seitenverhaeltnis, bleibt unter ihr Platz frei: dorthin laeuft das Verzeichnis weiter (ueber die ganze Breite)
+      const F = { x: frame.x / u, y: frame.y / u, w: frame.w / u, h: frame.h / u };
+      const stripY = Math.max(F.y + F.h + 10, y + 4); // unter den Planquadrat-Buchstaben und unter dem, was die Seitenleiste schon belegt (flache Karten)
+      const strip = { x: Math.min(P.x, F.x), y: stripY, w: Math.max(P.x + P.w, F.x + F.w) - Math.min(P.x, F.x), h: Hv - 10 - stripY };
+      const hasStrip = strip.h >= 25;
+      const sidebar = { x: P.x, y, w: P.w, h: P.y + P.h - y }; // volle Hoehe: gilt, wenn das Verzeichnis allein in die Seitenleiste passt
+      const sidebarCut = { ...sidebar, h: Math.min(P.y + P.h, F.y + F.h) - y }; // bis zur Unterkante der Karte, darunter beginnt der Streifen
+      indexBlock(hasStrip ? [[sidebar], [sidebarCut, strip], [strip]] : [[sidebar]]);
+    }
   } else {
     // waagerecht: die Bloecke muessen zusammen in die Breite passen (siehe panelplan.js)
     const SCALE_W = 70, GAP = 6, MIN_INDEX_W = 55;
@@ -322,7 +356,7 @@ export async function composeSheet(opts) {
       headerBlock(P.x, P.y + 5, 70);
       legendBlock(P.x, P.y + 5 + headH, P.h - headH - 4, horizPlan.legendCols);
       scaleBlock(P.x + horizPlan.legendW + GAP, P.y + 5, SCALE_W - GAP);
-      if (showIndex) indexBlock(P.x + horizPlan.legendW + GAP + SCALE_W + GAP, P.y + 5, horizPlan.indexW, P.h - 5);
+      if (showIndex) indexBlock([[{ x: P.x + horizPlan.legendW + GAP + SCALE_W + GAP, y: P.y + 5, w: horizPlan.indexW, h: P.h - 5 }]]);
     } else {
       // zu schmal fuer nebeneinander: Titel und Massstab in einer Zeile, darunter die Legende ueber die ganze Breite;
       // das Verzeichnis steht auf den Folgeseiten. Vorher per Trockenlauf messen, ob alles in die Hoehe passt.
@@ -361,6 +395,6 @@ export async function composeSheet(opts) {
   });
   // Seite, auf der das Strassenverzeichnis beginnt: 1 = auf dem Blatt, 2 = erst auf der Folgeseite, null = ausgeschaltet oder leer
   const indexPage = !showIndex || !indexCount ? null : plan.first ? 1 : 2;
-  const indexLayout = plan.first ? { size: setup.f, cols: plan.first.columns.length, colW: plan.first.colW, width: plan.first.width, height: plan.first.height, onSheet: plan.placedFirst } : null;
+  const indexLayout = plan.first ? { size: setup.f, cols: plan.first.columns.length, colW: plan.first.colW, width: plan.first.width, height: plan.first.height, onSheet: plan.placedFirst, regions: indexParts.length } : null;
   return { pages, indexCount, cellM, cols, rows, panelFit, indexPage, indexLayout };
 }

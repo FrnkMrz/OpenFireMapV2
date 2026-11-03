@@ -59,8 +59,8 @@ Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs
 | `fire` | `0` | Feuerwehr-Ebene aus |
 | `isz` | Zahl, Standard 1 | Faktor für die Symbolgröße |
 | `sheet` | `1` | Planblatt mit Rahmen, Planquadraten, Legende, Maßstabsleiste, Nordpfeil und Straßenverzeichnis (Seite 2 bei Überlauf) |
-| `place` | Text | Ortsname, steht rechts in der Titelzeile über der Karte (im Assistenten wird er aus der Kartenmitte vorgeschlagen und ist änderbar; ohne Angabe gilt der Name des Gebiets) |
-| `title` | Text, Standard „Orts- und Hydrantenplan“ | Überschrift links in der Titelzeile über der Karte |
+| `place` | Text | Ortsname, steht unter der Überschrift über der Karte (im Assistenten wird er aus der Kartenmitte vorgeschlagen und ist änderbar; ohne Angabe gilt der Name des Gebiets) |
+| `title` | Text, Standard „Orts- und Hydrantenplan“ | Überschrift über der Karte, darunter der Ortsname |
 | `iauto` | `0`, `1` (Standard) | Schrift des Straßenverzeichnisses wird bis Faktor 1,5 größer, solange noch alles auf das Blatt passt (`isize` bleibt die Grundgröße) |
 | `side` | `right` (Standard), `left`, `top`, `bottom` | Lage von Titel, Legende, Maßstab und Verzeichnis um die Karte; oben und unten stehen sie in drei Blöcken nebeneinander |
 | `icols` | 0 bis 6, Standard 0 | Spaltenzahl des Verzeichnisses auf Seite 1 (0 = automatisch: Spalten von etwa 55 mm, gleich hoch gefüllt) |
@@ -74,7 +74,7 @@ Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs
 
 Straßennamen, die entlang der Linie nirgends Platz finden (lauter kurze Linienstücke, Symbole, Pfeile), bekommen ihren Namen als Punkt in der Mitte des längsten Stücks, mit der Richtung der Straße (`labelpoints.js`): erst ohne, dann mit Überlappung, immer unter den Feuerwehr-Symbolen. So steht jede Straße des Verzeichnisses auch im Plan.
 
-Das Straßenverzeichnis ist ein eigener Block (`indexblock.js`): Er bekommt den verfügbaren Platz, wählt Spaltenzahl und Spaltenbreite selbst (breiteste Spalten, in die noch alles passt; nie schmaler als etwa 36 mm, damit Namen nicht mitten im Wort brechen), gleicht die Spaltenhöhen aus und wird nur so groß wie nötig. Was nicht auf das Blatt passt, steht auf Folgeseiten. Die Lage auf dem Blatt bestimmt der Aufruf in `sheet.js`.
+Das Straßenverzeichnis ist ein eigener Block (`indexblock.js`): Er bekommt den verfügbaren Platz, wählt Spaltenzahl und Spaltenbreite selbst (breiteste Spalten, in die noch alles passt; nie schmaler als etwa 36 mm, damit Namen nicht mitten im Wort brechen), gleicht die Spaltenhöhen aus und wird nur so groß wie nötig. Bei Seitenleiste (`side=right|left`) und festem Kartenformat läuft das Verzeichnis, wenn die Seitenleiste nicht reicht, in der freien Fläche unter der Karte weiter (über die ganze Breite, Überschrift „Fortsetzung“); erst was auch dort keinen Platz findet, steht auf Folgeseiten. Die Lage auf dem Blatt bestimmt der Aufruf in `sheet.js`.
 
 Die Legende zeigt nur Symbole, Linien und Straßenarten, die im Kartenausschnitt wirklich vorkommen. Die Feuerwehrhäuser sind 60 % größer als die übrigen Symbole.
 
