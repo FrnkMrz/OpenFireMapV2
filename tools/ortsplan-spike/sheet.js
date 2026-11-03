@@ -337,7 +337,7 @@ export async function composeSheet(opts) {
     if (showIndex) {
       // Hat die Karte ein festes Seitenverhaeltnis, bleibt unter ihr Platz frei: dorthin laeuft das Verzeichnis weiter (ueber die ganze Breite)
       const F = { x: frame.x / u, y: frame.y / u, w: frame.w / u, h: frame.h / u };
-      const stripY = F.y + F.h + 10; // unter den Planquadrat-Buchstaben
+      const stripY = Math.max(F.y + F.h + 10, y + 4); // unter den Planquadrat-Buchstaben und unter dem, was die Seitenleiste schon belegt (flache Karten)
       const strip = { x: Math.min(P.x, F.x), y: stripY, w: Math.max(P.x + P.w, F.x + F.w) - Math.min(P.x, F.x), h: Hv - 10 - stripY };
       const hasStrip = strip.h >= 25;
       const sidebar = { x: P.x, y, w: P.w, h: (hasStrip ? Math.min(P.y + P.h, F.y + F.h) : P.y + P.h) - y };
