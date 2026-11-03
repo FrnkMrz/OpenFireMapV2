@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, BLOCKS } from "./freelayout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS } from "./freelayout.js";
 import { PAPER_MM } from "./layout.js";
 
 test("parsePos/formatPos: Rundreise, Reihenfolge und Rundung", () => {
@@ -83,4 +83,35 @@ test("blockRect: Groesse aus der Schaetzung, Verzeichnis aus der Lage; fehlende 
   assert.ok(r.w > 0.1 && r.h > 0.1);
   assert.equal(blockRect("scale", pos), null);
   assert.equal(blockRect("legend", pos, { lsym: false, lroad: false }), null);
+});
+
+test("clampPos mit Groessen: der ganze Block bleibt im Papier, nicht nur seine Ecke", () => {
+  const dims = blockDims({ ui: 1, W: 210, H: 297 });
+  const c = clampPos({ source: { x: 0.98, y: 0.99 }, legend: { x: 1, y: 1 } }, dims);
+  assert.ok(c.source.x + dims.source.w <= 1 + 1e-9 && c.source.y + dims.source.h <= 1 + 1e-9);
+  assert.ok(c.legend.x + dims.legend.w <= 1 + 1e-9 && c.legend.y + dims.legend.h <= 1 + 1e-9);
+  assert.deepEqual(clampPos({ source: { x: 0.1, y: 0.1 } }, dims).source, { x: 0.1, y: 0.1 }, "was passt, bleibt");
+});
+
+test("defaultPos: Legende, Massstab und Quellen ueberlappen sich in keiner Standardlage (alle Papiere, Lagen, Formate)", () => {
+  for (const paper of Object.keys(PAPER_MM)) for (const side of ["right", "left", "top", "bottom", "none"]) for (const fmt of ["fill", "2:3", "1:1"]) {
+    const [W, H] = PAPER_MM[paper];
+    const ui = Math.max(1, Math.max(W, H) / 420);
+    const pos = defaultPos({ paper, side, fmt });
+    const rects = ["legend", "scale", "source"].map((n) => [n, blockRect(n, pos, { ui, W, H })]);
+    for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+      assert.ok(!rectsOverlap(rects[i][1], rects[j][1]), `${paper} ${side} ${fmt}: ${rects[i][0]} / ${rects[j][0]}`);
+    }
+  }
+});
+
+test("defaultPos: oben/unten - das Verzeichnis ueberdeckt keinen anderen Block (auch A4 hoch)", () => {
+  for (const paper of Object.keys(PAPER_MM)) for (const side of ["top", "bottom"]) {
+    const [W, H] = PAPER_MM[paper];
+    const ui = Math.max(1, Math.max(W, H) / 420);
+    const pos = defaultPos({ paper, side });
+    for (const n of ["legend", "scale", "source"]) {
+      assert.ok(!rectsOverlap(blockRect(n, pos, { ui, W, H }), pos.index), `${paper} ${side}: ${n} / index`);
+    }
+  }
 });

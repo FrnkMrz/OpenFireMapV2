@@ -25,8 +25,10 @@ export function parsePos(str) {
   return Object.keys(out).length ? clampPos(out) : null;
 }
 
-/** Haelt die Bloecke im Papier: Lage 0..1; das Verzeichnis nie ueber den Rand hinaus und nie kleiner als MIN_INDEX. */
-export function clampPos(pos) {
+/** Haelt die Bloecke im Papier: Lage 0..1; das Verzeichnis nie ueber den Rand hinaus und nie kleiner als MIN_INDEX.
+ *  Mit dims (Groesse von Legende, Massstab und Quellen als Anteil des Papiers, siehe blockDims) bleibt auch der ganze Block im Papier,
+ *  sonst nur seine linke obere Ecke. */
+export function clampPos(pos, dims = null) {
   const out = {};
   for (const name of BLOCKS) {
     const b = pos?.[name];
@@ -34,7 +36,10 @@ export function clampPos(pos) {
     if (name === "index") {
       const w = clamp(b.w, MIN_INDEX, 1), h = clamp(b.h, MIN_INDEX, 1);
       out.index = { x: clamp(b.x, 0, 1 - w), y: clamp(b.y, 0, 1 - h), w, h };
-    } else out[name] = { x: clamp(b.x, 0, 0.98), y: clamp(b.y, 0, 0.98) };
+    } else {
+      const d = dims?.[name];
+      out[name] = { x: clamp(b.x, 0, d ? Math.max(0, 1 - d.w) : 0.98), y: clamp(b.y, 0, d ? Math.max(0, 1 - d.h) : 0.98) };
+    }
   }
   return out;
 }
@@ -57,6 +62,14 @@ export function blockRect(name, pos, { lsym = true, lroad = true, ui = 1, W = 42
   return sz ? { x: p.x, y: p.y, w: (sz.w * ui) / W, h: (sz.h * ui) / H } : null;
 }
 
+/** Groesse von Legende, Massstab und Quellen als Anteil des Papiers (geschaetzt), fuer clampPos. */
+export function blockDims({ lsym = true, lroad = true, ui = 1, W = 420, H = 297 } = {}) {
+  const sz = estimateSizes({ lsym, lroad });
+  const out = {};
+  for (const name of ["legend", "scale", "source"]) if (sz[name]) out[name] = { w: (sz[name].w * ui) / W, h: (sz[name].h * ui) / H };
+  return out;
+}
+
 /** Grobe Groesse der Bloecke in "virtuellen mm" (mal ui = mm auf dem Papier). Nur fuer die Vorschau und die Standardlage; gezeichnet wird mit den echten Massen. */
 export function estimateSizes({ lsym = true, lroad = true } = {}) {
   const rows = (lsym ? 8 : 0) * 5.4 + (lroad ? 6 : 0) * 4.9;
@@ -76,13 +89,24 @@ export function defaultPos({ paper = "a3l", side = "right", fmt = "fill", lsym =
   const out = {};
   const put = (name, x, y) => { out[name] = { x: x / W, y: y / H }; };
   if (side === "top" || side === "bottom") {
+    const minIndexW = 0.2 * W;
+    const right = panel.x + panel.w;
+    const legendW = sz.legend ? sz.legend.w * ui + gap : 0;
+    const rowW = legendW + (sz.scale.w + sz.source.w) * ui + 2 * gap; // alles in einer Reihe
+    // Reicht die Breite nicht fuer drei Bloecke und ein Verzeichnis, steht die Quellenangabe unter dem Massstab (zwei Spalten statt drei)
+    const stacked = right - (panel.x + rowW) < minIndexW;
     let x = panel.x;
-    for (const name of ["legend", "scale", "source"]) {
-      if (!sz[name]) continue;
-      put(name, x, panel.y);
-      x += sz[name].w * ui + gap;
+    if (sz.legend) { put("legend", x, panel.y); x += legendW; }
+    put("scale", x, panel.y);
+    if (stacked) {
+      put("source", x, panel.y + (sz.scale.h * ui) + gap / 2);
+      x += Math.max(sz.scale.w, sz.source.w) * ui + gap;
+    } else {
+      x += sz.scale.w * ui + gap;
+      put("source", x, panel.y);
+      x += sz.source.w * ui + gap;
     }
-    const w = Math.max(0.2 * W, panel.x + panel.w - x);
+    const w = Math.max(0.12 * W, right - x);
     out.index = { x: x / W, y: panel.y / H, w: w / W, h: panel.h / H };
   } else {
     const colW = side === "none" ? 62 * ui : panel.w;
@@ -98,5 +122,5 @@ export function defaultPos({ paper = "a3l", side = "right", fmt = "fill", lsym =
     const bottom = H - 14 * ui;
     out.index = { x: x / W, y: y / H, w: colW / W, h: Math.max(30 * ui, bottom - y) / H };
   }
-  return clampPos(out);
+  return clampPos(out, blockDims({ lsym, lroad, ui, W, H }));
 }
