@@ -337,11 +337,13 @@ export async function composeSheet(opts) {
     indexParts = best.parts;
     plan = { first: best.parts[0]?.plan.first || null, rest: best.rest, placedFirst: best.end };
     best.parts.forEach(({ region, plan: p }, k) => {
+      // Ueberschrift in die Breite des Bereichs passen (erst kleiner, dann gekuerzt), damit sie auch bei schmalem Verzeichnis am Papierrand nicht abgeschnitten wird
+      const measureHead = (str, size) => { g.font = `bold ${size}px ${FONT}`; return g.measureText(str).width; };
+      const head = fitText({ text: k === 0 ? `Straßenverzeichnis (${indexCount})` : "Straßenverzeichnis (Fortsetzung)", size: 3.4, minSize: 2.2, maxW: Math.max(8, region.w), measure: measureHead });
       if (bg) { // frei platziert: liegt das Verzeichnis ueber der Karte, bekommt es einen hellen Untergrund
-        g.font = `bold 3.4px ${FONT}`;
-        bg({ x: region.x - 2, y: region.y - 4.6, w: Math.max(p.first.width, g.measureText(`Straßenverzeichnis (${indexCount})`).width) + 4, h: headOff(setup.fsI) + p.first.height + 4.6 + 1.5 });
+        bg({ x: region.x - 2, y: region.y - 4.6, w: Math.max(p.first.width, measureHead(head.text, head.size)) + 4, h: headOff(setup.fsI) + p.first.height + 4.6 + 1.5 });
       }
-      text(k === 0 ? `Straßenverzeichnis (${indexCount})` : "Straßenverzeichnis (Fortsetzung)", region.x, region.y, 3.4, { bold: true });
+      text(head.text, region.x, region.y, head.size, { bold: true });
       drawColumns({ gc: g, tf: text, fitW: setup.fitW, columns: p.first.columns, colW: p.first.colW, gap: p.first.gap, x0: region.x, y0: region.y + headOff(setup.fsI), fsI: setup.fsI, isz: isz * setup.f, lineH: setup.lineH });
     });
   };
