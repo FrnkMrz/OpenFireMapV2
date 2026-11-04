@@ -535,11 +535,13 @@ async function fetchWithRetryAttempt(overpassQueryString, opts, ctx) {
   // Cache lesen (nur wenn nicht übersprungen)
   if (cacheKey && !skipCache) {
     const cached = await getCache(cacheKey, cacheTtlMs);
-    if (cached) {
+    // Auch ein zwischengespeicherter Eintrag muss die Prüfung bestehen (er kann von vor dem Frische-Check stammen oder in den
+    // zehn Minuten Cache-Dauer über die Altersgrenze gewandert sein): sonst zählt er als Treffer-Fehlschlag und wird neu geladen
+    if (cached && (!validate || validate(cached))) {
       emit({ phase: 'cache_hit', reqId, cacheKey });
       return cached;
     }
-    emit({ phase: 'cache_miss', reqId, cacheKey });
+    emit({ phase: cached ? 'cache_stale' : 'cache_miss', reqId, cacheKey });
   }
 
   // Server, deren Daten für diese Abfrage kürzlich zu alt waren, gar nicht erst einplanen (sie belegen sonst einen der maxEndpoints-Plätze)

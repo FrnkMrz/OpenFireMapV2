@@ -5,6 +5,7 @@ import { Config } from '../src/js/config.js';
 import { fetchOSMData, fetchBoundaryData } from '../src/js/api.js';
 import * as apiModule from '../src/js/api.js';
 import * as pipelineModule from '../src/js/pipeline.js';
+import * as cacheModule from '../src/js/cache.js';
 import { exportAsGPX, exportAsCSV, exportPNG } from '../src/js/export.js';
 
 describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', () => {
@@ -1037,6 +1038,32 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
         } finally {
           Object.assign(Config.performance, saved);
         }
+      });
+
+      it('zwischengespeicherte Antworten müssen die Prüfung auch bestehen: veraltete gelten als Fehlschlag und werden neu geladen', async () => {
+        const { fetchWithRetry } = apiModule._testing;
+        const signal = new AbortController().signal;
+        const fresh = { elements: [], tag: 'frisch' };
+        const old = { elements: [], tag: 'alt' };
+        const validate = (json) => json.tag === 'frisch';
+        const cacheGet = vi.spyOn(cacheModule, 'getCache');
+        const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => ({ ok: true, json: async () => fresh }));
+
+        // Gültiger Cache-Eintrag: direkt geliefert, kein Netzwerkzugriff
+        cacheGet.mockResolvedValue(fresh);
+        expect(await fetchWithRetry('q', { cacheKey: 'k', cacheTtlMs: 1000, reqId: 'c1', silent: true, signal, validate })).toBe(fresh);
+        expect(fetchSpy).not.toHaveBeenCalled();
+
+        // Veralteter Cache-Eintrag (z. B. von vor dem Frische-Check): wie ein Fehlschlag, frisch vom Server
+        cacheGet.mockResolvedValue(old);
+        const json = await fetchWithRetry('q', { cacheKey: 'k', cacheTtlMs: 1000, reqId: 'c2', silent: true, signal, validate });
+        expect(json.tag).toBe('frisch');
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+        // Ohne validate (alle anderen Abfragen) bleibt ein Cache-Treffer ein Treffer
+        fetchSpy.mockClear();
+        expect(await fetchWithRetry('q', { cacheKey: 'k', cacheTtlMs: 1000, reqId: 'c3', silent: true, signal })).toBe(old);
+        expect(fetchSpy).not.toHaveBeenCalled();
       });
 
       it('veraltete Server werden für das Delta eine Weile übersprungen, bleiben aber für normale Abfragen nutzbar', async () => {
