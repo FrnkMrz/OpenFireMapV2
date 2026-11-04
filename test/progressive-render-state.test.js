@@ -928,6 +928,39 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       expect(State.cachedPoiElements.map((e) => e.id)).toEqual([1, 2]);
     }, 30000);
 
+    it('Neuversuch ist im Standby (Zoom < 12) gesperrt und mischt keine Objekte mehr ein', async () => {
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+      vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue('2026-09-30T20:22:42Z');
+      vi.spyOn(pipelineModule, 'fetchPipelineData').mockImplementation(async () => {
+        const visible = [{ type: 'node', id: 1, lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+        visible.loadedBounds = { id: 'visible_bounds' };
+        visible.bufferBounds = { south: 49.4, west: 11.0, north: 49.5, east: 11.1 };
+        return visible;
+      });
+      let release;
+      const gate = new Promise((resolve) => { release = resolve; });
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+        await gate;
+        return { ok: true, json: async () => ({ elements: [{ type: 'node', id: 2, lat: 49.451, lon: 11.071, tags: { emergency: 'fire_hydrant' } }] }) };
+      });
+      const onProgress = vi.fn();
+
+      await fetchOSMData(onProgress);
+      State.dataStatus.deltaStatus = 'failed';
+      const callsBefore = onProgress.mock.calls.length;
+
+      // Wie map.js bei Zoom < 12: POIs verwerfen, Request läuft weiter
+      State.cachedPoiElements = [];
+      State.loadedPoiMode = null;
+      expect(apiModule.retryPoiDelta()).toBe(false);
+
+      // Ein schon laufendes Delta darf nach dem Standby nichts mehr einmischen
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(State.cachedPoiElements).toEqual([]);
+      expect(onProgress.mock.calls.length).toBe(callsBefore);
+    });
+
     it('Neuversuch gilt nur für den letzten Ausschnitt: eine neue Anfrage macht ihn ungültig', async () => {
       vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
       vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue('2026-09-30T20:22:42Z');

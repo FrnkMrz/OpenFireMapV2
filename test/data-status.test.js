@@ -384,6 +384,13 @@ describe('data-status.js', () => {
       expect(retryBtn().title).toBe(t('data_sync_retry'));
     });
 
+    it('ist im Standby (Zoom < 12) ausgeblendet, auch wenn das Delta zuvor fehlgeschlagen war', () => {
+      updateDataStatus({ ...base, deltaStatus: 'failed' });
+      expect(retryBtn().classList.contains('hidden')).toBe(false);
+      updateDataStatus({ loadPhase: 'standby' });
+      expect(retryBtn().classList.contains('hidden')).toBe(true);
+    });
+
     it('ist bei direkter Overpass-Abfrage oder Cache nie sichtbar', () => {
       updateDataStatus({ source: 'overpass', deltaStatus: 'failed', loadPhase: 'ready' });
       expect(retryBtn().classList.contains('hidden')).toBe(true);

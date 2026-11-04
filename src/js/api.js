@@ -832,6 +832,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           const startDelta = () => loadPoiDelta({ zoom, bbox: deltaBBox, queryKind, reqId, signal: controller.signal, since: baseTimestamp })
             .then((delta) => {
               if (!isCurrentRequest()) return;
+              if (State.loadedPoiMode == null) return;   // Standby (Zoom < 12): Karte hat die POIs verworfen, nichts mehr einmischen
               if (!delta) {
                 updateDataStatus({ deltaStatus: 'disabled' });
                 return;
@@ -857,7 +858,8 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
             });
           // Manueller Neuversuch (Knopf im Datenstand-Popover): nur für den zuletzt geladenen Ausschnitt und nur nach einem Fehler
           _deltaRetry = () => {
-            if (!isCurrentRequest() || State.dataStatus?.deltaStatus !== 'failed') return false;
+            // Standby (Zoom < 12) räumt loadedPoiMode ab, ohne den Request abzubrechen: dann ist der Ausschnitt nicht mehr aktiv
+            if (!isCurrentRequest() || State.loadedPoiMode == null || State.dataStatus?.deltaStatus !== 'failed') return false;
             resetOverpassCooldowns(); // ausdrücklicher Wunsch des Nutzers: auch Server im Cooldown erneut versuchen
             updateDataStatus({ deltaStatus: 'loading' });
             startDelta();

@@ -181,11 +181,11 @@ export function renderDataStatus() {
     }
   }
 
-  // Knopf „nochmal versuchen“ nur, wenn das Live-Delta (Overpass) fehlgeschlagen ist
+  // Knopf „nochmal versuchen“ nur, wenn das Live-Delta (Overpass) fehlgeschlagen ist und Daten angezeigt werden (nicht im Standby)
   const retryBtn = document.getElementById('data-info-delta-retry');
   if (retryBtn) {
     const label = t('data_sync_retry');
-    retryBtn.classList.toggle('hidden', !(ds.source === 'pipeline' && ds.deltaStatus === 'failed'));
+    retryBtn.classList.toggle('hidden', !(ds.source === 'pipeline' && ds.deltaStatus === 'failed' && ds.loadPhase === 'ready'));
     retryBtn.setAttribute('aria-label', label);
     retryBtn.title = label;
   }
