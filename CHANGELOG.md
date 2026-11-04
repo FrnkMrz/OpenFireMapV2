@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Geändert
+- **Overpass bei Überlast**: Das Live-Nachladen neben der Pipeline gibt jetzt schnell auf, statt jeden Server nacheinander 25 s lang zu fragen: Timeout 8 s je Server (`overpassDeltaTimeoutMs`), höchstens zwei Server (`overpassDeltaMaxEndpoints`), kein Warten auf abgelaufene Sperrzeiten, Server-Timeout der Abfrage 10 s. Die Konfigurationswerte `overpassTimeoutMs` (bisher fest im Code) werden jetzt tatsächlich gelesen; `overpassMaxRetries` war ohne Wirkung und entfällt.
+- **Serverreihenfolge nach Neuladen**: Ein Overpass-Server, der zuletzt fehlschlug, wird zwei Minuten lang (`endpointDemoteMs`) hinten einsortiert, auch nach einem Neuladen der Seite (`localStorage`, Schlüssel `ofm_ep_health_v1`). Er wird nicht gesperrt: scheitern die anderen, wird er weiter genutzt.
+
 ## [v0.10.3] - 2026-11-04
 
 ### Neu

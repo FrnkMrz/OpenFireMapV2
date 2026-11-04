@@ -961,6 +961,37 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       expect(onProgress.mock.calls.length).toBe(callsBefore);
     });
 
+    it('Delta gibt bei Überlast schnell auf: nur zwei Server, kurzes Timeout, kein Warten auf Sperrzeiten', async () => {
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+      vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue('2026-09-30T20:22:42Z');
+      vi.spyOn(pipelineModule, 'fetchPipelineData').mockImplementation(async () => {
+        const visible = [{ type: 'node', id: 1, lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+        visible.loadedBounds = { id: 'visible_bounds' };
+        visible.bufferBounds = { south: 49.4, west: 11.0, north: 49.5, east: 11.1 };
+        return visible;
+      });
+      // Server, die nie antworten (nur das Abbruchsignal beendet die Anfrage)
+      const hosts = [];
+      vi.spyOn(globalThis, 'fetch').mockImplementation((url, options) => new Promise((_, reject) => {
+        hosts.push(String(url));
+        options?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('abgebrochen'), { name: 'AbortError' })));
+      }));
+
+      const saved = { ...Config.performance };
+      Config.performance.overpassDeltaTimeoutMs = 60;
+      try {
+        const t0 = Date.now();
+        await fetchOSMData();
+        await vi.waitFor(() => expect(State.dataStatus.deltaStatus).toBe('failed'), { timeout: 5000 });
+        expect(Date.now() - t0).toBeLessThan(3000);   // nicht 4 x 25 s
+        const overpassHosts = hosts.filter((h) => h.includes('overpass') || h.includes('kumi'));
+        expect(overpassHosts).toHaveLength(2);        // overpassDeltaMaxEndpoints
+        expect(new Set(overpassHosts).size).toBe(2);
+      } finally {
+        Object.assign(Config.performance, saved);
+      }
+    });
+
     it('Neuversuch gilt nur für den letzten Ausschnitt: eine neue Anfrage macht ihn ungültig', async () => {
       vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
       vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue('2026-09-30T20:22:42Z');

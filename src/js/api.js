@@ -122,7 +122,43 @@ function bumpGlobalBackoff({ minMs, maxMs }) {
  */
 const EP = new Map(); // endpoint -> { failUntil, lastOkTs, lastFailTs, lastStatus }
 
+// Zuletzt fehlgeschlagene Server werden über ein Neuladen der Seite hinweg nur nach hinten sortiert (kein Sperren):
+// Läuft ein Server wieder, wird er sofort genutzt, sobald die vordere Gruppe scheitert.
+const EP_HEALTH_KEY = 'ofm_ep_health_v1';
+let epHealthLoaded = false;
+
+function epDemoteMs() {
+  return Config.performance?.endpointDemoteMs ?? 120000;
+}
+
+function epHealthLoad() {
+  if (epHealthLoaded) return;
+  epHealthLoaded = true;
+  try {
+    const stored = JSON.parse(localStorage.getItem(EP_HEALTH_KEY) || '{}');
+    const known = new Set(Config.overpassEndpoints || []);
+    const now = Date.now();
+    for (const [endpoint, failTs] of Object.entries(stored)) {
+      if (!known.has(endpoint) || !Number.isFinite(failTs) || failTs > now || now - failTs >= epDemoteMs()) continue;
+      EP.set(endpoint, { failUntil: 0, lastOkTs: 0, lastFailTs: failTs, lastStatus: null });
+    }
+  } catch { /* localStorage nicht verfügbar oder unlesbar: ohne Merkliste weiter */ }
+}
+
+function epHealthSave() {
+  try {
+    const now = Date.now();
+    const recent = {};
+    for (const [endpoint, s] of EP) {
+      if (s.lastFailTs > s.lastOkTs && now - s.lastFailTs < epDemoteMs()) recent[endpoint] = s.lastFailTs;
+    }
+    if (Object.keys(recent).length) localStorage.setItem(EP_HEALTH_KEY, JSON.stringify(recent));
+    else localStorage.removeItem(EP_HEALTH_KEY);
+  } catch { /* localStorage nicht verfügbar */ }
+}
+
 function epGet(ep) {
+  epHealthLoad();
   if (!EP.has(ep)) EP.set(ep, { failUntil: 0, lastOkTs: 0, lastFailTs: 0, lastStatus: null });
   return EP.get(ep);
 }
@@ -134,6 +170,7 @@ function epMarkOk(endpoint, status = 200) {
   s.lastOkTs = Date.now();
   s.lastStatus = status;
   s.failUntil = 0;
+  epHealthSave();
 }
 
 function epMarkFail(endpoint, status, cooldownMs) {
@@ -141,11 +178,16 @@ function epMarkFail(endpoint, status, cooldownMs) {
   s.lastFailTs = Date.now();
   s.lastStatus = status;
   s.failUntil = Math.max(s.failUntil, Date.now() + cooldownMs);
+  epHealthSave();
 }
 
 /** Setzt alle Endpoint-Cooldowns und den globalen Backoff zurück (nur für einen vom Nutzer ausgelösten Neuversuch). */
 function resetOverpassCooldowns() {
-  for (const state of EP.values()) state.failUntil = 0;
+  for (const state of EP.values()) {
+    state.failUntil = 0;
+    state.lastFailTs = 0;
+  }
+  epHealthSave();
   GLOBAL_BACKOFF_MS = 0;
   GLOBAL_BACKOFF_UNTIL = 0;
 }
@@ -300,7 +342,7 @@ function buildPoiQuery(zoom, bbox) {
 function buildPoiDeltaQuery(zoom, bbox, since) {
   const queryParts = buildPoiStatements(zoom).map((stmt) => stmt.replace(/;$/, `(newer:"${since}");`));
   if (queryParts.length === 0) return '';
-  return `[out:json][timeout:25][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;`;
+  return `[out:json][timeout:10][bbox:${bbox}];(${queryParts.join('')})->.pois;.pois out center;`;
 }
 
 // OSM-Typ und -ID gemeinsam: node, way und relation können dieselbe ID haben
@@ -422,27 +464,32 @@ async function readDatasetCache(cacheKey, cachePolicy) {
 
 function epHealthyOrder(endpoints) {
   const now = Date.now();
-  // 1) Endpoints ohne Cooldown zuerst
+  // 1) Endpoints ohne Cooldown und ohne frischen Fehler zuerst, dann solche mit frischem Fehler
+  //    (auch aus einer früheren Seitenladung), zuletzt die im Cooldown
   const ok = [];
+  const recentlyFailed = [];
   const cool = [];
   for (const ep of endpoints) {
     const s = epGet(ep);
     if (s.failUntil > now) cool.push(ep);
+    else if (s.lastFailTs > s.lastOkTs && now - s.lastFailTs < epDemoteMs()) recentlyFailed.push(ep);
     else ok.push(ep);
   }
 
   // ROUND ROBIN / SHUFFLE:
   // Wir sortieren NICHT nach Last-OK, sondern mischen zufällig.
   // Das verteilt die Last besser auf alle verfügbaren Server.
-  for (let i = ok.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [ok[i], ok[j]] = [ok[j], ok[i]];
+  for (const group of [ok, recentlyFailed]) {
+    for (let i = group.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [group[i], group[j]] = [group[j], group[i]];
+    }
   }
 
   // 2) Cooldown-Endpunkte hinten dran
   cool.sort((a, b) => epGet(a).failUntil - epGet(b).failUntil);
 
-  return [...ok, ...cool];
+  return [...ok, ...recentlyFailed, ...cool];
 }
 
 /** ---- Overpass Fetch mit Retry + Cache + Circuit Breaker ------------------ */
@@ -471,7 +518,13 @@ async function fetchWithRetry(overpassQueryString, opts) {
   }
 }
 
-async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false }, ctx) {
+async function fetchWithRetryAttempt(overpassQueryString, opts, ctx) {
+  const {
+    cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false,
+    timeoutMs = Config.performance?.overpassTimeoutMs ?? 25000, // Timeout je Server
+    maxEndpoints = null,                                         // nur die gesündesten n Server probieren
+    waitForCooldown = true                                       // false: nicht auf abgelaufene Sperrzeiten warten, sofort scheitern
+  } = opts;
   throwIfAborted(signal);
 
   const notify = (...args) => { ctx.id = showNotification(...args) ?? ctx.id; };
@@ -487,7 +540,8 @@ async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs
     emit({ phase: 'cache_miss', reqId, cacheKey });
   }
 
-  const endpoints = epHealthyOrder(Config.overpassEndpoints || []);
+  const ordered = epHealthyOrder(Config.overpassEndpoints || []);
+  const endpoints = Number.isInteger(maxEndpoints) && maxEndpoints > 0 ? ordered.slice(0, maxEndpoints) : ordered;
   if (endpoints.length === 0) throw new Error('err_generic');
 
   const backoffId = await maybeGlobalBackoff(reqId, signal, silent);
@@ -531,7 +585,7 @@ async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
         body,
-        timeoutMs: 25000,
+        timeoutMs,
         signal: signal || State.controllers.fetch.signal
       });
 
@@ -620,7 +674,7 @@ async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs
     const minCooldown = Math.min(...cooldowns);
     const MAX_REASONABLE_WAIT = 15000; // 15 Sekunden
 
-    if (minCooldown <= MAX_REASONABLE_WAIT) {
+    if (waitForCooldown && minCooldown <= MAX_REASONABLE_WAIT) {
       // Lohnt sich zu warten!
       const waitSec = Math.ceil(minCooldown / 1000);
       emit({ phase: 'wait_for_cooldown', reqId, waitMs: minCooldown });
@@ -632,7 +686,7 @@ async function fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs
 
       // Erneuter Versuch
       emit({ phase: 'retry_after_cooldown', reqId });
-      return fetchWithRetryAttempt(overpassQueryString, { cacheKey, cacheTtlMs, cacheMeta, reqId, skipCache, signal, minElementCount, silent }, ctx);
+      return fetchWithRetryAttempt(overpassQueryString, opts, ctx);
     }
   }
 
@@ -668,7 +722,11 @@ async function loadPoiDelta({ zoom, bbox, queryKind, reqId, signal, since }) {
     cacheTtlMs: Config.pipeline.liveDeltaCacheTtlMs,
     reqId: reqId + '_delta',
     signal,
-    silent: true
+    silent: true,
+    // Nur eine Zugabe zur Pipeline: bei Überlast schnell aufgeben statt jeden Server 25 s lang zu fragen
+    timeoutMs: Config.performance?.overpassDeltaTimeoutMs ?? 8000,
+    maxEndpoints: Config.performance?.overpassDeltaMaxEndpoints ?? 2,
+    waitForCooldown: false
   });
   return { key, since, elements: Array.isArray(data?.elements) ? data.elements : [] };
 }
@@ -1390,6 +1448,8 @@ export const _testing = {
   epGet,
   epMarkOk,
   epMarkFail,
+  epHealthLoad,
+  EP_HEALTH_KEY,
   EP,
   countHydrants,
   buildBoundaryQuery,
@@ -1401,8 +1461,15 @@ export const _testing = {
   fetchWithRetry,
   withDeadline,
   // Server-Sperren und globalen Backoff zwischen Tests zurücksetzen
+  // Neuladen der Seite nachstellen: Speicher weg, localStorage bleibt
+  simulateReload() {
+    EP.clear();
+    epHealthLoaded = false;
+  },
   resetOverpassState() {
     EP.clear();
+    epHealthLoaded = false;
+    try { localStorage.removeItem(EP_HEALTH_KEY); } catch { /* kein localStorage */ }
     GLOBAL_BACKOFF_MS = 0;
     GLOBAL_BACKOFF_UNTIL = 0;
   }
