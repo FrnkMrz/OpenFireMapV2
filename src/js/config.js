@@ -251,14 +251,18 @@ export const Config = {
 
   /**
    * Performance-/Robustheits-Parameter.
-   * - overpassTimeoutMs: Timeout pro Overpass-Request
-   * - overpassMaxRetries: wie oft ein Request erneut versucht wird (z.B. bei Timeout)
+   * - overpassTimeoutMs: Timeout pro Overpass-Request und Server (jeder Server wird höchstens einmal probiert)
+   * - overpassDeltaTimeoutMs / overpassDeltaMaxEndpoints: das Live-Nachladen ist nur Zugabe zur Pipeline und soll bei Überlast
+   *   schnell aufgeben: kürzeres Timeout, höchstens so viele Server, kein Warten auf abgelaufene Sperrzeiten
+   * - endpointDemoteMs: so lange stehen Server nach einem Fehler hinten in der Reihenfolge, auch nach einem Neuladen der Seite
    * - moveDebounceMs: Entprellung bei Kartenbewegungen (verhindert Request-Stürme)
    * - cacheTtlMs: Cache-Gültigkeit (ms)
    */
   performance: {
     overpassTimeoutMs: 25000,
-   overpassMaxRetries: 2,
+    overpassDeltaTimeoutMs: 8000,
+    overpassDeltaMaxEndpoints: 2,
+    endpointDemoteMs: 2 * 60 * 1000,
    moveDebounceMs: 400,
     hydrantStatusShowDelayMs: 500,
     hydrantStatusSlowAfterMs: 6000,

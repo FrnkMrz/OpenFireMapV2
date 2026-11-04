@@ -40,9 +40,22 @@ test.describe('Export bei Zoom 14', () => {
     });
 
     test('zeigt eine Fehlermeldung, wenn die Daten nicht geladen werden können', async ({ page }) => {
+        // Der Export wartet bei ausgefallenem Overpass erst den globalen Backoff ab (bis ca. 9 s, auf langsamen Rechnern länger)
+        test.setTimeout(60000);
+        // Alle Ansagen mitschreiben: Der automatische Neuversuch der Karte meldet bei ausgefallenem Overpass ebenfalls Fehler und
+        // ersetzt den Text der Live-Region. Auf langsamen Rechnern fällt das mit dem Export-Fehler zusammen, eine Momentaufnahme
+        // des Textes würde die Export-Meldung dann verpassen.
+        await page.addInitScript(() => {
+            window.__alerts = [];
+            document.addEventListener('DOMContentLoaded', () => {
+                const region = document.getElementById('notification-live-alert');
+                new MutationObserver(() => { if (region.textContent) window.__alerts.push(region.textContent); })
+                    .observe(region, { childList: true, characterData: true, subtree: true });
+            });
+        });
         await prepare(page, (route) => route.fulfill({ status: 500, body: 'Fehler' }));
         await startPdf(page);
-        await expect(page.locator('#notification-live-alert')).toContainText(/FEHLER/, { timeout: 30000 });
+        await expect.poll(() => page.evaluate(() => window.__alerts.join('\n')), { timeout: 45000 }).toMatch(/FEHLER/);
         // Das Fortschrittsfenster bleibt nicht endlos stehen
         await expect(page.locator('#export-progress')).toBeHidden({ timeout: 15000 });
     });

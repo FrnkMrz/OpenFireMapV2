@@ -81,7 +81,8 @@ describe('Overpass-Änderungen zum Pipeline-Stand', () => {
         for (const zoom of [12, 14, 15, 18]) {
             const full = buildPoiQuery(zoom, bbox).query;
             const delta = buildPoiDeltaQuery(zoom, bbox, since);
-            expect(delta.replaceAll(`(newer:"${since}")`, '')).toBe(full);
+            // Das Delta hat ein kürzeres Server-Timeout (10 s statt 25 s); sonst sind die Filter identisch
+            expect(delta.replaceAll(`(newer:"${since}")`, '').replace('[timeout:10]', '[timeout:25]')).toBe(full);
         }
         expect(buildPoiDeltaQuery(11, bbox, since)).toBe('');
     });
