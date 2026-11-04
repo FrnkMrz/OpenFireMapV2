@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "Terkini (tiada perubahan sejak eksport)",
     data_sync_checking: "Memeriksa objek baharu melalui Overpass …",
     data_sync_offline_or_failed: "Pelayan Overpass tidak dapat dihubungi atau luar talian",
+    data_sync_retry: "Cuba semula kemas kini langsung",
     data_sync_disabled_hint: "Dinyahdayakan dalam tetapan",
     data_sync_osm_direct: "Terus dari pelayan OSM",
     symbol_underground_hydrant: 'Pili bomba bawah tanah',

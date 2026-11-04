@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "Aktualne (brak zmian od czasu eksportu)",
     data_sync_checking: "Sprawdzanie nowych obiektów przez Overpass …",
     data_sync_offline_or_failed: "Serwer Overpass niedostępny lub brak sieci",
+    data_sync_retry: "Ponów aktualizację na żywo",
     data_sync_disabled_hint: "Wyłączone w ustawieniach",
     data_sync_osm_direct: "Bezpośrednio z serwerów OSM",
     symbol_underground_hydrant: 'Hydrant podziemny',

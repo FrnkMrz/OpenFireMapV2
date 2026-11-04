@@ -8,11 +8,11 @@
 import { State } from './state.js';
 import { Config } from './config.js';
 import { t } from './i18n.js';
-import { fetchBoundaryData, fetchOSMData } from './api.js';
+import { fetchBoundaryData, fetchOSMData, retryPoiDelta } from './api.js';
 import { isPipelineEligible, lon2tile, lat2tile, computeQueryZoom, isBoundaryElement } from './pipeline.js';
 import { showNotification, announceStatus } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
-import { updateDataStatus } from './data-status.js';
+import { updateDataStatus, setDeltaRetryHandler } from './data-status.js';
 import { getHydrantMarkerType, getMarkerSvg, getWaterMarkerKind } from './marker-symbols.js';
 
 // ---------------------------------------------------------------------------
@@ -136,6 +136,8 @@ export function moveMapTo(latlng, zoom) {
 }
 
 export function initMapLogic() {
+    // Knopf im Datenstand-Popover: Overpass-Live-Delta nach einem Fehler erneut versuchen
+    setDeltaRetryHandler(retryPoiDelta);
     State.markerLayer = L.layerGroup();
     State.boundaryLayer = L.layerGroup();
     State.rangeLayerGroup = L.layerGroup();

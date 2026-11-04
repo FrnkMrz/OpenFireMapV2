@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "最新（エクスポート以降の変更なし）",
     data_sync_checking: "Overpass で新しいオブジェクトを確認中…",
     data_sync_offline_or_failed: "Overpass サーバーに接続できないかオフラインです",
+    data_sync_retry: "ライブ更新を再試行",
     data_sync_disabled_hint: "設定で無効化されています",
     data_sync_osm_direct: "OSM サーバーから直接取得",
     symbol_underground_hydrant: '地下式消火栓',

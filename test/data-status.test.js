@@ -9,7 +9,8 @@ import {
   renderDataStatus,
   toggleDataInfoPopover,
   closeDataInfoPopover,
-  initDataStatusUI
+  initDataStatusUI,
+  setDeltaRetryHandler
 } from '../src/js/data-status.js';
 
 describe('data-status.js', () => {
@@ -37,6 +38,7 @@ describe('data-status.js', () => {
         <div id="data-info-base-val"></div>
         <div id="data-info-base-sub"></div>
         <div id="data-info-delta-val"></div>
+        <button id="data-info-delta-retry" class="hidden" type="button">↻</button>
         <div id="data-info-delta-sub"></div>
         <p id="data-info-hint" data-i18n="data_info_hint"></p>
         <button id="data-info-legal-link">Mehr</button>
@@ -363,6 +365,63 @@ describe('data-status.js', () => {
       document.getElementById('data-info-legal-link').click();
       expect(popover.classList.contains('hidden')).toBe(true);
       expect(legalClicked).toBe(true);
+    });
+  });
+  describe('Knopf "Live-Aktualisierung erneut versuchen"', () => {
+    const retryBtn = () => document.getElementById('data-info-delta-retry');
+    const base = { source: 'pipeline', baseTimestamp: '2026-10-08T12:00:00Z', loadPhase: 'ready' };
+
+    afterEach(() => setDeltaRetryHandler(null));
+
+    it('erscheint nur, wenn das Overpass-Delta fehlgeschlagen ist', () => {
+      for (const deltaStatus of ['none', 'loading', 'success', 'disabled']) {
+        updateDataStatus({ ...base, deltaStatus });
+        expect(retryBtn().classList.contains('hidden'), deltaStatus).toBe(true);
+      }
+      updateDataStatus({ ...base, deltaStatus: 'failed' });
+      expect(retryBtn().classList.contains('hidden')).toBe(false);
+      expect(retryBtn().getAttribute('aria-label')).toBe(t('data_sync_retry'));
+      expect(retryBtn().title).toBe(t('data_sync_retry'));
+    });
+
+    it('ist im Standby (Zoom < 12) ausgeblendet, auch wenn das Delta zuvor fehlgeschlagen war', () => {
+      updateDataStatus({ ...base, deltaStatus: 'failed' });
+      expect(retryBtn().classList.contains('hidden')).toBe(false);
+      updateDataStatus({ loadPhase: 'standby' });
+      expect(retryBtn().classList.contains('hidden')).toBe(true);
+    });
+
+    it('ist bei direkter Overpass-Abfrage oder Cache nie sichtbar', () => {
+      updateDataStatus({ source: 'overpass', deltaStatus: 'failed', loadPhase: 'ready' });
+      expect(retryBtn().classList.contains('hidden')).toBe(true);
+      updateDataStatus({ source: 'cache', deltaStatus: 'failed', loadPhase: 'ready' });
+      expect(retryBtn().classList.contains('hidden')).toBe(true);
+    });
+
+    it('ruft beim Klick den Neuversuch auf und hält den Fokus im Popover', () => {
+      initDataStatusUI();
+      const popover = document.getElementById('data-info-popover');
+      popover.tabIndex = -1;
+      const handler = vi.fn(() => true);
+      setDeltaRetryHandler(handler);
+      updateDataStatus({ ...base, deltaStatus: 'failed' });
+
+      retryBtn().focus();
+      retryBtn().click();
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).toBe(popover);
+    });
+
+    it('tut nichts, wenn kein Neuversuch gestartet wurde', () => {
+      initDataStatusUI();
+      const popover = document.getElementById('data-info-popover');
+      popover.tabIndex = -1;
+      setDeltaRetryHandler(() => false);
+      updateDataStatus({ ...base, deltaStatus: 'failed' });
+
+      retryBtn().focus();
+      retryBtn().click();
+      expect(document.activeElement).toBe(retryBtn());
     });
   });
 });

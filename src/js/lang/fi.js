@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "Ajan tasalla (ei muutoksia viennin jälkeen)",
     data_sync_checking: "Tarkistetaan uusia kohteita Overpassin kautta …",
     data_sync_offline_or_failed: "Overpass-palvelin ei tavoitettavissa tai offline",
+    data_sync_retry: "Yritä live-päivitystä uudelleen",
     data_sync_disabled_hint: "Pois käytöstä asetuksissa",
     data_sync_osm_direct: "Suoraan OSM-palvelimilta",
     symbol_underground_hydrant: 'Maanalainen paloposti',

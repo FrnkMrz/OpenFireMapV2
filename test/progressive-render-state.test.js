@@ -892,6 +892,98 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       expect(State.cachedPoiElements.map((e) => e.id)).toEqual([1, 3, 2]);
     });
 
+    it('Neuversuch: nach fehlgeschlagenem Delta lädt retryPoiDelta() die Änderungen nach (auch trotz Server-Sperre)', async () => {
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+      vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue('2026-09-30T20:22:42Z');
+      vi.spyOn(pipelineModule, 'fetchPipelineData').mockImplementation(async () => {
+        const visible = [{ type: 'node', id: 1, lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+        visible.loadedBounds = { id: 'visible_bounds' };
+        visible.bufferBounds = { south: 49.4, west: 11.0, north: 49.5, east: 11.1 };
+        return visible;
+      });
+
+      let overpassDown = true;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+        if (overpassDown) return { ok: false, status: 503, json: async () => ({}), text: async () => '' };
+        return { ok: true, json: async () => ({ elements: [
+          { type: 'node', id: 2, lat: 49.451, lon: 11.071, tags: { emergency: 'fire_hydrant', ref: 'neu' } }
+        ] }) };
+      });
+
+      // Ohne Fehler gibt es nichts zu wiederholen
+      expect(apiModule.retryPoiDelta()).toBe(false);
+
+      await fetchOSMData();
+      await vi.waitFor(() => expect(State.dataStatus.deltaStatus).toBe('failed'), { timeout: 20000 });
+      expect(State.cachedPoiElements.map((e) => e.id)).toEqual([1]);
+
+      // Overpass ist wieder erreichbar; die Server stehen noch im Cooldown, der Neuversuch ignoriert das
+      overpassDown = false;
+      expect(apiModule.retryPoiDelta()).toBe(true);
+      expect(State.dataStatus.deltaStatus).toBe('loading');
+      expect(apiModule.retryPoiDelta()).toBe(false);   // läuft schon: kein zweiter Start durch Doppelklick
+
+      await vi.waitFor(() => expect(State.dataStatus.deltaStatus).toBe('success'));
+      expect(State.dataStatus.deltaCount).toBe(1);
+      expect(State.cachedPoiElements.map((e) => e.id)).toEqual([1, 2]);
+    }, 30000);
+
+    it('Neuversuch ist im Standby (Zoom < 12) gesperrt und mischt keine Objekte mehr ein', async () => {
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+      vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue('2026-09-30T20:22:42Z');
+      vi.spyOn(pipelineModule, 'fetchPipelineData').mockImplementation(async () => {
+        const visible = [{ type: 'node', id: 1, lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+        visible.loadedBounds = { id: 'visible_bounds' };
+        visible.bufferBounds = { south: 49.4, west: 11.0, north: 49.5, east: 11.1 };
+        return visible;
+      });
+      let release;
+      const gate = new Promise((resolve) => { release = resolve; });
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+        await gate;
+        return { ok: true, json: async () => ({ elements: [{ type: 'node', id: 2, lat: 49.451, lon: 11.071, tags: { emergency: 'fire_hydrant' } }] }) };
+      });
+      const onProgress = vi.fn();
+
+      await fetchOSMData(onProgress);
+      State.dataStatus.deltaStatus = 'failed';
+      const callsBefore = onProgress.mock.calls.length;
+
+      // Wie map.js bei Zoom < 12: POIs verwerfen, Request läuft weiter
+      State.cachedPoiElements = [];
+      State.loadedPoiMode = null;
+      expect(apiModule.retryPoiDelta()).toBe(false);
+
+      // Ein schon laufendes Delta darf nach dem Standby nichts mehr einmischen
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(State.cachedPoiElements).toEqual([]);
+      expect(onProgress.mock.calls.length).toBe(callsBefore);
+    });
+
+    it('Neuversuch gilt nur für den letzten Ausschnitt: eine neue Anfrage macht ihn ungültig', async () => {
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+      vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue('2026-09-30T20:22:42Z');
+      vi.spyOn(pipelineModule, 'fetchPipelineData').mockImplementation(async () => {
+        const visible = [{ type: 'node', id: 1, lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+        visible.loadedBounds = { id: 'visible_bounds' };
+        visible.bufferBounds = { south: 49.4, west: 11.0, north: 49.5, east: 11.1 };
+        return visible;
+      });
+      vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}));   // Delta bleibt offen
+
+      await fetchOSMData();
+      State.dataStatus.deltaStatus = 'failed';   // Fehlerzustand direkt setzen, ohne die Cooldown-Wartezeit abzuwarten
+      expect(typeof apiModule.retryPoiDelta).toBe('function');
+
+      // Neue Anfrage (z. B. Karte verschoben) ersetzt den Neuversuch der alten
+      vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(false);
+      const next = fetchOSMData().catch(() => {});
+      expect(apiModule.retryPoiDelta()).toBe(false);
+      State.controllers.fetch?.abort?.();   // die neue Anfrage hängt am offenen Fetch: abbrechen und abwarten
+      await next;
+    });
+
     it('Länder-Ergebnis: Anzeige nennt Europa und den ältesten Länder-Stand, auch wenn dafür kein Delta mehr läuft', async () => {
       vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
       const els = [{ type: 'node', id: 1, lat: 52.37, lon: 4.9, tags: { emergency: 'fire_hydrant' } }];

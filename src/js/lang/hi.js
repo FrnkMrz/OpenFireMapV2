@@ -167,6 +167,7 @@ export const strings = {
     data_sync_delta_none: "अद्यतन (निर्यात के बाद कोई बदलाव नहीं)",
     data_sync_checking: "Overpass के माध्यम से नए ऑब्जेक्ट की जाँच की जा रही है …",
     data_sync_offline_or_failed: "Overpass सर्वर अनुपलब्ध या ऑफ़लाइन है",
+    data_sync_retry: "लाइव अपडेट फिर से आज़माएँ",
     data_sync_disabled_hint: "सेटिंग्स में अक्षम",
     data_sync_osm_direct: "सीधे OSM सर्वर से",
     symbol_underground_hydrant: 'भूमिगत अग्नि हाइड्रेंट',

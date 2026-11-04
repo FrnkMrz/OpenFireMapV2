@@ -181,6 +181,15 @@ export function renderDataStatus() {
     }
   }
 
+  // Knopf „nochmal versuchen“ nur, wenn das Live-Delta (Overpass) fehlgeschlagen ist und Daten angezeigt werden (nicht im Standby)
+  const retryBtn = document.getElementById('data-info-delta-retry');
+  if (retryBtn) {
+    const label = t('data_sync_retry');
+    retryBtn.classList.toggle('hidden', !(ds.source === 'pipeline' && ds.deltaStatus === 'failed' && ds.loadPhase === 'ready'));
+    retryBtn.setAttribute('aria-label', label);
+    retryBtn.title = label;
+  }
+
   if (deltaValEl) {
     if (ds.source === 'pipeline') {
       if (ds.deltaStatus === 'success') {
@@ -218,6 +227,17 @@ export function renderDataStatus() {
       if (deltaSubEl) deltaSubEl.textContent = '–';
     }
   }
+}
+
+let deltaRetryHandler = null;
+
+/**
+ * Hinterlegt die Funktion, die das Overpass-Live-Delta erneut startet (liefert true, wenn ein Neuversuch begann).
+ * Wird von map.js gesetzt; data-status.js importiert api.js nicht (api.js importiert dieses Modul).
+ * @param {(() => boolean)|null} handler
+ */
+export function setDeltaRetryHandler(handler) {
+  deltaRetryHandler = typeof handler === 'function' ? handler : null;
 }
 
 /**
@@ -290,6 +310,16 @@ export function initDataStatusUI() {
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       closeDataInfoPopover();
+    });
+  }
+
+  const retryBtn = document.getElementById('data-info-delta-retry');
+  if (retryBtn) {
+    retryBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!deltaRetryHandler || !deltaRetryHandler()) return;
+      // Der Knopf verschwindet jetzt: Fokus im Popover halten statt ihn zu verlieren
+      popover?.focus();
     });
   }
 

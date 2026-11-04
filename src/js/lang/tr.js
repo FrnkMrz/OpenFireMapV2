@@ -167,6 +167,7 @@ export const strings = {
     data_sync_delta_none: "Güncel (dışa aktarmadan beri değişiklik yok)",
     data_sync_checking: "Overpass ile yeni nesneler denetleniyor …",
     data_sync_offline_or_failed: "Overpass sunucusu ulaşılamıyor veya çevrimdışı",
+    data_sync_retry: "Canlı güncellemeyi yeniden dene",
     data_sync_disabled_hint: "Ayarlarda devre dışı",
     data_sync_osm_direct: "Doğrudan OSM sunucularından",
     symbol_underground_hydrant: 'Yeraltı yangın hidrantı',
