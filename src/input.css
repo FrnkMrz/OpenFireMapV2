@@ -497,6 +497,10 @@ body {
     gap: 8px;
 }
 
+/* Die ungeschichtete display:flex-Regel oben schlägt Tailwinds .hidden (Utility-Layer): ohne diese Zeile bliebe
+   der leere Rahmen auch im Zustand "hidden" sichtbar. */
+.hydrant-download-status.hidden { display: none; }
+
 .hydrant-download-status__indicator { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 9999px; background: #60a5fa; }
 .hydrant-download-status[data-state="loading"] .hydrant-download-status__indicator,
 .hydrant-download-status[data-state="refreshing"] .hydrant-download-status__indicator { border: 2px solid #93c5fd; border-top-color: transparent; background: transparent; animation: hydrant-status-spin 0.8s linear infinite; }
