@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.10.3] - 2026-11-04
+
+### Neu
+- **Nochmal versuchen für das Overpass-Nachladen** (PR 124): Schlägt das Nachladen der Änderungen per Overpass fehl, steht im Popover „Datenstand & Herkunft“ neben „Nicht verfügbar (Basis-Stand aktiv)“ ein Knopf „Live-Aktualisierung erneut versuchen“ (neuer Schlüssel `data_sync_retry`, in allen 30 Sprachen). Der Neuversuch gilt für den zuletzt geladenen Ausschnitt und setzt Server-Sperrzeiten und Backoff zurück, weil er eine ausdrückliche Nutzeraktion ist. Eine neue Kartenanfrage oder der Standby unter Zoom 12 macht ihn ungültig; ein dann noch laufendes Nachladen mischt keine Objekte mehr ein. Ein veralteter Fehler einer überholten Anfrage überschreibt den Status der neuen nicht mehr. Tests: `test/data-status.test.js`, `test/progressive-render-state.test.js`.
+
+### Behoben
+- Ein leerer dunkler Rahmen über dem Datenstand-Popover (der unsichtbare Ladehinweis für Hydranten) wird nicht mehr angezeigt: Die ungeschichtete Regel `display: flex` hatte Tailwinds `.hidden` überstimmt.
+
 ## [v0.10.2] - 2026-10-29
 
 ### Geändert
