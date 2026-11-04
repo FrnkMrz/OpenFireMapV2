@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "เป็นปัจจุบัน (ไม่มีการเปลี่ยนแปลงตั้งแต่ส่งออก)",
     data_sync_checking: "กำลังตรวจสอบวัตถุใหม่ผ่าน Overpass …",
     data_sync_offline_or_failed: "เซิร์ฟเวอร์ Overpass ไม่สามารถเข้าถึงได้หรือออฟไลน์",
+    data_sync_retry: "ลองอัปเดตแบบสดอีกครั้ง",
     data_sync_disabled_hint: "ปิดใช้งานในการตั้งค่า",
     data_sync_osm_direct: "ส่งตรงจากเซิร์ฟเวอร์ OSM",
     symbol_underground_hydrant: 'หัวจ่ายน้ำดับเพลิงใต้ดิน',

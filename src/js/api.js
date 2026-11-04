@@ -48,6 +48,7 @@ let _bgPoiGen = 0;        // Hochzählen = alle laufenden Callbacks ungültig ma
 let _bgBoundaryRefresh = null;
 let _bgBoundaryGen = 0;
 let _poiDelta = null;      // { key, elements } – zuletzt geladene Overpass-Änderungen zum Pipeline-Stand
+let _deltaRetry = null;    // () => boolean – startet das Live-Delta des zuletzt geladenen Ausschnitts neu
 
 /** ---- Globaler Backoff (429/Server-Überlast) ----------------------------- */
 let GLOBAL_BACKOFF_MS = 0;
@@ -140,6 +141,13 @@ function epMarkFail(endpoint, status, cooldownMs) {
   s.lastFailTs = Date.now();
   s.lastStatus = status;
   s.failUntil = Math.max(s.failUntil, Date.now() + cooldownMs);
+}
+
+/** Setzt alle Endpoint-Cooldowns und den globalen Backoff zurück (nur für einen vom Nutzer ausgelösten Neuversuch). */
+function resetOverpassCooldowns() {
+  for (const state of EP.values()) state.failUntil = 0;
+  GLOBAL_BACKOFF_MS = 0;
+  GLOBAL_BACKOFF_UNTIL = 0;
 }
 
 /** ---- UI Helper ---------------------------------------------------------- */
@@ -665,6 +673,14 @@ async function loadPoiDelta({ zoom, bbox, queryKind, reqId, signal, since }) {
   return { key, since, elements: Array.isArray(data?.elements) ? data.elements : [] };
 }
 
+/**
+ * Wiederholt das Overpass-Live-Delta, wenn es für den aktuellen Ausschnitt fehlgeschlagen ist.
+ * @returns {boolean} true, wenn ein Neuversuch gestartet wurde
+ */
+export function retryPoiDelta() {
+  return typeof _deltaRetry === 'function' ? _deltaRetry() : false;
+}
+
 export async function fetchOSMData(onProgressData = null, onStatus = null) {
   const reqId = Math.random().toString(36).substring(2, 7);
   const zoom = State.map.getZoom();
@@ -701,6 +717,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
 
   // Alte Anfrage abbrechen + neuen Controller setzen
   if (State.controllers.fetch) State.controllers.fetch.abort();
+  _deltaRetry = null; // der Neuversuch der vorigen Anfrage gilt nicht mehr
   const controller = new AbortController();
   State.controllers.fetch = controller;
   const isCurrentRequest = () => !controller.signal.aborted && (State.controllers.fetch === controller || State.controllers.fetch === null);
@@ -811,7 +828,8 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
           });
 
           // Änderungen seit dem Pipeline-Stand per Overpass nachladen (Hintergrund, Fehler sind unkritisch)
-          loadPoiDelta({ zoom, bbox: deltaBBoxForPipeline(pipelineElements, viewBounds), queryKind, reqId, signal: controller.signal, since: baseTimestamp })
+          const deltaBBox = deltaBBoxForPipeline(pipelineElements, viewBounds);
+          const startDelta = () => loadPoiDelta({ zoom, bbox: deltaBBox, queryKind, reqId, signal: controller.signal, since: baseTimestamp })
             .then((delta) => {
               if (!isCurrentRequest()) return;
               if (!delta) {
@@ -832,11 +850,20 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
               if (typeof onProgressData === 'function') onProgressData(State.cachedPoiElements, false);
             })
             .catch((err) => {
-              if (err?.name !== 'AbortError') {
+              if (err?.name !== 'AbortError' && isCurrentRequest()) {
                 console.warn('[API] Overpass-Änderungen konnten nicht geladen werden (nicht kritisch):', err?.message);
                 updateDataStatus({ deltaStatus: 'failed' });
               }
             });
+          // Manueller Neuversuch (Knopf im Datenstand-Popover): nur für den zuletzt geladenen Ausschnitt und nur nach einem Fehler
+          _deltaRetry = () => {
+            if (!isCurrentRequest() || State.dataStatus?.deltaStatus !== 'failed') return false;
+            resetOverpassCooldowns(); // ausdrücklicher Wunsch des Nutzers: auch Server im Cooldown erneut versuchen
+            updateDataStatus({ deltaStatus: 'loading' });
+            startDelta();
+            return true;
+          };
+          startDelta();
 
           return pipelineElements;
         }

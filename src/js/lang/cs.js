@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "Aktuální (beze změn od exportu)",
     data_sync_checking: "Kontrola nových objektů přes Overpass …",
     data_sync_offline_or_failed: "Server Overpass nedostupný nebo offline",
+    data_sync_retry: "Zkusit živou aktualizaci znovu",
     data_sync_disabled_hint: "V nastavení zakázáno",
     data_sync_osm_direct: "Přímo ze serverů OSM",
     symbol_underground_hydrant: 'Podzemní hydrant',

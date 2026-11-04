@@ -166,6 +166,7 @@ export const strings = {
     data_sync_delta_none: "Aktuell (keine Änderungen seit Export)",
     data_sync_checking: "Prüfe neue Objekte per Overpass …",
     data_sync_offline_or_failed: "Overpass-Server nicht erreichbar oder offline",
+    data_sync_retry: "Live-Aktualisierung erneut versuchen",
     data_sync_disabled_hint: "In den Einstellungen deaktiviert",
     data_sync_osm_direct: "Direkt von OSM-Servern",
     symbol_underground_hydrant: 'Unterflurhydrant',

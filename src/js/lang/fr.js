@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "À jour (aucun changement depuis l'export)",
     data_sync_checking: "Vérification des nouveaux objets via Overpass …",
     data_sync_offline_or_failed: "Serveur Overpass inaccessible ou hors ligne",
+    data_sync_retry: "Réessayer la mise à jour en direct",
     data_sync_disabled_hint: "Désactivé dans les paramètres",
     data_sync_osm_direct: "Directement depuis les serveurs OSM",
     symbol_underground_hydrant: 'Poteau incendie souterrain',

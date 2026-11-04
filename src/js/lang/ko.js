@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "최신 상태 (내보내기 이후 변경사항 없음)",
     data_sync_checking: "Overpass를 통해 새 객체 확인 중…",
     data_sync_offline_or_failed: "Overpass 서버에 연결할 수 없거나 오프라인입니다",
+    data_sync_retry: "실시간 업데이트 다시 시도",
     data_sync_disabled_hint: "설정에서 비활성화됨",
     data_sync_osm_direct: "OSM 서버에서 직접 가져옴",
     symbol_underground_hydrant: '지하식 소화전',

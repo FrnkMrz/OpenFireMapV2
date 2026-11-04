@@ -167,6 +167,7 @@ export const strings = {
     data_sync_delta_none: "Terkini (tidak ada perubahan sejak ekspor)",
     data_sync_checking: "Memeriksa objek baru melalui Overpass …",
     data_sync_offline_or_failed: "Server Overpass tidak dapat dijangkau atau offline",
+    data_sync_retry: "Coba lagi pembaruan langsung",
     data_sync_disabled_hint: "Dinonaktifkan di pengaturan",
     data_sync_osm_direct: "Langsung dari server OSM",
     symbol_underground_hydrant: 'Hidran kebakaran bawah tanah',

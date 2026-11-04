@@ -265,7 +265,14 @@
 
                     <div>
                         <div class="text-slate-400 font-semibold" data-i18n="data_live_sync_label">Live-Aktualisierung (Overpass)</div>
-                        <div id="data-info-delta-val" class="text-green-400 font-medium">–</div>
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <div id="data-info-delta-val" class="text-green-400 font-medium">–</div>
+                            <button id="data-info-delta-retry" type="button"
+                                data-i18n-aria-label="data_sync_retry" data-i18n-title="data_sync_retry"
+                                class="hidden inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer">
+                                <span aria-hidden="true">↻</span>
+                            </button>
+                        </div>
                         <div id="data-info-delta-sub" class="text-slate-400 text-xs">–</div>
                     </div>
                 </div>
