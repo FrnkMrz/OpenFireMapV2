@@ -88,6 +88,10 @@ export const Config = {
     liveDelta: true,
     // Cache-Dauer für das Delta je Ausschnitt (kurz, damit frisch gemappte Objekte bald erscheinen)
     liveDeltaCacheTtlMs: 10 * 60 * 1000,
+    // Frische-Check: Jede Overpass-Antwort nennt ihren Datenstand (osm3s.timestamp_osm_base). Ein Delta gilt nur, wenn dieser
+    // Stand neuer als der Pipeline-Stand ist und höchstens so weit zurückliegt. Sonst (z. B. ein Spiegel mit Tagesdaten)
+    // hätte der Server nichts Neues und die Anzeige würde fälschlich „aktiv, 0 Änderungen“ melden.
+    liveDeltaMaxLagMs: 6 * 60 * 60 * 1000,
     // Abdeckungsbereich DACHLiLu (Deutschland, Österreich, Schweiz, Luxemburg, Liechtenstein)
     // Äußere Bounding-Box für schnelle Vorfilterung (O(1))
     bounds: {
@@ -254,6 +258,8 @@ export const Config = {
    * - overpassTimeoutMs: Timeout pro Overpass-Request und Server (jeder Server wird höchstens einmal probiert)
    * - overpassDeltaTimeoutMs / overpassDeltaMaxEndpoints: das Live-Nachladen ist nur Zugabe zur Pipeline und soll bei Überlast
    *   schnell aufgeben: kürzeres Timeout, höchstens so viele Server, kein Warten auf abgelaufene Sperrzeiten
+   * - endpointStaleMs: so lange wird ein Server, dessen Daten für das Live-Nachladen zu alt waren, dafür übersprungen
+   *   (für normale Abfragen bleibt er nutzbar)
    * - endpointDemoteMs: so lange stehen Server nach einem Fehler hinten in der Reihenfolge, auch nach einem Neuladen der Seite
    * - moveDebounceMs: Entprellung bei Kartenbewegungen (verhindert Request-Stürme)
    * - cacheTtlMs: Cache-Gültigkeit (ms)
@@ -263,6 +269,7 @@ export const Config = {
     overpassDeltaTimeoutMs: 8000,
     overpassDeltaMaxEndpoints: 2,
     endpointDemoteMs: 2 * 60 * 1000,
+    endpointStaleMs: 15 * 60 * 1000,
    moveDebounceMs: 400,
     hydrantStatusShowDelayMs: 500,
     hydrantStatusSlowAfterMs: 6000,

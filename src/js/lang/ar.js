@@ -167,6 +167,7 @@ export const strings = {
     data_sync_delta_none: "محدث (لا توجد تغييرات منذ التصدير)",
     data_sync_checking: "جاري التحقق من العناصر الجديدة عبر Overpass …",
     data_sync_offline_or_failed: "خادم Overpass غير متاح أو غير متصل بالإنترنت",
+    data_sync_stale: "خادم Overpass لا يملك بيانات أحدث",
     data_sync_retry: "إعادة محاولة التحديث المباشر",
     data_sync_disabled_hint: "معطل في الإعدادات",
     data_sync_osm_direct: "مباشرة من خوادم OSM",

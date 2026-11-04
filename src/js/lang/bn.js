@@ -167,6 +167,7 @@ export const strings = {
     data_sync_delta_none: "হালনাগাদ (রপ্তানির পর কোনো পরিবর্তন হয়নি)",
     data_sync_checking: "Overpass-এর মাধ্যমে নতুন অবজেক্ট পরীক্ষা করা হচ্ছে …",
     data_sync_offline_or_failed: "Overpass সার্ভার অনুপলব্ধ বা অফলাইন",
+    data_sync_stale: "Overpass সার্ভারে নতুন ডেটা নেই",
     data_sync_retry: "লাইভ আপডেট আবার চেষ্টা করুন",
     data_sync_disabled_hint: "সেটিংসে নিষ্ক্রিয় করা হয়েছে",
     data_sync_osm_direct: "সরাসরি OSM সার্ভার থেকে",

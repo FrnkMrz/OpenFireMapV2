@@ -13,7 +13,8 @@ const {
     buildPoiQuery,
     buildExportQuery,
     buildPoiDeltaQuery,
-    mergePoiDelta
+    mergePoiDelta,
+    isDeltaResponseFresh
 } = _testing;
 
 // ---- Tests ----
@@ -186,5 +187,32 @@ describe('epHealthyOrder', () => {
 
         const state = epGet('https://ep1.com');
         expect(state.failUntil).toBe(0);
+    });
+});
+
+describe('isDeltaResponseFresh (Frische-Check für das Overpass-Delta)', () => {
+    const since = '2026-11-02T21:21:26Z';                 // Pipeline-Stand
+    const now = Date.parse('2026-11-04T12:00:00Z');
+    const res = (base) => ({ osm3s: { timestamp_osm_base: base }, elements: [] });
+
+    it('akzeptiert einen Server mit Stand neuer als die Pipeline und höchstens 6 h alt', () => {
+        expect(isDeltaResponseFresh(res('2026-11-04T11:58:00Z'), since, now)).toBe(true);
+        expect(isDeltaResponseFresh(res('2026-11-04T06:00:01Z'), since, now)).toBe(true);
+    });
+
+    it('lehnt einen Server mit demselben oder älterem Stand wie die Pipeline ab (Tagesauszug-Spiegel)', () => {
+        expect(isDeltaResponseFresh(res('2026-11-02T21:21:26Z'), since, now)).toBe(false);
+        expect(isDeltaResponseFresh(res('2026-11-01T03:00:00Z'), since, now)).toBe(false);
+    });
+
+    it('lehnt einen Server ab, dessen Stand zwar neuer als die Pipeline, aber mehr als 6 h alt ist', () => {
+        expect(isDeltaResponseFresh(res('2026-11-04T05:59:00Z'), since, now)).toBe(false);
+        expect(isDeltaResponseFresh(res('2026-11-03T08:00:00Z'), since, now)).toBe(false);
+    });
+
+    it('lässt Antworten ohne lesbaren Stand gelten (nichts zu beurteilen)', () => {
+        expect(isDeltaResponseFresh({ elements: [] }, since, now)).toBe(true);
+        expect(isDeltaResponseFresh(res('kaputt'), since, now)).toBe(true);
+        expect(isDeltaResponseFresh(null, since, now)).toBe(true);
     });
 });

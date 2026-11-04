@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "Actueel (geen wijzigingen sinds export)",
     data_sync_checking: "Nieuwe objecten controleren via Overpass …",
     data_sync_offline_or_failed: "Overpass-server onbereikbaar of offline",
+    data_sync_stale: "Overpass-server heeft geen recentere gegevens",
     data_sync_retry: "Live-update opnieuw proberen",
     data_sync_disabled_hint: "Uitgeschakeld in instellingen",
     data_sync_osm_direct: "Rechtstreeks van OSM-servers",

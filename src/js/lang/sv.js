@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "Aktuellt (inga ändringar sedan export)",
     data_sync_checking: "Söker efter nya objekt via Overpass …",
     data_sync_offline_or_failed: "Overpass-servern är inte tillgänglig eller offline",
+    data_sync_stale: "Overpass-servern har inga nyare data",
     data_sync_retry: "Försök med liveuppdateringen igen",
     data_sync_disabled_hint: "Inaktiverad i inställningarna",
     data_sync_osm_direct: "Direkt från OSM-servrar",

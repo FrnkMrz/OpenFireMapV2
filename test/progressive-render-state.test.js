@@ -992,6 +992,80 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       }
     });
 
+    describe('Frische-Check', () => {
+      const baseSince = '2026-09-30T20:22:42Z';
+      const setupPipeline = () => {
+        vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
+        vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue(baseSince);
+        vi.spyOn(pipelineModule, 'fetchPipelineData').mockImplementation(async () => {
+          const visible = [{ type: 'node', id: 1, lat: 49.45, lon: 11.07, tags: { emergency: 'fire_hydrant' } }];
+          visible.loadedBounds = { id: 'visible_bounds' };
+          visible.bufferBounds = { south: 49.4, west: 11.0, north: 49.5, east: 11.1 };
+          return visible;
+        });
+      };
+      const newHydrant = { type: 'node', id: 2, lat: 49.451, lon: 11.071, tags: { emergency: 'fire_hydrant', ref: 'neu' } };
+      const answer = (base) => ({ ok: true, json: async () => ({ osm3s: { timestamp_osm_base: base }, elements: [newHydrant] }) });
+
+      it('ein Server mit veraltetem Stand (Tagesauszug) gilt nicht: Fehler "stale", keine Objekte eingemischt', async () => {
+        setupPipeline();
+        const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => answer(baseSince));   // Stand = Pipeline-Stand
+
+        await fetchOSMData();
+        await vi.waitFor(() => expect(State.dataStatus.deltaStatus).toBe('failed'), { timeout: 10000 });
+        expect(State.dataStatus.deltaReason).toBe('stale');
+        expect(State.cachedPoiElements.map((e) => e.id)).toEqual([1]);
+        expect(fetchSpy.mock.calls.length).toBe(2);   // overpassDeltaMaxEndpoints, jeder Server einmal
+      });
+
+      it('ein aktueller Server wird genommen, ein veralteter davor übersprungen', async () => {
+        setupPipeline();
+        const saved = { ...Config.performance };
+        Config.performance.overpassDeltaMaxEndpoints = Config.overpassEndpoints.length;
+        const fresh = Config.overpassEndpoints[0];
+        const calls = [];
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+          calls.push(String(url));
+          return String(url) === fresh ? answer(new Date().toISOString()) : answer(baseSince);
+        });
+        try {
+          await fetchOSMData();
+          await vi.waitFor(() => expect(State.dataStatus.deltaStatus).toBe('success'), { timeout: 10000 });
+          expect(State.dataStatus.deltaReason).toBeNull();
+          expect(State.cachedPoiElements.map((e) => e.id)).toEqual([1, 2]);
+          expect(calls).toContain(fresh);
+        } finally {
+          Object.assign(Config.performance, saved);
+        }
+      });
+
+      it('veraltete Server werden für das Delta eine Weile übersprungen, bleiben aber für normale Abfragen nutzbar', async () => {
+        const { fetchWithRetry, epGet } = apiModule._testing;
+        const calls = [];
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+          calls.push(String(url));
+          return { ok: true, json: async () => ({ elements: [], tag: 'stale' }) };
+        });
+        const validate = (json) => json.tag === 'ok';   // nie erfüllt: alle Server gelten als veraltet
+        const signal = new AbortController().signal;
+
+        await expect(fetchWithRetry('q1', { reqId: 'v1', silent: true, signal, validate })).rejects.toThrow('err_stale');
+        expect(calls).toHaveLength(Config.overpassEndpoints.length);   // jeder Server einmal gefragt
+        for (const ep of Config.overpassEndpoints) {
+          expect(epGet(ep).staleUntil).toBeGreaterThan(Date.now());
+          expect(epGet(ep).failUntil).toBe(0);                          // kein Cooldown für andere Abfragen
+        }
+
+        calls.length = 0;
+        await expect(fetchWithRetry('q2', { reqId: 'v2', silent: true, signal, validate })).rejects.toThrow();
+        expect(calls).toHaveLength(0);                                   // für das Delta übersprungen, kein Netzwerkzugriff
+
+        const json = await fetchWithRetry('q3', { reqId: 'v3', silent: true, signal });   // ohne validate: normal nutzbar
+        expect(json.tag).toBe('stale');
+        expect(calls).toHaveLength(1);
+      });
+    });
+
     it('Neuversuch gilt nur für den letzten Ausschnitt: eine neue Anfrage macht ihn ungültig', async () => {
       vi.spyOn(pipelineModule, 'isPipelineEligible').mockReturnValue(true);
       vi.spyOn(pipelineModule, 'getPipelineOsmDataUntil').mockReturnValue('2026-09-30T20:22:42Z');
