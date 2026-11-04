@@ -167,6 +167,7 @@ export const strings = {
     data_sync_delta_none: "تازہ ترین (برآمد کے بعد کوئی تبدیلی نہیں)",
     data_sync_checking: "Overpass کے ذریعے نئی اشیاء چیک کی جا رہی ہیں …",
     data_sync_offline_or_failed: "Overpass سرور ناقابل رسائی یا آف لائن ہے",
+    data_sync_stale: "Overpass سرور کے پاس نیا ڈیٹا نہیں ہے",
     data_sync_retry: "لائیو اپ ڈیٹ دوبارہ آزمائیں",
     data_sync_disabled_hint: "ترتیبات میں غیر فعال ہے",
     data_sync_osm_direct: "براہ راست OSM سرورز سے",

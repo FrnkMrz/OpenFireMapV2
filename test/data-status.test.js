@@ -279,6 +279,19 @@ describe('data-status.js', () => {
       expect(document.getElementById('data-info-delta-sub').textContent).toBe('Overpass-Server nicht erreichbar oder offline');
     });
 
+    it('nennt bei veralteten Overpass-Daten den passenden Grund statt "nicht erreichbar"', () => {
+      updateDataStatus({
+        source: 'pipeline',
+        baseTimestamp: '2026-10-08T12:00:00Z',
+        deltaStatus: 'failed',
+        deltaReason: 'stale',
+        loadPhase: 'ready'
+      });
+      expect(document.getElementById('data-info-delta-sub').textContent).toBe('Overpass-Server hat keine aktuelleren Daten');
+      updateDataStatus({ deltaReason: null });
+      expect(document.getElementById('data-info-delta-sub').textContent).toBe('Overpass-Server nicht erreichbar oder offline');
+    });
+
     it('zeigt LIVE bei direkter Overpass-Abfrage', () => {
       updateDataStatus({
         source: 'overpass',

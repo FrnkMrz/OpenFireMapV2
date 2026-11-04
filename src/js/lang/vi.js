@@ -167,6 +167,7 @@ export const strings = {
     data_sync_delta_none: "Mới nhất (không có thay đổi kể từ khi xuất)",
     data_sync_checking: "Đang kiểm tra đối tượng mới qua Overpass …",
     data_sync_offline_or_failed: "Máy chủ Overpass không thể truy cập hoặc ngoại tuyến",
+    data_sync_stale: "Máy chủ Overpass không có dữ liệu mới hơn",
     data_sync_retry: "Thử lại cập nhật trực tiếp",
     data_sync_disabled_hint: "Đã tắt trong cài đặt",
     data_sync_osm_direct: "Trực tiếp từ máy chủ OSM",

@@ -207,7 +207,7 @@ export function renderDataStatus() {
       } else if (ds.deltaStatus === 'failed') {
         deltaValEl.textContent = `⚠️ ${t('data_sync_unavailable')}`;
         deltaValEl.className = 'text-amber-400 font-medium';
-        if (deltaSubEl) deltaSubEl.textContent = t('data_sync_offline_or_failed');
+        if (deltaSubEl) deltaSubEl.textContent = t(ds.deltaReason === 'stale' ? 'data_sync_stale' : 'data_sync_offline_or_failed');
       } else if (ds.deltaStatus === 'disabled') {
         deltaValEl.textContent = `⚪ ${t('data_sync_disabled')}`;
         deltaValEl.className = 'text-slate-400 font-medium';

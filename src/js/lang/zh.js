@@ -169,6 +169,7 @@ export const strings = {
     data_sync_delta_none: "最新（自导出以来无更改）",
     data_sync_checking: "正在通过 Overpass 检查新对象…",
     data_sync_offline_or_failed: "Overpass 服务器不可用或离线",
+    data_sync_stale: "Overpass 服务器没有更新的数据",
     data_sync_retry: "重试实时更新",
     data_sync_disabled_hint: "已在设置中禁用",
     data_sync_osm_direct: "直接来自 OSM 服务器",

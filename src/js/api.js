@@ -140,7 +140,7 @@ function epHealthLoad() {
     const now = Date.now();
     for (const [endpoint, failTs] of Object.entries(stored)) {
       if (!known.has(endpoint) || !Number.isFinite(failTs) || failTs > now || now - failTs >= epDemoteMs()) continue;
-      EP.set(endpoint, { failUntil: 0, lastOkTs: 0, lastFailTs: failTs, lastStatus: null });
+      EP.set(endpoint, { failUntil: 0, staleUntil: 0, lastOkTs: 0, lastFailTs: failTs, lastStatus: null });
     }
   } catch { /* localStorage nicht verfügbar oder unlesbar: ohne Merkliste weiter */ }
 }
@@ -159,7 +159,7 @@ function epHealthSave() {
 
 function epGet(ep) {
   epHealthLoad();
-  if (!EP.has(ep)) EP.set(ep, { failUntil: 0, lastOkTs: 0, lastFailTs: 0, lastStatus: null });
+  if (!EP.has(ep)) EP.set(ep, { failUntil: 0, staleUntil: 0, lastOkTs: 0, lastFailTs: 0, lastStatus: null });
   return EP.get(ep);
 }
 
@@ -185,6 +185,7 @@ function epMarkFail(endpoint, status, cooldownMs) {
 function resetOverpassCooldowns() {
   for (const state of EP.values()) {
     state.failUntil = 0;
+    state.staleUntil = 0;
     state.lastFailTs = 0;
   }
   epHealthSave();
@@ -523,7 +524,8 @@ async function fetchWithRetryAttempt(overpassQueryString, opts, ctx) {
     cacheKey, cacheTtlMs, cacheMeta = null, reqId, skipCache = false, signal = null, minElementCount = null, silent = false,
     timeoutMs = Config.performance?.overpassTimeoutMs ?? 25000, // Timeout je Server
     maxEndpoints = null,                                         // nur die gesündesten n Server probieren
-    waitForCooldown = true                                       // false: nicht auf abgelaufene Sperrzeiten warten, sofort scheitern
+    waitForCooldown = true,                                      // false: nicht auf abgelaufene Sperrzeiten warten, sofort scheitern
+    validate = null                                              // (json) => boolean: false = Antwort unbrauchbar (z. B. veraltet), nächster Server
   } = opts;
   throwIfAborted(signal);
 
@@ -533,14 +535,18 @@ async function fetchWithRetryAttempt(overpassQueryString, opts, ctx) {
   // Cache lesen (nur wenn nicht übersprungen)
   if (cacheKey && !skipCache) {
     const cached = await getCache(cacheKey, cacheTtlMs);
-    if (cached) {
+    // Auch ein zwischengespeicherter Eintrag muss die Prüfung bestehen (er kann von vor dem Frische-Check stammen oder in den
+    // zehn Minuten Cache-Dauer über die Altersgrenze gewandert sein): sonst zählt er als Treffer-Fehlschlag und wird neu geladen
+    if (cached && (!validate || validate(cached))) {
       emit({ phase: 'cache_hit', reqId, cacheKey });
       return cached;
     }
-    emit({ phase: 'cache_miss', reqId, cacheKey });
+    emit({ phase: cached ? 'cache_stale' : 'cache_miss', reqId, cacheKey });
   }
 
-  const ordered = epHealthyOrder(Config.overpassEndpoints || []);
+  // Server, deren Daten für diese Abfrage kürzlich zu alt waren, gar nicht erst einplanen (sie belegen sonst einen der maxEndpoints-Plätze)
+  const usable = (Config.overpassEndpoints || []).filter((ep) => !validate || epGet(ep).staleUntil <= Date.now());
+  const ordered = epHealthyOrder(usable);
   const endpoints = Number.isInteger(maxEndpoints) && maxEndpoints > 0 ? ordered.slice(0, maxEndpoints) : ordered;
   if (endpoints.length === 0) throw new Error('err_generic');
 
@@ -590,6 +596,15 @@ async function fetchWithRetryAttempt(overpassQueryString, opts, ctx) {
       });
 
       if (!json || typeof json !== 'object') throw new Error('err_generic');
+
+      if (validate && !validate(json)) {
+        // Der Server hat geantwortet, aber nicht mit brauchbaren Daten (veralteter Stand): nicht cachen, kein Cooldown und
+        // kein Backoff (er ist nicht überlastet), nur für solche Abfragen eine Weile überspringen und den nächsten fragen
+        epGet(endpoint).staleUntil = Date.now() + (Config.performance?.endpointStaleMs ?? 15 * 60 * 1000);
+        emit({ phase: 'stale_endpoint', reqId, endpoint, base: json?.osm3s?.timestamp_osm_base || null });
+        lastErr = new Error('err_stale');
+        continue;
+      }
 
       epMarkOk(endpoint, 200);
 
@@ -709,6 +724,18 @@ function reportHydrantDownload(onStatus, state, elements = []) {
   onStatus({ state, count: countHydrants(elements) });
 }
 
+// Frische-Check für ein Delta: Der Datenstand der Antwort (osm3s.timestamp_osm_base) muss neuer als der Pipeline-Stand sein
+// (sonst kann der Server nichts Neues wissen) und darf höchstens liveDeltaMaxLagMs zurückliegen. Fehlt der Stand in der
+// Antwort, lässt sich nichts beurteilen und die Antwort gilt (wie bisher).
+function isDeltaResponseFresh(json, since, now = Date.now()) {
+  const base = Date.parse(json?.osm3s?.timestamp_osm_base);
+  if (!Number.isFinite(base)) return true;
+  const sinceMs = Date.parse(since);
+  if (Number.isFinite(sinceMs) && base <= sinceMs) return false;
+  const maxLag = Config.pipeline?.liveDeltaMaxLagMs;
+  return !(Number.isFinite(maxLag) && now - base > maxLag);
+}
+
 // Lädt die Overpass-Änderungen zum Pipeline-Stand für den Ausschnitt (kurz gecacht).
 // Gibt null zurück, wenn kein Datenstand bekannt ist (ältere Builds ohne OSM-IDs) oder das Nachladen aus ist.
 async function loadPoiDelta({ zoom, bbox, queryKind, reqId, signal, since }) {
@@ -726,7 +753,8 @@ async function loadPoiDelta({ zoom, bbox, queryKind, reqId, signal, since }) {
     // Nur eine Zugabe zur Pipeline: bei Überlast schnell aufgeben statt jeden Server 25 s lang zu fragen
     timeoutMs: Config.performance?.overpassDeltaTimeoutMs ?? 8000,
     maxEndpoints: Config.performance?.overpassDeltaMaxEndpoints ?? 2,
-    waitForCooldown: false
+    waitForCooldown: false,
+    validate: (json) => isDeltaResponseFresh(json, since)
   });
   return { key, since, elements: Array.isArray(data?.elements) ? data.elements : [] };
 }
@@ -882,6 +910,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
             baseTimestamp: pipelineMeta ? pipelineMeta.osmDataStand : baseTimestamp,
             generatedAt,
             deltaStatus: canRunDelta ? 'loading' : 'disabled',
+            deltaReason: null,
             loadPhase: 'ready'
           });
 
@@ -900,6 +929,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
               emit({ phase: 'pipeline_delta', reqId, since: delta.since, dataset: 'poi', elements: delta.elements.length });
               updateDataStatus({
                 deltaStatus: 'success',
+                deltaReason: null,
                 deltaTimestamp: Date.now(),
                 deltaCount: delta.elements.length
               });
@@ -911,7 +941,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
             .catch((err) => {
               if (err?.name !== 'AbortError' && isCurrentRequest()) {
                 console.warn('[API] Overpass-Änderungen konnten nicht geladen werden (nicht kritisch):', err?.message);
-                updateDataStatus({ deltaStatus: 'failed' });
+                updateDataStatus({ deltaStatus: 'failed', deltaReason: err?.message === 'err_stale' ? 'stale' : null });
               }
             });
           // Manueller Neuversuch (Knopf im Datenstand-Popover): nur für den zuletzt geladenen Ausschnitt und nur nach einem Fehler
@@ -919,7 +949,7 @@ export async function fetchOSMData(onProgressData = null, onStatus = null) {
             // Standby (Zoom < 12) räumt loadedPoiMode ab, ohne den Request abzubrechen: dann ist der Ausschnitt nicht mehr aktiv
             if (!isCurrentRequest() || State.loadedPoiMode == null || State.dataStatus?.deltaStatus !== 'failed') return false;
             resetOverpassCooldowns(); // ausdrücklicher Wunsch des Nutzers: auch Server im Cooldown erneut versuchen
-            updateDataStatus({ deltaStatus: 'loading' });
+            updateDataStatus({ deltaStatus: 'loading', deltaReason: null });
             startDelta();
             return true;
           };
@@ -1448,6 +1478,7 @@ export const _testing = {
   epGet,
   epMarkOk,
   epMarkFail,
+  isDeltaResponseFresh,
   epHealthLoad,
   EP_HEALTH_KEY,
   EP,
