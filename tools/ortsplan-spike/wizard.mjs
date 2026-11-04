@@ -168,8 +168,17 @@ try {
   const overlaps = () => page.evaluate(() => { const a = document.getElementById("pv-b-legend").getBoundingClientRect(), b = document.getElementById("pv-map").getBoundingClientRect(); return a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1; });
   const dragLegendOverMap = async () => {
     await page.locator("#prev").scrollIntoViewIfNeeded(); // sonst liegt die Vorschau unter dem sichtbaren Bereich und der Zug ginge ins Leere
-    const l = await page.locator("#pv-b-legend").boundingBox(), m = await page.locator("#pv-map").boundingBox();
-    await page.mouse.move(l.x + l.width / 2, l.y + l.height / 2);
+    const m = await page.locator("#pv-map").boundingBox();
+    // Greifpunkt: ein Punkt, an dem wirklich die Legende oben liegt (andere Kaesten duerfen sie teilweise ueberdecken)
+    const grab = await page.evaluate(() => {
+      const r = document.getElementById("pv-b-legend").getBoundingClientRect();
+      for (let fy = 0.5; fy <= 0.95; fy += 0.05) for (let fx = 0.1; fx <= 0.9; fx += 0.1) {
+        const x = r.left + r.width * fx, y = r.top + r.height * fy;
+        if (document.elementFromPoint(x, y)?.closest("#pv-b-legend")) return { x, y };
+      }
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    await page.mouse.move(grab.x, grab.y);
     await page.mouse.down();
     await page.mouse.move(m.x + m.width / 2, m.y + m.height / 2, { steps: 8 });
     await page.mouse.up();

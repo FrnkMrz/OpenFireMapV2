@@ -2,6 +2,7 @@
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol, PMTiles } from "pmtiles";
+import { basemapUntil } from "./attribution.js";
 import { buildStyle, zoomForScale, CSS_PX_PER_MM } from "./style.js";
 import { ICON_PX, loadIcons } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
@@ -267,7 +268,10 @@ async function buildSheet() {
     document.body.insertBefore(bar, document.getElementById("map"));
   }
   if (sheet) {
-    const meta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
+    // Stand der Feuerwehr-Daten (meta.json) und der Basiskarte (Metadaten der PMTiles-Datei) sind zwei verschiedene Zeitpunkte
+    const fireMeta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
+    const baseUntil = await new PMTiles(`${location.origin}/${baseFile}`).getMetadata().then(basemapUntil).catch(() => null);
+    const meta = { ...(fireMeta || {}), basemap_until: baseUntil };
     const res = await composeSheet({
       map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, legendSymbols: q.get("lsym") !== "0", legendRoads: q.get("lroad") !== "0", indexSize, warning, side, panel, indexCols, pos: freePos, overBg: q.get("obg") === "clear" ? "clear" : "white",
       title: sheetTitle, place,
