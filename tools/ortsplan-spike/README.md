@@ -76,6 +76,8 @@ Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs
 
 Straßennamen, die entlang der Linie nirgends Platz finden (lauter kurze Linienstücke, Symbole, Pfeile), bekommen ihren Namen als Punkt in der Mitte des längsten Stücks, mit der Richtung der Straße (`labelpoints.js`): erst ohne, dann mit Überlappung, immer unter den Feuerwehr-Symbolen. So steht jede Straße des Verzeichnisses auch im Plan.
 
+Quellenangabe und Datenstand (`attribution.js`): Der Quellenblock nennt den OSM-Pflichttext mit ausgeschriebener Adresse (nach den Attribution Guidelines der OSMF), „Basiskarte: Protomaps © OpenStreetMap“ und OpenFireMap.org. Davor stehen zwei getrennte Stände: „Stand Feuerwehr-Daten“ (`meta.json`, `osm_data_until`) und „Stand Basiskarte“ (Metadaten der PMTiles-Datei, `planetiler:osm:osmosisreplicationtime`; fehlt der Schlüssel, entfällt die Zeile). Jede Folgeseite des Verzeichnisses trägt den OSM-Pflichttext am Fuß.
+
 Das Straßenverzeichnis ist ein eigener Block (`indexblock.js`): Er bekommt den verfügbaren Platz, wählt Spaltenzahl und Spaltenbreite selbst (breiteste Spalten, in die noch alles passt; nie schmaler als etwa 36 mm, damit Namen nicht mitten im Wort brechen), gleicht die Spaltenhöhen aus und wird nur so groß wie nötig. Bei Seitenleiste (`side=right|left`) und festem Kartenformat läuft das Verzeichnis, wenn die Seitenleiste nicht reicht, in der freien Fläche unter der Karte weiter (über die ganze Breite, Überschrift „Fortsetzung“); erst was auch dort keinen Platz findet, steht auf Folgeseiten. Die Lage auf dem Blatt bestimmt der Aufruf in `sheet.js`.
 
 Die Legende zeigt nur Symbole, Linien und Straßenarten, die im Kartenausschnitt wirklich vorkommen. Die Feuerwehrhäuser sind 60 % größer als die übrigen Symbole.

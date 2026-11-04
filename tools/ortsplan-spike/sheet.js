@@ -6,6 +6,7 @@ import { cellsOfSegment, colLabel, formatCells } from "./grid.js";
 import { makeFitter, planBlock, drawColumns } from "./indexblock.js";
 import { fitText } from "./fittext.js";
 import { planHorizontal } from "./panelplan.js";
+import { ATTRIBUTION, OSM_NOTICE, SRC_SIZE, SRC_STAND_SIZE, SRC_STEP, SRC_FOOT_SIZE, formatStand } from "./attribution.js";
 
 const FONT = "'Noto Sans', 'Liberation Sans', Arial, sans-serif";
 const NICE_CELLS_M = [100, 200, 250, 500, 1000, 2000, 5000];
@@ -247,14 +248,14 @@ export async function composeSheet(opts) {
   // ---- Block 3: Massstabsleiste und Nordpfeil; Block 3b: Datenstand und Quellenangabe ----
   // fit < 1: der Block wird verkleinert gezeichnet; die Leiste wird dafuer entsprechend laenger gezeichnet, damit sie auf dem Papier
   // ihre echte Laenge behaelt (sonst stimmte die Beschriftung 50 m / 100 m nicht mehr mit der Karte).
-  const ATTRIBUTION = "© OpenStreetMap contributors (ODbL; openstreetmap.org/copyright) · Basiskarte: Protomaps © OpenStreetMap · Feuerwehr- und Wasserstellen-Daten: OpenFireMap.org auf Basis von OpenStreetMap";
-  /** Datenstand und Quellenangabe ab Grundlinie y0, auf Breite w umgebrochen. Rueckgabe: Grundlinie nach der letzten Zeile. */
   const sourceBlock = (x0, y0, w) => {
     let ay = y0;
-    const stand = `Datenstand OSM: ${meta?.osm_data_until ? meta.osm_data_until.replace("T", " ").replace("Z", " UTC") : "unbekannt"}`;
-    for (const l of [...wrap(stand, 2.1, w), ...wrap(ATTRIBUTION, 1.9, w)]) {
-      text(l, x0, ay, l === stand ? 2.1 : 1.9, { color: "#333" }); ay += 2.7;
-    }
+    const lines = [
+      ...wrap(`Stand Feuerwehr-Daten: ${formatStand(meta?.osm_data_until)}`, SRC_STAND_SIZE, w).map((l) => [l, SRC_STAND_SIZE]),
+      ...(meta?.basemap_until ? wrap(`Stand Basiskarte: ${formatStand(meta.basemap_until)}`, SRC_STAND_SIZE, w).map((l) => [l, SRC_STAND_SIZE]) : []),
+      ...wrap(ATTRIBUTION, SRC_SIZE, w).map((l) => [l, SRC_SIZE]),
+    ];
+    for (const [l, size] of lines) { text(l, x0, ay, size, { color: "#333" }); ay += SRC_STEP; }
     return ay;
   };
   /** Massstab, Nordpfeil und (source) daneben die Quellenangabe. Rueckgabe: belegte Hoehe ab y0 und Breite. */
@@ -448,6 +449,7 @@ export async function composeSheet(opts) {
     const t2 = (s, x, yv, size, o = {}) => { g2.font = `${o.bold ? "bold " : ""}${size}px ${FONT}`; g2.textAlign = o.align || "left"; g2.fillStyle = o.color || "#111"; g2.fillText(s, x, yv); };
     t2(`${title} – Straßenverzeichnis (Fortsetzung, Seite ${p + 2})`, 12, 14, 5, { bold: true });
     drawColumns({ gc: g2, tf: t2, fitW: setup.fitW, columns, colW: plan.rest.colW, gap: plan.rest.gap, x0: 12, y0: nextTop, fsI: setup.fsI, isz: isz * setup.f, lineH: setup.lineH });
+    t2(OSM_NOTICE, 12, Hv - 6, SRC_FOOT_SIZE, { color: "#333" }); // Strassennamen stammen aus OSM: Quellenangabe auch auf den Folgeseiten
     pages.push(c2.toDataURL("image/png"));
   });
   // Seite, auf der das Strassenverzeichnis beginnt: 1 = auf dem Blatt, 2 = erst auf der Folgeseite, null = ausgeschaltet oder leer

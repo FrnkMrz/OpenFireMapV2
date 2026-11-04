@@ -76,7 +76,7 @@ export function blockDims({ lsym = true, lroad = true, ui = 1, W = 420, H = 297 
 export function estimateSizes({ lsym = true, lroad = true, worst = false } = {}) {
   const rows = (lsym ? (worst ? 16 : 10) : 0) * 5.4 + (lroad ? (worst ? 5.4 + 5 * 4.86 : 6 * 4.9) : 0);
   const legend = lsym || lroad ? { w: 62, h: 5.6 + rows } : null;
-  return { legend, scale: { w: 40, h: 38 }, source: { w: 62, h: 17 } };
+  return { legend, scale: { w: 40, h: 38 }, source: { w: 62, h: 27 } };
 }
 
 /**
