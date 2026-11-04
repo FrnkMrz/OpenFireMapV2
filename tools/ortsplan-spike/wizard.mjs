@@ -182,6 +182,7 @@ try {
     await page.mouse.down();
     await page.mouse.move(m.x + m.width / 2, m.y + m.height / 2, { steps: 8 });
     await page.mouse.up();
+    await page.waitForTimeout(300); // die Vorschau zeichnet nach dem Loslassen verzoegert neu
   };
   await dragLegendOverMap();
   check(!(await overlaps()), "Legende bleibt neben dem Kartenfenster, wenn Bloecke nicht auf die Karte duerfen");
