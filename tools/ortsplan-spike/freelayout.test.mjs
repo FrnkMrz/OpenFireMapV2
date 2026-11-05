@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
 import { PAPER_MM, computeLayout } from "./layout.js";
 
 test("parsePos/formatPos: Rundreise, Reihenfolge und Rundung", () => {
@@ -196,4 +196,28 @@ test("blockRect: Titel und Karte haben eine Groesse (Karte aus dem Kartenfenster
   assert.equal(blockRect("map", pos, { W: 420, H: 297 }), null);
   assert.ok(estimateTitle({ title: "x".repeat(80), place: "" }).w <= 260, "Obergrenze");
   assert.ok(estimateTitle({}).w >= 40);
+});
+
+test("snapMap mit home: rastet auch an der Standardlage ein (feste Leiste), sonst unveraendert", () => {
+  const o = { W: 420, H: 297, ui: 1, w: 200, h: 150, home: { x: 100, y: 60 } };
+  const s = snapMap({ x: 102 / 420, y: 58 / 297 }, o);
+  assert.ok(Math.abs(s.x * 420 - 100) < 1e-9 && Math.abs(s.y * 297 - 60) < 1e-9);
+  assert.equal(snapMap({ x: 110 / 420, y: 70 / 297 }, o).x, 110 / 420, "ausserhalb des Fangs");
+});
+
+test("clampGroupOffset: Karte und Leiste bleiben zusammen im Papier", () => {
+  const W = 420, H = 297, ui = 1;
+  // Leiste rechts, Karte oben links angelegt: rechts ist nichts frei, nach links kein Platz zum Rand
+  const frame = { x: 14, y: 27, w: 300, h: 150 }, panel = { x: 320.5, y: 27, w: 90, h: 150 };
+  const far = clampGroupOffset({ frame, panel, W, H, ui, dx: 500, dy: 500 });
+  assert.ok(panel.x + far.dx + panel.w <= W - 2 * ui + 1e-9, "Leiste bleibt im Papier");
+  assert.ok(frame.y + far.dy + frame.h <= H - MAP_MARGIN * ui + 1e-9, "Karte unten im Papier");
+  const back = clampGroupOffset({ frame, panel, W, H, ui, dx: -500, dy: -500 });
+  assert.ok(frame.x + back.dx >= MAP_MARGIN * ui - 1e-9 && frame.y + back.dy >= MAP_MARGIN * ui - 1e-9, "Mindestrand der Karte");
+  assert.deepEqual(clampGroupOffset({ frame, panel, W, H, ui, dx: 3, dy: -2 }), { dx: 3, dy: -2 }, "was passt, bleibt");
+  // ohne Leiste (panel.w = 0) zaehlt nur die Karte
+  const alone = clampGroupOffset({ frame: { x: 14, y: 27, w: 200, h: 100 }, panel: { x: 400, y: 27, w: 0, h: 0 }, W, H, ui, dx: 500, dy: 0 });
+  assert.ok(Math.abs(14 + alone.dx + 200 - (W - MAP_MARGIN)) < 1e-9);
+  // eine Gruppe, die breiter ist als das Papier, bleibt stehen
+  assert.deepEqual(clampGroupOffset({ frame: { x: 0, y: 27, w: 430, h: 100 }, panel: null, W, H, ui, dx: 10, dy: 0 }), { dx: 0, dy: 0 });
 });

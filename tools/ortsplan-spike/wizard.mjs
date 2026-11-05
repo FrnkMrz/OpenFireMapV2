@@ -217,6 +217,45 @@ try {
   }
   await side("top");
   check(!(await posOf()) && !(await page.isChecked("#c-manual")), "andere Lage: wieder automatisch, keine Positionen");
+  // Feste Leiste: Titel und Karte lassen sich trotzdem verschieben, die Leiste folgt der Karte; in der Adresse stehen nur t und m
+  {
+    await side("right");
+    await page.click('.st[data-s="0"]');
+    await page.click('#g-free button[data-v="0"]');
+    await page.selectOption("#fmt", "1:1");
+    await page.click('.st[data-s="1"]');
+    await page.locator("#prev").scrollIntoViewIfNeeded();
+    check(!(await posOf()), "feste Leiste ohne eigene Verschiebung: keine Positionen in der Adresse");
+    check(await page.evaluate(() => document.getElementById("pv-map").classList.contains("mv") && document.getElementById("pv-title").classList.contains("mv")), "feste Leiste: Titel und Karte sind verschiebbar");
+    const rectOf = (sel) => page.evaluate((q) => { const r = document.querySelector(q).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, sel);
+    const prev = await rectOf("#prev"), map0 = await rectOf("#pv-map"), pan0 = await rectOf("#pv-panel");
+    const grabOn = (sel) => page.evaluate((q) => {
+      const r = document.querySelector(q).getBoundingClientRect();
+      for (let fy = 0.5; fy <= 0.95; fy += 0.05) for (let fx = 0.1; fx <= 0.9; fx += 0.1) {
+        const x = r.left + r.width * fx, y = r.top + r.height * fy;
+        if (document.elementFromPoint(x, y)?.closest(q)) return { x, y };
+      }
+      return null;
+    }, sel);
+    const g = await grabOn("#pv-map");
+    check(!!g, "feste Leiste: Greifpunkt auf der Karte gefunden");
+    await page.mouse.move(g.x, g.y); await page.mouse.down(); await page.mouse.move(g.x + 400, g.y + 12, { steps: 8 }); await page.mouse.up();
+    await page.waitForTimeout(300);
+    const map1 = await rectOf("#pv-map"), pan1 = await rectOf("#pv-panel");
+    const pos1 = await posOf();
+    check(map1.x > map0.x + 2 && Math.abs((pan1.x - pan0.x) - (map1.x - map0.x)) < 1 && Math.abs((pan1.y - pan0.y) - (map1.y - map0.y)) < 1, `Leiste folgt der Karte: Karte +${(map1.x - map0.x).toFixed(1)} px, Leiste +${(pan1.x - pan0.x).toFixed(1)} px`);
+    check(pan1.x + pan1.w <= prev.x + prev.w + 1 && map1.y + map1.h <= prev.y + prev.h + 1, "Karte und Leiste bleiben ganz auf dem Blatt (weit nach rechts gezogen)");
+    check(/^t:[\d.]+,[\d.]+;m:[\d.]+,[\d.]+$/.test(pos1 || ""), `Adresse traegt nur Titel und Karte: ${pos1}`);
+    check(await page.isVisible("#pos-reset"), "Zuruecksetzen ist sichtbar, sobald etwas verschoben ist");
+    const gt = await grabOn("#pv-title");
+    await page.mouse.move(gt.x, gt.y); await page.mouse.down(); await page.mouse.move(gt.x + 60, gt.y + 20, { steps: 6 }); await page.mouse.up();
+    const t1 = /t:([\d.]+),([\d.]+)/.exec((await posOf()) || "");
+    check(!!t1 && (+t1[1] > 0.06 || +t1[2] > 0.03), `Titel bei fester Leiste verschoben: ${t1 && t1[0]}`);
+    await page.click("#pos-reset");
+    check(!(await posOf()), "Zuruecksetzen: wieder keine Positionen, Karte und Leiste an der Standardlage");
+    await side("top");
+    await page.click('.st[data-s="0"]'); await page.click('#g-free button[data-v="1"]'); await page.click('.st[data-s="1"]');
+  }
   // Bloecke nicht auf der Karte (Standard): der Kasten laesst sich nicht ueber das Kartenfenster ziehen; erlaubt man es, geht es
   await side("right");
   await page.check("#c-manual");

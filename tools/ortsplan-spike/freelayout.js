@@ -98,11 +98,29 @@ export function blockDims({ lsym = true, lroad = true, ui = 1, W = 420, H = 297,
  * Magnet fuer das Kartenfenster: liegt die linke/rechte Kante bzw. obere/untere Kante naeher als thr mm an den normalen Randabstaenden
  * (MAP_ANCHOR), springt sie darauf; sonst bleibt die Lage frei. Jede Achse einzeln. p = Lage als Anteil des Papiers, w/h = Kartenfenster in mm.
  */
-export function snapMap(p, { W, H, ui = 1, w, h, thr = 4 }) {
+export function snapMap(p, { W, H, ui = 1, w, h, thr = 4, home = null }) {
   const near = (v, anchors) => { for (const a of anchors) if (Math.abs(v - a) <= thr) return a; return v; };
+  // home: Standardlage des Kartenfensters in mm (bei fester Leiste liegt sie nicht immer auf den normalen Randabstaenden); dorthin rastet die Karte auch
   return {
-    x: near(p.x * W, [MAP_ANCHOR.left * ui, W - MAP_ANCHOR.right * ui - w]) / W,
-    y: near(p.y * H, [MAP_ANCHOR.top * ui, H - MAP_ANCHOR.bottom * ui - h]) / H,
+    x: near(p.x * W, [...(home ? [home.x] : []), MAP_ANCHOR.left * ui, W - MAP_ANCHOR.right * ui - w]) / W,
+    y: near(p.y * H, [...(home ? [home.y] : []), MAP_ANCHOR.top * ui, H - MAP_ANCHOR.bottom * ui - h]) / H,
+  };
+}
+
+/**
+ * Bei fester Leiste wandern Kartenfenster und Leiste gemeinsam. Klemmt die Verschiebung (dx, dy in mm) so, dass das Kartenfenster den
+ * Mindestrand (MAP_MARGIN, Planquadrat-Buchstaben) und die Leiste einen kleinen Rand (2 ui) zum Papier haelt. Passt die Gruppe gar nicht
+ * (breiter als das Papier), bleibt sie stehen. frame/panel: {x,y,w,h} in mm an der Standardlage; panel.w = 0 heisst keine Leiste.
+ */
+export function clampGroupOffset({ frame, panel = null, W, H, ui = 1, dx, dy }) {
+  const axis = (d, fLo, fLen, pLo, pLen, size) => {
+    let lo = MAP_MARGIN * ui - fLo, hi = size - MAP_MARGIN * ui - (fLo + fLen);
+    if (panel && panel.w > 0 && panel.h > 0) { lo = Math.max(lo, 2 * ui - pLo); hi = Math.min(hi, size - 2 * ui - (pLo + pLen)); }
+    return lo <= hi ? clamp(d, lo, hi) : 0;
+  };
+  return {
+    dx: axis(dx, frame.x, frame.w, panel?.x ?? 0, panel?.w ?? 0, W),
+    dy: axis(dy, frame.y, frame.h, panel?.y ?? 0, panel?.h ?? 0, H),
   };
 }
 
