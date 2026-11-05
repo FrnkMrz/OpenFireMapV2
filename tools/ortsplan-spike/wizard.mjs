@@ -13,6 +13,8 @@ let failure = null;
 page.on("pageerror", (e) => { failure = e.message; });
 let failed = 0;
 const check = (ok, msg) => { console.log(ok ? "ok     " : "FEHLER ", msg); if (!ok) failed++; };
+// Lage der Legende gehoert zu Schritt 1: dorthin, waehlen, zurueck zu Schritt 2
+const side = async (v) => { await page.click('.st[data-s="0"]'); await page.click(`#g-side button[data-v="${v}"]`); await page.click('.st[data-s="1"]'); };
 const st = () => page.evaluate(() => window.__wizard.state());
 const box = () => page.evaluate(() => window.__wizard.frameBox());
 const center = async (sel) => { const r = await page.locator(sel).boundingBox(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
@@ -41,7 +43,6 @@ try {
   check(Math.abs(f3.cx + f3.w / 2 - (f2.cx + f2.w / 2)) < 2 && Math.abs(f3.cy + f3.h / 2 - (f2.cy + f2.h / 2)) < 2, "Freie Ecke: Gegenecke unten rechts bleibt stehen");
   // Papier wechseln: der Ausschnitt in Metern bleibt, der Massstab folgt
   const g0 = (await box()); const ground0 = g0.w * g0.mpp, sc0 = (await st()).scale;
-  await page.click('.st[data-s="1"]');
   await page.click('#g-size button[data-v="a4"]');
   const g1 = await box(), sc1 = (await st()).scale;
   check(Math.abs(g1.w * g1.mpp - ground0) / ground0 < 0.01 && sc1 > sc0, `Papier A4: Ausschnitt bleibt (${Math.round(ground0)} m), Massstab ${sc0} -> ${sc1}`);
@@ -123,26 +124,32 @@ try {
   await page.keyboard.press("+");
   check((await st()).scale > sk.scale, "Taste + macht den Rahmen groesser");
 
-  // Schritt 2
-  await page.click('.st[data-s="1"]');
+  // Papier und Ausrichtung gehoeren zu Schritt 1; bei Hoch steht die Legende standardmaessig unten (sonst wird das Kartenfenster schmal)
   await page.click('#g-size button[data-v="a2"]');
   await page.click('#g-orient button[data-v="p"]');
-  check((await st()).size === "a2" && (await st()).orient === "p", "Schritt 2: A2 hoch gewaehlt");
+  check((await st()).size === "a2" && (await st()).orient === "p", "Schritt 1: A2 hoch gewaehlt");
+  check((await st()).side === "bottom", `Hoch: Legende unten (${(await st()).side})`);
+  await page.click('#g-orient button[data-v="l"]');
+  check((await st()).side === "left", `Quer: Legende wieder links (${(await st()).side})`);
+  await page.click('#g-orient button[data-v="p"]');
+  const fillLabel = await page.evaluate(() => document.querySelector("#fmt option[value=fill]").textContent);
+  check(/Verh.ltnis \d,\d\d\)/.test(fillLabel), `Papier fuellen nennt das Verhaeltnis: ${fillLabel}`);
   await page.screenshot({ path: `${OUT}/2-format.png` });
+  check(await page.isVisible("#g-side") && !(await page.isVisible("#o-place")), "Schritt 1 enthaelt die Lage der Legende, die Texte erst Schritt 2");
+  await side("top");
 
-  // Schritt 3
-  await page.click('.st[data-s="2"]');
-  await page.click('#g-side button[data-v="top"]');
+  // Schritt 2
+  await page.click('.st[data-s="1"]');
   await page.uncheck("#c-sym");
   await page.uncheck("#c-index");
   await page.screenshot({ path: `${OUT}/3-legende.png` });
   const link = await page.evaluate(() => window.__wizard.goLink());
   const sp = new URLSearchParams(link.split("?")[1]);
   check(sp.get("side") === "top" && sp.get("lsym") === "0" && sp.get("index") === "0" && sp.get("lroad") === "1" && sp.get("paper") === "a2p", `Link traegt die Wahl: ${link}`);
-  check(await page.isVisible("#go") && !(await page.isVisible("#next")), "Schritt 3: Knopf 'Ortsplan erstellen' statt 'Weiter'");
+  check(await page.isVisible("#go") && !(await page.isVisible("#next")), "Schritt 2: Knopf 'Ortsplan erstellen' statt 'Weiter'");
 
   // Freie Anordnung: "Ohne Leiste" setzt Positionen, ein Kasten laesst sich ziehen, eine andere Lage setzt zurueck
-  await page.click('#g-side button[data-v="none"]');
+  await side("none");
   const posOf = async () => new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos");
   check(await page.isChecked("#c-manual") && await page.isDisabled("#c-manual"), "Ohne Leiste: Bloecke frei, Schalter fest an");
   const pos0 = await posOf();
@@ -159,10 +166,10 @@ try {
   const q0 = (await posOf()).split(";")[2];
   await page.keyboard.press("ArrowLeft");
   check((await posOf()).split(";")[2] !== q0, "Pfeiltaste verschiebt den Quellen-Kasten");
-  await page.click('#g-side button[data-v="top"]');
+  await side("top");
   check(!(await posOf()) && !(await page.isChecked("#c-manual")), "andere Lage: wieder automatisch, keine Positionen");
   // Bloecke nicht auf der Karte (Standard): der Kasten laesst sich nicht ueber das Kartenfenster ziehen; erlaubt man es, geht es
-  await page.click('#g-side button[data-v="right"]');
+  await side("right");
   await page.check("#c-manual");
   check(!(await page.isChecked("#c-onmap")), "Bloecke auf der Karte sind standardmaessig nicht erlaubt");
   const overlaps = () => page.evaluate(() => { const a = document.getElementById("pv-b-legend").getBoundingClientRect(), b = document.getElementById("pv-map").getBoundingClientRect(); return a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1; });
@@ -194,7 +201,7 @@ try {
   check(sp2.get("onmap") === "1" && sp2.get("obg") === "clear", "Link traegt Erlaubnis und durchsichtigen Untergrund");
   await page.uncheck("#c-onmap");
   check(!(await overlaps()), "Erlaubnis zurueckgenommen: Legende wieder in der Standardlage");
-  await page.click('#g-side button[data-v="top"]');
+  await side("top");
   await page.uncheck("#c-sym");
 
   // Einstellungen bleiben beim Neuladen (localStorage)
@@ -204,7 +211,7 @@ try {
   check(sr.side === "top" && sr.size === "a2" && sr.lsym === false && sr.index === false, "Neuladen: Wahl bleibt erhalten");
 
   // Blatt erzeugen
-  await page.click('.st[data-s="2"]');
+  await page.click('.st[data-s="1"]');
   await Promise.all([page.waitForNavigation(), page.click("#go")]);
   await waitReady(page, { key: "__ready", timeout: 120000, failure: () => failure });
   const info = await page.evaluate(() => ({ sheet: !!window.__sheet, info: window.__sheetInfo, err: window.__error || null, link: document.getElementById("pick-link").href }));
