@@ -1,4 +1,4 @@
-// Ortsplan erstellen: Assistent in drei Schritten (Ausschnitt, Format, Legende).
+// Ortsplan erstellen: Assistent in zwei Schritten (Ausschnitt und Format, Legende).
 // Der Rahmen ist das Kartenfenster des Blatts: am Griff oben verschieben, an Kanten und Ecken aufziehen.
 // Frei (Standard): jede Seite einzeln, das Blatt nimmt das Seitenverhältnis des Rahmens an, der Maßstab ergibt sich. Fest: Seitenverhältnis des Blatts, Ecken ändern nur den Maßstab.
 // Karte (Verschieben, Zoom) und Rahmen sind getrennt: der Rahmen klebt am Ort (Mitte in Grad), nicht am Bildschirm.
@@ -84,8 +84,15 @@ map.on("rotate", () => { if (map.getBearing() !== 0) map.setBearing(0); });
 // Rahmen: Mitte in Grad und Maßstab (S.scale)
 let fc = { lng: startLon, lat: startLat };
 
+const ratioText = (r) => r.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const paperKey = () => `${S.size}${S.orient}`;
 const layoutFmt = () => (S.free ? ratioFmt(S.ratio) : S.fmt);
+/** "Papier füllen" nennt das Verhältnis, das das Kartenfenster bei diesem Papier und dieser Lage der Legende wirklich hat (die Seitenleiste nimmt Platz weg). */
+function fillOption() {
+  const [wMm, hMm] = PAPER_MM[paperKey()];
+  const f = computeLayout({ wMm, hMm, side: S.side, fmt: "fill" }).frame;
+  $("fmt").options[0].textContent = `Papier füllen (Verhältnis ${ratioText(f.w / f.h)})`;
+}
 function layout() {
   const [wMm, hMm] = PAPER_MM[paperKey()];
   const L = computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt() });
@@ -140,7 +147,7 @@ function overlapsMap(pos, name) {
   const r = blockRect(name, pos, { lsym: S.lsym, lroad: S.lroad, ui: L.ui, W: wMm, H: hMm });
   return !!r && rectsOverlap(r, { x: L.frame.x / wMm, y: L.frame.y / hMm, w: L.frame.w / wMm, h: L.frame.h / hMm });
 }
-const anyOnMap = (pos) => ["legend", "scale", "source", "index"].some((n) => (n !== "index" || S.index) && overlapsMap(pos, n));
+const anyOnMap = (pos) => ["legend", "scale", "north", "source", "index"].some((n) => (n !== "index" || S.index) && overlapsMap(pos, n));
 
 function goLink() {
   const p = new URLSearchParams({
@@ -160,9 +167,9 @@ function goLink() {
 }
 
 function updateText() {
-  const { wMm, hMm, ground } = layout();
+  const { wMm, hMm, ground, L } = layout();
   $("frame-label").textContent = `${km(ground.w)} × ${km(ground.h)} km · 1:${S.scale.toLocaleString("de-DE")}`;
-  $("size-info").textContent = `${wMm} × ${hMm} mm · die Karte deckt ${km(ground.w)} × ${km(ground.h)} km ab${S.free ? ", mit dem Seitenverhältnis des Rahmens" : ""}`;
+  $("size-info").textContent = `Blatt ${wMm} × ${hMm} mm, Kartenfenster ${Math.round(L.frame.w)} × ${Math.round(L.frame.h)} mm (Verhältnis ${ratioText(L.frame.w / L.frame.h)}) · die Karte deckt ${km(ground.w)} × ${km(ground.h)} km ab${S.free ? ", mit dem Seitenverhältnis des Rahmens" : ""}`;
   $("area-info").textContent = `Mitte ${fc.lat.toFixed(5)} N, ${fc.lng.toFixed(5)} E`;
   $("go").href = goLink();
   // Liegt der Rahmen nicht ganz in den geladenen Daten, bleibt das Blatt dort leer
@@ -174,7 +181,7 @@ function updateText() {
     : "Der Rahmen liegt komplett im Datengebiet.";
 }
 
-// ---- Vorschau der Blattaufteilung (Schritt 3), aus denselben Maßen wie das Blatt ----
+// ---- Vorschau der Blattaufteilung (Schritt 2), aus denselben Maßen wie das Blatt ----
 function drawPreview() {
   const { wMm, hMm, L } = layout();
   const prev = $("prev");
@@ -198,7 +205,7 @@ function drawPreview() {
 /** Kaesten der vier Bloecke in der Vorschau (nur bei freier Anordnung): Lage aus S.pos, Groesse geschaetzt (das Blatt zeichnet die echten Masse). */
 function drawBlocks(manual, L, wMm, hMm) {
   const pos = curPos(), sz = estimateSizes({ lsym: S.lsym, lroad: S.lroad });
-  for (const name of ["legend", "scale", "source", "index"]) {
+  for (const name of ["legend", "scale", "north", "source", "index"]) {
     const el = $(`pv-b-${name}`), p = pos[name];
     const show = manual && p && (name !== "legend" || sz.legend) && (name !== "index" || S.index);
     el.hidden = !show;
@@ -215,8 +222,8 @@ function drawBlocks(manual, L, wMm, hMm) {
 
 function refresh() {
   persist();
-  if (step === 2) scheduleSuggest();
-  for (const [id, key] of [["g-size", "size"], ["g-orient", "orient"], ["g-size1", "size"], ["g-orient1", "orient"], ["g-side", "side"]]) {
+  if (step === 1) scheduleSuggest();
+  for (const [id, key] of [["g-size", "size"], ["g-orient", "orient"], ["g-side", "side"]]) {
     for (const b of $(id).children) b.setAttribute("aria-pressed", String(b.dataset.v === S[key]));
   }
   const scales = [...new Set([...NICE_SCALES, S.scale])].sort((a, b) => a - b);
@@ -226,11 +233,11 @@ function refresh() {
   for (const b of $("g-free").children) b.setAttribute("aria-pressed", String((b.dataset.v === "1") === S.free));
   $("frame").classList.toggle("fixed", !S.free);
   $("fmt-wrap").hidden = S.free;
-  $("paper-wrap").hidden = S.free; // "Wie das Blatt": das Papier bestimmt die Rahmenform, also gleich hier waehlbar
+  fillOption();
   $("c-round").checked = S.round; $("c-round").closest("label").hidden = !S.free;
   $("hint-frame").textContent = S.free
     ? "Ziehe den Rahmen an den Kanten und Ecken so auf, wie du den Ausschnitt brauchst. Papier und Rahmen bestimmen den Maßstab."
-    : "Der Rahmen hat das Seitenverhältnis des gewählten Blatts (Papier und Ausrichtung oben, weitere Formen in Schritt 2). An den Ecken ziehen macht ihn größer oder kleiner und ändert den Maßstab.";
+    : "Der Rahmen hat das Seitenverhältnis des gewählten Blatts (Papier, Ausrichtung und Kartenform darunter). An den Ecken ziehen macht ihn größer oder kleiner und ändert den Maßstab.";
   $("c-sym").checked = S.lsym; $("c-road").checked = S.lroad; $("c-index").checked = S.index;
   $("o-place").value = T.place; $("o-title").value = T.title; $("o-dpi").value = String(S.dpi); $("o-iauto").checked = S.iauto; $("o-icols").value = String(S.icols); $("o-isize").value = String(S.isize);
   drawFrame(); updateText(); drawPreview();
@@ -244,18 +251,18 @@ function fit() {
 }
 
 // ---- Eingaben ----
+/** Hoch: eine Seitenleiste links oder rechts liesse nur ein schmales Kartenfenster (A3 hoch: Verhaeltnis 0,52 statt 0,71); darum steht die Legende dort standardmaessig unten. Zurueck auf Quer wieder links. */
+const sideForOrient = (orient, side) => (orient === "p" && (side === "left" || side === "right") ? "bottom" : orient === "l" && side === "bottom" ? "left" : side);
 const chips = (id, items, key, refit) => {
   $(id).replaceChildren(...items.map(([v, t]) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "chip"; b.dataset.v = v; b.textContent = t;
-    b.addEventListener("click", () => { keepGround(() => { S[key] = v; resetPos(); }); if (refit) fit(); refresh(); }); // andere Lage oder anderes Papier: Bloecke wieder in die Standardlage
+    b.addEventListener("click", () => { keepGround(() => { S[key] = v; if (key === "orient") S.side = sideForOrient(v, S.side); resetPos(); }); if (refit) fit(); refresh(); }); // andere Lage oder anderes Papier: Bloecke wieder in die Standardlage
     return b;
   }));
 };
-for (const sfx of ["", "1"]) { // dieselben Auswahlen in Schritt 2 und (bei "Wie das Blatt") in Schritt 1
-  chips(`g-size${sfx}`, [["a4", "A4"], ["a3", "A3"], ["a2", "A2"], ["a1", "A1"]], "size", true);
-  chips(`g-orient${sfx}`, [["l", "Quer"], ["p", "Hoch"]], "orient", true);
-}
+chips("g-size", [["a4", "A4"], ["a3", "A3"], ["a2", "A2"], ["a1", "A1"]], "size", true);
+chips("g-orient", [["l", "Quer"], ["p", "Hoch"]], "orient", true);
 chips("g-side", [["top", "Oben"], ["bottom", "Unten"], ["left", "Links"], ["right", "Rechts"], ["none", "Ohne Leiste"]], "side", true);
 $("scale").addEventListener("change", () => { S.scale = +$("scale").value; fit(); refresh(); });
 $("fmt").addEventListener("change", () => { S.fmt = $("fmt").value; resetPos(); fit(); refresh(); });
@@ -351,13 +358,13 @@ $("o-isize").addEventListener("change", () => { S.isize = num($("o-isize").value
 // Schritte
 let step = 0;
 function go(n) {
-  step = Math.max(0, Math.min(2, n));
+  step = Math.max(0, Math.min(1, n));
   document.querySelectorAll(".sec").forEach((s) => s.classList.toggle("on", +s.dataset.s === step));
   document.querySelectorAll(".st").forEach((b) => { if (+b.dataset.s === step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
   $("back").hidden = step === 0;
-  $("next").hidden = step === 2;
-  $("go").hidden = step !== 2;
-  if (step === 2) suggestPlace();
+  $("next").hidden = step === 1;
+  $("go").hidden = step !== 1;
+  if (step === 1) suggestPlace();
 }
 document.querySelectorAll(".st").forEach((b) => b.addEventListener("click", () => go(+b.dataset.s)));
 $("back").addEventListener("click", () => go(step - 1));

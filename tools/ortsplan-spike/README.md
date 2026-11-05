@@ -63,7 +63,7 @@ Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs
 | `title` | Text, Standard „Orts- und Hydrantenplan“ | Überschrift über der Karte, darunter der Ortsname |
 | `iauto` | `0`, `1` (Standard) | Schrift des Straßenverzeichnisses wird bis Faktor 1,5 größer, solange noch alles auf das Blatt passt (`isize` bleibt die Grundgröße) |
 | `side` | `right` (Standard), `left`, `top`, `bottom`, `none` | Lage von Titel, Legende, Maßstab und Verzeichnis um die Karte; oben und unten stehen sie in drei Blöcken nebeneinander; `none`: keine Seitenleiste, die Karte füllt das Blatt und die Blöcke liegen frei (siehe `pos`) |
-| `pos` | `l:x,y;s:x,y;q:x,y;i:x,y,b,h` | Freie Lage der Blöcke als Anteile des Papiers (linke obere Ecke): `l` Legende, `s` Maßstab mit Nordpfeil, `q` Quellenangabe, `i` Straßenverzeichnis (zusätzlich Breite und Höhe seines Rechtecks). Fehlende Blöcke stehen an der Standardlage der gewählten Seite; bei `side=none` gilt immer die freie Anordnung. Liegt ein Block über der Karte, bekommt er einen hellen Untergrund. Im Assistenten (Schritt 3, „Blöcke selbst anordnen“) werden die Kästen gezogen. Rein in `freelayout.js` |
+| `pos` | `l:x,y;s:x,y;q:x,y;n:x,y;i:x,y,b,h` | Freie Lage der Blöcke als Anteile des Papiers (linke obere Ecke): `l` Legende, `s` Maßstab, `n` Nordpfeil, `q` Quellenangabe, `i` Straßenverzeichnis (zusätzlich Breite und Höhe seines Rechtecks). Fehlende Blöcke stehen an der Standardlage der gewählten Seite; bei `side=none` gilt immer die freie Anordnung. Liegt ein Block über der Karte, bekommt er einen hellen Untergrund. Im Assistenten (Schritt 3, „Blöcke selbst anordnen“) werden die Kästen gezogen. Rein in `freelayout.js` |
 | `obg` | `white` (Standard), `clear` | Untergrund von Blöcken, die über der Karte liegen: hell (weiß) oder durchsichtig (Schrift mit weißem Rand). Der Assistent erlaubt Blöcke auf der Karte nur, wenn man es einschaltet (`onmap=1` in der Adresse, nur für den Assistenten); sonst lassen sie sich nur in die freien Flächen neben und unter der Karte ziehen |
 | `icols` | 0 bis 6, Standard 0 | Spaltenzahl des Verzeichnisses auf Seite 1 (0 = automatisch: Spalten von etwa 55 mm, gleich hoch gefüllt) |
 | `fmt` | `fill` (Standard), `1:1`, `3:2`, `4:3`, `2:3`, `3:4` | Kartenformat: Seitenverhältnis des Kartenfensters (Quadrat, Quer, Hoch); Legende und Verzeichnis rücken direkt an die Karte |
@@ -76,7 +76,7 @@ Tests für die Planquadrat-Hilfen: `node --test` (Planquadrate in `grid.test.mjs
 
 Straßennamen, die entlang der Linie nirgends Platz finden (lauter kurze Linienstücke, Symbole, Pfeile), bekommen ihren Namen als Punkt in der Mitte des längsten Stücks, mit der Richtung der Straße (`labelpoints.js`): erst ohne, dann mit Überlappung, immer unter den Feuerwehr-Symbolen. So steht jede Straße des Verzeichnisses auch im Plan.
 
-Quellenangabe und Datenstand (`attribution.js`): Der Quellenblock nennt den OSM-Pflichttext mit ausgeschriebener Adresse (nach den Attribution Guidelines der OSMF), „Basiskarte: Protomaps © OpenStreetMap“ und OpenFireMap.org. Davor stehen zwei getrennte Stände: „Stand Feuerwehr-Daten“ (`meta.json`, `osm_data_until`) und „Stand Basiskarte“ (Metadaten der PMTiles-Datei, `planetiler:osm:osmosisreplicationtime`; fehlt der Schlüssel, entfällt die Zeile). Jede Folgeseite des Verzeichnisses trägt den OSM-Pflichttext am Fuß.
+Quellenangabe und Datenstand (`attribution.js`): Der Quellenblock ist bewusst kurz (drei Zeilen): der OSM-Pflichttext mit ausgeschriebener Adresse (nach den Attribution Guidelines der OSMF), „Karte: Protomaps · Daten: OpenFireMap.org“ und eine Zeile mit den zwei getrennten Ständen: „Feuerwehr-Daten“ (`meta.json`, `osm_data_until`) und „Basiskarte“ (Metadaten der PMTiles-Datei, `planetiler:osm:osmosisreplicationtime`; fehlt der Schlüssel, entfällt der Teil). Jede Folgeseite des Verzeichnisses trägt den OSM-Pflichttext am Fuß.
 
 Das Straßenverzeichnis ist ein eigener Block (`indexblock.js`): Er bekommt den verfügbaren Platz, wählt Spaltenzahl und Spaltenbreite selbst (breiteste Spalten, in die noch alles passt; nie schmaler als etwa 36 mm, damit Namen nicht mitten im Wort brechen), gleicht die Spaltenhöhen aus und wird nur so groß wie nötig. Bei Seitenleiste (`side=right|left`) und festem Kartenformat läuft das Verzeichnis, wenn die Seitenleiste nicht reicht, in der freien Fläche unter der Karte weiter (über die ganze Breite, Überschrift „Fortsetzung“); erst was auch dort keinen Platz findet, steht auf Folgeseiten. Die Lage auf dem Blatt bestimmt der Aufruf in `sheet.js`.
 
@@ -92,21 +92,23 @@ Der Spike läuft mit maplibre-gl 5.x und 6.x. Für 6 nötig (alle drei sind scho
 
 ## Ortsplan erstellen (Assistent)
 
-`/pick.html` (auch über den Link „Ausschnitt wählen …“ im Formular): Assistent in drei Schritten, links die Karte, rechts das Panel.
+`/pick.html` (auch über den Link „Ausschnitt wählen …“ im Formular): Assistent in zwei Schritten, links die Karte, rechts das Panel.
 
-1. **Ausschnitt:** der Rahmen ist das Kartenfenster des Blatts. Am Griff oben verschieben. Die Karte wird getrennt davon verschoben und
+1. **Ausschnitt und Format:** der Rahmen ist das Kartenfenster des Blatts. Am Griff oben verschieben. Die Karte wird getrennt davon verschoben und
    gezoomt; der Rahmen klebt am Ort. Zwei Formen:
    - **Frei** (Standard): Kanten und Ecken einzeln ziehen, die gegenüberliegende Kante bleibt stehen. Das Kartenfenster des Blatts nimmt das
      Seitenverhältnis des Rahmens an (`fmt=1.6234:1`, begrenzt auf 1:4 bis 4:1), der Maßstab ergibt sich aus Papier und Rahmen (mindestens 1:1000, auf 10 aufgerundet,
      sodass der Ausschnitt ganz drauf ist). Wechselt man Papier oder Lage, bleibt der Ausschnitt in Metern gleich, der Maßstab folgt. Mit dem
      Häkchen „Maßstab auf Standardwert runden“ rastet der Rahmen beim Loslassen auf den nächsten Standardmaßstab (`NICE_SCALES`) ein, der den
      Ausschnitt noch ganz zeigt.
-   - **Wie das Blatt:** Seitenverhältnis wie Papier, Lage und Kartenform (Schritt 2); die Ecken ändern nur den Maßstab (Standardliste).
+   - **Wie das Blatt:** Seitenverhältnis wie Papier, Lage der Legende und Kartenform (weiter unten im selben Schritt); „Papier füllen“ nennt das echte Verhältnis des Kartenfensters; die Ecken ändern nur den Maßstab (Standardliste).
    Pfeiltasten verschieben den Rahmen, `+`/`-` machen ihn größer oder kleiner. Wird der Rahmen größer als die Ansicht, zoomt die Karte
    heraus. Ragt er über die geladenen Daten hinaus, steht ein Hinweis da.
-2. **Format:** Papier (A4 bis A1), Quer/Hoch, im festen Modus auch die Kartenform.
-3. **Legende:** Lage (oben, unten, links, rechts) mit Vorschau der Blattaufteilung; Inhalte per Häkchen (Symbole, Straßenarten und
-   Gemeindegrenze, Straßenverzeichnis), unter „Mehr Optionen“ Auflösung, Spalten und Schriftgröße des Verzeichnisses.
+   Darunter im selben Schritt: Papier (A4 bis A1), Quer/Hoch, im festen Modus die Kartenform und die Lage der Legende (oben, unten, links, rechts, ohne
+   Leiste). Bei Hoch steht die Legende standardmäßig unten, sonst würde das Kartenfenster sehr schmal (A3 hoch mit Leiste links: Verhältnis 0,52 statt 0,71);
+   zurück auf Quer wieder links. Unten im Panel steht der Commit (`Stand …`) des ausgelieferten Quellcodes.
+2. **Legende:** Texte (Ortsname, Überschrift), Vorschau der Blattaufteilung mit frei verschiebbaren Blöcken (Legende, Maßstab, Nordpfeil, Quellenangabe,
+   Straßenverzeichnis); Inhalte per Häkchen (Symbole, Straßenarten und Gemeindegrenze, Straßenverzeichnis), unter „Mehr Optionen“ Auflösung, Spalten und Schriftgröße des Verzeichnisses.
 
 „Ortsplan erstellen“ öffnet das Blatt (`/?sheet=1&...`). Neue Blattparameter dafür: `lsym=0` (ohne Symbole in der Legende), `lroad=0`
 (ohne Straßenarten und Gemeindegrenze); sind beide aus, entfällt die Legende samt Platz. Die letzte Wahl merkt sich der Browser

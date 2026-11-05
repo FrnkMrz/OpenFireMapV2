@@ -89,38 +89,31 @@
     <aside id="panel" aria-label="Ortsplan erstellen">
       <h1>Ortsplan erstellen</h1>
       <nav id="steps" aria-label="Schritte">
-        <button class="st" type="button" data-s="0">1 Ausschnitt</button>
-        <button class="st" type="button" data-s="1">2 Format</button>
-        <button class="st" type="button" data-s="2">3 Legende</button>
+        <button class="st" type="button" data-s="0">1 Ausschnitt und Format</button>
+        <button class="st" type="button" data-s="1">2 Legende</button>
       </nav>
       <div id="body">
         <section class="sec" data-s="0">
           <p class="hint" id="hint-frame"></p>
           <div><p class="lab">Form des Rahmens</p><div class="chips" id="g-free"></div></div>
-          <div id="paper-wrap">
-            <p class="lab">Papier</p><div class="chips" id="g-size1"></div>
-            <p class="lab" style="margin-top:10px">Ausrichtung</p><div class="chips" id="g-orient1"></div>
-          </div>
-          <div><p class="lab" id="lab-scale">Maßstab 1 :</p><select id="scale" aria-labelledby="lab-scale"></select></div>
-          <label class="row"><input type="checkbox" id="c-round"> Maßstab auf Standardwert runden (z. B. 1:4.000)</label>
-          <div><button class="btn" id="fit" type="button">Rahmen einpassen</button></div>
-          <p class="hint" id="area-info"></p>
-        </section>
-        <section class="sec" data-s="1">
           <div><p class="lab">Papier</p><div class="chips" id="g-size"></div></div>
           <div><p class="lab">Ausrichtung</p><div class="chips" id="g-orient"></div></div>
           <div id="fmt-wrap"><p class="lab" id="lab-fmt">Kartenform</p>
             <select id="fmt" aria-labelledby="lab-fmt"><option value="fill">Papier füllen</option><option value="1:1">Quadrat 1:1</option><option value="3:2">Quer 3:2</option><option value="4:3">Quer 4:3</option><option value="2:3">Hoch 2:3</option><option value="3:4">Hoch 3:4</option></select></div>
+          <div><p class="lab">Wo steht die Legende?</p><div class="chips" id="g-side"></div></div>
+          <div><p class="lab" id="lab-scale">Maßstab 1 :</p><select id="scale" aria-labelledby="lab-scale"></select></div>
+          <label class="row"><input type="checkbox" id="c-round"> Maßstab auf Standardwert runden (z. B. 1:4.000)</label>
+          <div><button class="btn" id="fit" type="button">Rahmen einpassen</button></div>
           <p class="hint" id="size-info"></p>
+          <p class="hint" id="area-info"></p>
         </section>
-        <section class="sec" data-s="2">
+        <section class="sec" data-s="1">
           <div>
             <p class="lab">Texte auf dem Blatt</p>
             <label class="lab" for="o-place">Ortsname</label><input id="o-place" type="text" maxlength="60" autocomplete="off" style="width:100%;box-sizing:border-box">
             <p class="hint" id="place-hint" style="margin-top:4px"></p>
             <label class="lab" for="o-title" style="margin-top:8px;display:block">Überschrift</label><input id="o-title" type="text" maxlength="60" placeholder="Orts- und Hydrantenplan" autocomplete="off" style="width:100%;box-sizing:border-box">
           </div>
-          <div><p class="lab">Wo steht die Legende?</p><div class="chips" id="g-side"></div></div>
           <label class="row"><input type="checkbox" id="c-manual"> Blöcke selbst anordnen</label>
           <div id="onmap-wrap" hidden>
             <label class="row"><input type="checkbox" id="c-onmap"> Blöcke dürfen auf der Karte liegen</label>
@@ -131,7 +124,8 @@
           <div id="prev" role="group" aria-label="Vorschau der Blattaufteilung">
             <div id="pv-title"></div><div id="pv-map"></div><div id="pv-panel"></div>
             <div class="blk" id="pv-b-legend" data-b="legend" tabindex="0" role="button" aria-label="Legende verschieben" style="background:#dbeafe">Legende</div>
-            <div class="blk" id="pv-b-scale" data-b="scale" tabindex="0" role="button" aria-label="Maßstab und Nordpfeil verschieben" style="background:#fef3c7">Maßstab, Nord</div>
+            <div class="blk" id="pv-b-scale" data-b="scale" tabindex="0" role="button" aria-label="Maßstab verschieben" style="background:#fef3c7">Maßstab</div>
+            <div class="blk" id="pv-b-north" data-b="north" tabindex="0" role="button" aria-label="Nordpfeil verschieben" style="background:#fee2e2">N</div>
             <div class="blk" id="pv-b-source" data-b="source" tabindex="0" role="button" aria-label="Quellenangabe verschieben" style="background:#ede9fe">Quellen</div>
             <div class="blk" id="pv-b-index" data-b="index" tabindex="0" role="button" aria-label="Straßenverzeichnis verschieben" style="background:#dcfce7">Verzeichnis<span class="rz" data-rz="1" aria-hidden="true"></span></div>
           </div>
@@ -153,6 +147,7 @@
         </section>
       </div>
       <p id="msg" role="status"></p>
+      <p id="rev" class="hint" style="margin:0 16px 6px;font-size:11px">Stand __REV__</p>
       <div id="foot">
         <button class="btn" id="back" type="button">Zurück</button>
         <button class="btn primary" id="next" type="button">Weiter</button>

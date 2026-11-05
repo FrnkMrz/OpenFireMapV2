@@ -6,7 +6,7 @@ import { cellsOfSegment, colLabel, formatCells } from "./grid.js";
 import { makeFitter, planBlock, drawColumns } from "./indexblock.js";
 import { fitText } from "./fittext.js";
 import { planHorizontal } from "./panelplan.js";
-import { ATTRIBUTION, OSM_NOTICE, SRC_SIZE, SRC_STAND_SIZE, SRC_STEP, SRC_FOOT_SIZE, formatStand } from "./attribution.js";
+import { ATTRIBUTION_LINES, OSM_NOTICE, SRC_SIZE, SRC_STEP, SRC_FOOT_SIZE, standLine } from "./attribution.js";
 
 const FONT = "'Noto Sans', 'Liberation Sans', Arial, sans-serif";
 const NICE_CELLS_M = [100, 200, 250, 500, 1000, 2000, 5000];
@@ -250,16 +250,12 @@ export async function composeSheet(opts) {
   // ihre echte Laenge behaelt (sonst stimmte die Beschriftung 50 m / 100 m nicht mehr mit der Karte).
   const sourceBlock = (x0, y0, w) => {
     let ay = y0;
-    const lines = [
-      ...wrap(`Stand Feuerwehr-Daten: ${formatStand(meta?.osm_data_until)}`, SRC_STAND_SIZE, w).map((l) => [l, SRC_STAND_SIZE]),
-      ...(meta?.basemap_until ? wrap(`Stand Basiskarte: ${formatStand(meta.basemap_until)}`, SRC_STAND_SIZE, w).map((l) => [l, SRC_STAND_SIZE]) : []),
-      ...wrap(ATTRIBUTION, SRC_SIZE, w).map((l) => [l, SRC_SIZE]),
-    ];
-    for (const [l, size] of lines) { text(l, x0, ay, size, { color: "#333" }); ay += SRC_STEP; }
+    const lines = [...ATTRIBUTION_LINES, standLine(meta?.osm_data_until, meta?.basemap_until)].flatMap((t) => wrap(t, SRC_SIZE, w));
+    for (const l of lines) { text(l, x0, ay, SRC_SIZE, { color: "#333" }); ay += SRC_STEP; }
     return ay;
   };
-  /** Massstab, Nordpfeil und (source) daneben die Quellenangabe. Rueckgabe: belegte Hoehe ab y0 und Breite. */
-  const scaleParts = (x0, y0, w, fit = 1, source = true) => {
+  /** Massstabsleiste mit Beschriftung und Planquadrat-Angabe ab Grundlinie y0. Rueckgabe: belegte Hoehe und Breite. */
+  const scaleBar = (x0, y0, fit = 1) => {
     let y = y0;
     const barM = nearest(NICE_BAR_M, 28 * u, scale), barMm = (barM / scale) * 1000 / u / fit; // Ziel: 28 "virtuelle" mm, also 28 mm auf A3 und 56 mm auf A1
     text(`Maßstab 1 : ${scale.toLocaleString("de-DE")}`, x0, y, 2.8, { bold: true }); y += 3.4;
@@ -272,16 +268,25 @@ export async function composeSheet(opts) {
     text(`${barM / 2} m`, x0 + barMm / 2, y + 4.6, 2.2, { align: "center" });
     text(`${barM} m`, x0 + barMm, y + 4.6, 2.2, { align: "center" });
     text(`Planquadrat = ${cellM} × ${cellM} m`, x0, y + 8.4, 2.2, { color: "#333" });
-    y += 15;
-    // Nordpfeil
-    const nx = x0 + 5, ny = y + 8;
+    return { h: 3.4 + 8.4 + 1.2, w: Math.max(barMm + 6, 38) }; // Breite von Leiste und Beschriftung
+  };
+  /** Nordpfeil mit "N" ab y0 (Oberkante des Buchstabens). Rueckgabe: belegte Hoehe und Breite. */
+  const northArrow = (x0, y0) => {
+    const nx = x0 + 5, ny = y0 + 12.6;
     g.fillStyle = "#000"; g.beginPath(); g.moveTo(nx, ny - 8); g.lineTo(nx + 3.2, ny + 3); g.lineTo(nx, ny + 1.2); g.closePath(); g.fill();
     g.fillStyle = "#fff"; g.strokeStyle = "#000"; g.lineWidth = 0.3;
     g.beginPath(); g.moveTo(nx, ny - 8); g.lineTo(nx - 3.2, ny + 3); g.lineTo(nx, ny + 1.2); g.closePath(); g.fill(); g.stroke();
     text("N", nx, ny - 9.4, 3.2, { bold: true, align: "center" });
-    const own = Math.max(barMm + 6, 38); // Breite von Leiste und Beschriftung
-    if (!source) return { h: ny + 9 - y0, w: own };
-    return { h: Math.max(ny + 9, sourceBlock(x0 + 14, ny - 5, w - 14) + 2) - y0, w };
+    return { h: ny + 3 - y0, w: 10 };
+  };
+  /** Massstab mit Nordpfeil daneben (ist die Breite zu knapp, darunter) und (source) die Quellenangabe darunter. Rueckgabe: belegte Hoehe ab y0 und Breite. */
+  const scaleParts = (x0, y0, w, fit = 1, source = true) => {
+    const sc = scaleBar(x0, y0, fit);
+    const beside = sc.w + 3 + 10 <= w || !source; // ohne Quelle kommt es auf die Breite nicht an
+    const nr = northArrow(beside ? x0 + sc.w + 3 : x0, beside ? y0 : y0 + sc.h + 2);
+    const h = beside ? Math.max(sc.h, nr.h) : sc.h + 2 + nr.h;
+    if (!source) return { h, w: sc.w + 3 + nr.w };
+    return { h: sourceBlock(x0, y0 + h + 3, w) + 2 - y0, w };
   };
   const scaleBlock = (x0, y0, w, fit = 1) => scaleParts(x0, y0, w, fit, true).h;
 
@@ -380,7 +385,8 @@ export async function composeSheet(opts) {
       halo = false;
     }
     place("legend", (x, y) => { const r = legendBlock(x, y + 3.2, Infinity); return { w: r.tw, h: 3.2 + r.h }; });
-    place("scale", (x, y) => { const r = scaleParts(x, y + 2.8, 0, 1, false); return { w: r.w, h: 2.8 + r.h }; });
+    place("scale", (x, y) => { const r = scaleBar(x, y + 2.8, 1); return { w: r.w, h: 2.8 + r.h }; });
+    place("north", (x, y) => { const r = northArrow(x, y); return { w: r.w, h: r.h }; });
     place("source", (x, y) => { const w = 62; return { w, h: sourceBlock(x, y + 2.2, w) - y }; });
     if (showIndex && pos.index) {
       const r = pos.index;
