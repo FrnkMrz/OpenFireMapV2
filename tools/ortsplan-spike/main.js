@@ -8,6 +8,7 @@ import { ICON_PX, loadIcons } from "./icons.js";
 import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
 import { PAPER_MM, ALL_SIDES, NO_SIDE, computeLayout, NICE_SCALES } from "./layout.js";
+import { pdfFileName, buildPdf } from "./pdfout.js";
 import { parsePos, defaultPos, clampPos, blockDims } from "./freelayout.js";
 import { indexNote } from "./indexnote.js";
 import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
@@ -321,4 +322,29 @@ document.getElementById("png").addEventListener("click", () => {
     a.download = `ortsplan-${scale}-${paper}-${dpi}dpi-${mode}.png`;
     a.click();
   });
+});
+
+// PDF: nur im Blatt-Modus (die Seiten stehen erst nach dem Zusammensetzen fest); jede Seite kommt in Papiergroesse auf eine PDF-Seite
+const pdfBtn = document.getElementById("pdf");
+if (!sheet) pdfBtn.hidden = true;
+pdfBtn.addEventListener("click", async () => {
+  const info = document.getElementById("info");
+  const old = info.textContent;
+  try {
+    if (!window.__sheet) throw new Error("Das Blatt ist noch nicht fertig");
+    pdfBtn.disabled = true;
+    info.textContent = "PDF wird erstellt …";
+    const blob = await buildPdf({ pages: window.__sheet, paperMm: [wMm, hMm], title: `${sheetTitle} ${place}` });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = pdfFileName({ place, scale, paper, dpi });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    info.textContent = old;
+  } catch (err) {
+    console.error(err);
+    info.textContent = `PDF fehlgeschlagen: ${err.message || err}`;
+  } finally {
+    pdfBtn.disabled = false;
+  }
 });
