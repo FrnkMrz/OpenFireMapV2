@@ -124,8 +124,18 @@ export function planBlock({ total, from = 0, fitW, box, cont, lineH, minColW, id
     const colW = colWFor(cont.w, n, contGap);
     const heightOf = (i) => fitW(i, colW).h;
     const pages = [];
+    const capFull = Math.max(cont.h, lineH);
     for (let start = placed; start < total;) {
-      const r = fillColumns(start, total, heightOf, Array(n).fill(Math.max(cont.h, lineH)), false);
+      let r = fillColumns(start, total, heightOf, Array(n).fill(capFull), false);
+      if (r.end >= total) {
+        // letzte Seite: gleich hohe Spalten ueber die ganze Breite statt einer langen Spalte links (kleinste Hoehe in Zeilenschritten, in die alles passt)
+        let sum = 0;
+        for (let i = start; i < total; i++) sum += heightOf(i);
+        for (let cap = Math.max(lineH, Math.ceil(sum / n / lineH) * lineH); cap < capFull; cap += lineH) {
+          const t = fillColumns(start, total, heightOf, Array(n).fill(cap), false);
+          if (t.end >= total) { r = t; break; }
+        }
+      }
       pages.push(r.cols);
       start = r.end;
     }

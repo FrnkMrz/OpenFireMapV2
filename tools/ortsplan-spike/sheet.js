@@ -390,7 +390,8 @@ export async function composeSheet(opts) {
     place("source", (x, y) => { const w = 62; return { w, h: sourceBlock(x, y + 2.2, w) - y }; });
     if (showIndex && pos.index) {
       const r = pos.index;
-      indexBlock([[{ x: r.x * Wv, y: r.y * Hv + 3.4, w: r.w * Wv, h: r.h * Hv - 3.4 }]], box);
+      // 2 mm Luft unten: der helle Untergrund ragt 1,5 mm ueber den Text hinaus und soll nicht ueber den Rand des gewaehlten Rechtecks (z. B. den Kartenrahmen) laufen
+      indexBlock([[{ x: r.x * Wv, y: r.y * Hv + 3.4, w: r.w * Wv, h: r.h * Hv - 3.4 - 2 }]], box);
       halo = false;
     }
   } else if (!horizontal) {
