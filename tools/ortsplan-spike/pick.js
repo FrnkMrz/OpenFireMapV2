@@ -37,7 +37,11 @@ function apply(src) {
   if (ALL_SIDES.includes(src.side)) S.side = src.side;
   // freie Lage der Bloecke: aus der Adresse als Text (pos=l:..), aus dem Speicher als Objekt
   const pp = typeof src.pos === "string" ? parsePos(src.pos) : src.pos && typeof src.pos === "object" ? clampPos(src.pos) : null;
-  if (pp) { S.pos = pp; S.posKey = typeof src.posKey === "string" ? src.posKey : null; S.manual = true; } // posKey null: gehoert zum Layout, das die Adresse beschreibt (wird unten gesetzt)
+  if (pp) {
+    S.pos = pp; S.posKey = typeof src.posKey === "string" ? src.posKey : null; // posKey null: gehoert zum Layout, das die Adresse beschreibt (wird unten gesetzt)
+    // Nur wenn Bloecke genannt sind, liegen sie frei; steht dort nur Titel und/oder Karte (t, m), bleibt die feste Leiste und folgt der Karte
+    if (["legend", "scale", "source", "north", "index"].some((k) => pp[k])) S.manual = true;
+  }
   if (src.manual !== undefined && src.manual !== null) S.manual = src.manual === true || src.manual === "1";
   if (src.onmap !== undefined && src.onmap !== null) S.onmap = src.onmap === true || src.onmap === "1";
   if (["white", "clear"].includes(src.obg)) S.obg = src.obg;
