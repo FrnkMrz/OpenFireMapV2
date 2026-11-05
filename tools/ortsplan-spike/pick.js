@@ -40,7 +40,7 @@ function apply(src) {
   if (pp) {
     S.pos = pp; S.posKey = typeof src.posKey === "string" ? src.posKey : null; // posKey null: gehoert zum Layout, das die Adresse beschreibt (wird unten gesetzt)
     // Nur wenn Bloecke genannt sind, liegen sie frei; steht dort nur Titel und/oder Karte (t, m), bleibt die feste Leiste und folgt der Karte
-    if (["legend", "scale", "source", "north", "index"].some((k) => pp[k])) S.manual = true;
+    S.manual = ["legend", "scale", "source", "north", "index"].some((k) => pp[k]);
   }
   if (src.manual !== undefined && src.manual !== null) S.manual = src.manual === true || src.manual === "1";
   if (src.onmap !== undefined && src.onmap !== null) S.onmap = src.onmap === true || src.onmap === "1";

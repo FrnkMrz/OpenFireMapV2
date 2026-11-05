@@ -292,13 +292,6 @@ try {
   await side("top");
   await page.uncheck("#c-sym");
 
-  // Adresse mit nur Titel und Karte (feste Leiste): beim Wiedereroeffnen bleibt die Leiste fest, die Adresse traegt weiter nur t und m
-  await page.goto(`${BASE}/pick.html?paper=a3l&side=right&fmt=1:1&scale=5000&pos=t:0.1,0.02;m:0.12,0.2`);
-  await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
-  const sT = await st();
-  const pT = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos");
-  check(sT.manual === false && sT.side === "right", `t/m-Adresse: feste Leiste bleibt (manual=${sT.manual}, side=${sT.side})`);
-  check(/^t:[\d.]+,[\d.]+;m:[\d.]+,[\d.]+$/.test(pT || ""), `t/m-Adresse: Link traegt weiter nur Titel und Karte: ${pT}`);
   // Einstellungen bleiben beim Neuladen (localStorage)
   await page.goto(`${BASE}/pick.html`); // ohne Adresse: zuletzt benutzte Wahl (eine Adresse mit Angaben haette Vorrang)
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
@@ -314,6 +307,14 @@ try {
   check(/lsym=0/.test(info.link) && /side=top/.test(info.link), "Rueckweg 'Ausschnitt waehlen' behaelt die Legende-Wahl");
   const png = await page.evaluate(() => window.__sheet[0]);
   fs.writeFileSync(`${OUT}/4-blatt.png`, Buffer.from(png.split(",")[1], "base64"));
+  // Adresse mit nur Titel und Karte (feste Leiste): beim Wiedereroeffnen bleibt die Leiste fest, die Adresse traegt weiter nur t und m
+  await page.evaluate(() => { const k = "ofm_ortsplan_wizard"; const v = JSON.parse(localStorage.getItem(k) || "{}"); v.manual = true; localStorage.setItem(k, JSON.stringify(v)); }); // zuletzt benutzt: freie Bloecke
+  await page.goto(`${BASE}/pick.html?paper=a3l&side=right&fmt=1:1&scale=5000&pos=t:0.1,0.02;m:0.12,0.2`);
+  await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+  const sT = await st();
+  const pT = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos");
+  check(sT.manual === false && sT.side === "right", `t/m-Adresse: feste Leiste bleibt (manual=${sT.manual}, side=${sT.side})`);
+  check(/^t:[\d.]+,[\d.]+;m:[\d.]+,[\d.]+$/.test(pT || ""), `t/m-Adresse: Link traegt weiter nur Titel und Karte: ${pT}`);
 } catch (e) {
   failed++;
   console.log("FEHLER ", String(e.message).slice(0, 300));
