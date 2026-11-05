@@ -165,3 +165,23 @@ test("Block: from - ein Bereich, in den kaum etwas passt, bleibt leer und der Re
   assert.equal(p.rest.pages.flat().flatMap(([x, y]) => Array.from({ length: y - x }, (_, i) => x + i))[0], 20);
   assert.equal(planBlock({ total: 50, from: 50, fitW, box: { w: 90, h: 100 }, cont: { w: 186, h: 261 }, ...OPTS }).rest, null);
 });
+
+test("Block: letzte Folgeseite hat gleich hohe Spalten ueber die ganze Breite, nicht eine lange Spalte", () => {
+  const entries = make(100);
+  const { fitW, plan } = setup(entries, { w: 60, h: 100 });
+  expectAll(plan, 100);
+  const last = plan.rest.pages[plan.rest.pages.length - 1];
+  assert.ok(plan.rest.n > 1 && last.length > 1, `mehrere Spalten statt einer (${last.length})`);
+  const heights = last.map(([a, b]) => { let h = 0; for (let i = a; i < b; i++) h += fitW(i, plan.rest.colW).h; return h; });
+  const lo = Math.min(...heights.slice(0, -1)), hi = Math.max(...heights);
+  assert.ok(hi - lo <= 2 * lineH + 1e-9 || heights.length === 1, `Spaltenhoehen ${heights.map((h) => h.toFixed(1))}`);
+  assert.ok(hi <= 261 + 1e-9);
+});
+
+test("Block: Folgeseiten ausser der letzten bleiben voll gefuellt", () => {
+  const { plan } = setup(make(2000), { w: 90, h: 150 });
+  expectAll(plan, 2000);
+  const pages = plan.rest.pages;
+  assert.ok(pages.length > 1);
+  for (const page of pages.slice(0, -1)) assert.equal(page.length, plan.rest.n, "volle Seite nutzt alle Spalten");
+});
