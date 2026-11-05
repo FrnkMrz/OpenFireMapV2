@@ -167,8 +167,95 @@ try {
   const q0 = (await posOf()).split(";")[2];
   await page.keyboard.press("ArrowLeft");
   check((await posOf()).split(";")[2] !== q0, "Pfeiltaste verschiebt den Quellen-Kasten");
+  // Titel und Karte: eigene Kaesten, Titel startet links oben, die Karte bleibt auf dem Blatt und rastet am Rand ein
+  {
+    const W = 420, H = 594, ui = 594 / 420; // A2 hoch (siehe oben)
+    const mOf = async () => { const m = /;m:([\d.]+),([\d.]+)/.exec(await posOf()); return m ? { x: +m[1] * W, y: +m[2] * H } : null; };
+    const tOf = async () => { const m = /;t:([\d.]+),([\d.]+)/.exec(await posOf()); return m ? { x: +m[1] * W, y: +m[2] * H } : null; };
+    const inside = (sel) => page.evaluate((q) => { const a = document.querySelector(q).getBoundingClientRect(), b = document.getElementById("prev").getBoundingClientRect(); return a.left >= b.left - 1 && a.top >= b.top - 1 && a.right <= b.right + 1 && a.bottom <= b.bottom + 1; }, sel);
+    await page.locator("#prev").scrollIntoViewIfNeeded();
+    const t0 = await tOf(), m0 = await mOf();
+    check(!!t0 && !!m0, `Link traegt Titel und Karte: t=${t0 && t0.x.toFixed(1)},${t0 && t0.y.toFixed(1)} m=${m0 && m0.x.toFixed(1)},${m0 && m0.y.toFixed(1)}`);
+    check(t0 && Math.abs(t0.x - 14 * ui) < 0.1 && Math.abs(t0.y - 3.4 * ui) < 0.1, "Titel startet links oben (Randabstand 14, Oberkante 3,4)");
+    check(await page.evaluate(() => document.getElementById("pv-title").classList.contains("mv") && document.getElementById("pv-map").classList.contains("mv")), "Titel und Karte sind bei freier Anordnung verschiebbar");
+    // Karte mit der Tastatur: nie ueber das Blatt hinaus, nie naeher als der Mindestrand
+    await page.focus("#pv-map");
+    await page.keyboard.press("ArrowUp", { delay: 0 });
+    for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowUp");
+    const mTop = await mOf();
+    check(Math.abs(mTop.y - 6 * ui) < 0.1 && await inside("#pv-map"), `Karte ganz nach oben: bleibt auf dem Blatt, Mindestrand 6 (${mTop.y.toFixed(1)} mm)`);
+    for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowDown");
+    check(await inside("#pv-map"), "Karte ganz nach unten: bleibt auf dem Blatt");
+    // Magnet: von oben (Mindestrand) mit der Maus fast bis zum normalen Randabstand ziehen -> rastet genau ein
+    for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowUp");
+    const pr = await page.locator("#prev").boundingBox();
+    const dy = (27 * ui - 6 * ui) * (pr.height / H) - 1.2; // knapp vor dem normalen oberen Abstand
+    // Greifpunkt: ein Punkt, an dem wirklich die Karte oben liegt (Kaesten liegen teils darueber)
+    const grab = await page.evaluate(() => {
+      const r = document.getElementById("pv-map").getBoundingClientRect();
+      for (let fy = 0.5; fy <= 0.95; fy += 0.05) for (let fx = 0.1; fx <= 0.9; fx += 0.1) {
+        const x = r.left + r.width * fx, y = r.top + r.height * fy;
+        if (document.elementFromPoint(x, y)?.closest("#pv-map")) return { x, y };
+      }
+      return null;
+    });
+    check(!!grab, "freier Greifpunkt auf der Karte gefunden");
+    await page.mouse.move(grab.x, grab.y);
+    await page.mouse.down();
+    await page.mouse.move(grab.x, grab.y + dy, { steps: 8 });
+    await page.mouse.up();
+    const mSnap = await mOf();
+    check(Math.abs(mSnap.y - 27 * ui) < 0.1, `Karte rastet am normalen oberen Randabstand ein (${mSnap.y.toFixed(2)} mm, Ziel ${(27 * ui).toFixed(2)})`);
+    // Titel mit der Maus weit nach unten rechts: bleibt ganz auf dem Blatt
+    const tb = await page.locator("#pv-title").boundingBox();
+    await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
+    check(await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest("#pv-title"), [tb.x + tb.width / 2, tb.y + tb.height / 2]), "Titel-Greifpunkt liegt auf dem Titel");
+    await page.mouse.down();
+    await page.mouse.move(pr.x + pr.width + 200, pr.y + pr.height + 200, { steps: 8 });
+    await page.mouse.up();
+    check(await inside("#pv-title"), "Titel weit ueber den Rand gezogen: bleibt ganz auf dem Blatt");
+  }
   await side("top");
   check(!(await posOf()) && !(await page.isChecked("#c-manual")), "andere Lage: wieder automatisch, keine Positionen");
+  // Feste Leiste: Titel und Karte lassen sich trotzdem verschieben, die Leiste folgt der Karte; in der Adresse stehen nur t und m
+  {
+    await side("right");
+    await page.click('.st[data-s="0"]');
+    await page.click('#g-free button[data-v="0"]');
+    await page.selectOption("#fmt", "1:1");
+    await page.click('.st[data-s="1"]');
+    await page.locator("#prev").scrollIntoViewIfNeeded();
+    check(!(await posOf()), "feste Leiste ohne eigene Verschiebung: keine Positionen in der Adresse");
+    check(await page.evaluate(() => document.getElementById("pv-map").classList.contains("mv") && document.getElementById("pv-title").classList.contains("mv")), "feste Leiste: Titel und Karte sind verschiebbar");
+    const rectOf = (sel) => page.evaluate((q) => { const r = document.querySelector(q).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, sel);
+    const prev = await rectOf("#prev"), map0 = await rectOf("#pv-map"), pan0 = await rectOf("#pv-panel");
+    const grabOn = (sel) => page.evaluate((q) => {
+      const r = document.querySelector(q).getBoundingClientRect();
+      for (let fy = 0.5; fy <= 0.95; fy += 0.05) for (let fx = 0.1; fx <= 0.9; fx += 0.1) {
+        const x = r.left + r.width * fx, y = r.top + r.height * fy;
+        if (document.elementFromPoint(x, y)?.closest(q)) return { x, y };
+      }
+      return null;
+    }, sel);
+    const g = await grabOn("#pv-map");
+    check(!!g, "feste Leiste: Greifpunkt auf der Karte gefunden");
+    await page.mouse.move(g.x, g.y); await page.mouse.down(); await page.mouse.move(g.x + 400, g.y + 12, { steps: 8 }); await page.mouse.up();
+    await page.waitForTimeout(300);
+    const map1 = await rectOf("#pv-map"), pan1 = await rectOf("#pv-panel");
+    const pos1 = await posOf();
+    check(map1.x > map0.x + 2 && Math.abs((pan1.x - pan0.x) - (map1.x - map0.x)) < 1 && Math.abs((pan1.y - pan0.y) - (map1.y - map0.y)) < 1, `Leiste folgt der Karte: Karte +${(map1.x - map0.x).toFixed(1)} px, Leiste +${(pan1.x - pan0.x).toFixed(1)} px`);
+    check(pan1.x + pan1.w <= prev.x + prev.w + 1 && map1.y + map1.h <= prev.y + prev.h + 1, "Karte und Leiste bleiben ganz auf dem Blatt (weit nach rechts gezogen)");
+    check(/^t:[\d.]+,[\d.]+;m:[\d.]+,[\d.]+$/.test(pos1 || ""), `Adresse traegt nur Titel und Karte: ${pos1}`);
+    check(await page.isVisible("#pos-reset"), "Zuruecksetzen ist sichtbar, sobald etwas verschoben ist");
+    const gt = await grabOn("#pv-title");
+    await page.mouse.move(gt.x, gt.y); await page.mouse.down(); await page.mouse.move(gt.x + 60, gt.y + 20, { steps: 6 }); await page.mouse.up();
+    const t1 = /t:([\d.]+),([\d.]+)/.exec((await posOf()) || "");
+    check(!!t1 && (+t1[1] > 0.06 || +t1[2] > 0.03), `Titel bei fester Leiste verschoben: ${t1 && t1[0]}`);
+    await page.click("#pos-reset");
+    check(!(await posOf()), "Zuruecksetzen: wieder keine Positionen, Karte und Leiste an der Standardlage");
+    await side("top");
+    await page.click('.st[data-s="0"]'); await page.click('#g-free button[data-v="1"]'); await page.click('.st[data-s="1"]');
+  }
   // Bloecke nicht auf der Karte (Standard): der Kasten laesst sich nicht ueber das Kartenfenster ziehen; erlaubt man es, geht es
   await side("right");
   await page.check("#c-manual");
@@ -220,6 +307,14 @@ try {
   check(/lsym=0/.test(info.link) && /side=top/.test(info.link), "Rueckweg 'Ausschnitt waehlen' behaelt die Legende-Wahl");
   const png = await page.evaluate(() => window.__sheet[0]);
   fs.writeFileSync(`${OUT}/4-blatt.png`, Buffer.from(png.split(",")[1], "base64"));
+  // Adresse mit nur Titel und Karte (feste Leiste): beim Wiedereroeffnen bleibt die Leiste fest, die Adresse traegt weiter nur t und m
+  await page.evaluate(() => { const k = "ofm_ortsplan_wizard"; const v = JSON.parse(localStorage.getItem(k) || "{}"); v.manual = true; localStorage.setItem(k, JSON.stringify(v)); }); // zuletzt benutzt: freie Bloecke
+  await page.goto(`${BASE}/pick.html?paper=a3l&side=right&fmt=1:1&scale=5000&pos=t:0.1,0.02;m:0.12,0.2`);
+  await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+  const sT = await st();
+  const pT = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos");
+  check(sT.manual === false && sT.side === "right", `t/m-Adresse: feste Leiste bleibt (manual=${sT.manual}, side=${sT.side})`);
+  check(/^t:[\d.]+,[\d.]+;m:[\d.]+,[\d.]+$/.test(pT || ""), `t/m-Adresse: Link traegt weiter nur Titel und Karte: ${pT}`);
 } catch (e) {
   failed++;
   console.log("FEHLER ", String(e.message).slice(0, 300));

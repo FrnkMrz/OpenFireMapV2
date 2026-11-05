@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS } from "./freelayout.js";
-import { PAPER_MM } from "./layout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
+import { PAPER_MM, computeLayout } from "./layout.js";
 
 test("parsePos/formatPos: Rundreise, Reihenfolge und Rundung", () => {
   const pos = { legend: { x: 0.71, y: 0.12 }, scale: { x: 0.7, y: 0.5 }, source: { x: 0.1, y: 0.9 }, north: { x: 0.9, y: 0.4 }, index: { x: 0.05, y: 0.6, w: 0.5, h: 0.3 } };
@@ -131,4 +131,93 @@ test("Nordpfeil ist ein eigener Block: steht in der Standardlage neben dem Masss
   assert.ok(p.north && p.north.x > p.scale.x && Math.abs(p.north.y - p.scale.y) < 1e-9, "rechts neben dem Massstab, gleiche Hoehe");
   assert.deepEqual(parsePos("l:0.2,0.3;s:0.4,0.5;q:0.1,0.9"), { legend: { x: 0.2, y: 0.3 }, scale: { x: 0.4, y: 0.5 }, source: { x: 0.1, y: 0.9 } }, "alte Adresse ohne n bleibt gueltig");
   assert.deepEqual(parsePos("n:0.9,0.4"), { north: { x: 0.9, y: 0.4 } });
+});
+
+// ---- Titel und Karte ----
+test("Titel und Karte: Adresse hin und zurueck, alte Adressen ohne t/m bleiben gueltig", () => {
+  const p = parsePos("t:0.03,0.01;m:0.2,0.3;l:0.7,0.1");
+  assert.deepEqual(p.title, { x: 0.03, y: 0.01 });
+  assert.deepEqual(p.map, { x: 0.2, y: 0.3 });
+  assert.deepEqual(parsePos(formatPos(p)), p);
+  assert.deepEqual(parsePos("l:0.7,0.1"), { legend: { x: 0.7, y: 0.1 } }, "alte Adresse");
+  assert.equal(parsePos("m:0.2"), null, "unvollstaendig faellt weg");
+});
+
+test("defaultPos: Titel steht links oben (in allen Lagen und Papieren), die Karte an ihrer Standardlage", () => {
+  for (const paper of Object.keys(PAPER_MM)) for (const side of ["right", "left", "top", "bottom", "none"]) {
+    const [W, H] = PAPER_MM[paper];
+    const ui = Math.max(1, Math.max(W, H) / 420);
+    const { frame } = computeLayout({ wMm: W, hMm: H, side, fmt: "fill" });
+    const p = defaultPos({ paper, side });
+    assert.ok(Math.abs(p.title.x * W - 14 * ui) < 1e-6 && Math.abs(p.title.y * H - 3.4 * ui) < 1e-6, `${paper}/${side}: Titel links oben`);
+    assert.ok(Math.abs(p.map.x * W - frame.x) < 1e-6 && Math.abs(p.map.y * H - frame.y) < 1e-6, `${paper}/${side}: Karte an der Standardlage`);
+  }
+});
+
+test("clampPos: die Karte bleibt ganz im Papier und haelt den Mindestrand, der Titel bleibt ganz im Papier", () => {
+  const W = 420, H = 297, ui = 1, frame = { w: 200, h: 150 };
+  const dims = blockDims({ ui, W, H, frame });
+  const far = clampPos({ map: { x: 5, y: 5 }, title: { x: 5, y: 5 } }, dims);
+  assert.ok(far.map.x * W + frame.w <= W - MAP_MARGIN * ui + 1e-9 && far.map.y * H + frame.h <= H - MAP_MARGIN * ui + 1e-9, "Karte unten rechts im Papier");
+  assert.ok(far.title.x + dims.title.w <= 1 + 1e-9 && far.title.y + dims.title.h <= 1 + 1e-9, "Titel ganz im Papier");
+  const near = clampPos({ map: { x: -1, y: -1 }, title: { x: -1, y: -1 } }, dims);
+  assert.ok(Math.abs(near.map.x * W - MAP_MARGIN * ui) < 1e-9 && Math.abs(near.map.y * H - MAP_MARGIN * ui) < 1e-9, "Mindestrand fuer die Planquadrat-Buchstaben");
+  assert.deepEqual(near.title, { x: 0, y: 0 });
+  assert.deepEqual(clampPos({ map: { x: 0.2, y: 0.3 } }, dims).map, { x: 0.2, y: 0.3 }, "was passt, bleibt");
+  // ein Kartenfenster, das breiter ist als das Papier abzueglich Rand, rutscht auf den Rand statt ueber ihn hinaus
+  const wide = clampPos({ map: { x: 0.5, y: 0.5 } }, blockDims({ ui, W, H, frame: { w: 415, h: 290 } }));
+  assert.ok(wide.map.x * W >= MAP_MARGIN - 1e-9 && wide.map.y * H >= MAP_MARGIN - 1e-9);
+});
+
+test("snapMap: nahe an den Randabstaenden springt die Karte darauf, sonst bleibt sie frei", () => {
+  const o = { W: 420, H: 297, ui: 1, w: 200, h: 150 };
+  const s = snapMap({ x: 16 / 420, y: 29 / 297 }, o); // 2 mm vom linken Rand (14) und 2 mm unter dem oberen (27)
+  assert.ok(Math.abs(s.x * 420 - MAP_ANCHOR.left) < 1e-9 && Math.abs(s.y * 297 - MAP_ANCHOR.top) < 1e-9);
+  const r = snapMap({ x: (420 - 14 - 200 - 3) / 420, y: (297 - 14 - 150 - 3) / 297 }, o); // 3 mm vor dem rechten/unteren Randabstand
+  assert.ok(Math.abs(r.x * 420 - (420 - 14 - 200)) < 1e-9 && Math.abs(r.y * 297 - (297 - 14 - 150)) < 1e-9);
+  const free = snapMap({ x: 100 / 420, y: 60 / 297 }, o);
+  assert.deepEqual(free, { x: 100 / 420, y: 60 / 297 }, "weit weg von jedem Rand: unveraendert");
+  const edge = snapMap({ x: 19 / 420, y: 60 / 297 }, o); // 5 mm: ausserhalb des Fangs (4 mm)
+  assert.equal(edge.x, 19 / 420);
+});
+
+test("snapMap: jede Achse rastet einzeln, bei groesserem Papier gelten die ui-skalierten Randabstaende", () => {
+  const o = { W: 594, H: 420, ui: 594 / 420, w: 300, h: 200 };
+  const s = snapMap({ x: (14 * o.ui + 3) / 594, y: 100 / 420 }, o);
+  assert.ok(Math.abs(s.x * 594 - 14 * o.ui) < 1e-9);
+  assert.equal(s.y, 100 / 420);
+});
+
+test("blockRect: Titel und Karte haben eine Groesse (Karte aus dem Kartenfenster in mm), ohne frame keine Karte", () => {
+  const pos = { title: { x: 0.03, y: 0.01 }, map: { x: 0.1, y: 0.2 } };
+  const t = blockRect("title", pos, { ui: 1, W: 420, H: 297, title: "Plan", place: "Ort" });
+  assert.ok(t.w > 0 && t.h > 0 && t.x === 0.03);
+  assert.deepEqual(blockRect("map", pos, { W: 420, H: 297, frame: { w: 210, h: 148.5 } }), { x: 0.1, y: 0.2, w: 0.5, h: 0.5 });
+  assert.equal(blockRect("map", pos, { W: 420, H: 297 }), null);
+  assert.ok(estimateTitle({ title: "x".repeat(80), place: "" }).w <= 260, "Obergrenze");
+  assert.ok(estimateTitle({}).w >= 40);
+});
+
+test("snapMap mit home: rastet auch an der Standardlage ein (feste Leiste), sonst unveraendert", () => {
+  const o = { W: 420, H: 297, ui: 1, w: 200, h: 150, home: { x: 100, y: 60 } };
+  const s = snapMap({ x: 102 / 420, y: 58 / 297 }, o);
+  assert.ok(Math.abs(s.x * 420 - 100) < 1e-9 && Math.abs(s.y * 297 - 60) < 1e-9);
+  assert.equal(snapMap({ x: 110 / 420, y: 70 / 297 }, o).x, 110 / 420, "ausserhalb des Fangs");
+});
+
+test("clampGroupOffset: Karte und Leiste bleiben zusammen im Papier", () => {
+  const W = 420, H = 297, ui = 1;
+  // Leiste rechts, Karte oben links angelegt: rechts ist nichts frei, nach links kein Platz zum Rand
+  const frame = { x: 14, y: 27, w: 300, h: 150 }, panel = { x: 320.5, y: 27, w: 90, h: 150 };
+  const far = clampGroupOffset({ frame, panel, W, H, ui, dx: 500, dy: 500 });
+  assert.ok(panel.x + far.dx + panel.w <= W - 2 * ui + 1e-9, "Leiste bleibt im Papier");
+  assert.ok(frame.y + far.dy + frame.h <= H - MAP_MARGIN * ui + 1e-9, "Karte unten im Papier");
+  const back = clampGroupOffset({ frame, panel, W, H, ui, dx: -500, dy: -500 });
+  assert.ok(frame.x + back.dx >= MAP_MARGIN * ui - 1e-9 && frame.y + back.dy >= MAP_MARGIN * ui - 1e-9, "Mindestrand der Karte");
+  assert.deepEqual(clampGroupOffset({ frame, panel, W, H, ui, dx: 3, dy: -2 }), { dx: 3, dy: -2 }, "was passt, bleibt");
+  // ohne Leiste (panel.w = 0) zaehlt nur die Karte
+  const alone = clampGroupOffset({ frame: { x: 14, y: 27, w: 200, h: 100 }, panel: { x: 400, y: 27, w: 0, h: 0 }, W, H, ui, dx: 500, dy: 0 });
+  assert.ok(Math.abs(14 + alone.dx + 200 - (W - MAP_MARGIN)) < 1e-9);
+  // eine Gruppe, die breiter ist als das Papier, bleibt stehen
+  assert.deepEqual(clampGroupOffset({ frame: { x: 0, y: 27, w: 430, h: 100 }, panel: null, W, H, ui, dx: 10, dy: 0 }), { dx: 0, dy: 0 });
 });

@@ -86,6 +86,7 @@ const LEGEND = [
  */
 export async function composeSheet(opts) {
   const { map, scale, dpi, paperMm, frame, title, place = "", meta, warning } = opts;
+  const placeText = place; // Ortsname
   const side = opts.side || "right"; // Lage von Legende, Massstab und Verzeichnis: right | left | top | bottom
   const indexCols = opts.indexCols || 0; // Spaltenzahl des Verzeichnisses (0 = automatisch)
   const overClear = opts.overBg === "clear"; // Bloecke ueber der Karte: durchsichtig (Schrift mit weissem Rand) statt heller Untergrund
@@ -151,17 +152,6 @@ export async function composeSheet(opts) {
     const cy = frame.y + Math.min((j + 0.5) * cellMm, (j * cellMm + frame.h) / 2) + fs * 0.35;
     text(String(j + 1), frame.x - 1.8 * u, cy, fs, { bold: true, align: "center" });
     text(String(j + 1), frame.x + frame.w + 1.8 * u, cy, fs, { bold: true, align: "center" });
-  }
-
-  // Titel ueber der Karte, linksbuendig: Ueberschrift, darunter der Ortsname groesser. Beide werden in die Breite bis zum Blattrand
-  // gepasst (erst verkleinert, dann gekuerzt), auch bei sehr schmalen Kartenformaten (fittext.js).
-  {
-    const availW = W - frame.x - 6 * u;
-    const m = (str, size) => { g.font = `bold ${size}px ${FONT}`; return g.measureText(str).width; };
-    const head = fitText({ text: title, size: 6 * u, minSize: 3.4 * u, maxW: availW, measure: m });
-    text(head.text, frame.x, 8.4 * u, head.size, { bold: true });
-    const name = fitText({ text: place, size: 9 * u, minSize: 4.5 * u, maxW: availW, measure: m });
-    if (name.text) text(name.text, frame.x, 18.8 * u, name.size, { bold: true });
   }
 
   // Bereich fuer Legende, Massstab und Verzeichnis (in "virtuellen mm": alles / u, damit Schrift und Abstaende auf grossen Papieren mitwachsen)
@@ -354,40 +344,63 @@ export async function composeSheet(opts) {
     });
   };
 
+  // ---- Gemeinsame Helfer fuer frei gelegte Bloecke und den Titel ----
+  // Ein Block steht an seiner Lage (linke obere Ecke, Anteil des Papiers); ragt er in die Karte, bekommt er einen hellen Untergrund
+  const F = { x: frame.x / u, y: frame.y / u, w: frame.w / u, h: frame.h / u };
+  const overMap = (r) => r.x < F.x + F.w && r.x + r.w > F.x && r.y < F.y + F.h && r.y + r.h > F.y;
+  const box = (r) => {
+    halo = false;
+    if (!overMap(r)) return;
+    if (overClear) { halo = true; return; }
+    g.save(); g.fillStyle = "rgba(255,255,255,0.93)"; g.strokeStyle = "rgba(0,0,0,0.4)"; g.lineWidth = 0.25;
+    g.beginPath(); g.roundRect(r.x, r.y, r.w, r.h, 1.2); g.fill(); g.stroke(); g.restore();
+  };
+  /** Mass ({w, h} ab der linken oberen Ecke) im Trockenlauf, Untergrund, dann der Block selbst. p = Lage als Anteil des Papiers. */
+  const placeAt = (p, draw) => {
+    if (!p) return;
+    const sz = dry(() => draw(0, 0)); // das Mass haengt nicht von der Lage ab
+    // Ein Block bleibt mit seinem echten Mass ganz im Papier (die Lage im Assistenten beruht auf einer Schaetzung)
+    const x = Math.max(0, Math.min(p.x * Wv, Wv - sz.w - 2)), y = Math.max(0, Math.min(p.y * Hv, Hv - sz.h - 2));
+    box({ x: x - 2, y: y - 1.5, w: sz.w + 4, h: sz.h + 3 });
+    draw(x, y);
+    halo = false;
+  };
+  const placeBlock = (name, draw) => placeAt(pos?.[name], draw);
+  // Titel: Ueberschrift (6 mm) und Ortsname (9 mm), beide fett, linksbuendig; erst verkleinert, dann gekuerzt, damit sie bis zum Blattrand passen
+  // (fittext.js). Oberkante des Blocks y, Grundlinien 5 und 15,4 mm darunter (bisherige Hoehe bei y = 3,4).
+  const titleBlock = (x, y) => {
+    const availW = Wv - x - 2;
+    const m = (str, size) => { g.font = `bold ${size}px ${FONT}`; return g.measureText(str).width; };
+    const head = fitText({ text: title, size: 6, minSize: 3.4, maxW: availW, measure: m });
+    text(head.text, x, y + 5, head.size, { bold: true });
+    const name = fitText({ text: placeText, size: 9, minSize: 4.5, maxW: availW, measure: m });
+    if (name.text) text(name.text, x, y + 15.4, name.size, { bold: true });
+    return { w: Math.max(m(head.text, head.size), name.text ? m(name.text, name.size) : 0), h: 18 };
+  };
+  const titleAt = pos?.title || opts.titlePos || null; // eigene Lage (frei oder bei fester Leiste); ohne sie wie bisher ueber der Karte
+  if (titleAt) placeAt(titleAt, titleBlock);
+  else {
+    const availW = Wv - F.x - 6;
+    const m = (str, size) => { g.font = `bold ${size}px ${FONT}`; return g.measureText(str).width; };
+    const head = fitText({ text: title, size: 6, minSize: 3.4, maxW: availW, measure: m });
+    text(head.text, F.x, 8.4, head.size, { bold: true });
+    const name = fitText({ text: placeText, size: 9, minSize: 4.5, maxW: availW, measure: m });
+    if (name.text) text(name.text, F.x, 18.8, name.size, { bold: true });
+  }
+
   // ---- Anordnung ----
   let panelFit = 1; // 1 = Bereich voll genutzt ohne Verkleinerung; kleiner = gestapelter Bereich musste verkleinert werden
   if (pos) {
-    // Freie Anordnung: jeder Block steht an seiner Lage (linke obere Ecke, Anteil des Papiers); ragt er in die Karte, bekommt er einen hellen Untergrund
-    const F = { x: frame.x / u, y: frame.y / u, w: frame.w / u, h: frame.h / u };
-    const overMap = (r) => r.x < F.x + F.w && r.x + r.w > F.x && r.y < F.y + F.h && r.y + r.h > F.y;
-    const box = (r) => {
-      halo = false;
-      if (!overMap(r)) return;
-      if (overClear) { halo = true; return; }
-      g.save(); g.fillStyle = "rgba(255,255,255,0.93)"; g.strokeStyle = "rgba(0,0,0,0.4)"; g.lineWidth = 0.25;
-      g.beginPath(); g.roundRect(r.x, r.y, r.w, r.h, 1.2); g.fill(); g.stroke(); g.restore();
-    };
-    /** Mass ({w, h} ab der linken oberen Ecke) im Trockenlauf, Untergrund, dann der Block selbst. */
-    const place = (name, draw) => {
-      const p = pos[name];
-      if (!p) return;
-      const sz = dry(() => draw(0, 0)); // das Mass haengt nicht von der Lage ab
-      // Ein Block bleibt mit seinem echten Mass ganz im Papier (die Lage im Assistenten beruht auf einer Schaetzung)
-      const x = Math.max(0, Math.min(p.x * Wv, Wv - sz.w - 2)), y = Math.max(0, Math.min(p.y * Hv, Hv - sz.h - 2));
-      box({ x: x - 2, y: y - 1.5, w: sz.w + 4, h: sz.h + 3 });
-      draw(x, y);
-      halo = false;
-    };
     if (warning) {
       const w = Math.min(130, F.w - 8), h = dry(() => headerBlock(F.x + 4, F.y + 7, w)) - (F.y + 7);
       box({ x: F.x + 2, y: F.y + 2, w: w + 4, h: h + 2 });
       headerBlock(F.x + 4, F.y + 7, w);
       halo = false;
     }
-    place("legend", (x, y) => { const r = legendBlock(x, y + 3.2, Infinity); return { w: r.tw, h: 3.2 + r.h }; });
-    place("scale", (x, y) => { const r = scaleBar(x, y + 2.8, 1); return { w: r.w, h: 2.8 + r.h }; });
-    place("north", (x, y) => { const r = northArrow(x, y); return { w: r.w, h: r.h }; });
-    place("source", (x, y) => { const w = 62; return { w, h: sourceBlock(x, y + 2.2, w) - y }; });
+    placeBlock("legend", (x, y) => { const r = legendBlock(x, y + 3.2, Infinity); return { w: r.tw, h: 3.2 + r.h }; });
+    placeBlock("scale", (x, y) => { const r = scaleBar(x, y + 2.8, 1); return { w: r.w, h: 2.8 + r.h }; });
+    placeBlock("north", (x, y) => { const r = northArrow(x, y); return { w: r.w, h: r.h }; });
+    placeBlock("source", (x, y) => { const w = 62; return { w, h: sourceBlock(x, y + 2.2, w) - y }; });
     if (showIndex && pos.index) {
       const r = pos.index;
       // 2 mm Luft unten: der helle Untergrund ragt 1,5 mm ueber den Text hinaus und soll nicht ueber den Rand des gewaehlten Rechtecks (z. B. den Kartenrahmen) laufen

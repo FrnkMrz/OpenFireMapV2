@@ -9,7 +9,7 @@ import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
 import { PAPER_MM, ALL_SIDES, NO_SIDE, computeLayout, NICE_SCALES } from "./layout.js";
 import { pdfFileName, buildPdf } from "./pdfout.js";
-import { parsePos, defaultPos, clampPos, blockDims } from "./freelayout.js";
+import { parsePos, defaultPos, clampPos, blockDims, clampGroupOffset } from "./freelayout.js";
 import { indexNote } from "./indexnote.js";
 import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
 import { streetLabelPoints, clipLineToBox } from "./labelpoints.js";
@@ -68,11 +68,21 @@ const sheet = q.get("sheet") === "1";
 const side = ALL_SIDES.includes(q.get("side")) ? q.get("side") : "right"; // "none": keine Seitenleiste, Karte fuellt das Blatt
 // Freie Lage der Bloecke (pos=l:x,y;s:x,y;q:x,y;i:x,y,b,h als Anteile des Papiers, siehe freelayout.js). Bei side=none immer, sonst nur mit pos.
 const posParam = parsePos(q.get("pos"));
-const freePos = side === NO_SIDE || posParam
-  ? clampPos({ ...defaultPos({ paper, side, fmt, lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0" }), ...(posParam || {}) }, blockDims({ lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0", ui: Math.max(1, Math.max(...PAPER_MM[paper] || PAPER_MM.a4l) / 420), W: PAPER_MM[paper]?.[0] ?? PAPER_MM.a4l[0], H: PAPER_MM[paper]?.[1] ?? PAPER_MM.a4l[1] }))
-  : null;
 const indexCols = Math.min(6, Math.max(0, Math.round(+(q.get("icols") || 0))));
 const { ui, frame, panel } = computeLayout({ wMm, hMm, side, fmt });
+// Eigene Lagen in der Adresse: Titel (t) und Karte (m) gelten bei jeder Lage; die Bloecke (l, s, q, n, i) liegen nur dann frei, wenn welche genannt sind
+const blocksFree = side === NO_SIDE || !!(posParam && ["legend", "scale", "source", "north", "index"].some((k) => posParam[k]));
+const allPos = clampPos({ ...defaultPos({ paper, side, fmt, lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0" }), ...(posParam || {}) }, blockDims({ lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0", ui: Math.max(1, Math.max(...PAPER_MM[paper] || PAPER_MM.a4l) / 420), W: PAPER_MM[paper]?.[0] ?? PAPER_MM.a4l[0], H: PAPER_MM[paper]?.[1] ?? PAPER_MM.a4l[1], frame, title: q.get("title") || "", place: q.get("place") || "" })); // Titeltext wie im Assistenten: gleiche Schaetzung, gleiche Klemmung
+const freePos = blocksFree ? allPos : null;
+// Kartenfenster an seiner eigenen Lage (pos m:x,y): nur die Lage aendert sich, Groesse und Ausschnitt bleiben (der Rand haelt noch Platz fuer die Planquadrat-Buchstaben).
+// Bei fester Leiste folgt die Leiste der Karte (gemeinsame Verschiebung, beide im Papier).
+if (sheet) {
+  if (blocksFree) { frame.x = allPos.map.x * wMm; frame.y = allPos.map.y * hMm; }
+  else if (posParam?.map) {
+    const { dx, dy } = clampGroupOffset({ frame, panel, W: wMm, H: hMm, ui, dx: allPos.map.x * wMm - frame.x, dy: allPos.map.y * hMm - frame.y });
+    frame.x += dx; frame.y += dy; panel.x += dx; panel.y += dy;
+  }
+}
 const mapWmm = sheet ? frame.w : wMm;
 const mapHmm = sheet ? frame.h : hMm;
 // Optionen ohne eigenes Eingabefeld (sheet, place, fire, isz, lbl ...) bleiben beim "Neu laden" erhalten.
@@ -274,7 +284,7 @@ async function buildSheet() {
     const baseUntil = await new PMTiles(`${location.origin}/${baseFile}`).getMetadata().then(basemapUntil).catch(() => null);
     const meta = { ...(fireMeta || {}), basemap_until: baseUntil };
     const res = await composeSheet({
-      map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, legendSymbols: q.get("lsym") !== "0", legendRoads: q.get("lroad") !== "0", indexSize, warning, side, panel, indexCols, pos: freePos, overBg: q.get("obg") === "clear" ? "clear" : "white",
+      map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, legendSymbols: q.get("lsym") !== "0", legendRoads: q.get("lroad") !== "0", indexSize, warning, side, panel, indexCols, pos: freePos, titlePos: allPos.title, overBg: q.get("obg") === "clear" ? "clear" : "white",
       title: sheetTitle, place,
       indexAuto: q.get("iauto") !== "0",
     });
