@@ -147,7 +147,7 @@ function overlapsMap(pos, name) {
   const r = blockRect(name, pos, { lsym: S.lsym, lroad: S.lroad, ui: L.ui, W: wMm, H: hMm });
   return !!r && rectsOverlap(r, { x: L.frame.x / wMm, y: L.frame.y / hMm, w: L.frame.w / wMm, h: L.frame.h / hMm });
 }
-const anyOnMap = (pos) => ["legend", "scale", "source", "index"].some((n) => (n !== "index" || S.index) && overlapsMap(pos, n));
+const anyOnMap = (pos) => ["legend", "scale", "north", "source", "index"].some((n) => (n !== "index" || S.index) && overlapsMap(pos, n));
 
 function goLink() {
   const p = new URLSearchParams({
@@ -205,7 +205,7 @@ function drawPreview() {
 /** Kaesten der vier Bloecke in der Vorschau (nur bei freier Anordnung): Lage aus S.pos, Groesse geschaetzt (das Blatt zeichnet die echten Masse). */
 function drawBlocks(manual, L, wMm, hMm) {
   const pos = curPos(), sz = estimateSizes({ lsym: S.lsym, lroad: S.lroad });
-  for (const name of ["legend", "scale", "source", "index"]) {
+  for (const name of ["legend", "scale", "north", "source", "index"]) {
     const el = $(`pv-b-${name}`), p = pos[name];
     const show = manual && p && (name !== "legend" || sz.legend) && (name !== "index" || S.index);
     el.hidden = !show;

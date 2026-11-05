@@ -4,9 +4,9 @@ import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap,
 import { PAPER_MM } from "./layout.js";
 
 test("parsePos/formatPos: Rundreise, Reihenfolge und Rundung", () => {
-  const pos = { legend: { x: 0.71, y: 0.12 }, scale: { x: 0.7, y: 0.5 }, source: { x: 0.1, y: 0.9 }, index: { x: 0.05, y: 0.6, w: 0.5, h: 0.3 } };
+  const pos = { legend: { x: 0.71, y: 0.12 }, scale: { x: 0.7, y: 0.5 }, source: { x: 0.1, y: 0.9 }, north: { x: 0.9, y: 0.4 }, index: { x: 0.05, y: 0.6, w: 0.5, h: 0.3 } };
   const s = formatPos(pos);
-  assert.equal(s, "l:0.71,0.12;s:0.7,0.5;q:0.1,0.9;i:0.05,0.6,0.5,0.3");
+  assert.equal(s, "l:0.71,0.12;s:0.7,0.5;q:0.1,0.9;n:0.9,0.4;i:0.05,0.6,0.5,0.3");
   assert.deepEqual(parsePos(s), pos);
 });
 
@@ -98,7 +98,7 @@ test("defaultPos: Legende, Massstab und Quellen ueberlappen sich in keiner Stand
     const [W, H] = PAPER_MM[paper];
     const ui = Math.max(1, Math.max(W, H) / 420);
     const pos = defaultPos({ paper, side, fmt });
-    const rects = ["legend", "scale", "source"].map((n) => [n, blockRect(n, pos, { ui, W, H })]);
+    const rects = ["legend", "scale", "source", "north"].map((n) => [n, blockRect(n, pos, { ui, W, H })]);
     for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
       assert.ok(!rectsOverlap(rects[i][1], rects[j][1]), `${paper} ${side} ${fmt}: ${rects[i][0]} / ${rects[j][0]}`);
     }
@@ -110,7 +110,7 @@ test("defaultPos: oben/unten - das Verzeichnis ueberdeckt keinen anderen Block (
     const [W, H] = PAPER_MM[paper];
     const ui = Math.max(1, Math.max(W, H) / 420);
     const pos = defaultPos({ paper, side });
-    for (const n of ["legend", "scale", "source"]) {
+    for (const n of ["legend", "scale", "source", "north"]) {
       assert.ok(!rectsOverlap(blockRect(n, pos, { ui, W, H }), pos.index), `${paper} ${side}: ${n} / index`);
     }
   }
@@ -124,4 +124,11 @@ test("defaultPos: die Legende hat Platz fuer alle moeglichen Eintraege, der Mass
     const p = defaultPos({ paper: "a3l", side });
     assert.ok(p.scale.y * H >= p.legend.y * H + worst.h, `${side}: Massstab beginnt unter der vollen Legende`);
   }
+});
+
+test("Nordpfeil ist ein eigener Block: steht in der Standardlage neben dem Massstab und kommt aus alten Adressen ohne n zurueck", () => {
+  const p = defaultPos({ paper: "a3l", side: "right" });
+  assert.ok(p.north && p.north.x > p.scale.x && Math.abs(p.north.y - p.scale.y) < 1e-9, "rechts neben dem Massstab, gleiche Hoehe");
+  assert.deepEqual(parsePos("l:0.2,0.3;s:0.4,0.5;q:0.1,0.9"), { legend: { x: 0.2, y: 0.3 }, scale: { x: 0.4, y: 0.5 }, source: { x: 0.1, y: 0.9 } }, "alte Adresse ohne n bleibt gueltig");
+  assert.deepEqual(parsePos("n:0.9,0.4"), { north: { x: 0.9, y: 0.4 } });
 });

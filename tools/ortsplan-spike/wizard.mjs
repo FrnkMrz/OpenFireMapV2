@@ -154,6 +154,7 @@ try {
   check(await page.isChecked("#c-manual") && await page.isDisabled("#c-manual"), "Ohne Leiste: Bloecke frei, Schalter fest an");
   const pos0 = await posOf();
   check(/^l:[\d.]+,[\d.]+;s:/.test(pos0 || ""), `Link traegt Positionen: ${pos0}`);
+  check(/;n:[\d.]+,[\d.]+/.test(pos0 || "") && await page.isVisible("#pv-b-north") && await page.isVisible("#pv-b-scale"), "Nordpfeil und Massstab sind getrennte Kaesten");
   await page.check("#c-sym"); // Legende wieder an, sonst gibt es keinen Kasten
   const lb = await page.locator("#pv-b-scale").boundingBox();
   await page.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2);

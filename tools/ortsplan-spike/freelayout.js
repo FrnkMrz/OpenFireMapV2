@@ -1,10 +1,10 @@
-// Freie Anordnung von Legende, Massstab (mit Nordpfeil), Quellenangabe und Strassenverzeichnis (rein, ohne DOM, mit `node --test` pruefbar).
+// Freie Anordnung von Legende, Massstab, Nordpfeil, Quellenangabe und Strassenverzeichnis (rein, ohne DOM, mit `node --test` pruefbar).
 // Jeder Block hat eine Lage als Anteil des Papiers (0..1, linke obere Ecke); das Verzeichnis zusaetzlich Breite und Hoehe. So bleibt die
-// Anordnung beim Wechsel des Papiers sinnvoll und passt in die Adresse: pos=l:0.71,0.12;s:0.71,0.5;q:0.71,0.62;i:0.05,0.8,0.6,0.15
+// Anordnung beim Wechsel des Papiers sinnvoll und passt in die Adresse: pos=l:0.71,0.12;s:0.71,0.5;q:0.71,0.62;n:0.9,0.5;i:0.05,0.8,0.6,0.15
 import { PAPER_MM, computeLayout } from "./layout.js";
 
-export const BLOCKS = ["legend", "scale", "source", "index"];
-const SHORT = { l: "legend", s: "scale", q: "source", i: "index" };
+export const BLOCKS = ["legend", "scale", "source", "north", "index"];
+const SHORT = { l: "legend", s: "scale", q: "source", n: "north", i: "index" };
 const MIN_INDEX = 0.04; // kleinste Breite/Hoehe des Verzeichnisses als Anteil des Papiers
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -66,7 +66,7 @@ export function blockRect(name, pos, { lsym = true, lroad = true, ui = 1, W = 42
 export function blockDims({ lsym = true, lroad = true, ui = 1, W = 420, H = 297 } = {}) {
   const sz = estimateSizes({ lsym, lroad });
   const out = {};
-  for (const name of ["legend", "scale", "source"]) if (sz[name]) out[name] = { w: (sz[name].w * ui) / W, h: (sz[name].h * ui) / H };
+  for (const name of ["legend", "scale", "source", "north"]) if (sz[name]) out[name] = { w: (sz[name].w * ui) / W, h: (sz[name].h * ui) / H };
   return out;
 }
 
@@ -76,7 +76,7 @@ export function blockDims({ lsym = true, lroad = true, ui = 1, W = 420, H = 297 
 export function estimateSizes({ lsym = true, lroad = true, worst = false } = {}) {
   const rows = (lsym ? (worst ? 16 : 10) : 0) * 5.4 + (lroad ? (worst ? 5.4 + 5 * 4.86 : 6 * 4.9) : 0);
   const legend = lsym || lroad ? { w: 62, h: 5.6 + rows } : null;
-  return { legend, scale: { w: 40, h: 38 }, source: { w: 62, h: 27 } };
+  return { legend, scale: { w: 40, h: 20 }, north: { w: 10, h: 19 }, source: { w: 62, h: 16 } };
 }
 
 /**
@@ -90,21 +90,25 @@ export function defaultPos({ paper = "a3l", side = "right", fmt = "fill", lsym =
   const gap = 6 * ui;
   const out = {};
   const put = (name, x, y) => { out[name] = { x: x / W, y: y / H }; };
+  const NG = 4; // Abstand zwischen Massstab und Nordpfeil
+  const northAt = (xScale, yy) => put("north", xScale + (sz.scale.w + NG) * ui, yy); // der Nordpfeil steht rechts neben dem Massstab
   if (side === "top" || side === "bottom") {
     const minIndexW = 0.2 * W;
     const right = panel.x + panel.w;
     const legendW = sz.legend ? sz.legend.w * ui + gap : 0;
-    const rowW = legendW + (sz.scale.w + sz.source.w) * ui + 2 * gap; // alles in einer Reihe
+    const scaleW = sz.scale.w + NG + sz.north.w; // Massstab und Nordpfeil nebeneinander
+    const rowW = legendW + (scaleW + sz.source.w) * ui + 2 * gap; // alles in einer Reihe
     // Reicht die Breite nicht fuer drei Bloecke und ein Verzeichnis, steht die Quellenangabe unter dem Massstab (zwei Spalten statt drei)
     const stacked = right - (panel.x + rowW) < minIndexW;
     let x = panel.x;
     if (sz.legend) { put("legend", x, panel.y); x += legendW; }
     put("scale", x, panel.y);
+    northAt(x, panel.y);
     if (stacked) {
       put("source", x, panel.y + (sz.scale.h * ui) + gap / 2);
-      x += Math.max(sz.scale.w, sz.source.w) * ui + gap;
+      x += Math.max(scaleW, sz.source.w) * ui + gap;
     } else {
-      x += sz.scale.w * ui + gap;
+      x += scaleW * ui + gap;
       put("source", x, panel.y);
       x += sz.source.w * ui + gap;
     }
@@ -122,6 +126,7 @@ export function defaultPos({ paper = "a3l", side = "right", fmt = "fill", lsym =
     let st = stack(sz);
     if (st.end - gap > bottom) st = stack(estimateSizes({ lsym, lroad }));
     for (const [name, yy] of Object.entries(st.at)) put(name, x, yy);
+    northAt(x, st.at.scale);
     const y = st.end;
     out.index = { x: x / W, y: y / H, w: colW / W, h: Math.max(30 * ui, bottom - y) / H };
   }
