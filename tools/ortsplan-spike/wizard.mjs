@@ -189,17 +189,27 @@ try {
     // Magnet: von oben (Mindestrand) mit der Maus fast bis zum normalen Randabstand ziehen -> rastet genau ein
     for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowUp");
     const pr = await page.locator("#prev").boundingBox();
-    const mb = await page.locator("#pv-map").boundingBox();
     const dy = (27 * ui - 6 * ui) * (pr.height / H) - 1.2; // knapp vor dem normalen oberen Abstand
-    await page.mouse.move(mb.x + mb.width / 2, mb.y + mb.height / 2);
+    // Greifpunkt: ein Punkt, an dem wirklich die Karte oben liegt (Kaesten liegen teils darueber)
+    const grab = await page.evaluate(() => {
+      const r = document.getElementById("pv-map").getBoundingClientRect();
+      for (let fy = 0.5; fy <= 0.95; fy += 0.05) for (let fx = 0.1; fx <= 0.9; fx += 0.1) {
+        const x = r.left + r.width * fx, y = r.top + r.height * fy;
+        if (document.elementFromPoint(x, y)?.closest("#pv-map")) return { x, y };
+      }
+      return null;
+    });
+    check(!!grab, "freier Greifpunkt auf der Karte gefunden");
+    await page.mouse.move(grab.x, grab.y);
     await page.mouse.down();
-    await page.mouse.move(mb.x + mb.width / 2, mb.y + mb.height / 2 + dy, { steps: 8 });
+    await page.mouse.move(grab.x, grab.y + dy, { steps: 8 });
     await page.mouse.up();
     const mSnap = await mOf();
     check(Math.abs(mSnap.y - 27 * ui) < 0.1, `Karte rastet am normalen oberen Randabstand ein (${mSnap.y.toFixed(2)} mm, Ziel ${(27 * ui).toFixed(2)})`);
     // Titel mit der Maus weit nach unten rechts: bleibt ganz auf dem Blatt
     const tb = await page.locator("#pv-title").boundingBox();
     await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
+    check(await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest("#pv-title"), [tb.x + tb.width / 2, tb.y + tb.height / 2]), "Titel-Greifpunkt liegt auf dem Titel");
     await page.mouse.down();
     await page.mouse.move(pr.x + pr.width + 200, pr.y + pr.height + 200, { steps: 8 });
     await page.mouse.up();
