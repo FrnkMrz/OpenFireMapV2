@@ -39,6 +39,23 @@ async function waitForLeaflet({ timeoutMs = 8000, intervalMs = 50 } = {}) {
   return false;
 }
 
+/**
+ * Blendet den zeitlich begrenzten Hinweis zur Erreichbarkeit der Kontaktadresse aus.
+ */
+function showEmailAvailabilityNotice() {
+  const notice = document.getElementById('email-availability-notice');
+  if (!notice) return;
+
+  const expiresAt = Date.parse(notice.dataset.expiresAt ?? '');
+  const remainingMs = expiresAt - Date.now();
+  if (!Number.isFinite(expiresAt) || remainingMs <= 0) return;
+
+  notice.hidden = false;
+  window.setTimeout(() => {
+    notice.hidden = true;
+  }, remainingMs);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     console.log('[OpenFireMapV2] App startet...');
@@ -49,6 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1) i18n (Default: de, Fallback: en)
     await initI18n();
     updatePageLanguage();
+    showEmailAvailabilityNotice();
 
     // 2) UI initialisieren
     setupUI();
