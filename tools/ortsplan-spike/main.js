@@ -71,7 +71,7 @@ const posParam = parsePos(q.get("pos"));
 const indexCols = Math.min(6, Math.max(0, Math.round(+(q.get("icols") || 0))));
 const { ui, frame, panel } = computeLayout({ wMm, hMm, side, fmt });
 const freePos = side === NO_SIDE || posParam
-  ? clampPos({ ...defaultPos({ paper, side, fmt, lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0" }), ...(posParam || {}) }, blockDims({ lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0", ui: Math.max(1, Math.max(...PAPER_MM[paper] || PAPER_MM.a4l) / 420), W: PAPER_MM[paper]?.[0] ?? PAPER_MM.a4l[0], H: PAPER_MM[paper]?.[1] ?? PAPER_MM.a4l[1], frame }))
+  ? clampPos({ ...defaultPos({ paper, side, fmt, lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0" }), ...(posParam || {}) }, blockDims({ lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0", ui: Math.max(1, Math.max(...PAPER_MM[paper] || PAPER_MM.a4l) / 420), W: PAPER_MM[paper]?.[0] ?? PAPER_MM.a4l[0], H: PAPER_MM[paper]?.[1] ?? PAPER_MM.a4l[1], frame, title: q.get("title") || "", place: q.get("place") || "" })) // Titeltext wie im Assistenten: gleiche Schaetzung, gleiche Klemmung
   : null;
 // Freie Lage des Kartenfensters (pos m:x,y): nur die Lage aendert sich, Groesse und Ausschnitt bleiben (der Rand haelt noch Platz fuer die Planquadrat-Buchstaben)
 if (sheet && freePos?.map) { frame.x = freePos.map.x * wMm; frame.y = freePos.map.y * hMm; }
