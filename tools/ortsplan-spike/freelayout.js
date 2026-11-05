@@ -1,10 +1,17 @@
-// Freie Anordnung von Legende, Massstab, Nordpfeil, Quellenangabe und Strassenverzeichnis (rein, ohne DOM, mit `node --test` pruefbar).
+// Freie Anordnung von Titel, Karte, Legende, Massstab, Nordpfeil, Quellenangabe und Strassenverzeichnis (rein, ohne DOM, mit `node --test` pruefbar).
 // Jeder Block hat eine Lage als Anteil des Papiers (0..1, linke obere Ecke); das Verzeichnis zusaetzlich Breite und Hoehe. So bleibt die
-// Anordnung beim Wechsel des Papiers sinnvoll und passt in die Adresse: pos=l:0.71,0.12;s:0.71,0.5;q:0.71,0.62;n:0.9,0.5;i:0.05,0.8,0.6,0.15
-import { PAPER_MM, computeLayout } from "./layout.js";
+// Anordnung beim Wechsel des Papiers sinnvoll und passt in die Adresse: pos=t:0.03,0.01;m:0.03,0.09;l:0.71,0.12;s:0.71,0.5;q:0.71,0.62;n:0.9,0.5;i:0.05,0.8,0.6,0.15
+// Titel (t) und Karte (m, Lage des Kartenfensters; Groesse bleibt) sind verschiebbar; die Karte rastet nahe an den Randabstaenden ein (snapMap).
+import { PAPER_MM, computeLayout, TOP_BAND } from "./layout.js";
 
-export const BLOCKS = ["legend", "scale", "source", "north", "index"];
-const SHORT = { l: "legend", s: "scale", q: "source", n: "north", i: "index" };
+export const BLOCKS = ["legend", "scale", "source", "north", "title", "map", "index"];
+const SHORT = { l: "legend", s: "scale", q: "source", n: "north", t: "title", m: "map", i: "index" };
+/** Mindestabstand des Kartenfensters zum Papierrand (Einheiten von ui): dort stehen noch die Planquadrat-Buchstaben. */
+export const MAP_MARGIN = 6;
+/** Normale Randabstaende des Kartenfensters (Einheiten von ui, wie in layout.js): hier rastet die Karte beim Ziehen ein. */
+export const MAP_ANCHOR = { left: 14, right: 14, top: TOP_BAND, bottom: 14 };
+/** Oberkante des Titels (Einheiten von ui): so steht die Ueberschrift in der bisherigen Hoehe (Grundlinie 8,4). */
+export const TITLE_Y = 3.4;
 const MIN_INDEX = 0.04; // kleinste Breite/Hoehe des Verzeichnisses als Anteil des Papiers
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -38,7 +45,12 @@ export function clampPos(pos, dims = null) {
       out.index = { x: clamp(b.x, 0, 1 - w), y: clamp(b.y, 0, 1 - h), w, h };
     } else {
       const d = dims?.[name];
-      out[name] = { x: clamp(b.x, 0, d ? Math.max(0, 1 - d.w) : 0.98), y: clamp(b.y, 0, d ? Math.max(0, 1 - d.h) : 0.98) };
+      // die Karte haelt zusaetzlich einen Mindestrand (Planquadrat-Buchstaben); sonst gilt: der ganze Block bleibt im Papier
+      const mx = name === "map" && d ? d.mx || 0 : 0, my = name === "map" && d ? d.my || 0 : 0;
+      out[name] = {
+        x: clamp(b.x, mx, d ? Math.max(mx, 1 - d.w - mx) : 0.98),
+        y: clamp(b.y, my, d ? Math.max(my, 1 - d.h - my) : 0.98),
+      };
     }
   }
   return out;
@@ -54,20 +66,44 @@ export function formatPos(pos) {
 export const rectsOverlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
 /** Rechteck eines Blocks als Anteil des Papiers: Lage aus pos, Groesse geschaetzt (Verzeichnis: aus pos). ui = Oberflaechen-Faktor, W/H = Papier in mm. */
-export function blockRect(name, pos, { lsym = true, lroad = true, ui = 1, W = 420, H = 297 } = {}) {
+export function blockRect(name, pos, { lsym = true, lroad = true, ui = 1, W = 420, H = 297, frame = null, title = "", place = "" } = {}) {
   const p = pos?.[name];
   if (!p) return null;
   if (name === "index") return { x: p.x, y: p.y, w: p.w, h: p.h };
+  if (name === "map") return frame ? { x: p.x, y: p.y, w: frame.w / W, h: frame.h / H } : null; // Groesse des Kartenfensters in mm
+  if (name === "title") { const t = estimateTitle({ title, place }); return { x: p.x, y: p.y, w: (t.w * ui) / W, h: (t.h * ui) / H }; }
   const sz = estimateSizes({ lsym, lroad })[name];
   return sz ? { x: p.x, y: p.y, w: (sz.w * ui) / W, h: (sz.h * ui) / H } : null;
 }
 
-/** Groesse von Legende, Massstab und Quellen als Anteil des Papiers (geschaetzt), fuer clampPos. */
-export function blockDims({ lsym = true, lroad = true, ui = 1, W = 420, H = 297 } = {}) {
+/** Groesse des Titels in "virtuellen mm" (geschaetzt aus der Textlaenge: Ueberschrift fett 6 mm, Ortsname fett 9 mm). Das Blatt misst den echten Text. */
+export function estimateTitle({ title = "", place = "" } = {}) {
+  const head = (title || "Orts- und Hydrantenplan").length * 3.5;
+  const name = (place || "Ortsname").length * 5.3;
+  return { w: Math.min(260, Math.max(40, head, name)), h: 18 };
+}
+
+/** Groesse von Titel, Legende, Massstab und Quellen als Anteil des Papiers (geschaetzt), fuer clampPos; mit frame {w, h} (mm) auch die der Karte samt Mindestrand. */
+export function blockDims({ lsym = true, lroad = true, ui = 1, W = 420, H = 297, frame = null, title = "", place = "" } = {}) {
   const sz = estimateSizes({ lsym, lroad });
   const out = {};
   for (const name of ["legend", "scale", "source", "north"]) if (sz[name]) out[name] = { w: (sz[name].w * ui) / W, h: (sz[name].h * ui) / H };
+  const t = estimateTitle({ title, place });
+  out.title = { w: (t.w * ui) / W, h: (t.h * ui) / H };
+  if (frame) out.map = { w: frame.w / W, h: frame.h / H, mx: (MAP_MARGIN * ui) / W, my: (MAP_MARGIN * ui) / H };
   return out;
+}
+
+/**
+ * Magnet fuer das Kartenfenster: liegt die linke/rechte Kante bzw. obere/untere Kante naeher als thr mm an den normalen Randabstaenden
+ * (MAP_ANCHOR), springt sie darauf; sonst bleibt die Lage frei. Jede Achse einzeln. p = Lage als Anteil des Papiers, w/h = Kartenfenster in mm.
+ */
+export function snapMap(p, { W, H, ui = 1, w, h, thr = 4 }) {
+  const near = (v, anchors) => { for (const a of anchors) if (Math.abs(v - a) <= thr) return a; return v; };
+  return {
+    x: near(p.x * W, [MAP_ANCHOR.left * ui, W - MAP_ANCHOR.right * ui - w]) / W,
+    y: near(p.y * H, [MAP_ANCHOR.top * ui, H - MAP_ANCHOR.bottom * ui - h]) / H,
+  };
 }
 
 /** Grobe Groesse der Bloecke in "virtuellen mm" (mal ui = mm auf dem Papier). Nur fuer die Vorschau und die Standardlage; gezeichnet wird mit den echten Massen.
@@ -130,5 +166,8 @@ export function defaultPos({ paper = "a3l", side = "right", fmt = "fill", lsym =
     const y = st.end;
     out.index = { x: x / W, y: y / H, w: colW / W, h: Math.max(30 * ui, bottom - y) / H };
   }
-  return clampPos(out, blockDims({ lsym, lroad, ui, W, H }));
+  // Titel links oben (wie bisher in der Hoehe der Ueberschrift), Karte an ihrer Standardlage
+  out.title = { x: (14 * ui) / W, y: (TITLE_Y * ui) / H };
+  out.map = { x: frame.x / W, y: frame.y / H };
+  return clampPos(out, blockDims({ lsym, lroad, ui, W, H, frame }));
 }

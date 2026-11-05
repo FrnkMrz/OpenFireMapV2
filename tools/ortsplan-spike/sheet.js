@@ -86,6 +86,7 @@ const LEGEND = [
  */
 export async function composeSheet(opts) {
   const { map, scale, dpi, paperMm, frame, title, place = "", meta, warning } = opts;
+  const placeText = place; // Ortsname: `place` heisst weiter unten auch die Hilfsfunktion fuer frei gelegte Bloecke
   const side = opts.side || "right"; // Lage von Legende, Massstab und Verzeichnis: right | left | top | bottom
   const indexCols = opts.indexCols || 0; // Spaltenzahl des Verzeichnisses (0 = automatisch)
   const overClear = opts.overBg === "clear"; // Bloecke ueber der Karte: durchsichtig (Schrift mit weissem Rand) statt heller Untergrund
@@ -155,12 +156,13 @@ export async function composeSheet(opts) {
 
   // Titel ueber der Karte, linksbuendig: Ueberschrift, darunter der Ortsname groesser. Beide werden in die Breite bis zum Blattrand
   // gepasst (erst verkleinert, dann gekuerzt), auch bei sehr schmalen Kartenformaten (fittext.js).
-  {
+  // Bei freier Anordnung mit eigener Titellage (pos.title) zeichnet ihn der Block "title" weiter unten.
+  if (!pos?.title) {
     const availW = W - frame.x - 6 * u;
     const m = (str, size) => { g.font = `bold ${size}px ${FONT}`; return g.measureText(str).width; };
     const head = fitText({ text: title, size: 6 * u, minSize: 3.4 * u, maxW: availW, measure: m });
     text(head.text, frame.x, 8.4 * u, head.size, { bold: true });
-    const name = fitText({ text: place, size: 9 * u, minSize: 4.5 * u, maxW: availW, measure: m });
+    const name = fitText({ text: placeText, size: 9 * u, minSize: 4.5 * u, maxW: availW, measure: m });
     if (name.text) text(name.text, frame.x, 18.8 * u, name.size, { bold: true });
   }
 
@@ -384,6 +386,16 @@ export async function composeSheet(opts) {
       headerBlock(F.x + 4, F.y + 7, w);
       halo = false;
     }
+    // Titel: Ueberschrift (6 mm) und Ortsname (9 mm), beide fett; Oberkante des Blocks y, Grundlinien 5 und 15,4 mm darunter (bisherige Hoehe bei y = 3,4)
+    place("title", (x, y) => {
+      const availW = Wv - x - 2;
+      const m = (str, size) => { g.font = `bold ${size}px ${FONT}`; return g.measureText(str).width; };
+      const head = fitText({ text: title, size: 6, minSize: 3.4, maxW: availW, measure: m });
+      text(head.text, x, y + 5, head.size, { bold: true });
+      const name = fitText({ text: placeText, size: 9, minSize: 4.5, maxW: availW, measure: m });
+      if (name.text) text(name.text, x, y + 15.4, name.size, { bold: true });
+      return { w: Math.max(m(head.text, head.size), name.text ? m(name.text, name.size) : 0), h: 18 };
+    });
     place("legend", (x, y) => { const r = legendBlock(x, y + 3.2, Infinity); return { w: r.tw, h: 3.2 + r.h }; });
     place("scale", (x, y) => { const r = scaleBar(x, y + 2.8, 1); return { w: r.w, h: 2.8 + r.h }; });
     place("north", (x, y) => { const r = northArrow(x, y); return { w: r.w, h: r.h }; });

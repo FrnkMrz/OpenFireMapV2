@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol, PMTiles } from "pmtiles";
 import { buildStyle } from "./style.js";
 import { PAPER_MM, ALL_SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES } from "./layout.js";
-import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims } from "./freelayout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap } from "./freelayout.js";
 import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE, RATIO_MIN, RATIO_MAX } from "./framegeo.js";
 
 const q = new URLSearchParams(location.search);
@@ -137,17 +137,18 @@ const layoutKey = () => `${paperKey()}|${S.side}|${layoutFmt()}`;
 if (S.pos && S.posKey === null) S.posKey = layoutKey();
 const ownPos = () => (S.pos && S.posKey === layoutKey() ? S.pos : null);
 /** Groesse der Bloecke als Anteil des Papiers (geschaetzt): damit bleibt ein Block ganz im Papier, nicht nur seine Ecke. */
-const dimsNow = () => { const [wMm, hMm] = PAPER_MM[paperKey()]; return blockDims({ lsym: S.lsym, lroad: S.lroad, ui: Math.max(1, Math.max(wMm, hMm) / 420), W: wMm, H: hMm }); };
+const dimsNow = () => { const [wMm, hMm] = PAPER_MM[paperKey()]; return blockDims({ lsym: S.lsym, lroad: S.lroad, ui: Math.max(1, Math.max(wMm, hMm) / 420), W: wMm, H: hMm, frame: layout().L.frame, title: T.title, place: T.place }); };
 const curPos = () => clampPos({ ...defaultPos({ paper: paperKey(), side: S.side, fmt: layoutFmt(), lsym: S.lsym, lroad: S.lroad }), ...(ownPos() || {}) }, dimsNow());
 const resetPos = () => { S.pos = null; S.posKey = undefined; };
 const onMapOk = () => S.side === "none" || S.onmap; // ohne Leiste liegen die Bloecke zwangslaeufig auf der Karte
 /** Liegt ein Block (geschaetzt) ganz oder teilweise auf dem Kartenfenster? */
 function overlapsMap(pos, name) {
   const { L, wMm, hMm } = layout();
-  const r = blockRect(name, pos, { lsym: S.lsym, lroad: S.lroad, ui: L.ui, W: wMm, H: hMm });
-  return !!r && rectsOverlap(r, { x: L.frame.x / wMm, y: L.frame.y / hMm, w: L.frame.w / wMm, h: L.frame.h / hMm });
+  const r = blockRect(name, pos, { lsym: S.lsym, lroad: S.lroad, ui: L.ui, W: wMm, H: hMm, title: T.title, place: T.place });
+  const f = pos.map ? { x: pos.map.x, y: pos.map.y } : { x: L.frame.x / wMm, y: L.frame.y / hMm }; // das Kartenfenster kann verschoben sein
+  return !!r && rectsOverlap(r, { ...f, w: L.frame.w / wMm, h: L.frame.h / hMm });
 }
-const anyOnMap = (pos) => ["legend", "scale", "north", "source", "index"].some((n) => (n !== "index" || S.index) && overlapsMap(pos, n));
+const anyOnMap = (pos) => ["title", "legend", "scale", "north", "source", "index"].some((n) => (n !== "index" || S.index) && overlapsMap(pos, n));
 
 function goLink() {
   const p = new URLSearchParams({
@@ -187,10 +188,8 @@ function drawPreview() {
   const prev = $("prev");
   prev.style.aspectRatio = `${wMm} / ${hMm}`;
   const pct = (r, el) => { el.style.left = `${(r.x / wMm) * 100}%`; el.style.top = `${(r.y / hMm) * 100}%`; el.style.width = `${(r.w / wMm) * 100}%`; el.style.height = `${(r.h / hMm) * 100}%`; };
-  pct(L.frame, $("pv-map"));
   $("pv-map").textContent = `Karte 1:${S.scale.toLocaleString("de-DE")}`;
   pct(L.panel, $("pv-panel"));
-  pct({ x: L.frame.x, y: 3 * L.ui, w: L.frame.w, h: 21 * L.ui }, $("pv-title")); // Titelzeile ueber der Karte
   $("pv-title").replaceChildren(...[T.title || "Orts- und Hydrantenplan", T.place || "Ortsname"].map((t) => { const s = document.createElement("span"); s.textContent = t; return s; }));
   const manual = isManual();
   $("pv-panel").hidden = manual;
@@ -205,6 +204,16 @@ function drawPreview() {
 /** Kaesten der vier Bloecke in der Vorschau (nur bei freier Anordnung): Lage aus S.pos, Groesse geschaetzt (das Blatt zeichnet die echten Masse). */
 function drawBlocks(manual, L, wMm, hMm) {
   const pos = curPos(), sz = estimateSizes({ lsym: S.lsym, lroad: S.lroad });
+  // Titel und Karte: bei freier Anordnung an ihrer eigenen Lage (verschiebbar), sonst an der Lage, die die Seitenleiste vorgibt
+  const place = (el, r) => { el.style.left = `${(r.x / wMm) * 100}%`; el.style.top = `${(r.y / hMm) * 100}%`; el.style.width = `${(r.w / wMm) * 100}%`; el.style.height = `${(r.h / hMm) * 100}%`; };
+  const t = estimateTitle({ title: T.title, place: T.place });
+  place($("pv-map"), manual && pos.map ? { x: pos.map.x * wMm, y: pos.map.y * hMm, w: L.frame.w, h: L.frame.h } : L.frame);
+  place($("pv-title"), manual && pos.title ? { x: pos.title.x * wMm, y: pos.title.y * hMm, w: t.w * L.ui, h: t.h * L.ui } : { x: L.frame.x, y: 3 * L.ui, w: L.frame.w, h: 21 * L.ui });
+  for (const [el, label] of [[$("pv-title"), "Titel verschieben"], [$("pv-map"), "Karte verschieben"]]) {
+    el.classList.toggle("mv", manual);
+    if (manual) { el.tabIndex = 0; el.setAttribute("role", "button"); el.setAttribute("aria-label", label); }
+    else { el.removeAttribute("tabindex"); el.removeAttribute("role"); el.removeAttribute("aria-label"); }
+  }
   for (const name of ["legend", "scale", "north", "source", "index"]) {
     const el = $(`pv-b-${name}`), p = pos[name];
     const show = manual && p && (name !== "legend" || sz.legend) && (name !== "index" || S.index);
@@ -276,25 +285,38 @@ $("g-obg").replaceChildren(...[["white", "Weiß"], ["clear", "Durchsichtig"]].ma
   return b;
 }));
 // Kaesten ziehen (Maus, Finger) oder mit Pfeiltasten schieben; das Verzeichnis zusaetzlich an der Ecke unten rechts in der Groesse aendern
-function movePos(name, dx, dy, resize) {
+// raw (nur beim Ziehen mit der Maus): ungerasterte Lage der Karte; sonst bliebe sie am Magneten kleben, weil jeder Schritt kleiner ist als sein Fang
+function movePos(name, dx, dy, resize, raw = null) {
   const pos = curPos(), b = pos[name];
   if (!b) return;
   // Wo es nicht auf die Karte darf, gilt die Bewegung nur, solange der Block ausserhalb des Kartenfensters bleibt (sonst wenigstens eine Achse)
   const tries = resize ? [[dx, dy]] : [[dx, dy], [dx, 0], [0, dy]];
+  const { L, wMm, hMm } = layout();
   for (const [ax, ay] of tries) {
+    if (name === "map") {
+      // Die Karte bleibt ganz im Papier (mit Rand fuer die Planquadrat-Buchstaben) und rastet beim Ziehen nahe an den normalen Randabstaenden ein
+      const from = raw?.cur || b;
+      const free = clampPos({ ...pos, map: { x: from.x + ax, y: from.y + ay } }, dimsNow()).map;
+      const at = raw ? snapMap(free, { W: wMm, H: hMm, ui: L.ui, w: L.frame.w, h: L.frame.h }) : free;
+      const cand = clampPos({ ...pos, map: at }, dimsNow());
+      if (onMapOk() || !anyOnMap(cand)) { if (raw) raw.cur = free; S.pos = cand; S.posKey = layoutKey(); return; }
+      continue;
+    }
     const cand = clampPos({ ...pos, [name]: resize ? { ...b, w: b.w + ax, h: b.h + ay } : { ...b, x: b.x + ax, y: b.y + ay } }, dimsNow());
     if (onMapOk() || !overlapsMap(cand, name)) { S.pos = cand; S.posKey = layoutKey(); return; }
   }
 }
-for (const el of document.querySelectorAll("#prev .blk")) {
+for (const el of document.querySelectorAll("#prev [data-b]")) {
   const name = el.dataset.b;
   el.addEventListener("pointerdown", (e) => {
+    if (!isManual()) return; // Titel und Karte lassen sich nur bei freier Anordnung verschieben
     e.preventDefault(); el.focus();
     el.setPointerCapture(e.pointerId); el.classList.add("drag");
     const rect = $("prev").getBoundingClientRect(), resize = !!e.target.dataset.rz;
     let last = { x: e.clientX, y: e.clientY };
+    const raw = name === "map" ? { cur: null } : null;
     const move = (ev) => {
-      movePos(name, (ev.clientX - last.x) / rect.width, (ev.clientY - last.y) / rect.height, resize);
+      movePos(name, (ev.clientX - last.x) / rect.width, (ev.clientY - last.y) / rect.height, resize, raw);
       last = { x: ev.clientX, y: ev.clientY };
       const { L, wMm, hMm } = layout(); drawBlocks(true, L, wMm, hMm); $("go").href = goLink();
     };
@@ -302,10 +324,11 @@ for (const el of document.querySelectorAll("#prev .blk")) {
     el.addEventListener("pointermove", move); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
   });
   el.addEventListener("keydown", (e) => {
+    if (!isManual()) return;
     const d = e.shiftKey ? 0.05 : 0.01;
     const v = { ArrowLeft: [-d, 0], ArrowRight: [d, 0], ArrowUp: [0, -d], ArrowDown: [0, d] }[e.key];
     if (!v) return;
-    e.preventDefault(); movePos(name, v[0], v[1], name === "index" && e.altKey); refresh(); $(`pv-b-${name}`).focus();
+    e.preventDefault(); movePos(name, v[0], v[1], name === "index" && e.altKey); refresh(); el.focus();
   });
 }
 // Rahmenform: Frei oder wie das Blatt. Beim Umschalten bleibt der Rahmen, wie er ist (frei übernimmt das Seitenverhältnis des Blatts, fest rastet den Maßstab ein)

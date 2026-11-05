@@ -167,6 +167,44 @@ try {
   const q0 = (await posOf()).split(";")[2];
   await page.keyboard.press("ArrowLeft");
   check((await posOf()).split(";")[2] !== q0, "Pfeiltaste verschiebt den Quellen-Kasten");
+  // Titel und Karte: eigene Kaesten, Titel startet links oben, die Karte bleibt auf dem Blatt und rastet am Rand ein
+  {
+    const W = 420, H = 594, ui = 594 / 420; // A2 hoch (siehe oben)
+    const mOf = async () => { const m = /;m:([\d.]+),([\d.]+)/.exec(await posOf()); return m ? { x: +m[1] * W, y: +m[2] * H } : null; };
+    const tOf = async () => { const m = /;t:([\d.]+),([\d.]+)/.exec(await posOf()); return m ? { x: +m[1] * W, y: +m[2] * H } : null; };
+    const inside = (sel) => page.evaluate((q) => { const a = document.querySelector(q).getBoundingClientRect(), b = document.getElementById("prev").getBoundingClientRect(); return a.left >= b.left - 1 && a.top >= b.top - 1 && a.right <= b.right + 1 && a.bottom <= b.bottom + 1; }, sel);
+    await page.locator("#prev").scrollIntoViewIfNeeded();
+    const t0 = await tOf(), m0 = await mOf();
+    check(!!t0 && !!m0, `Link traegt Titel und Karte: t=${t0 && t0.x.toFixed(1)},${t0 && t0.y.toFixed(1)} m=${m0 && m0.x.toFixed(1)},${m0 && m0.y.toFixed(1)}`);
+    check(t0 && Math.abs(t0.x - 14 * ui) < 0.1 && Math.abs(t0.y - 3.4 * ui) < 0.1, "Titel startet links oben (Randabstand 14, Oberkante 3,4)");
+    check(await page.evaluate(() => document.getElementById("pv-title").classList.contains("mv") && document.getElementById("pv-map").classList.contains("mv")), "Titel und Karte sind bei freier Anordnung verschiebbar");
+    // Karte mit der Tastatur: nie ueber das Blatt hinaus, nie naeher als der Mindestrand
+    await page.focus("#pv-map");
+    await page.keyboard.press("ArrowUp", { delay: 0 });
+    for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowUp");
+    const mTop = await mOf();
+    check(Math.abs(mTop.y - 6 * ui) < 0.1 && await inside("#pv-map"), `Karte ganz nach oben: bleibt auf dem Blatt, Mindestrand 6 (${mTop.y.toFixed(1)} mm)`);
+    for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowDown");
+    check(await inside("#pv-map"), "Karte ganz nach unten: bleibt auf dem Blatt");
+    // Magnet: von oben (Mindestrand) mit der Maus fast bis zum normalen Randabstand ziehen -> rastet genau ein
+    for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowUp");
+    const pr = await page.locator("#prev").boundingBox();
+    const mb = await page.locator("#pv-map").boundingBox();
+    const dy = (27 * ui - 6 * ui) * (pr.height / H) - 1.2; // knapp vor dem normalen oberen Abstand
+    await page.mouse.move(mb.x + mb.width / 2, mb.y + mb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(mb.x + mb.width / 2, mb.y + mb.height / 2 + dy, { steps: 8 });
+    await page.mouse.up();
+    const mSnap = await mOf();
+    check(Math.abs(mSnap.y - 27 * ui) < 0.1, `Karte rastet am normalen oberen Randabstand ein (${mSnap.y.toFixed(2)} mm, Ziel ${(27 * ui).toFixed(2)})`);
+    // Titel mit der Maus weit nach unten rechts: bleibt ganz auf dem Blatt
+    const tb = await page.locator("#pv-title").boundingBox();
+    await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(pr.x + pr.width + 200, pr.y + pr.height + 200, { steps: 8 });
+    await page.mouse.up();
+    check(await inside("#pv-title"), "Titel weit ueber den Rand gezogen: bleibt ganz auf dem Blatt");
+  }
   await side("top");
   check(!(await posOf()) && !(await page.isChecked("#c-manual")), "andere Lage: wieder automatisch, keine Positionen");
   // Bloecke nicht auf der Karte (Standard): der Kasten laesst sich nicht ueber das Kartenfenster ziehen; erlaubt man es, geht es
