@@ -76,6 +76,8 @@ GitHub Actions workflow (`.github/workflows/pages.yml`) runs on push to `main`:
 1. `npm ci` + `npm run build`
 2. Deploys `docs/` to GitHub Pages
 
+Der Deploy-Job hat ein Limit von 15 min. Scheitert er, zeigt der Schritt „Show Pages and deployment state“ den Zustand (Pages-Konfiguration, letzte Deployments, nur lesend). Bekannter Fehler: HTTP 400 „due to in progress deployment. Please cancel <sha> first“ bei einem längst stornierten Deployment (05.11.2026). Abbrechen per API half nicht, GitHub hob die Sperre nach gut einer Stunde selbst auf: warten, dann „Re-run failed jobs“.
+
 ## Code Conventions
 
 - Comments and internal documentation are in **German**
