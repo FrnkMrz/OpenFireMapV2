@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- SVG-Formen und OSM-Tag-Zuordnung der Kartenmarker in `marker-symbols-core.js` ausgelagert. Die Karte nutzt weiterhin dieselben SVG-Ausgaben; das browserunabhängige Modul kann zusätzlich vom Raster-Renderer importiert werden.
+- Regressionstest vergleicht Kernmodul und Webkarten-SVG für Hydranten, Wasserstellen, Wache und AED.
+
 ### Geändert
 - **Kontaktadresse verlinkt**: Die E-Mail-Adresse im Impressum und in beiden Datenschutzhinweisen ist anklickbar und öffnet das Standard-Mailprogramm.
 - **Vorübergehender Erreichbarkeitshinweis**: Ein deutscher bzw. englischer Hinweis im Impressum informiert, dass die E-Mail-Adresse wieder funktioniert. Er wird am 19. November 2026 um 20:34 Uhr MEZ automatisch ausgeblendet.
