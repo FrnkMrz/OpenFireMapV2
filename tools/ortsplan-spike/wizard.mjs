@@ -387,10 +387,11 @@ try {
     check(h1.x + h1.w <= blk.x + 2, `Bloecke im Weg und nicht auf der Karte erlaubt: die Karte waechst nicht ueber sie hinweg (rechte Kante ${Math.round(h1.x + h1.w)} <= Legende ${Math.round(blk.x)} px)`);
     await page.check("#c-onmap");
     await page.locator("#prev").scrollIntoViewIfNeeded();
-    const g0 = await rectOf("#pv-map");
+    const rel = async () => { const m = await rectOf("#pv-map"), p = await rectOf("#prev"); return { x: m.x - p.x, y: m.y - p.y, w: m.w, h: m.h, pw: p.w, ph: p.h }; }; // relativ zum Blatt (die Seite scrollt beim Ziehen)
+    const g0 = await rel();
     await growBy(400, 300);
-    const g1 = await rectOf("#pv-map"), pv = await rectOf("#prev");
-    check(g1.w > g0.w + 15 && Math.abs(g1.x - g0.x) < 2 && Math.abs(g1.y - g0.y) < 2 && g1.x + g1.w <= pv.x + pv.w + 1 && g1.y + g1.h <= pv.y + pv.h + 1, `freie Anordnung: Karte waechst ueber das Fenster der Lage hinaus (${Math.round(g0.w)} -> ${Math.round(g1.w)} px), Ecke bleibt, Karte bleibt auf dem Blatt`);
+    const g1 = await rel();
+    check(g1.w > g0.w + 15 && Math.abs(g1.x - g0.x) < 2 && Math.abs(g1.y - g0.y) < 2 && g1.x + g1.w <= g1.pw + 1 && g1.y + g1.h <= g1.ph + 1, `freie Anordnung: Karte waechst ueber das Fenster der Lage hinaus (${Math.round(g0.w)} -> ${Math.round(g1.w)} px), Ecke bleibt, Karte bleibt auf dem Blatt`);
     const zz = /;z:([\d.]+),([\d.]+)/.exec(new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos") || "");
     check(!!zz && +zz[1] > 0.9, `Link traegt die grosse Kartengroesse: ${zz && zz[0]}`);
   }
