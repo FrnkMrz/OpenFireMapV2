@@ -241,6 +241,15 @@ export const Config = {
    * Gilt für Auswahl (Rechteck ziehen, Ausschnitt übernehmen) und beim Export selbst für alle Formate.
    */
   exportMaxSideKm: 10,
+  rasterExport: {
+    manifestUrl: import.meta.env.VITE_RASTER_MANIFEST_URL?.trim(),
+    minZoom: 12,
+    maxZoom: 18,
+    maxTiles: 2000,
+    maxPngBytes: 32 * 1024 * 1024,
+    parallel: 4,
+    timeoutMs: 90000,
+  },
 
   // ----------------------------------------------------------------------------------------
   // 5) Farben

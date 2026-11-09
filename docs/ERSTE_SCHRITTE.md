@@ -33,6 +33,14 @@ Die Karte lädt nur für den aktuellen Ausschnitt relevante Daten. In DACHLiLu u
 
 Vor einem großen Export sollte der Ausschnitt sinnvoll eingegrenzt werden. Die Anwendung begrenzt große Bereiche, um Browser-Abstürze und unnötig große Dateien zu vermeiden.
 
+Wenn der Deutschland-Pilot aktiviert ist, gibt es **Feuerwehr-Overlay als
+ZIP**. Wähle eine Fläche oder übernimm den sichtbaren Ausschnitt. Die
+gewählte Zoomstufe ist die höchste Stufe im ZIP. Es enthält transparente
+PNG-Kacheln als `z/x/y.png`, den gewählten Ausschnitt und die OSM-Quellenangabe.
+Die vorhandenen Kacheln werden als Ganzes exportiert. An den Rändern kann eine
+Kachel daher über das Rechteck hinausragen. Für größere Flächen wähle eine
+niedrigere Zoomstufe oder exportiere mehrere kleinere Ausschnitte.
+
 ## Mobile Nutzung
 
 Die Oberfläche ist für Smartphones und Tablets angepasst. Verschiebe die Karte mit einem Finger und zoome mit zwei Fingern. Suche, Layer, Standortbestimmung und Export sind auch mobil verfügbar.

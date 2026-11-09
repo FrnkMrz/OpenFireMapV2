@@ -1191,6 +1191,68 @@ async function generateMapCanvas() {
   return { canvas, filename: `${safeTitle}_Z${targetZoom}` };
 }
 
+// Raster-Downloads nutzen die vorhandene Auswahl und den Abbruch im Exportmenü.
+let rasterExportActive = false;
+
+export async function exportAsRasterZip() {
+  if (rasterExportActive || !State.map || !Config.rasterExport.manifestUrl) return;
+  rasterExportActive = true;
+  const controller = new AbortController();
+  State.controllers.export = controller;
+  const setup = document.getElementById('export-setup');
+  const progress = document.getElementById('export-progress');
+  const title = progress.querySelector('.exporting-active');
+  const bar = document.getElementById('progress-bar');
+  const timer = setTimeout(() => controller.abort(new DOMException('Raster export timed out', 'TimeoutError')),
+    Config.rasterExport.timeoutMs);
+  try {
+    const bounds = State.selection.finalBounds || State.map.getBounds();
+    if (!isRectWithinKm(boundsToRect(bounds), Config.exportMaxSideKm)) {
+      throw new Error('raster_zip_limit');
+    }
+    setup.classList.add('hidden');
+    progress.dataset.rasterActive = 'true';
+    progress.classList.remove('hidden');
+    title.textContent = t('loading_data');
+    bar.style.width = '0%';
+    const { buildRasterZip } = await import('./raster-export.js');
+    const maxZoom = State.exportZoomLevel;
+    const blob = await buildRasterZip(boundsToRect(bounds), maxZoom, controller, (done, total) => {
+      title.textContent = t('raster_zip_progress').replace('{done}', done).replace('{total}', total);
+      bar.style.width = `${100 * done / total}%`;
+    });
+    controller.signal.throwIfAborted();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `OpenFireMap-Overlay-z${Config.rasterExport.minZoom}-${maxZoom}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    showNotification(t('raster_zip_success'), 3000, 'success');
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      showNotification(t('raster_zip_cancelled'), 3000, 'info');
+    } else {
+      const key = error.message?.startsWith('raster_zip_') ? error.message : 'raster_zip_unavailable';
+      if (key === 'raster_zip_unavailable') console.error('Raster-Export:', error);
+      showNotification(t(key), 5000, 'warning');
+    }
+  } finally {
+    clearTimeout(timer);
+    rasterExportActive = false;
+    delete progress.dataset.rasterActive;
+    if (State.controllers.export === controller) {
+      State.controllers.export = null;
+      setup.classList.remove('hidden');
+      progress.classList.add('hidden');
+      title.textContent = t('exporting_title');
+      bar.style.width = '0%';
+    }
+  }
+}
+
 // -----------------------------------------------------------
 // EXPORT IMPL: PNG
 // -----------------------------------------------------------

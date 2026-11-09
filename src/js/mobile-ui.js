@@ -351,6 +351,12 @@
   }
 
 
+  $('mobile-open-raster-export')?.addEventListener('click', () => {
+    closeMobileMenu();
+    closeDesktopPopupMenus();
+    safeClick('export-btn-trigger');
+  });
+
   const mobileSearchModal = document.getElementById('mobile-search-modal');
   const mobileSearchBackdrop = document.getElementById('mobile-search-backdrop');
   const mobileSearchClose = document.getElementById('mobile-search-close');
