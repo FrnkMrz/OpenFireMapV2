@@ -211,6 +211,7 @@ function drawPreview() {
   const { wMm, hMm, L } = layout();
   const prev = $("prev");
   prev.style.aspectRatio = `${wMm} / ${hMm}`;
+  prev.style.setProperty("--pui", String(L.ui));
   fitStage(); // Papierverhaeltnis geaendert: Buehne neu fuellen
   $("pv-map-label").textContent = `Karte 1:${S.scale.toLocaleString("de-DE")}`;
   $("pv-title").replaceChildren(...[T.title || "Orts- und Hydrantenplan", T.place || "Ortsname"].map((t) => { const s = document.createElement("span"); s.textContent = t; return s; }));
@@ -443,6 +444,7 @@ function fitStage() {
   const w = Math.floor(Math.min(aw, (ah * wMm) / hMm));
   $("prev").style.width = `${w}px`;
   $("prev").style.setProperty("--k", String(Math.max(0.8, w / 327)));
+  $("prev").style.setProperty("--pxmm", String(w / wMm)); // Pixel je mm Papier: Titelschrift in der Vorschau so gross wie auf dem Blatt
 }
 new ResizeObserver(fitStage).observe($("stage"));
 function go(n) {

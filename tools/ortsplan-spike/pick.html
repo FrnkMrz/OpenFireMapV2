@@ -47,8 +47,8 @@
     #prev div { position: absolute; border-radius: 2px; overflow: hidden; }
     #pv-map { background: #cfe3c4; color: #27500a; font-size: calc(11px * var(--k, 1)); display: flex; align-items: center; justify-content: center; }
     #pv-panel { background: #fde9c8; color: #633806; font-size: calc(10px * var(--k, 1)); display: flex; gap: 3px; padding: 3px; }
-    #pv-title { background: #fde9c8; color: #633806; font-size: calc(9px * var(--k, 1)); display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0 6px; font-weight: 600; line-height: 1.15; }
-    #pv-title span:last-child { font-size: calc(12px * var(--k, 1)); font-weight: 700; }
+    #pv-title { background: #fde9c8; color: #633806; font-size: calc(6px * var(--pxmm, 0.78) * var(--pui, 1)); /* Ueberschrift 6 mm wie auf dem Blatt */ display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0 6px; font-weight: 600; line-height: 1.15; }
+    #pv-title span:last-child { font-size: calc(9px * var(--pxmm, 0.78) * var(--pui, 1)); /* Ortsname 9 mm */ font-weight: 700; }
     #prev .blk { z-index: 2; display: flex; align-items: center; justify-content: center; text-align: center; font-size: calc(9px * var(--k, 1)); line-height: 1.1; font-weight: 600; border: 1px solid rgba(15, 23, 42, .55); cursor: grab; touch-action: none; user-select: none; color: #0f172a; border-radius: 2px; }
     #prev .mv { z-index: 2; cursor: grab; touch-action: none; user-select: none; outline: 1px dashed rgba(15, 23, 42, .55); outline-offset: -1px; }
     #prev #pv-map.mv { z-index: 1; }
@@ -56,7 +56,7 @@
     #prev .mv:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
     #prev .blk:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
     #prev .blk.drag { cursor: grabbing; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
-    #prev .rz { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; background: #0f172a; opacity: .75; cursor: nwse-resize; border-radius: 2px 0 0 0; }
+    #prev .rz { position: absolute; right: 0; bottom: 0; width: calc(12px * var(--k, 1)); height: calc(12px * var(--k, 1)); background: #0f172a; opacity: .75; cursor: nwse-resize; border-radius: 2px 0 0 0; }
     #pv-panel span { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 255, 255, .55); border-radius: 2px; }
     details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
     details summary { cursor: pointer; color: var(--muted); }
