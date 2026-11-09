@@ -337,9 +337,15 @@ function movePos(name, dx, dy, resize, raw = null) {
       setSize(z);
       return !(isManual() && !onMapOk() && anyOnMap(curPos()));
     };
-    const lerp = (t) => ({ w: cur.w + (want.w - cur.w) * t, h: cur.h + (want.h - cur.h) * t });
-    let sz = want;
-    if (!fits(want)) { let lo = 0, hi = 1; for (let i = 0; i < 16; i++) { const mid = (lo + hi) / 2; if (fits(lerp(mid))) lo = mid; else hi = mid; } sz = lerp(lo); }
+    // Groesstes Mass auf dem Weg von jetzt zum Wunsch, das noch passt. Festes Kartenformat: Breite und Hoehe gemeinsam (das Verhaeltnis bleibt);
+    // sonst jede Richtung fuer sich, damit eine Richtung am Rand die andere nicht blockiert
+    const search = (make) => { if (fits(make(1))) return make(1); let lo = 0, hi = 1; for (let i = 0; i < 16; i++) { const mid = (lo + hi) / 2; if (fits(make(mid))) lo = mid; else hi = mid; } return make(lo); };
+    let sz;
+    if (ratio) sz = search((t) => ({ w: cur.w + (want.w - cur.w) * t, h: cur.h + (want.h - cur.h) * t }));
+    else {
+      const w1 = search((t) => ({ w: cur.w + (want.w - cur.w) * t, h: cur.h })).w;
+      sz = search((t) => ({ w: w1, h: cur.h + (want.h - cur.h) * t }));
+    }
     if (fits(sz)) setSize(sz); else { S.pos = prev; S.posKey = prevKey; } // wuchs nichts, bleibt alles wie es war
     return;
   }
