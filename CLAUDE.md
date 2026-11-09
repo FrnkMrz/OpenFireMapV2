@@ -38,8 +38,10 @@ src/
     export.js   # Map export (PNG/PDF via jsPDF + html2canvas, lazy-loaded)
     version.js  # Version constant
     status/      # Pipeline-Statusseite /status/ (model, texts, charts, load, status)
+    ortsplan/    # Ortsplan-Assistent /ortsplan/ und Blatt /ortsplan/blatt/ (MapLibre, lazy; gate, sources, wizard, blatt, Layout-Module)
   input.css     # Tailwind CSS source
 status/index.html  # Pipeline-Statusseite (zweiter Vite-Einstieg → /status/)
+ortsplan/index.html, ortsplan/blatt/index.html  # Ortsplan-Seiten (weitere Vite-Einstiege, noindex, eigene CSP)
 public/         # Static assets served as-is (sw.js, manifest.json, favicons, vendor assets)
 index.html      # Single page entry point (Vite root)
 scripts/
@@ -95,6 +97,7 @@ Der Deploy-Job hat ein Limit von 15 min. Scheitert er, zeigt der Schritt „Show
 ## Key Architecture Notes
 
 - **Bootstrap order** (`app.js`): i18n → UI → wait for `window.L` (Leaflet via CDN/vendor) → `initMapLogic()` → lazy-import `export.js`
+- **Ortsplan** (`/ortsplan/` Assistent, `/ortsplan/blatt/` Blatt; Code in `src/js/ortsplan/`): druckfertiger Orts- und Hydrantenplan (PDF/PNG) mit MapLibre aus PMTiles, ganz im Browser. Nur per Link erreichbar (kein Menüeintrag, `noindex`), nur am Computer: `gate.js` zeigt auf Smartphones (Touch als Hauptzeiger, kurze Fensterseite < `Config.ortsplan.phoneMaxShortSide`) oder bei `Config.ortsplan.enabled = false` (Notbremse) einen Hinweis und lädt MapLibre gar nicht (`start-*.js` importieren erst danach). `sources.js` bestimmt die Quellen: Basiskarte über die Zeigerdatei `basemap/de.json` der Pipeline-Domain (`file`, `built_at`, `osm_data_until`; fehlt sie, erscheint „Basiskarte noch nicht verfügbar“), Feuerwehr-Ebenen aus der Pipeline-PMTiles. Im Dev-Server liefert `?area=<name>` lokale Dateien aus `tools/ortsplan-spike/data` (`/ortsplan-data/`, Plugin in `vite.config.mjs`, im Build nicht enthalten). Schriften liegen selbst gehostet unter `public/ortsplan-fonts/` (Noto Sans, OFL), eigene CSP je Seite. Die Basiskarte (Protomaps, ODbL) wird im privaten Pipeline-Repo gebaut, Betriebsdetails gehören nicht hierher. Skripte zur Browserprüfung: `tools/ortsplan-spike/` (siehe dortige README).
 - **Statusseite** (`status/index.html`, `src/js/status/`): eigene Seite ohne Karte, lädt `eu/regions.json` und `metadata.json` live aus `pipeline.openfiremap.org`, Deutsch/Englisch (Wahl unter `ofm_status_lang`, bewusst nicht `ofm_lang` der Karte: die Karte hat keinen Sprachschalter und bliebe sonst auf Englisch hängen). `model.js` ist rein und getestet; Einwohner (`src/data/status-population.json`) sind amtliche Werte mit Quelle je Land (Eurostat, Weltbank, NISRA), angepasst an den Zuschnitt der Auszüge; DACHLiLu-Länder einzeln stehen in `src/data/status-dach-snapshot.json`, bis der Builder `features.<ebene>.by_country` schreibt. Neues Land im Manifest braucht Einwohnerzahl und englischen Namen (`COUNTRY_EN`), ein Test prüft beides.
 - **Mobile UI** (`mobile-ui.js`): loaded as an IIFE script tag, not imported. Detects mobile via `pointer: coarse` / touch / `window.innerWidth < 1370`, hides desktop controls, proxies actions by calling `.click()` on hidden desktop buttons — no logic is duplicated
 - **State** (`state.js`): single mutable singleton; all modules share it via import. Key fields: `map`, `markerLayer`, `cachedElements`, `isFetchingData`, `isFetchingBoundaries`, `pendingBufferFetches`, `activeFetchBounds`, `activeLayerKey`, `exportFormat`, `selection`

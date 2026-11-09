@@ -2,7 +2,7 @@
 // fertig wird. Faengt Startfehler (zum Beispiel "Cannot access ... before initialization"), die die Unit-Tests nicht sehen.
 // Aufruf: SPIKE_URL=http://127.0.0.1:5173 node smoke.mjs
 import { chromium } from "playwright-core";
-import { waitReady } from "./testutil.mjs";
+import { waitReady, SHEET, WIZARD, withArea } from "./testutil.mjs";
 
 const BASE = process.env.SPIKE_URL || "http://127.0.0.1:5173";
 const cases = [
@@ -39,7 +39,7 @@ for (const c of cases) {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
   let failure = null;
   page.on("pageerror", (e) => { failure = e.message; });
-  await page.goto(`${BASE}${c.path}?${c.q}`);
+  await page.goto(`${BASE}${c.path === "/pick.html" ? WIZARD : SHEET}?${withArea(c.q)}`);
   try {
     await waitReady(page, { key: c.ready, timeout: 60000, failure: () => failure });
     const err = await page.evaluate(() => window.__error || null);

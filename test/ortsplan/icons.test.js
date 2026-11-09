@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { waterKindOf, iconIdForType, svgFor } from "./icons.js";
+import { waterKindOf, iconIdForType, svgFor } from "../../src/js/ortsplan/icons.js";
 
 test("Wasserstellen: gleiche Zuordnung wie getWaterMarkerKind der App", () => {
   assert.equal(waterKindOf("suction_point"), "suction_point");

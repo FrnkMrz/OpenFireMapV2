@@ -2,7 +2,7 @@
 // Aufruf: SPIKE_URL=http://127.0.0.1:5173 node wizard.mjs [ausgabeordner]   (Bilder je Schritt; Ende mit Exit-Code 1 bei Fehler)
 import { chromium } from "playwright-core";
 import fs from "node:fs";
-import { waitReady } from "./testutil.mjs";
+import { waitReady, SHEET, WIZARD, withArea } from "./testutil.mjs";
 
 const BASE = process.env.SPIKE_URL || "http://127.0.0.1:5173";
 const OUT = process.argv[2] || "shots/wizard";
@@ -23,7 +23,7 @@ const center = async (sel) => { const r = await page.locator(sel).boundingBox();
 
 try {
   // ---- Freier Rahmen: Kanten einzeln ziehen, das Seitenverhaeltnis folgt ----
-  await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=right&fmt=1.5000:1`);
+  await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a3l&scale=5000&side=right&fmt=1.5000:1`);
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
   await page.waitForTimeout(1500);
   const f0 = await box(), t0 = await st();
@@ -62,7 +62,7 @@ try {
 
   // Listenwert 1:1 (z. B. Rueckweg von einem quadratischen Blatt) ist ein fester Rahmen, kein freier mit Verhaeltnis 1
   await page.evaluate(() => localStorage.clear());
-  await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=right&fmt=1:1`);
+  await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a3l&scale=5000&side=right&fmt=1:1`);
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
   const sq = await st();
   check(sq.free === false && sq.fmt === "1:1", `fmt=1:1 aus der Adresse: fester Rahmen (free=${sq.free}, fmt=${sq.fmt})`);
@@ -71,7 +71,7 @@ try {
   await page.evaluate(() => localStorage.clear());
 
   // Kleinster Massstab 1:1000: eine Adresse mit scale=100 und ein stark zusammengezogener Rahmen bleiben darueber (Massstabsleiste des Blatts)
-  await page.goto(`${BASE}/pick.html?paper=a4l&side=left&fmt=1.5000:1&scale=100`);
+  await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a4l&side=left&fmt=1.5000:1&scale=100`);
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
   check((await st()).scale >= 1000, `scale=100 aus der Adresse wird auf ${(await st()).scale} angehoben`);
   const hs2 = await center('.handle[data-c="se"]'); const hn2 = await center('.handle[data-c="nw"]');
@@ -80,7 +80,7 @@ try {
   await page.evaluate(() => localStorage.clear());
 
   // ---- Fester Rahmen (Seitenverhaeltnis des Blatts) ----
-  await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=right&fmt=fill`);
+  await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a3l&scale=5000&side=right&fmt=fill`);
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${OUT}/1-ausschnitt.png` });
@@ -356,7 +356,7 @@ try {
   await inContent(() => page.uncheck("#c-sym"));
 
   // Einstellungen bleiben beim Neuladen (localStorage)
-  await page.goto(`${BASE}/pick.html`); // ohne Adresse: zuletzt benutzte Wahl (eine Adresse mit Angaben haette Vorrang)
+  await page.goto(`${BASE}${WIZARD}?area=nuernberger-land`); // ohne Adresse: zuletzt benutzte Wahl (eine Adresse mit Angaben haette Vorrang)
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
   const sr = await st();
   check(sr.side === "top" && sr.size === "a2" && sr.lsym === false && sr.index === false, "Neuladen: Wahl bleibt erhalten");
@@ -372,7 +372,7 @@ try {
   fs.writeFileSync(`${OUT}/4-blatt.png`, Buffer.from(png.split(",")[1], "base64"));
   // Standardlage "Auf der Karte": auch das Verzeichnis (ausserhalb der Karte) laesst sich verschieben, Groesse aendern und bleibt gueltig
   {
-    await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=none&index=1&lsym=1&lroad=1`);
+    await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a3l&scale=5000&side=none&index=1&lsym=1&lroad=1`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
     await page.click('.st[data-s="2"]'); await page.waitForTimeout(400);
     const iOf = async () => { const p = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos") || ""; const m = /(?:^|;)i:([^;]*)/.exec(p); return m ? m[1].split(",").map(Number) : null; };
@@ -403,7 +403,7 @@ try {
 
   // Am Kartenrand verankerte Bloecke (r/b) folgen dem Kartenfenster, auch wenn die Karte kleiner gezogen wird (Vorschau = Blatt)
   {
-    await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=none&index=1&lsym=1&lroad=1&pos=s:0.4,0.3,b`);
+    await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a3l&scale=5000&side=none&index=1&lsym=1&lroad=1&pos=s:0.4,0.3,b`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
     await page.click('.st[data-s="2"]'); await page.waitForTimeout(400);
     const sy = async () => { const p = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos") || ""; const m = /(?:^|;)s:([\d.]+),([\d.]+)/.exec(p); return m ? +m[2] : null; };
@@ -418,21 +418,21 @@ try {
 
   // Abstand der Bloecke zum Kartenrand: Standard 4 mm, einstellbar, steht im Link (mi); der Wert bleibt beim Neuladen
   {
-    await page.goto(`${BASE}/pick.html?paper=a3l&side=none&scale=5000`);
+    await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a3l&side=none&scale=5000`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
     await page.click('.st[data-s="2"]');
     const miOf = async () => new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("mi");
     check((await miOf()) === "4" && (await page.inputValue("#o-inset")) === "4", `Abstand zum Kartenrand: Standard 4 mm im Feld und im Link (${await miOf()})`);
     await page.fill("#o-inset", "7"); await page.dispatchEvent("#o-inset", "change");
     check((await miOf()) === "7", `Abstand 7 mm steht im Link (${await miOf()})`);
-    await page.goto(`${BASE}/pick.html?paper=a3l&side=none&scale=5000&mi=2.5`);
+    await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a3l&side=none&scale=5000&mi=2.5`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
     check((await page.evaluate(() => window.__wizard.state().inset)) === 2.5, "Abstand aus der Adresse (mi=2.5)");
   }
 
   // Adresse mit nur Titel und Karte (feste Leiste): beim Wiedereroeffnen bleibt die Leiste fest, die Adresse traegt weiter nur t und m
   await page.evaluate(() => { const k = "ofm_ortsplan_wizard"; const v = JSON.parse(localStorage.getItem(k) || "{}"); v.manual = true; localStorage.setItem(k, JSON.stringify(v)); }); // zuletzt benutzt: freie Bloecke
-  await page.goto(`${BASE}/pick.html?paper=a3l&side=right&fmt=1:1&scale=5000&pos=t:0.1,0.02;m:0.12,0.2`);
+  await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a3l&side=right&fmt=1:1&scale=5000&pos=t:0.1,0.02;m:0.12,0.2`);
   await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
   const sT = await st();
   const pT = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos");
@@ -445,11 +445,11 @@ try {
     const rectOf = (q) => page.evaluate((sel) => { const r = document.querySelector(sel).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, q);
     const handleFree = () => page.evaluate(() => { const r = document.getElementById("pv-map-rz").getBoundingClientRect(); return !!document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest("#pv-map-rz"); });
     const growBy = async (dx, dy) => { await page.evaluate(() => document.getElementById("prev").scrollIntoView({ block: "center" })); /* sonst liegt die Statusleiste unten ueber dem Griff */ const z = await page.locator("#pv-map-rz").boundingBox(); await page.mouse.move(z.x + z.width / 2, z.y + z.height / 2); await page.mouse.down(); await page.mouse.move(z.x + z.width / 2 + dx, z.y + z.height / 2 + dy, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300); };
-    await page.goto(`${BASE}/pick.html?paper=a3l&side=none&scale=5000`);
+    await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a3l&side=none&scale=5000`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
     await page.click('.st[data-s="2"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
     check(await handleFree(), "Ohne Leiste: der Griff zum Groessemachen liegt ueber dem Verzeichnis und ist erreichbar");
-    await page.goto(`${BASE}/pick.html?paper=a3l&side=right&scale=5000&fmt=fill`);
+    await page.goto(`${BASE}${WIZARD}?area=nuernberger-land&paper=a3l&side=right&scale=5000&fmt=fill`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
     await page.click('.st[data-s="2"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
     const f0 = await rectOf("#pv-map");

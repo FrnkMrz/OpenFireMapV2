@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { wrapName, wrapRefs, makeFitter, planBlock } from "./indexblock.js";
+import { wrapName, wrapRefs, makeFitter, planBlock } from "../../src/js/ortsplan/indexblock.js";
 
 // Textbreite ohne Canvas: jedes Zeichen 0,5 em breit (Schrift 2,1 mm)
 const FS = 2.1, lineH = 2.75;

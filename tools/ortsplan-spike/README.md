@@ -1,7 +1,14 @@
 # Ortsplan-Spike
 
-Eigenständiger Versuch (nicht Teil der App, nicht in `docs/`): ein druckoptimierter Kartenstil für deutsche Ortschaften,
-gezeichnet mit MapLibre aus PMTiles. Plan und Hintergründe: `planning/ortsplan_style_guide_project.md`.
+Werkstatt für den Ortsplan: Datenaufbereitung, Messskripte und Prüfdaten. Der Code selbst liegt seit der Veröffentlichung in der App
+(`src/js/ortsplan/`, Seiten `/ortsplan/` und `/ortsplan/blatt/`, Tests in `test/ortsplan/`); hier bleiben `extract-area.mjs`, `oneway-data.mjs` und die
+Skripte, die die Seiten im Browser prüfen. Plan und Hintergründe: `planning/ortsplan_style_guide_project.md`.
+
+**Starten (Entwicklung):** im Wurzelverzeichnis des Repos `npm install` und `npm run dev` (Port 5173). Die Seiten lesen die lokalen Daten aus
+`tools/ortsplan-spike/data/` über `/ortsplan-data/` (nur im Dev-Server), wenn die Adresse `area=<name>` trägt, zum Beispiel
+`http://localhost:5173/ortsplan/?area=nuernberger-land` und `http://localhost:5173/ortsplan/blatt/?area=nuernberger-land&sheet=1&scale=5000&paper=a3l`. Ohne `area=` gelten die
+Quellen der Pipeline-Domain. Die Skripte hier hängen `area=nuernberger-land` selbst an. Ältere Hinweise unten, die `npm run dev` im Ordner des Spikes oder `/pick.html`
+nennen, gelten entsprechend für diese Adressen.
 
 ## Idee
 
@@ -16,7 +23,7 @@ gezeichnet mit MapLibre aus PMTiles. Plan und Hintergründe: `planning/ortsplan_
 ```bash
 mkdir -p data && cd data
 # Grundkarte (Protomaps-Build, Ausschnitt Neunkirchen am Sand); aktuelles Datum aus https://build-metadata.protomaps.dev/builds.json
-pmtiles extract https://build.protomaps.com/<JJJJMMTT>.pmtiles neunkirchen.pmtiles --bbox=11.28,49.49,11.41,49.58
+pmtiles extract https://build.protomaps.com/<JJJJMMTT>.pmtiles nuernberger-land.pmtiles --bbox=11.28,49.49,11.41,49.58
 # Feuerwehr-Objekte und Gemeindegrenzen aus der OpenFireMap-Pipeline
 pmtiles extract https://pipeline.openfiremap.org/openfiremap.pmtiles ofm.pmtiles --bbox=11.28,49.49,11.41,49.58 --minzoom=12
 ```
@@ -95,7 +102,7 @@ Der Spike läuft mit maplibre-gl 5.x und 6.x. Für 6 nötig (alle drei sind scho
 
 ## Ortsplan erstellen (Assistent)
 
-`/pick.html` (auch über den Link „Ausschnitt wählen …“ im Formular): Assistent in drei Schritten, links die Karte (in Schritt 3 die große Vorschau des Blatts), rechts das Panel.
+`/ortsplan/` (früher `/pick.html`; auch über den Link „Ausschnitt wählen …“ im Formular): Assistent in drei Schritten, links die Karte (in Schritt 3 die große Vorschau des Blatts), rechts das Panel.
 
 1. **Ausschnitt und Format:** der Rahmen ist das Kartenfenster des Blatts. Am Griff oben verschieben. Die Karte wird getrennt davon verschoben und
    gezoomt; der Rahmen klebt am Ort. Zwei Formen:

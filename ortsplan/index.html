@@ -3,8 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ortsplan erstellen</title>
+  <title>Ortsplan erstellen – OpenFireMap</title>
+    <meta name="description" content="Ortsplan als PDF oder PNG erstellen: Hydranten, Feuerwehr und Straßenverzeichnis auf einem druckfertigen Plan.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-icon-180x180.png">
+    <!-- SECURITY: Content Security Policy (CSP). Nur die Pipeline-Domain (Karte, Daten) und Nominatim (Ortsname als Titel-Vorschlag). MapLibre braucht Worker aus blob: bzw. der eigenen Datei. -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: blob:;
+        font-src 'self';
+        worker-src 'self' blob:;
+        connect-src 'self' https://pipeline.openfiremap.org https://nominatim.openstreetmap.org blob: http://localhost:* ws://localhost:*;
+    ">
   <style>
+    #ortsplan-notice { max-width: 34rem; margin: 12vh auto; padding: 0 1.25rem; font: 16px/1.6 system-ui, sans-serif; color: #f1f5f9; }
+    #ortsplan-notice a { color: #93c5fd; }
+    [hidden] { display: none !important; }
     :root { --bg: #0f172a; --panel: #1e293b; --line: #475569; --text: #f1f5f9; --muted: #cbd5e1; --accent: #2563eb; --accent-text: #fff; --frame: #ef4444; }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--text); }
@@ -78,7 +95,8 @@
   </style>
 </head>
 <body>
-  <div id="app">
+  <main id="ortsplan-notice" hidden></main>
+  <div id="app" data-ortsplan-app>
     <div id="wrap">
       <div id="map"></div>
       <div id="frame" tabindex="0" role="group" aria-label="Ausschnitt des Ortsplans. Pfeiltasten verschieben, Plus und Minus machen ihn größer oder kleiner.">
@@ -166,7 +184,7 @@
         </section>
       </div>
       <p id="msg" role="status"></p>
-      <p id="rev" class="hint" style="margin:0 16px 6px;font-size:11px">Stand __REV__</p>
+      <p id="rev" class="hint" style="margin:0 16px 6px;font-size:11px"></p>
       <div id="foot">
         <button class="btn" id="back" type="button">Zurück</button>
         <button class="btn primary" id="next" type="button">Weiter</button>
@@ -174,6 +192,6 @@
       </div>
     </aside>
   </div>
-  <script type="module" src="./pick.js"></script>
+  <script type="module" src="/src/js/ortsplan/start-wizard.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { fitText } from "./fittext.js";
+import { fitText } from "../../src/js/ortsplan/fittext.js";
 
 const measure = (t, size) => t.length * 0.5 * size;
 

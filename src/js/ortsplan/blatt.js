@@ -1,7 +1,11 @@
 // Namespace-Import: maplibre-gl 6 hat keinen Default-Export mehr (5.x kennt beide Schreibweisen)
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+// Der Worker ist bei maplibre-gl 6 eine eigene Datei; ?url lässt Vite sie in die Auslieferung (assets/) übernehmen, sonst fehlt sie im Build
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { Protocol, PMTiles } from "pmtiles";
+import { Config } from "../config.js";
+import { getSources, WIZARD_PATH } from "./sources.js";
 import { basemapUntil } from "./attribution.js";
 import { buildStyle, zoomForScale, CSS_PX_PER_MM } from "./style.js";
 import { ICON_PX, loadIcons } from "./icons.js";
@@ -23,22 +27,13 @@ const fmt = q.get("fmt") || "fill"; // Kartenformat, siehe layout.js
 // Beschriftung: avoid (Standard) = Strassennamen weichen den Symbolen aus, fehlende Namen kommen danach einmal UNTER die Symbole;
 // top = Namen weichen nicht aus. Die Feuerwehr-Symbole liegen in beiden Faellen oben und werden nie von Namen verdeckt.
 const lbl = q.get("lbl") || "avoid";
-// Weiterer Ort: ?area=<name> nutzt data/<name>.pmtiles, <name>-ofm.pmtiles, <name>-oneway.geojson und <name>.json (siehe extract-area.mjs)
-const areaName = (q.get("area") || "").replace(/[^a-z0-9-]/gi, "");
-let areaInfo = null;
-if (areaName) {
-  try { areaInfo = await (await fetch(`/${areaName}.json`)).json(); } catch { /* ohne Beschreibung */ }
-}
-const baseFile = areaName ? `${areaName}.pmtiles` : "neunkirchen.pmtiles";
-// Messungen (r2bench.mjs): die Grundkarte von einem Test-Pfad der Pipeline-Domain statt von der Platte laden (base=https://pipeline.openfiremap.org/eu/ortsplan-test-...).
-// Nur dieser Pfad ist erlaubt; sonst gilt die lokale Datei. Die Karte der Anwendung nutzt das nicht.
-const BASE_TEST_PREFIXES = ["https://pipeline.openfiremap.org/ortsplan-test/", "https://pipeline.openfiremap.org/eu/ortsplan-test-"]; // der zweite Pfad liegt unter der Cache-Regel der Pipeline-Domain
-const baseParam = q.get("base") || "";
-const baseUrl = BASE_TEST_PREFIXES.some((p) => baseParam.startsWith(p)) && !baseParam.includes("..") ? baseParam : `${location.origin}/${baseFile}`;
-const ofmFile = areaName ? `${areaName}-ofm.pmtiles` : "ofm.pmtiles";
-const onewayFile = areaName ? `${areaName}-oneway.geojson` : "oneway.geojson";
-const lat = +(q.get("lat") || areaInfo?.lat || 49.5252);
-const lon = +(q.get("lon") || areaInfo?.lon || 11.3181);
+// Quellen: im Betrieb die Pipeline-Domain, in der Entwicklung mit ?area=<name> lokale Dateien (sources.js, siehe extract-area.mjs)
+const SRC = await getSources(q);
+const areaName = SRC.dev ? SRC.area : "";
+const areaInfo = SRC.info;
+const baseUrl = SRC.basemapUrl;
+const lat = +(q.get("lat") || areaInfo?.lat || Config.defaultCenter[0]);
+const lon = +(q.get("lon") || areaInfo?.lon || Config.defaultCenter[1]);
 const [wMm, hMm] = PAPER_MM[paper] || PAPER_MM.a4l;
 
 // Formular
@@ -46,7 +41,7 @@ const form = document.getElementById("ctl");
 const indexOn = q.get("index") !== "0";
 const indexSize = Math.min(3, Math.max(0.5, +(q.get("isize") || 1)));
 // Texte auf dem Blatt: Ortsname (Zeile unter der Ueberschrift) und Ueberschrift; beide aenderbar, ohne Angabe gilt der Name des Gebiets
-const place = q.get("place") || areaInfo?.title || "Neunkirchen am Sand";
+const place = q.get("place") || areaInfo?.title || "";
 const sheetTitle = q.get("title") || "Orts- und Hydrantenplan";
 // Massstab: dieselben Werte wie die Auswahlseite (layout.js), dazu der aktuelle, falls er nicht in der Liste steht (zum Beispiel von Hand in der Adresse)
 {
@@ -62,7 +57,7 @@ const setField = (el, v) => {
   el.value = val;
 };
 for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "none", icols: q.get("icols") || "0", fmt, place, title: sheetTitle })) setField(form.elements[k], v);
-document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "none", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), iauto: q.get("iauto") === "0" ? "0" : "1", dpi: String(dpi), ...(areaName ? { area: areaName } : {}), ...(q.get("place") ? { place: q.get("place") } : {}), ...(q.get("title") ? { title: q.get("title") } : {}), ...(q.get("pos") ? { pos: q.get("pos") } : {}), ...(q.get("mi") ? { mi: q.get("mi") } : {}), ...(q.get("onmap") ? { onmap: q.get("onmap") } : {}), ...(q.get("obg") ? { obg: q.get("obg") } : {}) })}`;
+document.getElementById("pick-link").href = `${WIZARD_PATH}?${new URLSearchParams({ paper, side: q.get("side") || "none", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), iauto: q.get("iauto") === "0" ? "0" : "1", dpi: String(dpi), ...(areaName ? { area: areaName } : {}), ...(q.get("place") ? { place: q.get("place") } : {}), ...(q.get("title") ? { title: q.get("title") } : {}), ...(q.get("pos") ? { pos: q.get("pos") } : {}), ...(q.get("mi") ? { mi: q.get("mi") } : {}), ...(q.get("onmap") ? { onmap: q.get("onmap") } : {}), ...(q.get("obg") ? { obg: q.get("obg") } : {}) })}`;
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
 
@@ -116,9 +111,9 @@ const mapDpi = Math.round(mapRatio * 96);
 // Die Pfeil-Punkte werden hier aus den Linien berechnet (Abstand in Papier-Millimetern, siehe oneway.js).
 const owWanted = q.get("ow") ? q.get("ow") === "1" : scale <= 10000;
 let owData = null;
-if (owWanted) {
+if (owWanted && SRC.onewayUrl) {
   try {
-    const r = await fetch(`/${onewayFile}`);
+    const r = await fetch(SRC.onewayUrl);
     if (r.ok && (r.headers.get("content-type") || "").includes("json")) {
       // Pfeile nur auf Gemeindestrassen; owall=1 zeigt sie auf allen Strassenarten
       const all = await r.json();
@@ -130,6 +125,7 @@ if (owWanted) {
 const owImage = owData ? (await loadIcons(["oneway"])).get("oneway") : null;
 
 const protocol = new Protocol();
+maplibregl.setWorkerUrl(new URL(workerUrl, location.href).href);
 maplibregl.addProtocol("pmtiles", protocol.tile);
 
 const map = new maplibregl.Map({
@@ -137,7 +133,7 @@ const map = new maplibregl.Map({
   style: buildStyle({
     scale, mode,
     pmtilesUrl: baseUrl,
-    ofmUrl: `${location.origin}/${ofmFile}`,
+    ofmUrl: SRC.fireUrl,
     onewayData: owData,
     labelSpacingMm: q.get("lsp") ? +q.get("lsp") : (lbl === "avoid" ? 10 : null),
   }),
@@ -264,7 +260,7 @@ async function coverageWarning() {
     const inside = b.getWest() >= h.minLon && b.getEast() <= h.maxLon && b.getSouth() >= h.minLat && b.getNorth() <= h.maxLat;
     if (inside) return "";
     const f = (v) => v.toFixed(3).replace(".", ",");
-    return `Achtung: Der Ausschnitt liegt außerhalb der geladenen Kartendaten (${f(h.minLon)}–${f(h.maxLon)} °E, ${f(h.minLat)}–${f(h.maxLat)} °N). Daten für diesen Ort holen: node extract-area.mjs (siehe README).`;
+    return `Achtung: Der Ausschnitt liegt außerhalb der geladenen Kartendaten (${f(h.minLon)}–${f(h.maxLon)} °E, ${f(h.minLat)}–${f(h.maxLat)} °N). ${SRC.dev ? "Daten für diesen Ort holen: node tools/ortsplan-spike/extract-area.mjs (siehe README)." : "Bitte einen Ausschnitt in Deutschland wählen."}`;
   } catch {
     return "";
   }
@@ -290,11 +286,10 @@ async function buildSheet() {
     document.body.insertBefore(bar, document.getElementById("map"));
   }
   if (sheet) {
-    // Stand der Feuerwehr-Daten (<gebiet>.meta.json, vom Ausschnitt-Skript neben die Daten geschrieben; sonst meta.json) und der Basiskarte
-    // (Metadaten der PMTiles-Datei) sind zwei verschiedene Zeitpunkte
-    const getJson = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    const fireMeta = (areaName && (await getJson(`/${areaName}.meta.json`))) || (await getJson("/meta.json"));
-    const baseUntil = await new PMTiles(baseUrl).getMetadata().then(basemapUntil).catch(() => null);
+    // Stand der Feuerwehr-Daten (metadata.json der Pipeline, in der Entwicklung <gebiet>.meta.json) und der Basiskarte (Zeigerdatei, sonst die Metadaten
+    // der PMTiles-Datei) sind zwei verschiedene Zeitpunkte
+    const fireMeta = SRC.fireMeta;
+    const baseUntil = SRC.basemapMeta?.osm_data_until || (await new PMTiles(baseUrl).getMetadata().then(basemapUntil).catch(() => null));
     const meta = { ...(fireMeta || {}), basemap_until: baseUntil };
     const res = await composeSheet({
       map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, legendSymbols: q.get("lsym") !== "0", legendRoads: q.get("lroad") !== "0", indexSize, warning, side, panel, indexCols, pos: freePos, titlePos: allPos.title, overBg: q.get("obg") === "clear" ? "clear" : "white",

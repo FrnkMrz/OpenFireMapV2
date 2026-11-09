@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { PAPER_MM, TOP_BAND, TOP_PANEL_Y, computeLayout, parseFormat, fitRatio, groundSizeM, boundsAround, metersPerPx, SIDES } from "./layout.js";
+import { PAPER_MM, TOP_BAND, TOP_PANEL_Y, computeLayout, parseFormat, fitRatio, groundSizeM, boundsAround, metersPerPx, SIDES } from "../../src/js/ortsplan/layout.js";
 
 // Referenzrechnung der Blattaufteilung, unabhaengig von layout.js aufgeschrieben (Stand mit Titelzeile: oben 27 ui Rand statt 14 ui;
 // bei Lage "oben" beginnt der Bereich bei 21 ui). Die Rechnung steht hier ausgeschrieben, damit eine versehentliche Aenderung auffaellt.

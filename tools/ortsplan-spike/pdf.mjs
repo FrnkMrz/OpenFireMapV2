@@ -2,7 +2,7 @@
 // Aufruf: node pdf.mjs [query] [ausgabe.pdf]   (Server auf 5173 oder SPIKE_URL)
 import { chromium } from "playwright-core";
 import fs from "node:fs";
-import { waitReady } from "./testutil.mjs";
+import { waitReady, SHEET, withArea } from "./testutil.mjs";
 
 const query = process.argv[2] || "area=nuernberger-land&lat=49.5547&lon=11.3367&place=Schnaittach&sheet=1&scale=10000&paper=a3l&side=none&dpi=150";
 const out = process.argv[3] || "shots/pdf/blatt.pdf";
@@ -11,7 +11,7 @@ const browser = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=sw
 const page = await browser.newPage({ viewport: { width: 1600, height: 1200 }, acceptDownloads: true });
 let failure = null;
 page.on("pageerror", (e) => { failure = e.message; console.log("[pageerror]", e.message); });
-await page.goto(`${BASE}/?${query}`);
+await page.goto(`${BASE}${SHEET}?${withArea(query)}`);
 await waitReady(page, { failure: () => failure });
 const info = await page.evaluate(() => window.__sheetInfo);
 const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 60000 }), page.click("#pdf")]);

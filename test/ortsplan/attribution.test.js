@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { OSM_NOTICE, CREDIT, ATTRIBUTION_LINES, SRC_SIZE, formatStand, formatDay, standLine, basemapUntil } from "./attribution.js";
+import { OSM_NOTICE, CREDIT, ATTRIBUTION_LINES, SRC_SIZE, formatStand, formatDay, standLine, basemapUntil } from "../../src/js/ortsplan/attribution.js";
 
 test("Pflichttext: OSM-Nennung, Lizenz und ausgeschriebene Adresse", () => {
   assert.match(OSM_NOTICE, /© OpenStreetMap contributors/);

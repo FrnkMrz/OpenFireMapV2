@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { pdfFileName, pdfPageFormat, buildPdf } from "./pdfout.js";
+import { pdfFileName, pdfPageFormat, buildPdf } from "../../src/js/ortsplan/pdfout.js";
 
 // 1x1-PNG (weiss)
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";

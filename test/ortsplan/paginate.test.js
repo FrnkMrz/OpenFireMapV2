@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { paginate } from "./paginate.js";
+import { paginate } from "../../src/js/ortsplan/paginate.js";
 
 const flat = (pages) => pages.flat();
 const covered = (pages) => {

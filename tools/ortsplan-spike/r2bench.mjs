@@ -4,7 +4,7 @@
 // Je Quelle und Lauf ein neuer Browser-Kontext (kein HTTP-Cache). Ausgabe: Wartezeit bis das Blatt fertig ist, Zahl und Groesse der Bereichsanfragen an die
 // Kartendatei, Dauer je Anfrage (Median, 95 %) und die Cache-Status der Kante (cf-cache-status).
 import { chromium } from "playwright-core";
-import { waitReady } from "./testutil.mjs";
+import { waitReady, SHEET } from "./testutil.mjs";
 
 const args = process.argv.slice(2);
 const runs = +(args.find((a) => a.startsWith("--runs="))?.slice(7) || 2);
@@ -35,7 +35,7 @@ for (const src of sources) {
     let failure = null;
     page.on("pageerror", (e) => { failure = e.message; });
     const t0 = Date.now();
-    await page.goto(`${BASE}/?${QUERY}${src === "lokal" ? "" : `&base=${encodeURIComponent(src)}`}`);
+    await page.goto(`${BASE}${SHEET}?${QUERY}${src === "lokal" ? "" : `&base=${encodeURIComponent(src)}`}`);
     await waitReady(page, { failure: () => failure, timeout: 280000 });
     const wall = Date.now() - t0;
     const err = await page.evaluate(() => window.__error || null);

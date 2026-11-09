@@ -1,8 +1,8 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, mapSizeMm, sourceSize, snapToFrameInset, EDGE_INSET, EDGE_SNAP, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
-import { PAPER_MM, computeLayout, MIN_FRAME_MM } from "./layout.js";
-import { attributionStrip } from "./attribution.js";
+import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, mapSizeMm, sourceSize, snapToFrameInset, EDGE_INSET, EDGE_SNAP, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "../../src/js/ortsplan/freelayout.js";
+import { PAPER_MM, computeLayout, MIN_FRAME_MM } from "../../src/js/ortsplan/layout.js";
+import { attributionStrip } from "../../src/js/ortsplan/attribution.js";
 
 test("parsePos/formatPos: Rundreise, Reihenfolge und Rundung", () => {
   const pos = { legend: { x: 0.71, y: 0.12 }, scale: { x: 0.7, y: 0.5 }, source: { x: 0.1, y: 0.9 }, north: { x: 0.9, y: 0.4 }, index: { x: 0.05, y: 0.6, w: 0.5, h: 0.3 } };
