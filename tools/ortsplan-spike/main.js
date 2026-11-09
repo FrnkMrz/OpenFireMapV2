@@ -61,8 +61,9 @@ document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ 
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
 
-// Blatt-Modus (sheet=1): Karte nur im Kartenfenster, daneben Seitenleiste mit Legende und Verzeichnis.
-const sheet = q.get("sheet") === "1";
+// Blatt-Modus (Standard, sheet=0 schaltet ihn ab): der fertige Plan mit Titel, Planquadraten, Legende und Verzeichnis; "PNG/PDF speichern" speichert das Blatt.
+// Ohne Blatt (sheet=0) gibt es nur das Kartenfenster: fuer Stilvergleiche und Messungen (shot.mjs, stress.mjs).
+const sheet = q.get("sheet") !== "0";
 // Lage von Legende, Massstab und Verzeichnis: side=right (Standard) | left | top | bottom; icols = Spaltenzahl des Verzeichnisses (0 = automatisch)
 // Kartenformat: fmt=fill (Papier fuellen, Standard) | 1:1 | 3:2 | 2:3 | 4:3 | 3:4 ... (Seitenverhaeltnis des Kartenfensters). Geometrie in layout.js.
 const side = ALL_SIDES.includes(q.get("side")) ? q.get("side") : "right"; // "none": keine Seitenleiste, Karte fuellt das Blatt
@@ -282,8 +283,10 @@ async function buildSheet() {
     document.body.insertBefore(bar, document.getElementById("map"));
   }
   if (sheet) {
-    // Stand der Feuerwehr-Daten (meta.json) und der Basiskarte (Metadaten der PMTiles-Datei) sind zwei verschiedene Zeitpunkte
-    const fireMeta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
+    // Stand der Feuerwehr-Daten (<gebiet>.meta.json, vom Ausschnitt-Skript neben die Daten geschrieben; sonst meta.json) und der Basiskarte
+    // (Metadaten der PMTiles-Datei) sind zwei verschiedene Zeitpunkte
+    const getJson = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const fireMeta = (areaName && (await getJson(`/${areaName}.meta.json`))) || (await getJson("/meta.json"));
     const baseUntil = await new PMTiles(`${location.origin}/${baseFile}`).getMetadata().then(basemapUntil).catch(() => null);
     const meta = { ...(fireMeta || {}), basemap_until: baseUntil };
     const res = await composeSheet({

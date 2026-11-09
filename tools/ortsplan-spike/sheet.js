@@ -6,7 +6,7 @@ import { cellsOfSegment, colLabel, formatCells } from "./grid.js";
 import { makeFitter, planBlock, drawColumns } from "./indexblock.js";
 import { fitText } from "./fittext.js";
 import { planHorizontal } from "./panelplan.js";
-import { ATTRIBUTION_LINES, OSM_NOTICE, SRC_SIZE, SRC_STEP, SRC_FOOT_SIZE, standLine } from "./attribution.js";
+import { ATTRIBUTION_LINES, OSM_NOTICE, SRC_SIZE, SRC_STEP, SRC_FOOT_SIZE, standLine, attributionStrip } from "./attribution.js";
 
 const FONT = "'Noto Sans', 'Liberation Sans', Arial, sans-serif";
 const NICE_CELLS_M = [100, 200, 250, 500, 1000, 2000, 5000];
@@ -400,7 +400,15 @@ export async function composeSheet(opts) {
     placeBlock("legend", (x, y) => { const r = legendBlock(x, y + 3.2, Infinity); return { w: r.tw, h: 3.2 + r.h }; });
     placeBlock("scale", (x, y) => { const r = scaleBar(x, y + 2.8, 1); return { w: r.w, h: 2.8 + r.h }; });
     placeBlock("north", (x, y) => { const r = northArrow(x, y); return { w: r.w, h: r.h }; });
-    placeBlock("source", (x, y) => { const w = 62; return { w, h: sourceBlock(x, y + 2.2, w) - y }; });
+    // Quellenangabe frei gelegt: ein Streifen, eine Zeile so breit wie der Text (hoechstens so breit wie die Karte, sonst mehrzeilig)
+    placeBlock("source", (x, y) => {
+      const full = attributionStrip(meta?.osm_data_until, meta?.basemap_until);
+      g.font = `${SRC_SIZE}px ${FONT}`;
+      const w = Math.min(g.measureText(full).width + 0.5, Math.max(62, F.w - 8));
+      let ay = y + 2.2;
+      for (const l of wrap(full, SRC_SIZE, w)) { text(l, x, ay, SRC_SIZE, { color: "#333" }); ay += SRC_STEP; }
+      return { w, h: ay - y };
+    });
     if (showIndex && pos.index) {
       const r = pos.index;
       // 2 mm Luft unten: der helle Untergrund ragt 1,5 mm ueber den Text hinaus und soll nicht ueber den Rand des gewaehlten Rechtecks (z. B. den Kartenrahmen) laufen

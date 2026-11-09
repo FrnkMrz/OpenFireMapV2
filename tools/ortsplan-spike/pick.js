@@ -225,7 +225,7 @@ function drawPreview() {
 
 /** Kaesten der vier Bloecke in der Vorschau (nur bei freier Anordnung): Lage aus S.pos, Groesse geschaetzt (das Blatt zeichnet die echten Masse). */
 function drawBlocks(manual, L, wMm, hMm) {
-  const pos = curPos(), sz = estimateSizes({ lsym: S.lsym, lroad: S.lroad });
+  const pos = curPos(), sz = estimateSizes({ lsym: S.lsym, lroad: S.lroad, frameW: L.frame.w, ui: L.ui });
   // Titel und Karte: bei freier Anordnung an ihrer eigenen Lage (verschiebbar), sonst an der Lage, die die Seitenleiste vorgibt
   const place = (el, r) => { el.style.left = `${(r.x / wMm) * 100}%`; el.style.top = `${(r.y / hMm) * 100}%`; el.style.width = `${(r.w / wMm) * 100}%`; el.style.height = `${(r.h / hMm) * 100}%`; };
   const t = estimateTitle({ title: T.title, place: T.place });

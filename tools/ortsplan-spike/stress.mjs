@@ -5,7 +5,7 @@ const out = process.argv[2] || "shots/stress";
 const browser = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage();
 const BASE = process.env.SPIKE_URL || "http://127.0.0.1:5173"; // Branch-Server: SPIKE_URL=http://127.0.0.1:5174
-await page.goto(`${BASE}/?fire=0&scale=10000&paper=a4l&dpi=96`);
+await page.goto(`${BASE}/?fire=0&scale=10000&paper=a4l&dpi=96&sheet=0`);
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 120000 });
 const res = await page.evaluate(async () => {
   const { composeSheet } = await import("/sheet.js");
