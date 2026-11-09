@@ -363,9 +363,13 @@ export async function composeSheet(opts) {
     // Ein Block bleibt mit seinem echten Mass ganz im Papier (die Lage im Assistenten beruht auf einer Schaetzung)
     let x = Math.max(0, Math.min(p.x * Wv, Wv - sz.w - 2)), y = Math.max(0, Math.min(p.y * Hv, Hv - sz.h - 2));
     // Block auf der Karte nahe am Kartenrand: auf den eingestellten Abstand zum Rand einrasten, gemessen am sichtbaren Untergrund; so haben alle Bloecke denselben Abstand
-    if (edgeInset >= 0 && !p.noSnap) {
+    if (edgeInset >= 0) {
       const s = snapToFrameInset({ x: x - 2, y: y - 1.5, w: sz.w + 4, h: sz.h + 3 }, F, edgeInset, EDGE_SNAP);
       x = s.x + 2; y = s.y + 1.5;
+      // Im Assistenten rechts (ar) oder unten (ab) eingerastet: dort rechnet er mit geschaetzten Massen. Hier gilt dieselbe Kante mit dem echten Mass,
+      // auch wenn der Block kleiner ist als geschaetzt (sonst laege er weit ausserhalb des Fangs vom Rand entfernt)
+      if (p.ar) x = F.x + F.w - edgeInset - (sz.w + 4) + 2;
+      if (p.ab) y = F.y + F.h - edgeInset - (sz.h + 3) + 1.5;
     }
     box({ x: x - 2, y: y - 1.5, w: sz.w + 4, h: sz.h + 3 });
     draw(x, y);
@@ -422,7 +426,9 @@ export async function composeSheet(opts) {
     placeBlock("source", (x, y) => {
       const full = attributionStrip(meta?.osm_data_until, meta?.basemap_until);
       g.font = `${SRC_SIZE}px ${FONT}`;
-      const w = Math.min(g.measureText(full).width + 0.5, Math.max(62, F.w - 8));
+      // eigene Breite aus dem Assistenten (u): der Text bricht dort um (Kasten); sonst eine Zeile, hoechstens so breit wie die Karte
+      const wSet = pos.sourcew ? pos.sourcew.w * Wv : 0;
+      const w = Math.min(g.measureText(full).width + 0.5, wSet > 0 ? Math.max(20, wSet) : Math.max(62, F.w - 8));
       let ay = y + 2.2;
       for (const l of wrap(full, SRC_SIZE, w)) { text(l, x, ay, SRC_SIZE, { color: "#333" }); ay += SRC_STEP; }
       return { w, h: ay - y };

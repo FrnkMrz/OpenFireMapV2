@@ -21,11 +21,16 @@ for (const src of sources) {
     const page = await ctx.newPage();
     const reqs = [];
     const isMap = (u) => (src === "lokal" ? /\/nuernberger-land\.pmtiles/.test(u) : u.startsWith(src));
-    page.on("response", async (r) => {
+    const pending = [];
+    page.on("response", (r) => {
       if (!isMap(r.url())) return;
-      const t = r.request().timing();
-      const h = r.headers();
-      reqs.push({ status: r.status(), range: r.request().headers()["range"] || "-", bytes: +(h["content-length"] || 0), ttfb: t.responseStart - t.requestStart, total: t.responseEnd - t.requestStart, cache: h["cf-cache-status"] || "-" });
+      // Zeiten erst lesen, wenn die Antwort ganz da ist (responseEnd ist vorher -1): auf finished() warten und am Ende alle abwarten
+      pending.push((async () => {
+        await r.finished().catch(() => null);
+        const t = r.request().timing();
+        const h = r.headers();
+        reqs.push({ status: r.status(), range: r.request().headers()["range"] || "-", bytes: +(h["content-length"] || 0), ttfb: t.responseStart - t.requestStart, total: t.responseEnd - t.requestStart, cache: h["cf-cache-status"] || "-" });
+      })());
     });
     let failure = null;
     page.on("pageerror", (e) => { failure = e.message; });
@@ -34,6 +39,7 @@ for (const src of sources) {
     await waitReady(page, { failure: () => failure, timeout: 280000 });
     const wall = Date.now() - t0;
     const err = await page.evaluate(() => window.__error || null);
+    await Promise.all(pending); // alle Antworten sind vollstaendig, bevor ausgewertet wird
     const cache = {};
     for (const q of reqs) cache[`${q.status}/${q.cache}`] = (cache[`${q.status}/${q.cache}`] || 0) + 1; // Status der Antwort / Cache-Status der Kante
     for (const q of reqs.filter((x) => x.status !== 206)) console.log("  nicht 206:", q.status, "Range:", q.range, "Bytes:", q.bytes, "Cache:", q.cache);

@@ -58,7 +58,7 @@
     #prev .blk.drag { cursor: grabbing; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
     /* Griff zum Groessemachen der Karte: eigenes Element ueber allen Kaesten, sonst verdeckt ihn z. B. das Verzeichnis am Kartenrand */
     #prev #pv-map-rz { z-index: 5; width: calc(16px * var(--k, 1)); height: calc(16px * var(--k, 1)); background: #0f172a; opacity: .8; cursor: nwse-resize; border-radius: 3px; border: 1px solid #fff; touch-action: none; transform: translate(-50%, -50%); }
-    #prev .rz { position: absolute; right: 0; bottom: 0; width: calc(12px * var(--k, 1)); height: calc(12px * var(--k, 1)); background: #0f172a; opacity: .75; cursor: nwse-resize; border-radius: 2px 0 0 0; }
+    #prev .rz { position: absolute; right: 0; bottom: 0; width: min(calc(12px * var(--k, 1)), 100%); height: min(calc(12px * var(--k, 1)), 100%); /* nie groesser als der Kasten: die duenne Quellenzeile behaelt einen erreichbaren Griff */ background: #0f172a; opacity: .75; cursor: nwse-resize; border-radius: 2px 0 0 0; }
     #pv-panel span { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 255, 255, .55); border-radius: 2px; }
     details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
     details summary { cursor: pointer; color: var(--muted); }
@@ -98,7 +98,7 @@
             <div class="blk" id="pv-b-legend" data-b="legend" tabindex="0" role="button" aria-label="Legende verschieben" style="background:#dbeafe">Legende</div>
             <div class="blk" id="pv-b-scale" data-b="scale" tabindex="0" role="button" aria-label="Maßstab verschieben" style="background:#fef3c7">Maßstab</div>
             <div class="blk" id="pv-b-north" data-b="north" tabindex="0" role="button" aria-label="Nordpfeil verschieben" style="background:#fee2e2">N</div>
-            <div class="blk" id="pv-b-source" data-b="source" tabindex="0" role="button" aria-label="Quellenangabe verschieben" style="background:#ede9fe">Quellen</div>
+            <div class="blk" id="pv-b-source" data-b="source" tabindex="0" role="button" aria-label="Quellenangabe verschieben" style="background:#ede9fe">Quellen<span class="rz" data-rz="1" aria-hidden="true"></span></div>
             <div class="blk" id="pv-b-index" data-b="index" tabindex="0" role="button" aria-label="Straßenverzeichnis verschieben" style="background:#dcfce7">Verzeichnis<span class="rz" data-rz="1" aria-hidden="true"></span></div>
             <div id="pv-map-rz" data-b="map" data-rz="1" title="Größe der Karte ändern" aria-hidden="true"></div>
           </div>

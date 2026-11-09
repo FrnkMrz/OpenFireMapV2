@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, mapSizeMm, snapToFrameInset, EDGE_INSET, EDGE_SNAP, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, mapSizeMm, sourceSize, snapToFrameInset, EDGE_INSET, EDGE_SNAP, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
 import { PAPER_MM, computeLayout, MIN_FRAME_MM } from "./layout.js";
 import { attributionStrip } from "./attribution.js";
 
@@ -40,7 +40,7 @@ test("estimateSizes: ohne Legendenpunkte keine Legende", () => {
 test("defaultPos: alle Lagen und Papiere liefern gueltige Anteile, Bloecke liegen im Blatt", () => {
   for (const paper of Object.keys(PAPER_MM)) for (const side of ["right", "left", "top", "bottom", "none"]) for (const fmt of ["fill", "2:3"]) {
     const p = defaultPos({ paper, side, fmt });
-    for (const name of BLOCKS.filter((n) => n !== "msize")) assert.ok(p[name], `${paper} ${side} ${fmt}: ${name}`); // msize (eigene Kartengroesse) fehlt in der Standardlage
+    for (const name of BLOCKS.filter((n) => n !== "msize" && n !== "sourcew")) assert.ok(p[name], `${paper} ${side} ${fmt}: ${name}`); // msize (eigene Kartengroesse) fehlt in der Standardlage
     for (const b of Object.values(p)) assert.ok(b.x >= 0 && b.y >= 0 && b.x <= 1 && b.y <= 1);
     assert.ok(p.index.x + p.index.w <= 1 + 1e-9 && p.index.y + p.index.h <= 1 + 1e-9, `${paper} ${side}`);
   }
@@ -305,19 +305,52 @@ test("computeLayout mit size und sizeMax: bei freier Anordnung darf die Karte ue
 test("snapToFrameInset: Bloecke am Kartenrand rasten auf denselben Abstand ein (links/rechts/oben/unten), sonst bleibt die Lage", () => {
   const frame = { x: 14, y: 27, w: 300, h: 200 };
   const inset = 4, thr = 6;
-  // links oben: 2 mm daneben -> genau 4 mm vom Rand
-  assert.deepEqual(snapToFrameInset({ x: 14 + 6, y: 27 + 3, w: 60, h: 40 }, frame, inset, thr), { x: 14 + 4, y: 27 + 4 });
-  // rechts unten: die rechte/untere Kante soll 4 mm vom Rand stehen (Kantenabstand, nicht Ecke)
+  const xy = (r) => ({ x: r.x, y: r.y });
+  // links oben: 2 mm daneben -> genau 4 mm vom Rand (kein Anker rechts/unten)
+  const tl = snapToFrameInset({ x: 14 + 6, y: 27 + 3, w: 60, h: 40 }, frame, inset, thr);
+  assert.deepEqual(xy(tl), { x: 14 + 4, y: 27 + 4 }); assert.equal(tl.ar, false); assert.equal(tl.ab, false);
+  // rechts unten: die rechte/untere Kante soll 4 mm vom Rand stehen (Kantenabstand, nicht Ecke); der Block meldet die Anker
   const br = snapToFrameInset({ x: 14 + 300 - 4 - 60 - 3, y: 27 + 200 - 4 - 40 + 2, w: 60, h: 40 }, frame, inset, thr);
-  assert.deepEqual(br, { x: 14 + 300 - 4 - 60, y: 27 + 200 - 4 - 40 });
+  assert.deepEqual(xy(br), { x: 14 + 300 - 4 - 60, y: 27 + 200 - 4 - 40 }); assert.equal(br.ar, true); assert.equal(br.ab, true);
   // zwei verschiedene Bloecke am selben Rand haben danach denselben Abstand (auch bei verschiedener Groesse)
   const a = snapToFrameInset({ x: 14 + 300 - 70, y: 100, w: 60, h: 30 }, frame, inset, thr), b = snapToFrameInset({ x: 14 + 300 - 45, y: 150, w: 38, h: 20 }, frame, inset, thr);
   assert.ok(Math.abs(frame.x + frame.w - (a.x + 60) - 4) < 1e-9 && Math.abs(frame.x + frame.w - (b.x + 38) - 4) < 1e-9, "rechter Abstand gleich");
   // weit weg vom Rand: unveraendert; ausserhalb der Karte (Mitte nicht auf der Karte): unveraendert
-  assert.deepEqual(snapToFrameInset({ x: 100, y: 100, w: 60, h: 40 }, frame, inset, thr), { x: 100, y: 100 });
-  assert.deepEqual(snapToFrameInset({ x: 330, y: 30, w: 60, h: 40 }, frame, inset, thr), { x: 330, y: 30 }, "ausserhalb der Karte");
+  assert.deepEqual(xy(snapToFrameInset({ x: 100, y: 100, w: 60, h: 40 }, frame, inset, thr)), { x: 100, y: 100 });
+  assert.deepEqual(xy(snapToFrameInset({ x: 330, y: 30, w: 60, h: 40 }, frame, inset, thr)), { x: 330, y: 30 }, "ausserhalb der Karte");
   // ohne Abstand (null/negativ): kein Einrasten; Abstand 0 rastet buendig ein
-  assert.deepEqual(snapToFrameInset({ x: 16, y: 29, w: 60, h: 40 }, frame, -1, thr), { x: 16, y: 29 });
-  assert.deepEqual(snapToFrameInset({ x: 16, y: 29, w: 60, h: 40 }, frame, 0, thr), { x: 14, y: 27 });
+  assert.deepEqual(xy(snapToFrameInset({ x: 16, y: 29, w: 60, h: 40 }, frame, -1, thr)), { x: 16, y: 29 });
+  assert.deepEqual(xy(snapToFrameInset({ x: 16, y: 29, w: 60, h: 40 }, frame, 0, thr)), { x: 14, y: 27 });
   assert.equal(EDGE_INSET, 4); assert.ok(EDGE_SNAP > 0);
+});
+
+test("Anker rechts/unten (r, b) stehen im Link und bleiben beim Klemmen erhalten; alte Adressen ohne Anker bleiben gueltig", () => {
+  const p = parsePos("l:0.2,0.3,rb;s:0.4,0.5,b;n:0.6,0.7,r;q:0.1,0.9");
+  assert.deepEqual(p.legend, { x: 0.2, y: 0.3, ar: true, ab: true });
+  assert.deepEqual(p.scale, { x: 0.4, y: 0.5, ab: true });
+  assert.deepEqual(p.north, { x: 0.6, y: 0.7, ar: true });
+  assert.deepEqual(p.source, { x: 0.1, y: 0.9 }, "ohne Anker wie bisher");
+  assert.equal(formatPos(p), "l:0.2,0.3,rb;s:0.4,0.5,b;q:0.1,0.9;n:0.6,0.7,r");
+  assert.deepEqual(parsePos(formatPos(p)), p, "hin und zurueck");
+  assert.deepEqual(clampPos({ legend: { x: 0.3, y: 0.4, ar: true } }).legend, { x: 0.3, y: 0.4, ar: true }, "Klemmen behaelt den Anker");
+  assert.equal(parsePos("l:0.2,0.3,x"), null, "unbekannter Anker: Teil faellt weg");
+  assert.equal(parsePos("i:0.1,0.1,0.2,0.2,r"), null, "Verzeichnis kennt keine Anker");
+  assert.equal(parsePos("t:0.1,0.1,r"), null, "Titel kennt keine Anker");
+});
+
+test("Quellenangabe als Kasten: eigene Breite (u) hin und zurueck, bricht in mehr Zeilen um, bleibt im Papier", () => {
+  const p = parsePos("q:0.1,0.9;u:0.3");
+  assert.deepEqual(p.sourcew, { w: 0.3 });
+  assert.equal(formatPos(p), "q:0.1,0.9;u:0.3");
+  assert.deepEqual(parsePos(formatPos(p)), p);
+  assert.deepEqual(clampPos({ sourcew: { w: 5 } }).sourcew, { w: 1 }); assert.deepEqual(clampPos({ sourcew: { w: 0.001 } }).sourcew, { w: 0.08 });
+  assert.equal(parsePos("u:0.3,0.4"), null, "u hat genau einen Wert");
+  const line = sourceSize({ W: 420, H: 297, ui: 1 }), box = sourceSize({ sourcew: 0.2, W: 420, H: 297, ui: 1 }), narrow = sourceSize({ sourcew: 0.1, W: 420, H: 297, ui: 1 });
+  assert.equal(line.lines, 1, "ohne Breite: eine Zeile");
+  assert.ok(box.lines >= 2 && narrow.lines > box.lines && narrow.h > box.h && narrow.w < box.w, `Zeilen ${line.lines} / ${box.lines} / ${narrow.lines}`);
+  assert.ok(Math.abs(box.w - 0.2) < 1e-9, "Breite wie gesetzt");
+  assert.ok(sourceSize({ sourcew: 1, W: 420, H: 297, ui: 1 }).lines === 1, "breit genug: wieder eine Zeile");
+  // blockRect und blockDims nutzen die eigene Breite
+  assert.ok(Math.abs(blockRect("source", p, { W: 420, H: 297, ui: 1 }).w - 0.3) < 1e-9);
+  assert.ok(blockDims({ W: 420, H: 297, ui: 1, sourcew: 0.2 }).source.h > blockDims({ W: 420, H: 297, ui: 1 }).source.h);
 });

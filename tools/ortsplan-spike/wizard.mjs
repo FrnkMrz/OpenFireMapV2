@@ -370,6 +370,52 @@ try {
   check(/lsym=0/.test(info.link) && /side=top/.test(info.link), "Rueckweg 'Ausschnitt waehlen' behaelt die Legende-Wahl");
   const png = await page.evaluate(() => window.__sheet[0]);
   fs.writeFileSync(`${OUT}/4-blatt.png`, Buffer.from(png.split(",")[1], "base64"));
+  // Standardlage "Auf der Karte": auch das Verzeichnis (ausserhalb der Karte) laesst sich verschieben, Groesse aendern und bleibt gueltig
+  {
+    await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=none&index=1&lsym=1&lroad=1`);
+    await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+    await page.click('.st[data-s="2"]'); await page.waitForTimeout(400);
+    const iOf = async () => { const p = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos") || ""; const m = /(?:^|;)i:([^;]*)/.exec(p); return m ? m[1].split(",").map(Number) : null; };
+    const i0 = await iOf();
+    check(!!i0 && i0.length === 4 && i0.every(Number.isFinite), `Verzeichnis in der Adresse: ${i0}`);
+    const bb = await page.locator("#pv-b-index").boundingBox();
+    await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await page.mouse.down(); await page.mouse.move(bb.x + bb.width / 2 - 140, bb.y + bb.height / 2 + 30, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300);
+    const i1 = await iOf();
+    check(!!i1 && i1.every(Number.isFinite) && Math.abs(i1[0] - i0[0]) > 0.02 && Math.abs(i1[2] - i0[2]) < 1e-6 && Math.abs(i1[3] - i0[3]) < 1e-6, `Verzeichnis mit der Maus verschoben, Groesse bleibt: ${i0} -> ${i1}`);
+    const rz = await page.locator("#pv-b-index .rz").boundingBox();
+    await page.mouse.move(rz.x + rz.width / 2, rz.y + rz.height / 2); await page.mouse.down(); await page.mouse.move(rz.x - 30, rz.y - 40, { steps: 6 }); await page.mouse.up(); await page.waitForTimeout(300);
+    const i2 = await iOf();
+    check(!!i2 && i2.every(Number.isFinite) && i2[2] < i1[2] - 0.001, `Verzeichnis an der Ecke kleiner gezogen: Breite ${i1 && i1[2]} -> ${i2 && i2[2]}`);
+    await page.focus("#pv-b-index"); await page.keyboard.press("ArrowRight");
+    const i3 = await iOf();
+    check(!!i3 && i3.every(Number.isFinite) && i3[0] > i2[0], "Verzeichnis mit der Pfeiltaste verschoben");
+    // Quellenangabe: an der Ecke schmaler ziehen -> bricht um (Kasten), Breite steht im Link (u); Alt + Pfeiltaste macht sie wieder breiter
+    const uOf = async () => { const p = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos") || ""; const m = /(?:^|;)u:([\d.]+)/.exec(p); return m ? +m[1] : null; };
+    check((await uOf()) === null, "Quellenangabe ohne eigene Breite: eine Zeile");
+    const sz = await page.locator("#pv-b-source .rz").boundingBox();
+    await page.mouse.move(sz.x + sz.width / 2, sz.y + sz.height / 2); await page.mouse.down(); await page.mouse.move(sz.x + sz.width / 2 - 230, sz.y + sz.height / 2, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300);
+    const u1 = await uOf();
+    check(u1 !== null && u1 < 0.45 && u1 >= 0.08, `Quellenangabe schmaler gezogen: Breite ${u1}`);
+    await page.focus("#pv-b-source"); await page.keyboard.press("Alt+ArrowRight");
+    const u2 = await uOf();
+    check(u2 !== null && u2 > u1, `Alt + Pfeiltaste macht die Quellenangabe breiter (${u1} -> ${u2})`);
+  }
+
+  // Am Kartenrand verankerte Bloecke (r/b) folgen dem Kartenfenster, auch wenn die Karte kleiner gezogen wird (Vorschau = Blatt)
+  {
+    await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=none&index=1&lsym=1&lroad=1&pos=s:0.4,0.3,b`);
+    await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+    await page.click('.st[data-s="2"]'); await page.waitForTimeout(400);
+    const sy = async () => { const p = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos") || ""; const m = /(?:^|;)s:([\d.]+),([\d.]+)/.exec(p); return m ? +m[2] : null; };
+    const y0 = await sy();
+    check(y0 !== null && y0 > 0.6, `Massstab mit Anker unten sitzt am unteren Kartenrand, nicht bei der gespeicherten Lage 0,3 (${y0})`);
+    await page.evaluate(() => document.getElementById("prev").scrollIntoView({ block: "center" }));
+    const rz = await page.locator("#pv-map-rz").boundingBox();
+    await page.mouse.move(rz.x + rz.width / 2, rz.y + rz.height / 2); await page.mouse.down(); await page.mouse.move(rz.x - 60, rz.y - 110, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300);
+    const y1 = await sy();
+    check(y1 !== null && y1 < y0 - 0.05, `Karte kleiner gezogen: der verankerte Massstab folgt dem unteren Kartenrand (${y0} -> ${y1})`);
+  }
+
   // Abstand der Bloecke zum Kartenrand: Standard 4 mm, einstellbar, steht im Link (mi); der Wert bleibt beim Neuladen
   {
     await page.goto(`${BASE}/pick.html?paper=a3l&side=none&scale=5000`);

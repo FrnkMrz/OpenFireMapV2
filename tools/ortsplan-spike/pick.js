@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol, PMTiles } from "pmtiles";
 import { buildStyle } from "./style.js";
 import { PAPER_MM, ALL_SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES, parseFormat } from "./layout.js";
-import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset, mapSizeMm, MAP_MARGIN, snapToFrameInset, EDGE_INSET, EDGE_SNAP } from "./freelayout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset, mapSizeMm, MAP_MARGIN, snapToFrameInset, EDGE_INSET, EDGE_SNAP, sourceSize } from "./freelayout.js";
 import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE, RATIO_MIN, RATIO_MAX } from "./framegeo.js";
 
 const q = new URLSearchParams(location.search);
@@ -150,12 +150,26 @@ const layoutKey = () => `${paperKey()}|${S.side}|${layoutFmt()}`;
 if (S.pos && S.posKey === null) S.posKey = layoutKey();
 const ownPos = () => (S.pos && S.posKey === layoutKey() ? S.pos : null);
 /** Groesse der Bloecke als Anteil des Papiers (geschaetzt): damit bleibt ein Block ganz im Papier, nicht nur seine Ecke. */
-const dimsNow = () => { const [wMm, hMm] = PAPER_MM[paperKey()]; return blockDims({ lsym: S.lsym, lroad: S.lroad, ui: Math.max(1, Math.max(wMm, hMm) / 420), W: wMm, H: hMm, frame: layout().L.frame, title: T.title, place: T.place }); };
+const dimsNow = () => { const [wMm, hMm] = PAPER_MM[paperKey()]; return blockDims({ lsym: S.lsym, lroad: S.lroad, ui: Math.max(1, Math.max(wMm, hMm) / 420), W: wMm, H: hMm, frame: layout().L.frame, title: T.title, place: T.place, sourcew: ownPos()?.sourcew?.w || 0 }); };
 const curPos = () => {
   const pos = clampPos({ ...defaultPos({ paper: paperKey(), side: S.side, fmt: layoutFmt(), lsym: S.lsym, lroad: S.lroad }), ...(ownPos() || {}) }, dimsNow());
   if (!isManual() && pos.map) pos.map = groupClampMap(pos.map); // feste Leiste: Karte und Leiste bleiben zusammen im Papier
+  resolveAnchors(pos); // am rechten/unteren Kartenrand verankerte Bloecke folgen dem Kartenfenster (wie auf dem Blatt)
   return pos;
 };
+/** Bloecke mit Anker r (rechts) oder b (unten) stehen im Abstand der Einstellung zur Kante des Kartenfensters: neu berechnet, wenn sich Karte oder Groesse aendern. */
+function resolveAnchors(pos) {
+  const { L, wMm, hMm } = layout();
+  for (const name of ["legend", "scale", "north", "source"]) {
+    const b = pos[name];
+    if (!b || (!b.ar && !b.ab) || !(S.inset >= 0)) continue;
+    const r = blockRect(name, pos, { lsym: S.lsym, lroad: S.lroad, ui: L.ui, W: wMm, H: hMm, frame: L.frame });
+    if (!r) continue;
+    const fr = { x: (pos.map ? pos.map.x : L.frame.x / wMm) * wMm, y: (pos.map ? pos.map.y : L.frame.y / hMm) * hMm, w: L.frame.w, h: L.frame.h };
+    const bw = r.w * wMm + 4 * L.ui, bh = r.h * hMm + 3 * L.ui; // sichtbarer Untergrund wie auf dem Blatt
+    pos[name] = { ...b, x: b.ar ? (fr.x + fr.w - S.inset * L.ui - bw + 2 * L.ui) / wMm : b.x, y: b.ab ? (fr.y + fr.h - S.inset * L.ui - bh + 1.5 * L.ui) / hMm : b.y };
+  }
+}
 /** Bei fester Leiste wandern Karte und Leiste gemeinsam: Lage der Karte (Anteil des Papiers) so klemmen, dass beide im Papier bleiben. */
 function groupClampMap(m) {
   const { L, wMm, hMm } = layout();
@@ -248,7 +262,8 @@ function drawBlocks(manual, L, wMm, hMm) {
     const show = manual && p && (name !== "legend" || sz.legend) && (name !== "index" || S.index);
     el.hidden = !show;
     if (!show) continue;
-    const w = name === "index" ? p.w : (sz[name].w * L.ui) / wMm, h = name === "index" ? p.h : (sz[name].h * L.ui) / hMm;
+    const ss = name === "source" ? sourceSize({ sourcew: pos.sourcew?.w, frameW: L.frame.w, ui: L.ui, W: wMm, H: hMm }) : null;
+    const w = name === "index" ? p.w : ss ? ss.w : (sz[name].w * L.ui) / wMm, h = name === "index" ? p.h : ss ? ss.h : (sz[name].h * L.ui) / hMm;
     el.style.left = `${p.x * 100}%`; el.style.top = `${p.y * 100}%`; el.style.width = `${w * 100}%`; el.style.height = `${h * 100}%`;
   }
   $("pos-hint").hidden = !manual; $("pos-reset-wrap").hidden = !(manual || ownPos());
@@ -314,6 +329,7 @@ $("g-obg").replaceChildren(...[["white", "Weiß"], ["clear", "Durchsichtig"]].ma
   return b;
 }));
 // Kaesten ziehen (Maus, Finger) oder mit Pfeiltasten schieben; das Verzeichnis zusaetzlich an der Ecke unten rechts in der Groesse aendern
+const withoutAnchors = ({ ar, ab, ...rest }) => rest; // alte Rechts-/Unten-Anker verwerfen, alles andere (auch w und h des Verzeichnisses) behalten
 /** Block auf der Karte nahe am Kartenrand: rastet auf den eingestellten Abstand ein (Groesse geschaetzt; das Blatt rastet mit dem echten Mass nach). */
 function snapBlock(cand, name) {
   if (!["legend", "scale", "north", "source"].includes(name) || !(S.inset >= 0) || !cand[name]) return cand;
@@ -323,12 +339,20 @@ function snapBlock(cand, name) {
   const mm = { x: r.x * wMm - 2 * L.ui, y: r.y * hMm - 1.5 * L.ui, w: r.w * wMm + 4 * L.ui, h: r.h * hMm + 3 * L.ui }; // sichtbarer Untergrund wie auf dem Blatt
   const fr = { x: (cand.map ? cand.map.x : L.frame.x / wMm) * wMm, y: (cand.map ? cand.map.y : L.frame.y / hMm) * hMm, w: L.frame.w, h: L.frame.h };
   const s = snapToFrameInset(mm, fr, S.inset * L.ui, EDGE_SNAP * L.ui);
-  return { ...cand, [name]: { x: (s.x + 2 * L.ui) / wMm, y: (s.y + 1.5 * L.ui) / hMm } };
+  // rechts/unten eingerastet: als Anker merken, das Blatt rechnet diese Kante mit dem echten Mass
+  return { ...cand, [name]: { x: (s.x + 2 * L.ui) / wMm, y: (s.y + 1.5 * L.ui) / hMm, ...(s.ar ? { ar: true } : {}), ...(s.ab ? { ab: true } : {}) } };
 }
 // raw (nur beim Ziehen mit der Maus): ungerasterte Lage der Karte; sonst bliebe sie am Magneten kleben, weil jeder Schritt kleiner ist als sein Fang
 function movePos(name, dx, dy, resize, raw = null) {
   const pos = curPos(), b = pos[name];
   if (!b) return;
+  if (name === "source" && resize) {
+    // Quellenangabe: Breite aendern, der Text bricht um (ein Kasten statt eines langen Streifens)
+    const { L, wMm, hMm } = layout();
+    const cur = sourceSize({ sourcew: pos.sourcew?.w, frameW: L.frame.w, ui: L.ui, W: wMm, H: hMm }).w;
+    S.pos = { ...(ownPos() || pos), sourcew: { w: Math.min(1, Math.max(0.08, cur + dx)) } }; S.posKey = layoutKey();
+    return;
+  }
   if (name === "map" && resize) {
     // Groesse des Kartenfensters aendern (linke obere Ecke bleibt): Massstab bleibt, das Fenster zeigt mehr oder weniger Gebiet.
     // Festes Kartenformat: das Verhaeltnis bleibt; sonst frei in beiden Richtungen. Nie groesser als das Fenster der Lage.
@@ -380,7 +404,7 @@ function movePos(name, dx, dy, resize, raw = null) {
       continue;
     }
     const base = !resize && raw?.cur ? raw.cur : b;
-    const cand = clampPos({ ...pos, [name]: resize ? { ...b, w: b.w + ax, h: b.h + ay } : { ...base, x: base.x + ax, y: base.y + ay } }, dimsNow());
+    const cand = clampPos({ ...pos, [name]: resize ? { ...b, w: b.w + ax, h: b.h + ay } : { ...withoutAnchors(base), x: base.x + ax, y: base.y + ay } }, dimsNow()); // neue Lage ohne alte Anker (Breite und Hoehe des Verzeichnisses bleiben)
     if (onMapOk() || !isManual() || !overlapsMap(cand, name)) {
       if (raw && !resize) raw.cur = cand[name];
       S.pos = raw && !resize ? snapBlock(cand, name) : cand; S.posKey = layoutKey(); return; // feste Leiste: der Titel darf auch ueber der Karte stehen
@@ -409,7 +433,7 @@ for (const el of document.querySelectorAll("#prev [data-b]")) {
     const d = e.shiftKey ? 0.05 : 0.01;
     const v = { ArrowLeft: [-d, 0], ArrowRight: [d, 0], ArrowUp: [0, -d], ArrowDown: [0, d] }[e.key];
     if (!v) return;
-    e.preventDefault(); movePos(name, v[0], v[1], (name === "index" || name === "map") && e.altKey); refresh(); el.focus();
+    e.preventDefault(); movePos(name, v[0], v[1], (name === "index" || name === "map" || name === "source") && e.altKey); refresh(); el.focus();
   });
 }
 // Rahmenform: Frei oder wie das Blatt. Beim Umschalten bleibt der Rahmen, wie er ist (frei übernimmt das Seitenverhältnis des Blatts, fest rastet den Maßstab ein)

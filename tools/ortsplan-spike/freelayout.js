@@ -4,16 +4,18 @@
 // Titel (t) und Karte (m, Lage des Kartenfensters) sind verschiebbar; die Karte rastet nahe an den Randabstaenden ein (snapMap).
 // z:b,h ist die eigene Groesse des Kartenfensters als Anteil des Papiers (fehlt sie, gilt das volle Fenster der Lage; Massstab bleibt, das Fenster zeigt mehr oder weniger Gebiet).
 import { PAPER_MM, computeLayout, TOP_BAND } from "./layout.js";
-import { stripWidth } from "./attribution.js";
+import { stripWidth, STRIP_TEXT_MM, SRC_STEP } from "./attribution.js";
 
-export const BLOCKS = ["legend", "scale", "source", "north", "title", "map", "msize", "index"];
-const SHORT = { l: "legend", s: "scale", q: "source", n: "north", t: "title", m: "map", z: "msize", i: "index" };
+export const BLOCKS = ["legend", "scale", "source", "north", "title", "map", "msize", "sourcew", "index"];
+const SHORT = { l: "legend", s: "scale", q: "source", n: "north", t: "title", m: "map", z: "msize", u: "sourcew", i: "index" };
 /** Mindestabstand des Kartenfensters zum Papierrand (Einheiten von ui): dort stehen noch die Planquadrat-Buchstaben. */
 export const MAP_MARGIN = 6;
 /** Normale Randabstaende des Kartenfensters (Einheiten von ui, wie in layout.js): hier rastet die Karte beim Ziehen ein. */
 export const MAP_ANCHOR = { left: 14, right: 14, top: TOP_BAND, bottom: 14 };
 /** Oberkante des Titels (Einheiten von ui): so steht die Ueberschrift in der bisherigen Hoehe (Grundlinie 8,4). */
 export const TITLE_Y = 3.4;
+/** Bloecke, die am Kartenrand verankert sein koennen (r = rechts, b = unten): sie behalten ihren Abstand zur Kante auch mit dem echten Mass. */
+const ANCHORABLE = ["legend", "scale", "source", "north"];
 const MIN_INDEX = 0.04; // kleinste Breite/Hoehe des Verzeichnisses als Anteil des Papiers
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -26,10 +28,14 @@ export function parsePos(str) {
     const [k, v = ""] = part.split(":");
     const name = SHORT[k.trim()];
     if (!name) continue;
-    const n = v.split(",").map((x) => (x.trim() === "" ? NaN : +x));
-    const need = name === "index" ? 4 : 2;
-    if (n.length !== need || n.some((x) => !Number.isFinite(x))) continue;
-    out[name] = name === "index" ? { x: n[0], y: n[1], w: n[2], h: n[3] } : name === "msize" ? { w: n[0], h: n[1] } : { x: n[0], y: n[1] };
+    const parts = v.split(",").map((x) => x.trim());
+    const need = name === "index" ? 4 : name === "sourcew" ? 1 : 2;
+    const anchorable = ANCHORABLE.includes(name);
+    // Legende, Massstab, Quelle und Nordpfeil duerfen einen dritten Teil tragen: r = rechts, b = unten am Kartenrand verankert (siehe snapToFrameInset)
+    if (parts.length !== need && !(anchorable && parts.length === need + 1 && /^[rb]{1,2}$/.test(parts[need]))) continue;
+    const n = parts.slice(0, need).map((x) => (x === "" ? NaN : +x));
+    if (n.some((x) => !Number.isFinite(x))) continue;
+    out[name] = name === "index" ? { x: n[0], y: n[1], w: n[2], h: n[3] } : name === "msize" ? { w: n[0], h: n[1] } : name === "sourcew" ? { w: n[0] } : { x: n[0], y: n[1], ...(parts[need]?.includes("r") ? { ar: true } : {}), ...(parts[need]?.includes("b") ? { ab: true } : {}) };
   }
   return Object.keys(out).length ? clampPos(out) : null;
 }
@@ -47,6 +53,8 @@ export function clampPos(pos, dims = null) {
       out.index = { x: clamp(b.x, 0, 1 - w), y: clamp(b.y, 0, 1 - h), w, h };
     } else if (name === "msize") {
       out.msize = { w: clamp(b.w, MIN_INDEX, 1), h: clamp(b.h, MIN_INDEX, 1) }; // Groesse, keine Lage
+    } else if (name === "sourcew") {
+      out.sourcew = { w: clamp(b.w, 0.08, 1) }; // Breite der Quellenangabe als Anteil des Papiers (Zeilenumbruch, "Kasten")
     } else {
       const d = dims?.[name];
       // die Karte haelt zusaetzlich einen Mindestrand (Planquadrat-Buchstaben); sonst gilt: der ganze Block bleibt im Papier
@@ -54,6 +62,8 @@ export function clampPos(pos, dims = null) {
       out[name] = {
         x: clamp(b.x, mx, d ? Math.max(mx, 1 - d.w - mx) : 0.98),
         y: clamp(b.y, my, d ? Math.max(my, 1 - d.h - my) : 0.98),
+        ...(ANCHORABLE.includes(name) && b.ar ? { ar: true } : {}),
+        ...(ANCHORABLE.includes(name) && b.ab ? { ab: true } : {}),
       };
     }
   }
@@ -63,7 +73,7 @@ export function clampPos(pos, dims = null) {
 const r4 = (v) => String(Math.round(v * 10000) / 10000);
 export function formatPos(pos) {
   const p = clampPos(pos || {});
-  return Object.entries(SHORT).filter(([, name]) => p[name]).map(([k, name]) => `${k}:${(name === "index" ? [p[name].x, p[name].y, p[name].w, p[name].h] : name === "msize" ? [p[name].w, p[name].h] : [p[name].x, p[name].y]).map(r4).join(",")}`).join(";");
+  return Object.entries(SHORT).filter(([, name]) => p[name]).map(([k, name]) => `${k}:${(name === "index" ? [p[name].x, p[name].y, p[name].w, p[name].h] : name === "msize" ? [p[name].w, p[name].h] : name === "sourcew" ? [p[name].w] : [p[name].x, p[name].y]).map(r4).join(",")}${p[name].ar || p[name].ab ? `,${p[name].ar ? "r" : ""}${p[name].ab ? "b" : ""}` : ""}`).join(";");
 }
 
 /** Ueberlappen sich zwei Rechtecke {x,y,w,h}? (Beruehren zaehlt nicht.) */
@@ -76,6 +86,7 @@ export function blockRect(name, pos, { lsym = true, lroad = true, ui = 1, W = 42
   if (name === "index") return { x: p.x, y: p.y, w: p.w, h: p.h };
   if (name === "map") return frame ? { x: p.x, y: p.y, w: frame.w / W, h: frame.h / H } : null; // Groesse des Kartenfensters in mm
   if (name === "title") { const t = estimateTitle({ title, place }); return { x: p.x, y: p.y, w: (t.w * ui) / W, h: (t.h * ui) / H }; }
+  if (name === "source") { const s = sourceSize({ sourcew: pos?.sourcew?.w, frameW: frame?.w, ui, W, H }); return { x: p.x, y: p.y, w: s.w, h: s.h }; }
   const sz = estimateSizes({ lsym, lroad, frameW: frame?.w, ui })[name];
   return sz ? { x: p.x, y: p.y, w: (sz.w * ui) / W, h: (sz.h * ui) / H } : null;
 }
@@ -88,10 +99,11 @@ export function estimateTitle({ title = "", place = "" } = {}) {
 }
 
 /** Groesse von Titel, Legende, Massstab und Quellen als Anteil des Papiers (geschaetzt), fuer clampPos; mit frame {w, h} (mm) auch die der Karte samt Mindestrand. */
-export function blockDims({ lsym = true, lroad = true, ui = 1, W = 420, H = 297, frame = null, title = "", place = "" } = {}) {
+export function blockDims({ lsym = true, lroad = true, ui = 1, W = 420, H = 297, frame = null, title = "", place = "", sourcew = 0 } = {}) {
   const sz = estimateSizes({ lsym, lroad, frameW: frame?.w, ui });
   const out = {};
   for (const name of ["legend", "scale", "source", "north"]) if (sz[name]) out[name] = { w: (sz[name].w * ui) / W, h: (sz[name].h * ui) / H };
+  { const s = sourceSize({ sourcew, frameW: frame?.w, ui, W, H }); out.source = { w: s.w, h: s.h }; }
   const t = estimateTitle({ title, place });
   out.title = { w: (t.w * ui) / W, h: (t.h * ui) / H };
   if (frame) out.map = { w: frame.w / W, h: frame.h / H, mx: (MAP_MARGIN * ui) / W, my: (MAP_MARGIN * ui) / H };
@@ -209,18 +221,28 @@ export const EDGE_SNAP = 6;
  * derselben Einheit. Rueckgabe: neue linke obere Ecke {x, y}. Ohne inset (null oder < 0) oder ausserhalb der Karte unveraendert.
  */
 export function snapToFrameInset(rect, frame, inset, thr) {
-  const out = { x: rect.x, y: rect.y };
+  const out = { x: rect.x, y: rect.y, ar: false, ab: false }; // ar/ab: rechts bzw. unten eingerastet (der Block bleibt dann an dieser Kante verankert)
   if (!(inset >= 0) || !frame) return out;
   const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
   if (cx < frame.x || cx > frame.x + frame.w || cy < frame.y || cy > frame.y + frame.h) return out;
   const axis = (v, len, lo, size) => {
     const a = lo + inset, b = lo + size - inset - len; // linke/obere und rechte/untere Sollkante
     const da = Math.abs(v - a), db = Math.abs(v - b);
-    if (da <= thr && da <= db) return a;
-    if (db <= thr) return b;
-    return v;
+    if (da <= thr && da <= db) return { v: a, far: false };
+    if (db <= thr) return { v: b, far: true };
+    return { v, far: false };
   };
-  out.x = axis(rect.x, rect.w, frame.x, frame.w);
-  out.y = axis(rect.y, rect.h, frame.y, frame.h);
+  const ax = axis(rect.x, rect.w, frame.x, frame.w), ay = axis(rect.y, rect.h, frame.y, frame.h);
+  out.x = ax.v; out.y = ay.v; out.ar = ax.far; out.ab = ay.far;
   return out;
+}
+
+/**
+ * Groesse der Quellenangabe als Anteil des Papiers. Ohne eigene Breite (sourcew, Anteil des Papiers): ein Streifen in einer Zeile (bei schmaler Karte
+ * schmaler). Mit eigener Breite bricht der Text um: je schmaler, desto mehr Zeilen (ein Kasten). Hoehe und Zeilenzahl sind geschaetzt, das Blatt misst den Text.
+ */
+export function sourceSize({ sourcew = 0, frameW = 0, ui = 1, W = 420, H = 297 } = {}) {
+  const wv = sourcew > 0 ? Math.min((sourcew * W) / ui, STRIP_TEXT_MM) : stripWidth(frameW, ui); // virtuelle mm, nie breiter als die Zeile selbst
+  const lines = Math.max(1, Math.ceil((STRIP_TEXT_MM - 0.01) / Math.max(20, wv)));
+  return { w: (wv * ui) / W, h: ((2.2 + lines * SRC_STEP) * ui) / H, lines };
 }
