@@ -30,6 +30,11 @@ if (areaName) {
   try { areaInfo = await (await fetch(`/${areaName}.json`)).json(); } catch { /* ohne Beschreibung */ }
 }
 const baseFile = areaName ? `${areaName}.pmtiles` : "neunkirchen.pmtiles";
+// Messungen (r2bench.mjs): die Grundkarte von einem Test-Pfad der Pipeline-Domain statt von der Platte laden (base=https://pipeline.openfiremap.org/ortsplan-test/...).
+// Nur dieser Pfad ist erlaubt; sonst gilt die lokale Datei. Die Karte der Anwendung nutzt das nicht.
+const BASE_TEST_PREFIX = "https://pipeline.openfiremap.org/ortsplan-test/";
+const baseParam = q.get("base") || "";
+const baseUrl = baseParam.startsWith(BASE_TEST_PREFIX) && !baseParam.includes("..") ? baseParam : `${location.origin}/${baseFile}`;
 const ofmFile = areaName ? `${areaName}-ofm.pmtiles` : "ofm.pmtiles";
 const onewayFile = areaName ? `${areaName}-oneway.geojson` : "oneway.geojson";
 const lat = +(q.get("lat") || areaInfo?.lat || 49.5252);
@@ -131,7 +136,7 @@ const map = new maplibregl.Map({
   container: el,
   style: buildStyle({
     scale, mode,
-    pmtilesUrl: `${location.origin}/${baseFile}`,
+    pmtilesUrl: baseUrl,
     ofmUrl: `${location.origin}/${ofmFile}`,
     onewayData: owData,
     labelSpacingMm: q.get("lsp") ? +q.get("lsp") : (lbl === "avoid" ? 10 : null),
@@ -254,7 +259,7 @@ async function addFallbackLabels() {
 // Liegt der Ausschnitt ausserhalb der geladenen Daten, bleibt die Karte leer. Das soll man sehen, nicht raten muessen.
 async function coverageWarning() {
   try {
-    const h = await new PMTiles(`${location.origin}/${baseFile}`).getHeader();
+    const h = await new PMTiles(baseUrl).getHeader();
     const b = map.getBounds();
     const inside = b.getWest() >= h.minLon && b.getEast() <= h.maxLon && b.getSouth() >= h.minLat && b.getNorth() <= h.maxLat;
     if (inside) return "";
@@ -289,7 +294,7 @@ async function buildSheet() {
     // (Metadaten der PMTiles-Datei) sind zwei verschiedene Zeitpunkte
     const getJson = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     const fireMeta = (areaName && (await getJson(`/${areaName}.meta.json`))) || (await getJson("/meta.json"));
-    const baseUntil = await new PMTiles(`${location.origin}/${baseFile}`).getMetadata().then(basemapUntil).catch(() => null);
+    const baseUntil = await new PMTiles(baseUrl).getMetadata().then(basemapUntil).catch(() => null);
     const meta = { ...(fireMeta || {}), basemap_until: baseUntil };
     const res = await composeSheet({
       map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, legendSymbols: q.get("lsym") !== "0", legendRoads: q.get("lroad") !== "0", indexSize, warning, side, panel, indexCols, pos: freePos, titlePos: allPos.title, overBg: q.get("obg") === "clear" ? "clear" : "white",
