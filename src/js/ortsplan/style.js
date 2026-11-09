@@ -203,7 +203,7 @@ export function buildStyle({ scale, mode = "plan", pmtilesUrl, ofmUrl = null, la
 
   return {
     version: 8,
-    glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+    glyphs: `${location.origin}/ortsplan-fonts/{fontstack}/{range}.pbf`, // selbst gehostet (public/ortsplan-fonts), keine Verbindung zu Dritten
     sources,
     layers,
   };

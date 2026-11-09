@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { arrowsAlong, rotationDeg, lengthM, onlyLocalStreets, ARROW_HIGHWAYS, featureFromWay } from "./oneway.js";
+import { arrowsAlong, rotationDeg, lengthM, onlyLocalStreets, ARROW_HIGHWAYS, featureFromWay } from "../../src/js/ortsplan/oneway.js";
 
 const LAT = 49.5, LON = 11.3;
 const mLon = 111320 * Math.cos((LAT * Math.PI) / 180), mLat = 110540;

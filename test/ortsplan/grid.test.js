@@ -1,7 +1,7 @@
 // Aufruf: node --test grid.test.mjs
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { clipSegment, cellsOfSegment, formatCells, colLabel } from "./grid.js";
+import { clipSegment, cellsOfSegment, formatCells, colLabel } from "../../src/js/ortsplan/grid.js";
 
 const keys = (cells) => cells.map(([c, r]) => `${c},${r}`).sort();
 

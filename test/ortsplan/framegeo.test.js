@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { snapScale, resizeFromCorner, clampCenterPx } from "./framegeo.js";
+import { snapScale, resizeFromCorner, clampCenterPx } from "../../src/js/ortsplan/framegeo.js";
 
 test("snapScale: naechster Druckmassstab, gemessen im Verhaeltnis (nicht in Differenz)", () => {
   assert.equal(snapScale(4400), 4000);
@@ -42,7 +42,7 @@ test("clampCenterPx: Mitte des Rahmens bleibt in der Ansicht", () => {
   assert.deepEqual(clampCenterPx({ x: 400, y: 300 }, { w: 800, h: 600 }), { x: 400, y: 300 });
 });
 
-import { resizeFree, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE } from "./framegeo.js";
+import { resizeFree, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE } from "../../src/js/ortsplan/framegeo.js";
 
 const wmm = () => 200; // Kartenfenster immer 200 mm breit
 const free = { rect: { l: 100, t: 100, r: 300, b: 250 }, mpp: 1, frameWmm: wmm, pickScale: (x) => x };

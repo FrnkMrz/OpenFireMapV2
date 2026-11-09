@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { streetLabelPoints, midpointOf, upright, placeAvoiding, nearestM, clipLineToBox } from "./labelpoints.js";
+import { streetLabelPoints, midpointOf, upright, placeAvoiding, nearestM, clipLineToBox } from "../../src/js/ortsplan/labelpoints.js";
 
 const LAT = 49.5, LON = 11.3;
 const mLon = 111320 * Math.cos((LAT * Math.PI) / 180), mLat = 110540;

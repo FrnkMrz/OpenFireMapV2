@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { planHorizontal } from "./panelplan.js";
+import { planHorizontal } from "../../src/js/ortsplan/panelplan.js";
 
 const base = { legColW: 74, scaleW: 70, minIndexW: 55, gap: 6, showIndex: true };
 

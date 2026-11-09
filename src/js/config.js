@@ -122,6 +122,24 @@ export const Config = {
     }
   },
 
+  /**
+   * Ortsplan-Seiten (/ortsplan/ und /ortsplan/blatt/): nur per Link, nur am Computer, kein Menüeintrag.
+   * Alle Quellen liegen bei der Pipeline-Domain (pipeline.url): Basiskarte (Deutschland) laut Zeigerdatei, Feuerwehr-Ebenen
+   * (pipeline.pmtilesFile) und metadata.json (Datenstand).
+   */
+  ortsplan: {
+    // Notbremse: false -> beide Seiten zeigen nur den Hinweis "zurzeit nicht verfügbar"
+    enabled: true,
+    // Zeigerdatei der Basiskarte, relativ zu pipeline.url: { file, built_at, osm_data_until, size_bytes }. "file" ist der Pfad der
+    // PMTiles-Datei (mit Datum im Namen) relativ zu pipeline.url. Fehlt die Zeigerdatei, ist die Basiskarte noch nicht veröffentlicht.
+    basemapManifest: "basemap/de.json",
+    manifestTimeoutMs: 8000,
+    // Einbahn-Ebene der Pipeline (GeoJSON, relativ zu pipeline.url). null: noch nicht vorhanden, dann zeichnet der Plan keine Einbahnpfeile.
+    onewayFile: null,
+    // Smartphones sind ausgeschlossen: Touch-Bedienung (pointer: coarse) und kurze Seite des Fensters unter diesem Wert in Pixeln
+    phoneMaxShortSide: 600
+  },
+
   // ----------------------------------------------------------------------------------------
   // 3) Basemap-Layer
   // ----------------------------------------------------------------------------------------

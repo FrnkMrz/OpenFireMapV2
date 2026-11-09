@@ -15,3 +15,8 @@ export async function waitReady(page, { key = "__ready", timeout = 120000, failu
     clearInterval(timer);
   }
 }
+
+// Adressen der Ortsplan-Seiten (Vite-Dev-Server der Anwendung, Port 5173) und das Standardgebiet der lokalen Entwicklungsdaten (tools/ortsplan-spike/data)
+export const SHEET = "/ortsplan/blatt/";
+export const WIZARD = "/ortsplan/";
+export const withArea = (query) => (/(^|&)area=/.test(query || "") ? query : `${query ? `${query}&` : ""}area=nuernberger-land`);

@@ -1,6 +1,6 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { indexNote } from "./indexnote.js";
+import { indexNote } from "../../src/js/ortsplan/indexnote.js";
 
 test("ausgeschaltet: sagt, wie man es einschaltet", () => {
   assert.match(indexNote({ indexOn: false, indexPage: null, indexCount: 0, pages: 1 }), /ausgeschaltet/);

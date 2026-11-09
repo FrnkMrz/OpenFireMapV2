@@ -3,8 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ortsplan-Spike</title>
+  <title>Ortsplan – OpenFireMap</title>
+    <meta name="description" content="Fertiger Ortsplan als PDF oder PNG.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-icon-180x180.png">
+    <!-- SECURITY: Content Security Policy (CSP). Nur die Pipeline-Domain (Karte, Daten) und Nominatim (Ortsname als Titel-Vorschlag). MapLibre braucht Worker aus blob: bzw. der eigenen Datei. -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: blob:;
+        font-src 'self';
+        worker-src 'self' blob:;
+        connect-src 'self' https://pipeline.openfiremap.org https://nominatim.openstreetmap.org blob: http://localhost:* ws://localhost:*;
+    ">
   <style>
+    #ortsplan-notice { max-width: 34rem; margin: 12vh auto; padding: 0 1.25rem; font: 16px/1.6 system-ui, sans-serif; color: #111; }
+    #ortsplan-notice a { color: #1d4ed8; }
+    [hidden] { display: none !important; }
     body { margin: 0; font: 14px system-ui, sans-serif; background: #ddd; }
     #bar { position: sticky; top: 0; z-index: 5; background: #fff; padding: 8px 12px; border-bottom: 1px solid #bbb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     #bar label { display: flex; gap: 4px; align-items: center; }
@@ -13,7 +30,8 @@
   </style>
 </head>
 <body>
-  <form id="ctl" method="get">
+  <main id="ortsplan-notice" hidden></main>
+  <form id="ctl" method="get" data-ortsplan-app>
     <div id="bar">
       <label>Maßstab 1:<select name="scale"><option>2500</option><option>5000</option><option>10000</option></select></label>
       <label>Papier<select name="paper"><option value="a4l">A4 quer</option><option value="a4p">A4 hoch</option><option value="a3l">A3 quer</option><option value="a3p">A3 hoch</option><option value="a2l">A2 quer</option><option value="a2p">A2 hoch</option><option value="a1l">A1 quer</option><option value="a1p">A1 hoch</option></select></label>
@@ -22,7 +40,7 @@
       <label>Verzeichnis<select name="index"><option value="1">an</option><option value="0">aus</option></select></label>
       <label>Lage<select name="side"><option value="none">auf der Karte</option><option value="right">rechts</option><option value="left">links</option><option value="top">oben</option><option value="bottom">unten</option></select></label>
       <label>Kartenformat<select name="fmt"><option value="fill">Papier füllen</option><option value="1:1">Quadrat 1:1</option><option value="3:2">Quer 3:2</option><option value="4:3">Quer 4:3</option><option value="2:3">Hoch 2:3</option><option value="3:4">Hoch 3:4</option></select></label>
-      <a id="pick-link" href="/pick.html" title="Ausschnitt auf einer Übersichtskarte wählen">Ausschnitt wählen …</a>
+      <a id="pick-link" href="/ortsplan/" title="Ausschnitt auf einer Übersichtskarte wählen">Ausschnitt wählen …</a>
       <label>Verz.-Spalten<input name="icols" type="number" min="0" max="6" step="1" style="width:3.5em" title="0 = automatisch"></label>
       <label>Verz.-Schrift<input name="isize" type="number" step="0.1" min="0.5" max="3" style="width:4.5em"></label>
       <label>Ortsname<input name="place" type="text" style="width:11em" title="Zeile unter der Überschrift"></label>
@@ -35,8 +53,8 @@
       <span id="info"></span>
     </div>
   </form>
-  <div id="map"></div>
-  <div id="out"></div>
-  <script type="module" src="./main.js"></script>
+  <div id="map" data-ortsplan-app></div>
+  <div id="out" data-ortsplan-app></div>
+  <script type="module" src="/src/js/ortsplan/start-blatt.js"></script>
 </body>
 </html>

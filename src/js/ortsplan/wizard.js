@@ -4,7 +4,12 @@
 // Karte (Verschieben, Zoom) und Rahmen sind getrennt: der Rahmen klebt am Ort (Mitte in Grad), nicht am Bildschirm.
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+// Der Worker ist bei maplibre-gl 6 eine eigene Datei; ?url lässt Vite sie in die Auslieferung (assets/) übernehmen, sonst fehlt sie im Build
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { Protocol, PMTiles } from "pmtiles";
+import { Config } from "../config.js";
+import { APP_VERSION } from "../version.js";
+import { getSources, SHEET_PATH } from "./sources.js";
 import { buildStyle } from "./style.js";
 import { PAPER_MM, ALL_SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES, parseFormat } from "./layout.js";
 import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset, mapSizeMm, MAP_MARGIN, snapToFrameInset, EDGE_INSET, EDGE_SNAP, sourceSize } from "./freelayout.js";
@@ -12,12 +17,13 @@ import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parse
 
 const q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
-const areaName = (q.get("area") || "").replace(/[^a-z0-9-]/gi, "");
-let areaInfo = null;
-if (areaName) { try { areaInfo = await (await fetch(`/${areaName}.json`)).json(); } catch { /* ohne Beschreibung */ } }
-const baseFile = areaName ? `${areaName}.pmtiles` : "neunkirchen.pmtiles";
-const startLat = +(q.get("lat") || areaInfo?.lat || 49.5252);
-const startLon = +(q.get("lon") || areaInfo?.lon || 11.3181);
+const SRC = await getSources(q); // Quellen: im Betrieb die Pipeline-Domain, in der Entwicklung mit ?area= lokale Dateien (sources.js)
+$("rev").textContent = `Version ${APP_VERSION}${SRC.dev ? " (Entwicklung)" : ""}`;
+const areaName = SRC.dev ? SRC.area : "";
+const areaInfo = SRC.info;
+const baseUrl = SRC.basemapUrl;
+const startLat = +(q.get("lat") || areaInfo?.lat || Config.defaultCenter[0]);
+const startLon = +(q.get("lon") || areaInfo?.lon || Config.defaultCenter[1]);
 
 // ---- Einstellungen: Standard, zuletzt benutzt (localStorage, darf fehlen), Adresse gewinnt ----
 const KEY = "ofm_ortsplan_wizard";
@@ -63,13 +69,14 @@ for (const s of NICE_SCALES) $("scale").add(new Option(s.toLocaleString("de-DE")
 
 // ---- Karte ----
 const protocol = new Protocol();
+maplibregl.setWorkerUrl(new URL(workerUrl, location.href).href);
 maplibregl.addProtocol("pmtiles", protocol.tile);
 let header = null;
-try { header = await new PMTiles(`${location.origin}/${baseFile}`).getHeader(); } catch { /* ohne Abdeckung */ }
+try { header = await new PMTiles(baseUrl).getHeader(); } catch { /* ohne Abdeckung */ }
 
 const map = new maplibregl.Map({
   container: "map",
-  style: buildStyle({ scale: 10000, mode: "plan", pmtilesUrl: `${location.origin}/${baseFile}` }),
+  style: buildStyle({ scale: 10000, mode: "plan", pmtilesUrl: baseUrl }),
   center: [startLon, startLat],
   zoom: 14,
   maxZoom: 19,
@@ -205,7 +212,7 @@ function goLink() {
   if (areaName) p.set("area", areaName);
   if (T.place) p.set("place", T.place);
   if (T.title) p.set("title", T.title);
-  return `/?${p}`;
+  return `${SHEET_PATH}?${p}`;
 }
 
 function updateText() {
