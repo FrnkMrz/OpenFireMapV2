@@ -366,7 +366,7 @@ try {
   {
     const rectOf = (q) => page.evaluate((sel) => { const r = document.querySelector(sel).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, q);
     const handleFree = () => page.evaluate(() => { const r = document.getElementById("pv-map-rz").getBoundingClientRect(); return !!document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest("#pv-map-rz"); });
-    const growBy = async (dx, dy) => { const z = await page.locator("#pv-map-rz").boundingBox(); await page.mouse.move(z.x + z.width / 2, z.y + z.height / 2); await page.mouse.down(); await page.mouse.move(z.x + z.width / 2 + dx, z.y + z.height / 2 + dy, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300); };
+    const growBy = async (dx, dy) => { await page.evaluate(() => document.getElementById("prev").scrollIntoView({ block: "center" })); /* sonst liegt die Statusleiste unten ueber dem Griff */ const z = await page.locator("#pv-map-rz").boundingBox(); await page.mouse.move(z.x + z.width / 2, z.y + z.height / 2); await page.mouse.down(); await page.mouse.move(z.x + z.width / 2 + dx, z.y + z.height / 2 + dy, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300); };
     await page.goto(`${BASE}/pick.html?paper=a3l&side=none&scale=5000`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
     await page.click('.st[data-s="1"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
@@ -383,7 +383,8 @@ try {
     const h0 = await rectOf("#pv-map");
     await growBy(400, 300);
     const h1 = await rectOf("#pv-map");
-    check(Math.abs(h1.w - h0.w) < 2, `Bloecke im Weg und nicht auf der Karte erlaubt: die Karte waechst nicht ueber sie hinweg (${Math.round(h0.w)} -> ${Math.round(h1.w)} px)`);
+    const blk = await rectOf("#pv-b-legend");
+    check(h1.x + h1.w <= blk.x + 2, `Bloecke im Weg und nicht auf der Karte erlaubt: die Karte waechst nicht ueber sie hinweg (rechte Kante ${Math.round(h1.x + h1.w)} <= Legende ${Math.round(blk.x)} px)`);
     await page.check("#c-onmap");
     await page.locator("#prev").scrollIntoViewIfNeeded();
     const g0 = await rectOf("#pv-map");
