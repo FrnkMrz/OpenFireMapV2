@@ -219,7 +219,7 @@ try {
       const sizeInfo = async () => { const m = /Kartenfenster (\d+) × (\d+) mm/.exec(await page.textContent("#size-info")); return m ? { w: +m[1], h: +m[2] } : null; };
       const rectOf = (q) => page.evaluate((sel) => { const r = document.querySelector(sel).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, q);
       const full = await sizeInfo(), m0 = await rectOf("#pv-map"), sc0 = (await st()).scale;
-      const rz = await page.locator("#pv-map .rz").boundingBox();
+      const rz = await page.locator("#pv-map-rz").boundingBox();
       await page.mouse.move(rz.x + rz.width / 2, rz.y + rz.height / 2); await page.mouse.down();
       await page.mouse.move(rz.x + rz.width / 2 - 70, rz.y + rz.height / 2 - 50, { steps: 8 }); await page.mouse.up();
       await page.waitForTimeout(300);
@@ -228,21 +228,21 @@ try {
       check(!!z && +z[1] < 0.95 && +z[2] < 0.95, `Link traegt die Kartengroesse: ${z && z[0]}`);
       check(small && full && small.w < full.w && small.h < full.h && (await st()).scale === sc0, `Fenster ${full.w}x${full.h} -> ${small && small.w}x${small && small.h} mm, Massstab bleibt 1:${sc0}`);
       await page.mouse.move(rz.x - 70 + rz.width / 2, rz.y - 50 + rz.height / 2);
-      const rz1 = await page.locator("#pv-map .rz").boundingBox();
+      const rz1 = await page.locator("#pv-map-rz").boundingBox();
       await page.mouse.move(rz1.x + rz1.width / 2, rz1.y + rz1.height / 2); await page.mouse.down();
       await page.mouse.move(rz1.x + 900, rz1.y + 900, { steps: 8 }); await page.mouse.up();
       await page.waitForTimeout(300);
       const big = await sizeInfo();
       check(big && big.w <= full.w && big.h <= full.h && await inside("#pv-map"), `weit aufgezogen: nie groesser als das volle Fenster (${big && big.w}x${big && big.h} mm), bleibt auf dem Blatt`);
       // klein ziehen, nach unten rechts schieben, dann aufziehen: die linke obere Ecke bleibt stehen (die Lage wird nicht nachgeschoben)
-      const rz2 = await page.locator("#pv-map .rz").boundingBox();
+      const rz2 = await page.locator("#pv-map-rz").boundingBox();
       await page.mouse.move(rz2.x + rz2.width / 2, rz2.y + rz2.height / 2); await page.mouse.down();
       await page.mouse.move(rz2.x - 160, rz2.y - 130, { steps: 8 }); await page.mouse.up();
       await page.focus("#pv-map");
       for (let i = 0; i < 70; i++) await page.keyboard.press("ArrowRight");
       for (let i = 0; i < 70; i++) await page.keyboard.press("ArrowDown");
       await page.waitForTimeout(300);
-      const m2 = await rectOf("#pv-map"), rz3 = await page.locator("#pv-map .rz").boundingBox();
+      const m2 = await rectOf("#pv-map"), rz3 = await page.locator("#pv-map-rz").boundingBox();
       await page.mouse.move(rz3.x + rz3.width / 2, rz3.y + rz3.height / 2); await page.mouse.down();
       await page.mouse.move(rz3.x + 140, rz3.y + 110, { steps: 8 }); await page.mouse.up();
       await page.waitForTimeout(300);
@@ -275,7 +275,7 @@ try {
     const g = await grabOn("#pv-map");
     check(!!g, "feste Leiste: Greifpunkt auf der Karte gefunden");
     {
-      const rz = await page.locator("#pv-map .rz").boundingBox();
+      const rz = await page.locator("#pv-map-rz").boundingBox();
       await page.mouse.move(rz.x + rz.width / 2, rz.y + rz.height / 2); await page.mouse.down();
       await page.mouse.move(rz.x + rz.width / 2 - 40, rz.y + rz.height / 2 - 10, { steps: 6 }); await page.mouse.up();
       await page.waitForTimeout(300);
@@ -359,6 +359,33 @@ try {
   const pT = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos");
   check(sT.manual === false && sT.side === "right", `t/m-Adresse: feste Leiste bleibt (manual=${sT.manual}, side=${sT.side})`);
   check(/^t:[\d.]+,[\d.]+;m:[\d.]+,[\d.]+$/.test(pT || ""), `t/m-Adresse: Link traegt weiter nur Titel und Karte: ${pT}`);
+
+  // Karte groesser machen: der Griff liegt ueber allen Kaesten (auch ueber dem Verzeichnis am Kartenrand); bei freier Anordnung waechst die Karte
+  // ueber das Fenster der Lage hinaus bis zum Papier, bei fester Leiste nur bis zu diesem Fenster
+  {
+    const rectOf = (q) => page.evaluate((sel) => { const r = document.querySelector(sel).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, q);
+    const handleFree = () => page.evaluate(() => { const r = document.getElementById("pv-map-rz").getBoundingClientRect(); return !!document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest("#pv-map-rz"); });
+    const growBy = async (dx, dy) => { const z = await page.locator("#pv-map-rz").boundingBox(); await page.mouse.move(z.x + z.width / 2, z.y + z.height / 2); await page.mouse.down(); await page.mouse.move(z.x + z.width / 2 + dx, z.y + z.height / 2 + dy, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300); };
+    await page.goto(`${BASE}/pick.html?paper=a3l&side=none&scale=5000`);
+    await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+    await page.click('.st[data-s="1"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
+    check(await handleFree(), "Ohne Leiste: der Griff zum Groessemachen liegt ueber dem Verzeichnis und ist erreichbar");
+    await page.goto(`${BASE}/pick.html?paper=a3l&side=right&scale=5000`);
+    await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+    await page.click('.st[data-s="1"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
+    const f0 = await rectOf("#pv-map");
+    await growBy(400, 300);
+    const f1 = await rectOf("#pv-map");
+    check(Math.abs(f1.w - f0.w) < 2 && Math.abs(f1.h - f0.h) < 2, `feste Leiste: nicht groesser als das Fenster der Lage (${Math.round(f0.w)}x${Math.round(f0.h)} -> ${Math.round(f1.w)}x${Math.round(f1.h)} px)`);
+    await page.check("#c-manual");
+    await page.locator("#prev").scrollIntoViewIfNeeded();
+    const g0 = await rectOf("#pv-map");
+    await growBy(400, 300);
+    const g1 = await rectOf("#pv-map"), pv = await rectOf("#prev");
+    check(g1.w > g0.w + 15 && Math.abs(g1.x - g0.x) < 2 && Math.abs(g1.y - g0.y) < 2 && g1.x + g1.w <= pv.x + pv.w + 1 && g1.y + g1.h <= pv.y + pv.h + 1, `freie Anordnung: Karte waechst ueber das Fenster der Lage hinaus (${Math.round(g0.w)} -> ${Math.round(g1.w)} px), Ecke bleibt, Karte bleibt auf dem Blatt`);
+    const zz = /;z:([\d.]+),([\d.]+)/.exec(new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos") || "");
+    check(!!zz && +zz[1] > 0.9, `Link traegt die grosse Kartengroesse: ${zz && zz[0]}`);
+  }
 } catch (e) {
   failed++;
   console.log("FEHLER ", String(e.message).slice(0, 300));

@@ -265,3 +265,14 @@ test("computeLayout mit size: das Mindestmass haelt das Seitenverhaeltnis (feste
   const wide = computeLayout({ wMm: 420, hMm: 297, side: "none", fmt: "3:2", size: { w: 9999, h: 6666 } });
   assert.ok(Math.abs(wide.frame.w / wide.frame.h - 1.5) < 1e-9, "zu gross: gemeinsam auf das Fenster der Lage, Verhaeltnis bleibt");
 });
+
+test("computeLayout mit size und sizeMax: bei freier Anordnung darf die Karte ueber das Fenster der Lage hinaus bis sizeMax wachsen", () => {
+  const base = computeLayout({ wMm: 420, hMm: 297, side: "right" });
+  const paper = { w: 420 - 12, h: 297 - 12 };
+  const grown = computeLayout({ wMm: 420, hMm: 297, side: "right", size: { w: 9999, h: 9999 }, sizeMax: paper });
+  assert.ok(grown.frame.w === paper.w && grown.frame.h === paper.h && grown.frame.w > base.frame.w, "bis zum Papier");
+  const part = computeLayout({ wMm: 420, hMm: 297, side: "right", size: { w: base.frame.w + 40, h: base.frame.h }, sizeMax: paper });
+  assert.ok(part.frame.w === base.frame.w + 40, "dazwischen: wie gewuenscht");
+  const limited = computeLayout({ wMm: 420, hMm: 297, side: "right", size: { w: 9999, h: 9999 } });
+  assert.deepEqual(limited.frame, base.frame, "ohne sizeMax: hoechstens das Fenster der Lage (feste Leiste)");
+});
