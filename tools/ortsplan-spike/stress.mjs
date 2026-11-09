@@ -9,7 +9,7 @@ const BASE = process.env.SPIKE_URL || "http://127.0.0.1:5173"; // Branch-Server:
 await page.goto(`${BASE}${SHEET}?${withArea("fire=0&scale=10000&paper=a4l&dpi=96&sheet=0")}`);
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 120000 });
 const res = await page.evaluate(async () => {
-  const { composeSheet } = await import("/sheet.js");
+  const { composeSheet } = await import("/src/js/ortsplan/sheet.js");
   const names = [];
   for (let i = 0; i < 400; i++) names.push(i % 7 === 0 ? `Neunkirchener Straße ${i}` : i % 11 === 0 ? `Hauptmannsgrünbachstraßenerweiterung ${i}` : `Teststraße ${i}`);
   const feats = names.map((name, i) => ({ properties: { name, kind: "minor_road" }, geometry: { type: "LineString", coordinates: [[(i * 13) % 700, (i * 29) % 600], [((i * 13) % 700) + 300, ((i * 29) % 600) + 40]] } }));

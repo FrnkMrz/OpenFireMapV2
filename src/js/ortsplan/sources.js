@@ -34,14 +34,17 @@ async function build(q) {
   const root = Config.pipeline.url;
   const basemapMeta = await getJson(`${root}/${Config.ortsplan.basemapManifest}`, Config.ortsplan.manifestTimeoutMs);
   const file = typeof basemapMeta?.file === "string" && !basemapMeta.file.includes("..") && !basemapMeta.file.startsWith("/") ? basemapMeta.file : null;
+  const fireMeta = await getJson(`${root}/metadata.json`, Config.ortsplan.manifestTimeoutMs);
+  // Wie die Hauptkarte (pipeline.js): Build-Zeit als ?v=, damit nach einem Neubau nie eine ältere Datei aus dem Zwischenspeicher kommt
+  const fireVersion = typeof fireMeta?.generated_at === "string" ? fireMeta.generated_at : null;
   return {
     dev: false,
     area: "",
     info: null,
     basemapUrl: file ? `${root}/${file}` : null,
     basemapMeta: file ? basemapMeta : null,
-    fireUrl: `${root}/${Config.pipeline.pmtilesFile}`,
+    fireUrl: `${root}/${Config.pipeline.pmtilesFile}${fireVersion ? `?v=${encodeURIComponent(fireVersion)}` : ""}`,
     onewayUrl: Config.ortsplan.onewayFile ? `${root}/${Config.ortsplan.onewayFile}` : null,
-    fireMeta: await getJson(`${root}/metadata.json`, Config.ortsplan.manifestTimeoutMs),
+    fireMeta,
   };
 }
