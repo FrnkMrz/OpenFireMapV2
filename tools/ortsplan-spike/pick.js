@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol, PMTiles } from "pmtiles";
 import { buildStyle } from "./style.js";
 import { PAPER_MM, ALL_SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES, parseFormat } from "./layout.js";
-import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset, mapSizeMm } from "./freelayout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset, mapSizeMm, MAP_MARGIN } from "./freelayout.js";
 import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE, RATIO_MIN, RATIO_MAX } from "./framegeo.js";
 
 const q = new URLSearchParams(location.search);
@@ -104,9 +104,11 @@ function layout() {
   const base = computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt() });
   // eigene Groesse des Kartenfensters (Schritt 2, an der Ecke ziehen): gilt nur zu dem Layout, mit dem sie gemerkt wurde (wie die Lagen der Bloecke)
   const ms = S.pos && S.posKey === layoutKey() ? S.pos.msize : null;
-  const size = ms ? mapSizeMm(ms, { W: wMm, H: hMm, base: base.frame, ratio: fixedRatio() }) : null;
-  const L = size ? computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt(), size }) : base;
-  return { wMm, hMm, L, base, ground: groundSizeM(L.frame, S.scale) };
+  // Hoechstgroesse: bei fester Leiste das Fenster der Lage, bei freier Anordnung (keine Leiste im Weg) das Papier abzueglich Mindestrand
+  const sizeBase = isManual() ? { w: wMm - 2 * MAP_MARGIN * base.ui, h: hMm - 2 * MAP_MARGIN * base.ui } : base.frame;
+  const size = ms ? mapSizeMm(ms, { W: wMm, H: hMm, base: sizeBase, ratio: fixedRatio() }) : null;
+  const L = size ? computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt(), size, sizeMax: sizeBase }) : base;
+  return { wMm, hMm, L, base, sizeBase, ground: groundSizeM(L.frame, S.scale) };
 }
 // Freier Rahmen: Seitenverhältnis zuerst vom Blatt (Papier füllen), danach vom Rahmen
 if (!(S.ratio > 0)) { const f = computeLayout({ wMm: PAPER_MM[paperKey()][0], hMm: PAPER_MM[paperKey()][1], side: S.side, fmt: "fill" }).frame; S.ratio = f.w / f.h; }
@@ -234,6 +236,7 @@ function drawBlocks(manual, L, wMm, hMm) {
   const mapAt = { x: pos.map.x * wMm, y: pos.map.y * hMm };
   place($("pv-map"), { ...mapAt, w: L.frame.w, h: L.frame.h });
   place($("pv-title"), { x: pos.title.x * wMm, y: pos.title.y * hMm, w: t.w * L.ui, h: t.h * L.ui });
+  $("pv-map-rz").style.left = `${((mapAt.x + L.frame.w) / wMm) * 100}%`; $("pv-map-rz").style.top = `${((mapAt.y + L.frame.h) / hMm) * 100}%`; // Griff an der Ecke unten rechts
   place($("pv-panel"), { x: L.panel.x + (mapAt.x - L.frame.x), y: L.panel.y + (mapAt.y - L.frame.y), w: L.panel.w, h: L.panel.h }); // die Leiste folgt der Karte
   for (const [el, label] of [[$("pv-title"), "Titel verschieben"], [$("pv-map"), "Karte verschieben"]]) {
     el.classList.add("mv"); el.tabIndex = 0; el.setAttribute("role", "button"); el.setAttribute("aria-label", label);
@@ -317,27 +320,35 @@ function movePos(name, dx, dy, resize, raw = null) {
   if (name === "map" && resize) {
     // Groesse des Kartenfensters aendern (linke obere Ecke bleibt): Massstab bleibt, das Fenster zeigt mehr oder weniger Gebiet.
     // Festes Kartenformat: das Verhaeltnis bleibt; sonst frei in beiden Richtungen. Nie groesser als das Fenster der Lage.
-    const { L, base, wMm, hMm } = layout();
+    const { L, sizeBase, wMm, hMm } = layout();
     const ratio = fixedRatio();
     let w = L.frame.w + dx * wMm, h = L.frame.h + dy * hMm;
     if (ratio) { w = L.frame.w + (dx * wMm + dy * hMm * ratio) / 2; h = w / ratio; }
-    const want = mapSizeMm({ w: w / wMm, h: h / hMm }, { W: wMm, H: hMm, base: base.frame, ratio });
+    const want = mapSizeMm({ w: w / wMm, h: h / hMm }, { W: wMm, H: hMm, base: sizeBase, ratio });
     // Die linke obere Ecke bleibt stehen: groesser als der Platz ab der jetzigen Lage (mit Rand, bei fester Leiste samt Leiste) wird es nicht,
     // sonst verschoebe das Klemmen der Lage die Ecke
     const at = { x: pos.map.x * wMm, y: pos.map.y * hMm }, cur = { w: L.frame.w, h: L.frame.h };
+    const prev = S.pos, prevKey = S.posKey, basePos = ownPos() || pos;
+    const setSize = (z) => { S.pos = { ...basePos, msize: { w: z.w / wMm, h: z.h / hMm } }; S.posKey = layoutKey(); };
     const fits = (z) => {
-      const l2 = computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt(), size: z });
+      const l2 = computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt(), size: z, sizeMax: sizeBase });
       const want2 = { dx: at.x - l2.frame.x, dy: at.y - l2.frame.y };
       const d = clampGroupOffset({ frame: l2.frame, panel: isManual() ? null : l2.panel, W: wMm, H: hMm, ui: l2.ui, ...want2 });
-      return Math.abs(d.dx - want2.dx) < 1e-6 && Math.abs(d.dy - want2.dy) < 1e-6;
+      if (Math.abs(d.dx - want2.dx) > 1e-6 || Math.abs(d.dy - want2.dy) > 1e-6) return false;
+      // ohne Erlaubnis keine Bloecke auf der Karte: ein groesseres Fenster darf keinen Block ueberdecken
+      setSize(z);
+      return !(isManual() && !onMapOk() && anyOnMap(curPos()));
     };
-    const lerp = (t) => ({ w: cur.w + (want.w - cur.w) * t, h: cur.h + (want.h - cur.h) * t });
-    let sz = want;
-    if (!fits(want)) { let lo = 0, hi = 1; for (let i = 0; i < 16; i++) { const mid = (lo + hi) / 2; if (fits(lerp(mid))) lo = mid; else hi = mid; } sz = lerp(lo); }
-    const prev = S.pos, prevKey = S.posKey;
-    S.pos = { ...(ownPos() || pos), msize: { w: sz.w / wMm, h: sz.h / hMm } }; S.posKey = layoutKey();
-    // ohne Erlaubnis keine Bloecke auf der Karte: ein groesseres Fenster darf keinen Block ueberdecken
-    if (isManual() && !onMapOk() && anyOnMap(curPos())) { S.pos = prev; S.posKey = prevKey; }
+    // Groesstes Mass auf dem Weg von jetzt zum Wunsch, das noch passt. Festes Kartenformat: Breite und Hoehe gemeinsam (das Verhaeltnis bleibt);
+    // sonst jede Richtung fuer sich, damit eine Richtung am Rand die andere nicht blockiert
+    const search = (make) => { if (fits(make(1))) return make(1); let lo = 0, hi = 1; for (let i = 0; i < 16; i++) { const mid = (lo + hi) / 2; if (fits(make(mid))) lo = mid; else hi = mid; } return make(lo); };
+    let sz;
+    if (ratio) sz = search((t) => ({ w: cur.w + (want.w - cur.w) * t, h: cur.h + (want.h - cur.h) * t }));
+    else {
+      const w1 = search((t) => ({ w: cur.w + (want.w - cur.w) * t, h: cur.h })).w;
+      sz = search((t) => ({ w: w1, h: cur.h + (want.h - cur.h) * t }));
+    }
+    if (fits(sz)) setSize(sz); else { S.pos = prev; S.posKey = prevKey; } // wuchs nichts, bleibt alles wie es war
     return;
   }
   // Wo es nicht auf die Karte darf, gilt die Bewegung nur, solange der Block ausserhalb des Kartenfensters bleibt (sonst wenigstens eine Achse)
