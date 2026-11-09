@@ -38,10 +38,11 @@ export const MIN_FRAME_MM = 40;
 
 /**
  * @param {{wMm:number,hMm:number,side?:string,fmt?:string,size?:{w:number,h:number}}} o
- *   size: eigene (kleinere) Groesse des Kartenfensters in mm; die linke obere Ecke bleibt, die Leiste rueckt mit (nie groesser als das Fenster der Lage)
+ *   size: eigene Groesse des Kartenfensters in mm; die linke obere Ecke bleibt, die Leiste rueckt mit. Hoechstens das Fenster der Lage, oder sizeMax {w, h}
+ *   (mm), wenn die Leiste nicht im Weg steht (freie Anordnung: dann darf die Karte bis zum Papierrand wachsen)
  * @returns {{ui:number, frame:{x,y,w,h}, panel:{x,y,w,h}, ratio:number|null}}
  */
-export function computeLayout({ wMm, hMm, side = "right", fmt = "fill", size = null }) {
+export function computeLayout({ wMm, hMm, side = "right", fmt = "fill", size = null, sizeMax = null }) {
   const ui = Math.max(1, Math.max(wMm, hMm) / 420); // A3 = 1, A2 = 1,4, A1 = 2
   // "none" (Auf der Karte): Legende, Massstab, Nordpfeil und Quelle liegen auf der Karte, nur das Verzeichnis steht ausserhalb: bei Querformat in einer
   // Spalte rechts, bei Hochformat in einem Streifen unten (dieselbe Aufteilung wie die Leiste rechts bzw. unten)
@@ -88,7 +89,7 @@ export function computeLayout({ wMm, hMm, side = "right", fmt = "fill", size = n
     // Zu klein: beide Seiten gemeinsam auf das Minimum (das Seitenverhaeltnis, auch eines festen Kartenformats, bleibt); zu gross: auf das Fenster der Lage
     let w = Math.max(size.w, 0.001), h = Math.max(size.h, 0.001);
     const lift = Math.max(1, Math.min(MIN_FRAME_MM, frame.w) / w, Math.min(MIN_FRAME_MM, frame.h) / h);
-    w = Math.min(frame.w, w * lift); h = Math.min(frame.h, h * lift);
+    w = Math.min(sizeMax?.w ?? frame.w, w * lift); h = Math.min(sizeMax?.h ?? frame.h, h * lift);
     frame = { ...frame, w, h };
     if (sg === "right") panel = { ...panel, x: frame.x + frame.w + 6.5 * ui };
     else if (sg === "bottom") panel = { ...panel, y: frame.y + frame.h + 14 * ui };

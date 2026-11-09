@@ -290,3 +290,14 @@ test("Quellenangabe: ein Streifen (eine Zeile) so breit wie der Text, bei schmal
   assert.equal(estimateSizes().source.w, 190, "ohne Kartenbreite: Laenge der Zeile");
   assert.equal(attributionStrip("2026-11-08T21:21:00Z", "2026-11-09T00:00:00Z"), "© OpenStreetMap contributors (ODbL; https://www.openstreetmap.org/copyright) · Karte: Protomaps · Daten: OpenFireMap.org · Stand: Feuerwehr-Daten 08.11.2026 · Basiskarte 09.11.2026");
 });
+
+test("computeLayout mit size und sizeMax: bei freier Anordnung darf die Karte ueber das Fenster der Lage hinaus bis sizeMax wachsen", () => {
+  const base = computeLayout({ wMm: 420, hMm: 297, side: "right" });
+  const paper = { w: 420 - 12, h: 297 - 12 };
+  const grown = computeLayout({ wMm: 420, hMm: 297, side: "right", size: { w: 9999, h: 9999 }, sizeMax: paper });
+  assert.ok(grown.frame.w === paper.w && grown.frame.h === paper.h && grown.frame.w > base.frame.w, "bis zum Papier");
+  const part = computeLayout({ wMm: 420, hMm: 297, side: "right", size: { w: base.frame.w + 40, h: base.frame.h }, sizeMax: paper });
+  assert.ok(part.frame.w === base.frame.w + 40, "dazwischen: wie gewuenscht");
+  const limited = computeLayout({ wMm: 420, hMm: 297, side: "right", size: { w: 9999, h: 9999 } });
+  assert.deepEqual(limited.frame, base.frame, "ohne sizeMax: hoechstens das Fenster der Lage (feste Leiste)");
+});
