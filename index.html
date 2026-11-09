@@ -577,8 +577,8 @@
                         kein Tracking oder Analyse-Tools.
                     </p>
                     <p class="leading-relaxed text-slate-400 mb-2">
-                        <strong>Speicherung auf Ihrem Gerät:</strong> Spracheinstellung, Cache-Dauer und bereits geladene
-                        Kartendaten werden im Browser (localStorage/IndexedDB) gespeichert, damit die Karte schneller und
+                        <strong>Speicherung auf Ihrem Gerät:</strong> Spracheinstellung, Cache-Dauer, bereits geladene
+                        Kartendaten und beim Ortsplan die zuletzt gewählten Einstellungen (Papier, Maßstab, Anordnung u. a.) werden im Browser (localStorage/IndexedDB) gespeichert, damit die Karte schneller und
                         schonender lädt. Diese Daten verlassen Ihr Gerät nicht. Den Cache können Sie in den Einstellungen abschalten;
                         alles lässt sich über die Browser-Einstellungen („Websitedaten löschen“) entfernen
                         (§ 25 Abs. 2 Nr. 2 TDDDG).
@@ -595,7 +595,7 @@
                     <ul class="list-disc list-inside mt-2 space-y-1 text-slate-400">
                         <li><strong>GitHub Pages</strong> (GitHub Inc., USA): Hosting dieser Webseite.</li>
                         <li><strong>Cloudflare</strong> (Cloudflare Inc., USA): Auslieferung der vorberechneten
-                            Feuerwehr-Daten über pipeline.openfiremap.org.</li>
+                            Feuerwehr-Daten und der Hintergrundkarte des Ortsplans über pipeline.openfiremap.org.</li>
                         <li><strong>Karten-Server</strong> (OpenStreetMap, CARTO, Esri, OpenTopoMap, BayernAtlas):
                             Hintergrundkarten, je nach gewählter Ebene.</li>
                         <li><strong>Overpass API</strong> (overpass-api.de, betrieben vom FOSSGIS e.V., Deutschland;
@@ -603,8 +603,16 @@
                             und Defibrillatoren, wenn keine vorberechneten Daten verfügbar sind, sowie Abgleich der
                             vorberechneten Daten mit den neuesten Änderungen für den angezeigten Kartenausschnitt.</li>
                         <li><strong>Nominatim</strong> (OpenStreetMap Foundation): Ortssuche und Ortsname als Vorschlag
-                            für den Titel beim Export (dafür wird die Kartenmitte übertragen).</li>
+                            für den Titel beim Export und im Ortsplan (dafür wird die Kartenmitte übertragen).</li>
                     </ul>
+                    <p class="leading-relaxed text-slate-400 mt-2 mb-2">
+                        <strong>Ortsplan</strong> (Seite „Ortsplan erstellen“, nur über einen Link erreichbar): PDF und PNG
+                        entstehen vollständig in Ihrem Browser, es wird nichts hochgeladen. Hintergrundkarte und
+                        Feuerwehr-Daten kommen von pipeline.openfiremap.org (Cloudflare), die Schriften von dieser Seite.
+                        Die gewählten Einstellungen, die Kartenmitte und eingegebene Texte (Ortsname, Überschrift) stehen in
+                        der Adresse der Seite; wie bei jeder Adresse erhält sie beim Aufruf der Hosting-Anbieter (GitHub
+                        Pages). Geben Sie deshalb keine personenbezogenen Angaben als Überschrift ein.
+                    </p>
                     <p class="leading-relaxed text-slate-400 mt-2 mb-2">
                         Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer funktionierenden
                         Karte). Bei Anbietern in den USA (GitHub, Cloudflare, Esri, CARTO) kann eine Übermittlung dorthin
@@ -629,8 +637,8 @@
                         and no tracking or analytics tools.
                     </p>
                     <p class="leading-relaxed text-slate-400 mb-2">
-                        <strong>Storage on your device:</strong> Language, cache duration and already loaded map data are
-                        stored in your browser (localStorage/IndexedDB) so the map loads faster and with less load on
+                        <strong>Storage on your device:</strong> Language, cache duration, already loaded map data and, for the
+                        town plan, the settings you chose last (paper, scale, layout etc.) are stored in your browser (localStorage/IndexedDB) so the map loads faster and with less load on
                         public services. This data never leaves your device. You can switch the cache off in the settings and remove
                         everything via your browser settings ("clear site data").
                     </p>
@@ -646,7 +654,7 @@
                     <ul class="list-disc list-inside mt-2 space-y-1 text-slate-400">
                         <li><strong>GitHub Pages</strong> (GitHub Inc., USA): hosting of this website.</li>
                         <li><strong>Cloudflare</strong> (Cloudflare Inc., USA): delivery of the pre-computed fire service
-                            data via pipeline.openfiremap.org.</li>
+                            data and of the town plan's base map via pipeline.openfiremap.org.</li>
                         <li><strong>Map servers</strong> (OpenStreetMap, CARTO, Esri, OpenTopoMap, BayernAtlas): base
                             maps, depending on the selected layer.</li>
                         <li><strong>Overpass API</strong> (overpass-api.de, operated by FOSSGIS e.V., Germany; fallback
@@ -654,8 +662,16 @@
                             no pre-computed data is available, and matching the pre-computed data against the latest changes
                             for the displayed map area.</li>
                         <li><strong>Nominatim</strong> (OpenStreetMap Foundation): place search and the place name
-                            suggested as export title (the map centre is transmitted for this).</li>
+                            suggested as export title and in the town plan (the map centre is transmitted for this).</li>
                     </ul>
+                    <p class="leading-relaxed text-slate-400 mt-2 mb-2">
+                        <strong>Town plan</strong> (page "Ortsplan erstellen", reachable only via a link): PDF and PNG are
+                        created entirely in your browser, nothing is uploaded. Base map and fire service data come from
+                        pipeline.openfiremap.org (Cloudflare), the fonts from this site. The settings you chose, the map
+                        centre and any text you enter (place name, heading) are part of the page address; like any address
+                        it is received by the hosting provider (GitHub Pages) when the page is opened. Please do not enter
+                        personal data as the heading.
+                    </p>
                     <p class="leading-relaxed text-slate-400 mt-2 mb-2">
                         Legal basis is Art. 6(1)(f) GDPR (legitimate interest in a working map). Data may be transferred to
                         providers in the USA (GitHub, Cloudflare, Esri, CARTO); GitHub and Cloudflare are certified under
@@ -701,11 +717,19 @@
                                 class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Bayerische Vermessungsverwaltung</a>.
                         </li>
                         <li>
+                            <strong>Ortsplan (Hintergrundkarte):</strong> Daten &copy; OpenStreetMap-Mitwirkende (ODbL),
+                            aufbereitet mit <a href="https://protomaps.com/" target="_blank" rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Protomaps</a>;
+                            Schrift Noto Sans (SIL Open Font License 1.1).
+                        </li>
+                        <li>
                             <strong>Software-Bibliotheken:</strong> <a href="https://leafletjs.com/" target="_blank"
                                 rel="noopener noreferrer"
                                 class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Leaflet</a>, <a
                                 href="https://tailwindcss.com/" target="_blank" rel="noopener noreferrer"
-                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Tailwind CSS</a>.
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Tailwind CSS</a>, <a
+                                href="https://maplibre.org/" target="_blank" rel="noopener noreferrer"
+                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">MapLibre GL JS</a> (Ortsplan).
                         </li>
                     </ul>
                 </section>

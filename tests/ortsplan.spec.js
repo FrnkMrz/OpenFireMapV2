@@ -18,7 +18,7 @@ for (const path of PAGES) {
         await expect(notice).toBeVisible();
         await expect(notice.locator('h1')).toHaveText('Bitte am Computer öffnen');
         await expect(page.locator('[data-ortsplan-app]:visible')).toHaveCount(0);
-        await expect(notice.getByRole('link')).toHaveAttribute('href', '/');
+        await expect(notice.getByRole('link', { name: /Zur Karte/ })).toHaveAttribute('href', '/');
         await ctx.close();
     });
 }
@@ -58,4 +58,14 @@ test('Hinweisseite ist barrierefrei (axe)', async ({ page }) => {
     await expect(page.locator('#ortsplan-notice')).toBeVisible();
     const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
     expect(res.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
+});
+
+test('Impressum und Datenschutz sind von den Ortsplan-Seiten erreichbar und nennen den Ortsplan', async ({ page }) => {
+    await page.route(MANIFEST, (route) => route.fulfill({ status: 404, body: '' }));
+    await page.goto('/ortsplan/');
+    await page.getByRole('link', { name: 'Impressum und Datenschutz' }).click();
+    await expect(page).toHaveURL(/legal=1/);
+    const modal = page.locator('#legal-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('section[lang="de"]').filter({ hasText: 'localStorage' })).toContainText('Ortsplan');
 });

@@ -835,6 +835,9 @@ export function setupUI() {
         fallbacks: ['#data-info-btn'],
         close: closeDataInfoPopover
     });
+
+    // Direktlink aus den Ortsplan-Seiten: /?legal=1 öffnet „Info & Recht“ (Impressum, Datenschutz); die Adresse bleibt unverändert
+    if (new URLSearchParams(location.search).get('legal') === '1') toggleLegalModal();
 }
 
 /**
