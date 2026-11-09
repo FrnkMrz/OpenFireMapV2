@@ -167,7 +167,10 @@ function resolveAnchors(pos) {
     if (!r) continue;
     const fr = { x: (pos.map ? pos.map.x : L.frame.x / wMm) * wMm, y: (pos.map ? pos.map.y : L.frame.y / hMm) * hMm, w: L.frame.w, h: L.frame.h };
     const bw = r.w * wMm + 4 * L.ui, bh = r.h * hMm + 3 * L.ui; // sichtbarer Untergrund wie auf dem Blatt
-    pos[name] = { ...b, x: b.ar ? (fr.x + fr.w - S.inset * L.ui - bw + 2 * L.ui) / wMm : b.x, y: b.ab ? (fr.y + fr.h - S.inset * L.ui - bh + 1.5 * L.ui) / hMm : b.y };
+    // wie auf dem Blatt: nie ueber das Papier hinaus (ein breiter Block an einer kleinen Karte)
+    const x = b.ar ? Math.max(0, Math.min(fr.x + fr.w - S.inset * L.ui - bw + 2 * L.ui, wMm - r.w * wMm - 2 * L.ui)) / wMm : b.x;
+    const y = b.ab ? Math.max(0, Math.min(fr.y + fr.h - S.inset * L.ui - bh + 1.5 * L.ui, hMm - r.h * hMm - 2 * L.ui)) / hMm : b.y;
+    pos[name] = { ...b, x, y };
   }
 }
 /** Bei fester Leiste wandern Karte und Leiste gemeinsam: Lage der Karte (Anteil des Papiers) so klemmen, dass beide im Papier bleiben. */
