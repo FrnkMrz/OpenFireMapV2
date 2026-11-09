@@ -9,7 +9,7 @@ import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
 import { PAPER_MM, ALL_SIDES, NO_SIDE, computeLayout, NICE_SCALES } from "./layout.js";
 import { pdfFileName, buildPdf } from "./pdfout.js";
-import { parsePos, defaultPos, clampPos, blockDims, clampGroupOffset, mapSizeMm } from "./freelayout.js";
+import { parsePos, defaultPos, clampPos, blockDims, clampGroupOffset, mapSizeMm, MAP_MARGIN } from "./freelayout.js";
 import { indexNote } from "./indexnote.js";
 import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
 import { streetLabelPoints, clipLineToBox } from "./labelpoints.js";
@@ -71,11 +71,13 @@ const side = ALL_SIDES.includes(q.get("side")) ? q.get("side") : "right"; // "no
 const posParam = parsePos(q.get("pos"));
 const indexCols = Math.min(6, Math.max(0, Math.round(+(q.get("icols") || 0))));
 const baseLayout = computeLayout({ wMm, hMm, side, fmt });
-// Eigene Groesse des Kartenfensters (pos z:b,h): nie groesser als das Fenster der Lage; Massstab bleibt, das Fenster zeigt mehr oder weniger Gebiet
-const sizeMm = sheet && posParam?.msize ? mapSizeMm(posParam.msize, { W: wMm, H: hMm, base: baseLayout.frame }) : null;
-const { ui, frame, panel } = sizeMm ? computeLayout({ wMm, hMm, side, fmt, size: sizeMm }) : baseLayout;
 // Eigene Lagen in der Adresse: Titel (t) und Karte (m) gelten bei jeder Lage; die Bloecke (l, s, q, n, i) liegen nur dann frei, wenn welche genannt sind
 const blocksFree = side === NO_SIDE || !!(posParam && ["legend", "scale", "source", "north", "index"].some((k) => posParam[k]));
+// Eigene Groesse des Kartenfensters (pos z:b,h): Massstab bleibt, das Fenster zeigt mehr oder weniger Gebiet. Bei fester Leiste hoechstens das Fenster der Lage,
+// bei freier Anordnung bis zum Papierrand (Mindestrand der Planquadrat-Buchstaben)
+const sizeBase = blocksFree ? { w: wMm - 2 * MAP_MARGIN * baseLayout.ui, h: hMm - 2 * MAP_MARGIN * baseLayout.ui } : baseLayout.frame;
+const sizeMm = sheet && posParam?.msize ? mapSizeMm(posParam.msize, { W: wMm, H: hMm, base: sizeBase }) : null;
+const { ui, frame, panel } = sizeMm ? computeLayout({ wMm, hMm, side, fmt, size: sizeMm, sizeMax: sizeBase }) : baseLayout;
 const allPos = clampPos({ ...defaultPos({ paper, side, fmt, lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0" }), ...(posParam || {}) }, blockDims({ lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0", ui: Math.max(1, Math.max(...PAPER_MM[paper] || PAPER_MM.a4l) / 420), W: PAPER_MM[paper]?.[0] ?? PAPER_MM.a4l[0], H: PAPER_MM[paper]?.[1] ?? PAPER_MM.a4l[1], frame, title: q.get("title") || "", place: q.get("place") || "" })); // Titeltext wie im Assistenten: gleiche Schaetzung, gleiche Klemmung
 const freePos = blocksFree ? allPos : null;
 // Kartenfenster an seiner eigenen Lage (pos m:x,y): nur die Lage aendert sich, Groesse und Ausschnitt bleiben (der Rand haelt noch Platz fuer die Planquadrat-Buchstaben).
