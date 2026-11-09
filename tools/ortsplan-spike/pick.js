@@ -314,6 +314,7 @@ $("g-obg").replaceChildren(...[["white", "Weiß"], ["clear", "Durchsichtig"]].ma
   return b;
 }));
 // Kaesten ziehen (Maus, Finger) oder mit Pfeiltasten schieben; das Verzeichnis zusaetzlich an der Ecke unten rechts in der Groesse aendern
+const withoutAnchors = ({ ar, ab, ...rest }) => rest; // alte Rechts-/Unten-Anker verwerfen, alles andere (auch w und h des Verzeichnisses) behalten
 /** Block auf der Karte nahe am Kartenrand: rastet auf den eingestellten Abstand ein (Groesse geschaetzt; das Blatt rastet mit dem echten Mass nach). */
 function snapBlock(cand, name) {
   if (!["legend", "scale", "north", "source"].includes(name) || !(S.inset >= 0) || !cand[name]) return cand;
@@ -381,7 +382,7 @@ function movePos(name, dx, dy, resize, raw = null) {
       continue;
     }
     const base = !resize && raw?.cur ? raw.cur : b;
-    const cand = clampPos({ ...pos, [name]: resize ? { ...b, w: b.w + ax, h: b.h + ay } : { x: base.x + ax, y: base.y + ay } }, dimsNow()); // neue Lage ohne alte Anker
+    const cand = clampPos({ ...pos, [name]: resize ? { ...b, w: b.w + ax, h: b.h + ay } : { ...withoutAnchors(base), x: base.x + ax, y: base.y + ay } }, dimsNow()); // neue Lage ohne alte Anker (Breite und Hoehe des Verzeichnisses bleiben)
     if (onMapOk() || !isManual() || !overlapsMap(cand, name)) {
       if (raw && !resize) raw.cur = cand[name];
       S.pos = raw && !resize ? snapBlock(cand, name) : cand; S.posKey = layoutKey(); return; // feste Leiste: der Titel darf auch ueber der Karte stehen
