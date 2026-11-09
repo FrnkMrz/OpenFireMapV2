@@ -323,7 +323,8 @@ function snapBlock(cand, name) {
   const mm = { x: r.x * wMm - 2 * L.ui, y: r.y * hMm - 1.5 * L.ui, w: r.w * wMm + 4 * L.ui, h: r.h * hMm + 3 * L.ui }; // sichtbarer Untergrund wie auf dem Blatt
   const fr = { x: (cand.map ? cand.map.x : L.frame.x / wMm) * wMm, y: (cand.map ? cand.map.y : L.frame.y / hMm) * hMm, w: L.frame.w, h: L.frame.h };
   const s = snapToFrameInset(mm, fr, S.inset * L.ui, EDGE_SNAP * L.ui);
-  return { ...cand, [name]: { x: (s.x + 2 * L.ui) / wMm, y: (s.y + 1.5 * L.ui) / hMm } };
+  // rechts/unten eingerastet: als Anker merken, das Blatt rechnet diese Kante mit dem echten Mass
+  return { ...cand, [name]: { x: (s.x + 2 * L.ui) / wMm, y: (s.y + 1.5 * L.ui) / hMm, ...(s.ar ? { ar: true } : {}), ...(s.ab ? { ab: true } : {}) } };
 }
 // raw (nur beim Ziehen mit der Maus): ungerasterte Lage der Karte; sonst bliebe sie am Magneten kleben, weil jeder Schritt kleiner ist als sein Fang
 function movePos(name, dx, dy, resize, raw = null) {
@@ -380,7 +381,7 @@ function movePos(name, dx, dy, resize, raw = null) {
       continue;
     }
     const base = !resize && raw?.cur ? raw.cur : b;
-    const cand = clampPos({ ...pos, [name]: resize ? { ...b, w: b.w + ax, h: b.h + ay } : { ...base, x: base.x + ax, y: base.y + ay } }, dimsNow());
+    const cand = clampPos({ ...pos, [name]: resize ? { ...b, w: b.w + ax, h: b.h + ay } : { x: base.x + ax, y: base.y + ay } }, dimsNow()); // neue Lage ohne alte Anker
     if (onMapOk() || !isManual() || !overlapsMap(cand, name)) {
       if (raw && !resize) raw.cur = cand[name];
       S.pos = raw && !resize ? snapBlock(cand, name) : cand; S.posKey = layoutKey(); return; // feste Leiste: der Titel darf auch ueber der Karte stehen

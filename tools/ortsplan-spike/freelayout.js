@@ -14,6 +14,8 @@ export const MAP_MARGIN = 6;
 export const MAP_ANCHOR = { left: 14, right: 14, top: TOP_BAND, bottom: 14 };
 /** Oberkante des Titels (Einheiten von ui): so steht die Ueberschrift in der bisherigen Hoehe (Grundlinie 8,4). */
 export const TITLE_Y = 3.4;
+/** Bloecke, die am Kartenrand verankert sein koennen (r = rechts, b = unten): sie behalten ihren Abstand zur Kante auch mit dem echten Mass. */
+const ANCHORABLE = ["legend", "scale", "source", "north"];
 const MIN_INDEX = 0.04; // kleinste Breite/Hoehe des Verzeichnisses als Anteil des Papiers
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -26,10 +28,14 @@ export function parsePos(str) {
     const [k, v = ""] = part.split(":");
     const name = SHORT[k.trim()];
     if (!name) continue;
-    const n = v.split(",").map((x) => (x.trim() === "" ? NaN : +x));
+    const parts = v.split(",").map((x) => x.trim());
     const need = name === "index" ? 4 : 2;
-    if (n.length !== need || n.some((x) => !Number.isFinite(x))) continue;
-    out[name] = name === "index" ? { x: n[0], y: n[1], w: n[2], h: n[3] } : name === "msize" ? { w: n[0], h: n[1] } : { x: n[0], y: n[1] };
+    const anchorable = ANCHORABLE.includes(name);
+    // Legende, Massstab, Quelle und Nordpfeil duerfen einen dritten Teil tragen: r = rechts, b = unten am Kartenrand verankert (siehe snapToFrameInset)
+    if (parts.length !== need && !(anchorable && parts.length === need + 1 && /^[rb]{1,2}$/.test(parts[need]))) continue;
+    const n = parts.slice(0, need).map((x) => (x === "" ? NaN : +x));
+    if (n.some((x) => !Number.isFinite(x))) continue;
+    out[name] = name === "index" ? { x: n[0], y: n[1], w: n[2], h: n[3] } : name === "msize" ? { w: n[0], h: n[1] } : { x: n[0], y: n[1], ...(parts[need]?.includes("r") ? { ar: true } : {}), ...(parts[need]?.includes("b") ? { ab: true } : {}) };
   }
   return Object.keys(out).length ? clampPos(out) : null;
 }
@@ -54,6 +60,8 @@ export function clampPos(pos, dims = null) {
       out[name] = {
         x: clamp(b.x, mx, d ? Math.max(mx, 1 - d.w - mx) : 0.98),
         y: clamp(b.y, my, d ? Math.max(my, 1 - d.h - my) : 0.98),
+        ...(ANCHORABLE.includes(name) && b.ar ? { ar: true } : {}),
+        ...(ANCHORABLE.includes(name) && b.ab ? { ab: true } : {}),
       };
     }
   }
@@ -63,7 +71,7 @@ export function clampPos(pos, dims = null) {
 const r4 = (v) => String(Math.round(v * 10000) / 10000);
 export function formatPos(pos) {
   const p = clampPos(pos || {});
-  return Object.entries(SHORT).filter(([, name]) => p[name]).map(([k, name]) => `${k}:${(name === "index" ? [p[name].x, p[name].y, p[name].w, p[name].h] : name === "msize" ? [p[name].w, p[name].h] : [p[name].x, p[name].y]).map(r4).join(",")}`).join(";");
+  return Object.entries(SHORT).filter(([, name]) => p[name]).map(([k, name]) => `${k}:${(name === "index" ? [p[name].x, p[name].y, p[name].w, p[name].h] : name === "msize" ? [p[name].w, p[name].h] : [p[name].x, p[name].y]).map(r4).join(",")}${p[name].ar || p[name].ab ? `,${p[name].ar ? "r" : ""}${p[name].ab ? "b" : ""}` : ""}`).join(";");
 }
 
 /** Ueberlappen sich zwei Rechtecke {x,y,w,h}? (Beruehren zaehlt nicht.) */
@@ -209,18 +217,18 @@ export const EDGE_SNAP = 6;
  * derselben Einheit. Rueckgabe: neue linke obere Ecke {x, y}. Ohne inset (null oder < 0) oder ausserhalb der Karte unveraendert.
  */
 export function snapToFrameInset(rect, frame, inset, thr) {
-  const out = { x: rect.x, y: rect.y };
+  const out = { x: rect.x, y: rect.y, ar: false, ab: false }; // ar/ab: rechts bzw. unten eingerastet (der Block bleibt dann an dieser Kante verankert)
   if (!(inset >= 0) || !frame) return out;
   const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
   if (cx < frame.x || cx > frame.x + frame.w || cy < frame.y || cy > frame.y + frame.h) return out;
   const axis = (v, len, lo, size) => {
     const a = lo + inset, b = lo + size - inset - len; // linke/obere und rechte/untere Sollkante
     const da = Math.abs(v - a), db = Math.abs(v - b);
-    if (da <= thr && da <= db) return a;
-    if (db <= thr) return b;
-    return v;
+    if (da <= thr && da <= db) return { v: a, far: false };
+    if (db <= thr) return { v: b, far: true };
+    return { v, far: false };
   };
-  out.x = axis(rect.x, rect.w, frame.x, frame.w);
-  out.y = axis(rect.y, rect.h, frame.y, frame.h);
+  const ax = axis(rect.x, rect.w, frame.x, frame.w), ay = axis(rect.y, rect.h, frame.y, frame.h);
+  out.x = ax.v; out.y = ay.v; out.ar = ax.far; out.ab = ay.far;
   return out;
 }
