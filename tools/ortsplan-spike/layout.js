@@ -32,11 +32,15 @@ export function fitRatio(slot, ratio, ax = 0.5, ay = 0.5) {
   return { x: slot.x + (slot.w - w) * ax, y: slot.y + (slot.h - h) * ay, w, h };
 }
 
+/** Kleinste Seite des Kartenfensters in mm bei eigener Groesse (computeLayout, size). */
+export const MIN_FRAME_MM = 40;
+
 /**
- * @param {{wMm:number,hMm:number,side?:string,fmt?:string}} o
+ * @param {{wMm:number,hMm:number,side?:string,fmt?:string,size?:{w:number,h:number}}} o
+ *   size: eigene (kleinere) Groesse des Kartenfensters in mm; die linke obere Ecke bleibt, die Leiste rueckt mit (nie groesser als das Fenster der Lage)
  * @returns {{ui:number, frame:{x,y,w,h}, panel:{x,y,w,h}, ratio:number|null}}
  */
-export function computeLayout({ wMm, hMm, side = "right", fmt = "fill" }) {
+export function computeLayout({ wMm, hMm, side = "right", fmt = "fill", size = null }) {
   const ui = Math.max(1, Math.max(wMm, hMm) / 420); // A3 = 1, A2 = 1,4, A1 = 2
   const sd = ALL_SIDES.includes(side) ? side : "right";
   const sidebarW = Math.min(92 * ui, Math.max(62, 0.24 * wMm));
@@ -80,6 +84,15 @@ export function computeLayout({ wMm, hMm, side = "right", fmt = "fill" }) {
       frame = fitRatio(frame, ratio, 0.5, 0);
       panel = { ...panel, y: frame.y + frame.h + 14 * ui };
     }
+  }
+  if (size) {
+    // Eigene Groesse: nie groesser als das Fenster der Lage, nie kleiner als MIN_FRAME_MM; die linke obere Ecke bleibt stehen
+    const w = Math.min(frame.w, Math.max(Math.min(MIN_FRAME_MM, frame.w), size.w));
+    const h = Math.min(frame.h, Math.max(Math.min(MIN_FRAME_MM, frame.h), size.h));
+    frame = { ...frame, w, h };
+    if (sd === NO_SIDE) panel = { ...panel, x: frame.x + frame.w };
+    else if (sd === "right") panel = { ...panel, x: frame.x + frame.w + 6.5 * ui };
+    else if (sd === "bottom") panel = { ...panel, y: frame.y + frame.h + 14 * ui };
   }
   return { ui, frame, panel, ratio };
 }

@@ -6,8 +6,8 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol, PMTiles } from "pmtiles";
 import { buildStyle } from "./style.js";
-import { PAPER_MM, ALL_SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES } from "./layout.js";
-import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset } from "./freelayout.js";
+import { PAPER_MM, ALL_SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES, parseFormat } from "./layout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset, mapSizeMm } from "./freelayout.js";
 import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE, RATIO_MIN, RATIO_MAX } from "./framegeo.js";
 
 const q = new URLSearchParams(location.search);
@@ -97,10 +97,16 @@ function fillOption() {
   const f = computeLayout({ wMm, hMm, side: S.side, fmt: "fill" }).frame;
   $("fmt").options[0].textContent = `Papier füllen (Verhältnis ${ratioText(f.w / f.h)})`;
 }
+/** Festes Kartenformat (Breite / Hoehe) oder null (frei, oder Papier fuellen): dann bleibt beim Groesse-Aendern das Verhaeltnis erhalten. */
+const fixedRatio = () => (S.free ? null : parseFormat(S.fmt));
 function layout() {
   const [wMm, hMm] = PAPER_MM[paperKey()];
-  const L = computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt() });
-  return { wMm, hMm, L, ground: groundSizeM(L.frame, S.scale) };
+  const base = computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt() });
+  // eigene Groesse des Kartenfensters (Schritt 2, an der Ecke ziehen): gilt nur zu dem Layout, mit dem sie gemerkt wurde (wie die Lagen der Bloecke)
+  const ms = S.pos && S.posKey === layoutKey() ? S.pos.msize : null;
+  const size = ms ? mapSizeMm(ms, { W: wMm, H: hMm, base: base.frame, ratio: fixedRatio() }) : null;
+  const L = size ? computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt(), size }) : base;
+  return { wMm, hMm, L, base, ground: groundSizeM(L.frame, S.scale) };
 }
 // Freier Rahmen: Seitenverhältnis zuerst vom Blatt (Papier füllen), danach vom Rahmen
 if (!(S.ratio > 0)) { const f = computeLayout({ wMm: PAPER_MM[paperKey()][0], hMm: PAPER_MM[paperKey()][1], side: S.side, fmt: "fill" }).frame; S.ratio = f.w / f.h; }
@@ -174,10 +180,10 @@ function goLink() {
     p.set("pos", formatPos(curPos()));
     if (onMapOk()) p.set("onmap", "1");
     if (S.obg === "clear") p.set("obg", "clear");
-  } else if (ownPos()?.title || ownPos()?.map) {
+  } else if (ownPos()?.title || ownPos()?.map || ownPos()?.msize) {
     // feste Leiste: nur Titel und Karte (die Leiste folgt der Karte); ohne eigene Verschiebung bleibt die Adresse unveraendert
     const c = curPos();
-    p.set("pos", formatPos({ title: c.title, map: c.map }));
+    p.set("pos", formatPos({ title: c.title, map: c.map, msize: c.msize }));
   }
   if (areaName) p.set("area", areaName);
   if (T.place) p.set("place", T.place);
@@ -205,7 +211,7 @@ function drawPreview() {
   const { wMm, hMm, L } = layout();
   const prev = $("prev");
   prev.style.aspectRatio = `${wMm} / ${hMm}`;
-  $("pv-map").textContent = `Karte 1:${S.scale.toLocaleString("de-DE")}`;
+  $("pv-map-label").textContent = `Karte 1:${S.scale.toLocaleString("de-DE")}`;
   $("pv-title").replaceChildren(...[T.title || "Orts- und Hydrantenplan", T.place || "Ortsname"].map((t) => { const s = document.createElement("span"); s.textContent = t; return s; }));
   const manual = isManual();
   $("pv-panel").hidden = manual;
@@ -306,6 +312,20 @@ $("g-obg").replaceChildren(...[["white", "Weiß"], ["clear", "Durchsichtig"]].ma
 function movePos(name, dx, dy, resize, raw = null) {
   const pos = curPos(), b = pos[name];
   if (!b) return;
+  if (name === "map" && resize) {
+    // Groesse des Kartenfensters aendern (linke obere Ecke bleibt): Massstab bleibt, das Fenster zeigt mehr oder weniger Gebiet.
+    // Festes Kartenformat: das Verhaeltnis bleibt; sonst frei in beiden Richtungen. Nie groesser als das Fenster der Lage.
+    const { L, base, wMm, hMm } = layout();
+    const ratio = fixedRatio();
+    let w = L.frame.w + dx * wMm, h = L.frame.h + dy * hMm;
+    if (ratio) { w = L.frame.w + (dx * wMm + dy * hMm * ratio) / 2; h = w / ratio; }
+    const sz = mapSizeMm({ w: w / wMm, h: h / hMm }, { W: wMm, H: hMm, base: base.frame, ratio });
+    const prev = S.pos, prevKey = S.posKey;
+    S.pos = { ...(ownPos() || pos), msize: { w: sz.w / wMm, h: sz.h / hMm } }; S.posKey = layoutKey();
+    // ohne Erlaubnis keine Bloecke auf der Karte: ein groesseres Fenster darf keinen Block ueberdecken
+    if (isManual() && !onMapOk() && anyOnMap(curPos())) { S.pos = prev; S.posKey = prevKey; }
+    return;
+  }
   // Wo es nicht auf die Karte darf, gilt die Bewegung nur, solange der Block ausserhalb des Kartenfensters bleibt (sonst wenigstens eine Achse)
   const tries = resize ? [[dx, dy]] : [[dx, dy], [dx, 0], [0, dy]];
   const { L, wMm, hMm } = layout();
@@ -348,7 +368,7 @@ for (const el of document.querySelectorAll("#prev [data-b]")) {
     const d = e.shiftKey ? 0.05 : 0.01;
     const v = { ArrowLeft: [-d, 0], ArrowRight: [d, 0], ArrowUp: [0, -d], ArrowDown: [0, d] }[e.key];
     if (!v) return;
-    e.preventDefault(); movePos(name, v[0], v[1], name === "index" && e.altKey); refresh(); el.focus();
+    e.preventDefault(); movePos(name, v[0], v[1], (name === "index" || name === "map") && e.altKey); refresh(); el.focus();
   });
 }
 // Rahmenform: Frei oder wie das Blatt. Beim Umschalten bleibt der Rahmen, wie er ist (frei übernimmt das Seitenverhältnis des Blatts, fest rastet den Maßstab ein)

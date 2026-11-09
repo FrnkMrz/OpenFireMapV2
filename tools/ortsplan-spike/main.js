@@ -9,7 +9,7 @@ import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
 import { PAPER_MM, ALL_SIDES, NO_SIDE, computeLayout, NICE_SCALES } from "./layout.js";
 import { pdfFileName, buildPdf } from "./pdfout.js";
-import { parsePos, defaultPos, clampPos, blockDims, clampGroupOffset } from "./freelayout.js";
+import { parsePos, defaultPos, clampPos, blockDims, clampGroupOffset, mapSizeMm } from "./freelayout.js";
 import { indexNote } from "./indexnote.js";
 import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
 import { streetLabelPoints, clipLineToBox } from "./labelpoints.js";
@@ -69,7 +69,10 @@ const side = ALL_SIDES.includes(q.get("side")) ? q.get("side") : "right"; // "no
 // Freie Lage der Bloecke (pos=l:x,y;s:x,y;q:x,y;i:x,y,b,h als Anteile des Papiers, siehe freelayout.js). Bei side=none immer, sonst nur mit pos.
 const posParam = parsePos(q.get("pos"));
 const indexCols = Math.min(6, Math.max(0, Math.round(+(q.get("icols") || 0))));
-const { ui, frame, panel } = computeLayout({ wMm, hMm, side, fmt });
+const baseLayout = computeLayout({ wMm, hMm, side, fmt });
+// Eigene Groesse des Kartenfensters (pos z:b,h): nie groesser als das Fenster der Lage; Massstab bleibt, das Fenster zeigt mehr oder weniger Gebiet
+const sizeMm = sheet && posParam?.msize ? mapSizeMm(posParam.msize, { W: wMm, H: hMm, base: baseLayout.frame }) : null;
+const { ui, frame, panel } = sizeMm ? computeLayout({ wMm, hMm, side, fmt, size: sizeMm }) : baseLayout;
 // Eigene Lagen in der Adresse: Titel (t) und Karte (m) gelten bei jeder Lage; die Bloecke (l, s, q, n, i) liegen nur dann frei, wenn welche genannt sind
 const blocksFree = side === NO_SIDE || !!(posParam && ["legend", "scale", "source", "north", "index"].some((k) => posParam[k]));
 const allPos = clampPos({ ...defaultPos({ paper, side, fmt, lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0" }), ...(posParam || {}) }, blockDims({ lsym: q.get("lsym") !== "0", lroad: q.get("lroad") !== "0", ui: Math.max(1, Math.max(...PAPER_MM[paper] || PAPER_MM.a4l) / 420), W: PAPER_MM[paper]?.[0] ?? PAPER_MM.a4l[0], H: PAPER_MM[paper]?.[1] ?? PAPER_MM.a4l[1], frame, title: q.get("title") || "", place: q.get("place") || "" })); // Titeltext wie im Assistenten: gleiche Schaetzung, gleiche Klemmung

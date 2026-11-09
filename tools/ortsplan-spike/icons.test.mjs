@@ -46,8 +46,10 @@ test("Paritaet mit der App: jedes Symbol ist Zeichen fuer Zeichen das der Karte 
   const { pathToFileURL } = await import("node:url");
   const src = readFileSync(new URL("../../src/js/marker-symbols.js", import.meta.url), "utf-8")
     .replace(/import \{ Config \} from '\.\/config\.js';/, "const Config = { colors: { station: '#dc2626', hydrant: '#dc2626', water: '#2563eb', defib: '#15803d' } };");
-  const file = join(mkdtempSync(join(tmpdir(), "ofm-sym-")), "marker-symbols.mjs");
-  writeFileSync(file, src);
+  const dir = mkdtempSync(join(tmpdir(), "ofm-sym-"));
+  const file = join(dir, "marker-symbols.mjs");
+  writeFileSync(file, src.replace("./marker-symbols-core.js", "./marker-symbols-core.mjs")); // die App hat die Symbole in einen Kern ohne Config ausgelagert
+  writeFileSync(join(dir, "marker-symbols-core.mjs"), readFileSync(new URL("../../src/js/marker-symbols-core.js", import.meta.url), "utf-8"));
   const app = await import(pathToFileURL(file).href);
   const norm = (s) => s.replace(/width="\d+px" height="\d+px"/, "").replace(/\s+/g, " ").replace(/> </g, "><").trim();
   const cases = [
