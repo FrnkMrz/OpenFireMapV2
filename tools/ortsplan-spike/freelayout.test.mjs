@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
-import { PAPER_MM, computeLayout } from "./layout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, mapSizeMm, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
+import { PAPER_MM, computeLayout, MIN_FRAME_MM } from "./layout.js";
 
 test("parsePos/formatPos: Rundreise, Reihenfolge und Rundung", () => {
   const pos = { legend: { x: 0.71, y: 0.12 }, scale: { x: 0.7, y: 0.5 }, source: { x: 0.1, y: 0.9 }, north: { x: 0.9, y: 0.4 }, index: { x: 0.05, y: 0.6, w: 0.5, h: 0.3 } };
@@ -39,7 +39,7 @@ test("estimateSizes: ohne Legendenpunkte keine Legende", () => {
 test("defaultPos: alle Lagen und Papiere liefern gueltige Anteile, Bloecke liegen im Blatt", () => {
   for (const paper of Object.keys(PAPER_MM)) for (const side of ["right", "left", "top", "bottom", "none"]) for (const fmt of ["fill", "2:3"]) {
     const p = defaultPos({ paper, side, fmt });
-    for (const name of BLOCKS) assert.ok(p[name], `${paper} ${side} ${fmt}: ${name}`);
+    for (const name of BLOCKS.filter((n) => n !== "msize")) assert.ok(p[name], `${paper} ${side} ${fmt}: ${name}`); // msize (eigene Kartengroesse) fehlt in der Standardlage
     for (const b of Object.values(p)) assert.ok(b.x >= 0 && b.y >= 0 && b.x <= 1 && b.y <= 1);
     assert.ok(p.index.x + p.index.w <= 1 + 1e-9 && p.index.y + p.index.h <= 1 + 1e-9, `${paper} ${side}`);
   }
@@ -220,4 +220,48 @@ test("clampGroupOffset: Karte und Leiste bleiben zusammen im Papier", () => {
   assert.ok(Math.abs(14 + alone.dx + 200 - (W - MAP_MARGIN)) < 1e-9);
   // eine Gruppe, die breiter ist als das Papier, bleibt stehen
   assert.deepEqual(clampGroupOffset({ frame: { x: 0, y: 27, w: 430, h: 100 }, panel: null, W, H, ui, dx: 10, dy: 0 }), { dx: 0, dy: 0 });
+});
+
+test("Kartengroesse: z:b,h hin und zurueck, geklemmt, alte Adressen ohne z unveraendert", () => {
+  const p = parsePos("z:0.5,0.6;m:0.1,0.2");
+  assert.deepEqual(p.msize, { w: 0.5, h: 0.6 });
+  assert.deepEqual(parsePos(formatPos(p)), p);
+  assert.deepEqual(clampPos({ msize: { w: 9, h: -1 } }).msize, { w: 1, h: 0.04 }, "Anteile des Papiers, nie ueber 1 und nie unter der Mindestgroesse");
+  assert.equal(parsePos("z:0.5"), null, "unvollstaendig faellt weg");
+  assert.ok(!("msize" in defaultPos({ paper: "a3l", side: "right" })), "ohne eigene Groesse gilt das volle Fenster");
+});
+
+test("computeLayout mit size: nie groesser als das Fenster der Lage, nie kleiner als MIN_FRAME_MM, linke obere Ecke und Leiste bleiben stimmig", () => {
+  for (const side of ["right", "left", "top", "bottom", "none"]) {
+    const base = computeLayout({ wMm: 420, hMm: 297, side });
+    const big = computeLayout({ wMm: 420, hMm: 297, side, size: { w: 9999, h: 9999 } });
+    assert.deepEqual(big.frame, base.frame, `${side}: zu gross = volles Fenster`);
+    const tiny = computeLayout({ wMm: 420, hMm: 297, side, size: { w: 1, h: 1 } });
+    assert.ok(tiny.frame.w === MIN_FRAME_MM && tiny.frame.h === MIN_FRAME_MM, `${side}: Mindestgroesse`);
+    const half = computeLayout({ wMm: 420, hMm: 297, side, size: { w: base.frame.w / 2, h: base.frame.h / 2 } });
+    assert.ok(half.frame.x === base.frame.x && half.frame.y === base.frame.y, `${side}: linke obere Ecke bleibt`);
+    assert.ok(half.frame.w === base.frame.w / 2 && half.frame.h === base.frame.h / 2, `${side}: Groesse uebernommen`);
+  }
+  const r = computeLayout({ wMm: 420, hMm: 297, side: "right", size: { w: 200, h: 100 } });
+  assert.ok(Math.abs(r.panel.x - (r.frame.x + 200 + 6.5)) < 1e-9, "rechts: die Leiste rueckt an die kleinere Karte");
+  const b = computeLayout({ wMm: 420, hMm: 297, side: "bottom", size: { w: 200, h: 100 } });
+  assert.ok(Math.abs(b.panel.y - (b.frame.y + 100 + 14)) < 1e-9, "unten: die Leiste rueckt unter die kleinere Karte");
+  assert.deepEqual(computeLayout({ wMm: 420, hMm: 297, side: "right" }), computeLayout({ wMm: 420, hMm: 297, side: "right", size: null }), "ohne size unveraendert");
+});
+
+test("mapSizeMm: aus Anteilen in mm, nie groesser als das Fenster der Lage, festes Kartenformat bleibt erhalten", () => {
+  const base = { w: 392, h: 256 };
+  assert.deepEqual(mapSizeMm(null, { W: 420, H: 297, base }), null);
+  assert.deepEqual(mapSizeMm({ w: 0.5, h: 0.5 }, { W: 420, H: 297, base }), { w: 210, h: 148.5 });
+  assert.deepEqual(mapSizeMm({ w: 1, h: 1 }, { W: 420, H: 297, base }), base, "begrenzt auf das Fenster der Lage");
+  const sq = mapSizeMm({ w: 0.5, h: 0.9 }, { W: 420, H: 297, base: { w: 256, h: 256 }, ratio: 1 });
+  assert.ok(Math.abs(sq.w - sq.h) < 1e-9 && sq.w <= 210 + 1e-9, `quadratisch bleibt quadratisch: ${sq.w} x ${sq.h}`);
+});
+
+test("computeLayout mit size: das Mindestmass haelt das Seitenverhaeltnis (festes Format 3:2 bleibt 3:2)", () => {
+  const l = computeLayout({ wMm: 420, hMm: 297, side: "none", fmt: "3:2", size: { w: 45, h: 30 } });
+  assert.ok(Math.abs(l.frame.w / l.frame.h - 1.5) < 1e-9, `Verhaeltnis ${l.frame.w / l.frame.h}`);
+  assert.ok(Math.min(l.frame.w, l.frame.h) >= MIN_FRAME_MM - 1e-9, "kuerzere Seite mindestens MIN_FRAME_MM");
+  const wide = computeLayout({ wMm: 420, hMm: 297, side: "none", fmt: "3:2", size: { w: 9999, h: 6666 } });
+  assert.ok(Math.abs(wide.frame.w / wide.frame.h - 1.5) < 1e-9, "zu gross: gemeinsam auf das Fenster der Lage, Verhaeltnis bleibt");
 });

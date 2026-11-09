@@ -1,11 +1,12 @@
 // Freie Anordnung von Titel, Karte, Legende, Massstab, Nordpfeil, Quellenangabe und Strassenverzeichnis (rein, ohne DOM, mit `node --test` pruefbar).
 // Jeder Block hat eine Lage als Anteil des Papiers (0..1, linke obere Ecke); das Verzeichnis zusaetzlich Breite und Hoehe. So bleibt die
 // Anordnung beim Wechsel des Papiers sinnvoll und passt in die Adresse: pos=t:0.03,0.01;m:0.03,0.09;l:0.71,0.12;s:0.71,0.5;q:0.71,0.62;n:0.9,0.5;i:0.05,0.8,0.6,0.15
-// Titel (t) und Karte (m, Lage des Kartenfensters; Groesse bleibt) sind verschiebbar; die Karte rastet nahe an den Randabstaenden ein (snapMap).
+// Titel (t) und Karte (m, Lage des Kartenfensters) sind verschiebbar; die Karte rastet nahe an den Randabstaenden ein (snapMap).
+// z:b,h ist die eigene Groesse des Kartenfensters als Anteil des Papiers (fehlt sie, gilt das volle Fenster der Lage; Massstab bleibt, das Fenster zeigt mehr oder weniger Gebiet).
 import { PAPER_MM, computeLayout, TOP_BAND } from "./layout.js";
 
-export const BLOCKS = ["legend", "scale", "source", "north", "title", "map", "index"];
-const SHORT = { l: "legend", s: "scale", q: "source", n: "north", t: "title", m: "map", i: "index" };
+export const BLOCKS = ["legend", "scale", "source", "north", "title", "map", "msize", "index"];
+const SHORT = { l: "legend", s: "scale", q: "source", n: "north", t: "title", m: "map", z: "msize", i: "index" };
 /** Mindestabstand des Kartenfensters zum Papierrand (Einheiten von ui): dort stehen noch die Planquadrat-Buchstaben. */
 export const MAP_MARGIN = 6;
 /** Normale Randabstaende des Kartenfensters (Einheiten von ui, wie in layout.js): hier rastet die Karte beim Ziehen ein. */
@@ -27,7 +28,7 @@ export function parsePos(str) {
     const n = v.split(",").map((x) => (x.trim() === "" ? NaN : +x));
     const need = name === "index" ? 4 : 2;
     if (n.length !== need || n.some((x) => !Number.isFinite(x))) continue;
-    out[name] = name === "index" ? { x: n[0], y: n[1], w: n[2], h: n[3] } : { x: n[0], y: n[1] };
+    out[name] = name === "index" ? { x: n[0], y: n[1], w: n[2], h: n[3] } : name === "msize" ? { w: n[0], h: n[1] } : { x: n[0], y: n[1] };
   }
   return Object.keys(out).length ? clampPos(out) : null;
 }
@@ -43,6 +44,8 @@ export function clampPos(pos, dims = null) {
     if (name === "index") {
       const w = clamp(b.w, MIN_INDEX, 1), h = clamp(b.h, MIN_INDEX, 1);
       out.index = { x: clamp(b.x, 0, 1 - w), y: clamp(b.y, 0, 1 - h), w, h };
+    } else if (name === "msize") {
+      out.msize = { w: clamp(b.w, MIN_INDEX, 1), h: clamp(b.h, MIN_INDEX, 1) }; // Groesse, keine Lage
     } else {
       const d = dims?.[name];
       // die Karte haelt zusaetzlich einen Mindestrand (Planquadrat-Buchstaben); sonst gilt: der ganze Block bleibt im Papier
@@ -59,7 +62,7 @@ export function clampPos(pos, dims = null) {
 const r4 = (v) => String(Math.round(v * 10000) / 10000);
 export function formatPos(pos) {
   const p = clampPos(pos || {});
-  return Object.entries(SHORT).filter(([, name]) => p[name]).map(([k, name]) => `${k}:${(name === "index" ? [p[name].x, p[name].y, p[name].w, p[name].h] : [p[name].x, p[name].y]).map(r4).join(",")}`).join(";");
+  return Object.entries(SHORT).filter(([, name]) => p[name]).map(([k, name]) => `${k}:${(name === "index" ? [p[name].x, p[name].y, p[name].w, p[name].h] : name === "msize" ? [p[name].w, p[name].h] : [p[name].x, p[name].y]).map(r4).join(",")}`).join(";");
 }
 
 /** Ueberlappen sich zwei Rechtecke {x,y,w,h}? (Beruehren zaehlt nicht.) */
@@ -188,4 +191,15 @@ export function defaultPos({ paper = "a3l", side = "right", fmt = "fill", lsym =
   out.title = { x: (14 * ui) / W, y: (TITLE_Y * ui) / H };
   out.map = { x: frame.x / W, y: frame.y / H };
   return clampPos(out, blockDims({ lsym, lroad, ui, W, H, frame }));
+}
+
+/**
+ * Eigene Groesse des Kartenfensters in mm aus pos.msize (Anteile des Papiers), nie groesser als das Fenster der Lage (base {w, h} in mm).
+ * Bei festem Kartenformat (ratio = Breite / Hoehe) bleibt das Seitenverhaeltnis erhalten. Ohne msize: null (volles Fenster).
+ */
+export function mapSizeMm(msize, { W, H, base, ratio = null }) {
+  if (!msize) return null;
+  let w = Math.min(base.w, msize.w * W), h = Math.min(base.h, msize.h * H);
+  if (ratio) { h = Math.min(h, w / ratio); w = h * ratio; }
+  return { w, h };
 }

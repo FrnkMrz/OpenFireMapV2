@@ -214,6 +214,41 @@ try {
     await page.mouse.move(pr.x + pr.width + 200, pr.y + pr.height + 200, { steps: 8 });
     await page.mouse.up();
     check(await inside("#pv-title"), "Titel weit ueber den Rand gezogen: bleibt ganz auf dem Blatt");
+    // Kartengroesse: an der Ecke unten rechts ziehen -> kleiner, Massstab bleibt, das Fenster zeigt weniger Gebiet; nie groesser als das volle Fenster
+    {
+      const sizeInfo = async () => { const m = /Kartenfenster (\d+) × (\d+) mm/.exec(await page.textContent("#size-info")); return m ? { w: +m[1], h: +m[2] } : null; };
+      const rectOf = (q) => page.evaluate((sel) => { const r = document.querySelector(sel).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, q);
+      const full = await sizeInfo(), m0 = await rectOf("#pv-map"), sc0 = (await st()).scale;
+      const rz = await page.locator("#pv-map .rz").boundingBox();
+      await page.mouse.move(rz.x + rz.width / 2, rz.y + rz.height / 2); await page.mouse.down();
+      await page.mouse.move(rz.x + rz.width / 2 - 70, rz.y + rz.height / 2 - 50, { steps: 8 }); await page.mouse.up();
+      await page.waitForTimeout(300);
+      const m1 = await rectOf("#pv-map"), z = /;z:([\d.]+),([\d.]+)/.exec((await posOf()) || ""), small = await sizeInfo();
+      check(m1.w < m0.w - 20 && m1.h < m0.h - 20 && Math.abs(m1.x - m0.x) < 2 && Math.abs(m1.y - m0.y) < 2, `Karte an der Ecke kleiner gezogen (${Math.round(m0.w)}x${Math.round(m0.h)} -> ${Math.round(m1.w)}x${Math.round(m1.h)} px), linke obere Ecke bleibt`);
+      check(!!z && +z[1] < 0.95 && +z[2] < 0.95, `Link traegt die Kartengroesse: ${z && z[0]}`);
+      check(small && full && small.w < full.w && small.h < full.h && (await st()).scale === sc0, `Fenster ${full.w}x${full.h} -> ${small && small.w}x${small && small.h} mm, Massstab bleibt 1:${sc0}`);
+      await page.mouse.move(rz.x - 70 + rz.width / 2, rz.y - 50 + rz.height / 2);
+      const rz1 = await page.locator("#pv-map .rz").boundingBox();
+      await page.mouse.move(rz1.x + rz1.width / 2, rz1.y + rz1.height / 2); await page.mouse.down();
+      await page.mouse.move(rz1.x + 900, rz1.y + 900, { steps: 8 }); await page.mouse.up();
+      await page.waitForTimeout(300);
+      const big = await sizeInfo();
+      check(big && big.w <= full.w && big.h <= full.h && await inside("#pv-map"), `weit aufgezogen: nie groesser als das volle Fenster (${big && big.w}x${big && big.h} mm), bleibt auf dem Blatt`);
+      // klein ziehen, nach unten rechts schieben, dann aufziehen: die linke obere Ecke bleibt stehen (die Lage wird nicht nachgeschoben)
+      const rz2 = await page.locator("#pv-map .rz").boundingBox();
+      await page.mouse.move(rz2.x + rz2.width / 2, rz2.y + rz2.height / 2); await page.mouse.down();
+      await page.mouse.move(rz2.x - 160, rz2.y - 130, { steps: 8 }); await page.mouse.up();
+      await page.focus("#pv-map");
+      for (let i = 0; i < 70; i++) await page.keyboard.press("ArrowRight");
+      for (let i = 0; i < 70; i++) await page.keyboard.press("ArrowDown");
+      await page.waitForTimeout(300);
+      const m2 = await rectOf("#pv-map"), rz3 = await page.locator("#pv-map .rz").boundingBox();
+      await page.mouse.move(rz3.x + rz3.width / 2, rz3.y + rz3.height / 2); await page.mouse.down();
+      await page.mouse.move(rz3.x + 140, rz3.y + 110, { steps: 8 }); await page.mouse.up();
+      await page.waitForTimeout(300);
+      const m3 = await rectOf("#pv-map");
+      check(Math.abs(m3.x - m2.x) < 2 && Math.abs(m3.y - m2.y) < 2 && await inside("#pv-map"), `unten rechts aufziehen: linke obere Ecke bleibt (${Math.round(m2.x)},${Math.round(m2.y)} -> ${Math.round(m3.x)},${Math.round(m3.y)}), Karte bleibt auf dem Blatt`);
+    }
   }
   await side("top");
   check(!(await posOf()) && !(await page.isChecked("#c-manual")), "andere Lage: wieder automatisch, keine Positionen");
@@ -239,6 +274,15 @@ try {
     }, sel);
     const g = await grabOn("#pv-map");
     check(!!g, "feste Leiste: Greifpunkt auf der Karte gefunden");
+    {
+      const rz = await page.locator("#pv-map .rz").boundingBox();
+      await page.mouse.move(rz.x + rz.width / 2, rz.y + rz.height / 2); await page.mouse.down();
+      await page.mouse.move(rz.x + rz.width / 2 - 40, rz.y + rz.height / 2 - 10, { steps: 6 }); await page.mouse.up();
+      await page.waitForTimeout(300);
+      const mr = await rectOf("#pv-map");
+      check(mr.w < map0.w - 10 && Math.abs(mr.w - mr.h) < 2, `fester Kartenformat 1:1: Ecke ziehen aendert die Groesse, das Verhaeltnis bleibt (${Math.round(mr.w)} x ${Math.round(mr.h)} px)`);
+      await page.click("#pos-reset");
+    }
     await page.mouse.move(g.x, g.y); await page.mouse.down(); await page.mouse.move(g.x + 400, g.y + 12, { steps: 8 }); await page.mouse.up();
     await page.waitForTimeout(300);
     const map1 = await rectOf("#pv-map"), pan1 = await rectOf("#pv-panel");
