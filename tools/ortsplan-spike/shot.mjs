@@ -5,7 +5,7 @@ import fs from "node:fs";
 import { waitReady } from "./testutil.mjs";
 
 const [query = "", out = "shots/shot.png"] = process.argv.slice(2);
-const url = `${process.env.SPIKE_URL || "http://127.0.0.1:5173"}/?${query}`;
+const url = `${process.env.SPIKE_URL || "http://127.0.0.1:5173"}/?${/(^|&)sheet=/.test(query) ? query : `${query}&sheet=0`}`; // ohne sheet=...: nur das Kartenfenster (Stilvergleich)
 
 const browser = await chromium.launch({
   args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],

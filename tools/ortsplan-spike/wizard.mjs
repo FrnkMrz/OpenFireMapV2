@@ -14,7 +14,9 @@ page.on("pageerror", (e) => { failure = e.message; });
 let failed = 0;
 const check = (ok, msg) => { console.log(ok ? "ok     " : "FEHLER ", msg); if (!ok) failed++; };
 // Lage der Legende gehoert zu Schritt 1: dorthin, waehlen, zurueck zu Schritt 2
-const side = async (v) => { await page.click('.st[data-s="0"]'); await page.click(`#g-side button[data-v="${v}"]`); await page.click('.st[data-s="1"]'); };
+const side = async (v) => { await page.click('.st[data-s="0"]'); await page.click(`#g-side button[data-v="${v}"]`); await page.click('.st[data-s="2"]'); };
+// Inhalt (Schritt 2) kurz oeffnen, etwas einstellen und zurueck zum Anordnen (Schritt 3)
+const inContent = async (fn) => { await page.click('.st[data-s="1"]'); await fn(); await page.click('.st[data-s="2"]'); };
 const st = () => page.evaluate(() => window.__wizard.state());
 const box = () => page.evaluate(() => window.__wizard.frameBox());
 const center = async (sel) => { const r = await page.locator(sel).boundingBox(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
@@ -138,24 +140,40 @@ try {
   check(await page.isVisible("#g-side") && !(await page.isVisible("#o-place")), "Schritt 1 enthaelt die Lage der Legende, die Texte erst Schritt 2");
   await side("top");
 
-  // Schritt 2
+  // Schritt 2 (Inhalt)
   await page.click('.st[data-s="1"]');
   await page.uncheck("#c-sym");
   await page.uncheck("#c-index");
+  check(await page.isVisible("#o-place") && await page.isVisible("#c-sym") && !(await page.isVisible("#stage")), "Schritt 2: Texte und Inhalt, noch ohne grosse Vorschau");
+  await page.click('.st[data-s="2"]');
   await page.screenshot({ path: `${OUT}/3-legende.png` });
   const link = await page.evaluate(() => window.__wizard.goLink());
   const sp = new URLSearchParams(link.split("?")[1]);
   check(sp.get("side") === "top" && sp.get("lsym") === "0" && sp.get("index") === "0" && sp.get("lroad") === "1" && sp.get("paper") === "a2p", `Link traegt die Wahl: ${link}`);
-  check(await page.isVisible("#go") && !(await page.isVisible("#next")), "Schritt 2: Knopf 'Ortsplan erstellen' statt 'Weiter'");
+  check(await page.isVisible("#go") && !(await page.isVisible("#next")), "Schritt 3: Knopf 'Ortsplan erstellen' statt 'Weiter'");
+  // Die Vorschau nutzt den ganzen Platz neben dem Menue und passt sich der Fenstergroesse an (Papierverhaeltnis bleibt)
+  {
+    const geo = () => page.evaluate(() => { const s = document.getElementById("stage").getBoundingClientRect(), p = document.getElementById("prev").getBoundingClientRect(); return { sw: s.width, sh: s.height, pw: p.width, ph: p.height, ratio: p.width / p.height }; });
+    const g1 = await geo();
+    check(g1.pw > 450 && g1.pw <= g1.sw - 27 && g1.ph <= g1.sh - 27 && (Math.abs(g1.pw - (g1.sw - 28)) < 3 || Math.abs(g1.ph - (g1.sh - 28)) < 3), `Schritt 3: die Vorschau fuellt die Buehne (${Math.round(g1.pw)}x${Math.round(g1.ph)} px von ${Math.round(g1.sw)}x${Math.round(g1.sh)})`);
+    check(Math.abs(g1.ratio - 420 / 594) < 0.01, `Papierverhaeltnis A2 hoch bleibt (${g1.ratio.toFixed(3)})`);
+    await page.screenshot({ path: `${OUT}/3-anordnen.png` });
+    await page.setViewportSize({ width: 1000, height: 640 });
+    await page.waitForTimeout(300);
+    const g2 = await geo();
+    check(g2.pw < g1.pw && g2.pw <= g2.sw - 27 && g2.ph <= g2.sh - 27, `kleineres Fenster: die Vorschau passt sich an (${Math.round(g1.pw)} -> ${Math.round(g2.pw)} px)`);
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await page.waitForTimeout(300);
+  }
 
-  // Freie Anordnung: "Ohne Leiste" setzt Positionen, ein Kasten laesst sich ziehen, eine andere Lage setzt zurueck
+  // Freie Anordnung: "Auf der Karte" setzt Positionen, ein Kasten laesst sich ziehen, eine andere Lage setzt zurueck
   await side("none");
   const posOf = async () => new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos");
-  check(await page.isChecked("#c-manual") && await page.isDisabled("#c-manual"), "Ohne Leiste: Bloecke frei, Schalter fest an");
+  check(await page.isChecked("#c-manual") && await page.isDisabled("#c-manual"), "Auf der Karte: Bloecke frei, Schalter fest an");
   const pos0 = await posOf();
   check(/^l:[\d.]+,[\d.]+;s:/.test(pos0 || ""), `Link traegt Positionen: ${pos0}`);
   check(/;n:[\d.]+,[\d.]+/.test(pos0 || "") && await page.isVisible("#pv-b-north") && await page.isVisible("#pv-b-scale"), "Nordpfeil und Massstab sind getrennte Kaesten");
-  await page.check("#c-sym"); // Legende wieder an, sonst gibt es keinen Kasten
+  await inContent(() => page.check("#c-sym")); // Legende wieder an, sonst gibt es keinen Kasten
   const lb = await page.locator("#pv-b-scale").boundingBox();
   await page.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2);
   await page.mouse.down();
@@ -259,7 +277,7 @@ try {
     await page.click('.st[data-s="0"]');
     await page.click('#g-free button[data-v="0"]');
     await page.selectOption("#fmt", "1:1");
-    await page.click('.st[data-s="1"]');
+    await page.click('.st[data-s="2"]');
     await page.locator("#prev").scrollIntoViewIfNeeded();
     check(!(await posOf()), "feste Leiste ohne eigene Verschiebung: keine Positionen in der Adresse");
     check(await page.evaluate(() => document.getElementById("pv-map").classList.contains("mv") && document.getElementById("pv-title").classList.contains("mv")), "feste Leiste: Titel und Karte sind verschiebbar");
@@ -299,7 +317,7 @@ try {
     await page.click("#pos-reset");
     check(!(await posOf()), "Zuruecksetzen: wieder keine Positionen, Karte und Leiste an der Standardlage");
     await side("top");
-    await page.click('.st[data-s="0"]'); await page.click('#g-free button[data-v="1"]'); await page.click('.st[data-s="1"]');
+    await page.click('.st[data-s="0"]'); await page.click('#g-free button[data-v="1"]'); await page.click('.st[data-s="2"]');
   }
   // Bloecke nicht auf der Karte (Standard): der Kasten laesst sich nicht ueber das Kartenfenster ziehen; erlaubt man es, geht es
   await side("right");
@@ -335,7 +353,7 @@ try {
   await page.uncheck("#c-onmap");
   check(!(await overlaps()), "Erlaubnis zurueckgenommen: Legende wieder in der Standardlage");
   await side("top");
-  await page.uncheck("#c-sym");
+  await inContent(() => page.uncheck("#c-sym"));
 
   // Einstellungen bleiben beim Neuladen (localStorage)
   await page.goto(`${BASE}/pick.html`); // ohne Adresse: zuletzt benutzte Wahl (eine Adresse mit Angaben haette Vorrang)
@@ -344,7 +362,7 @@ try {
   check(sr.side === "top" && sr.size === "a2" && sr.lsym === false && sr.index === false, "Neuladen: Wahl bleibt erhalten");
 
   // Blatt erzeugen
-  await page.click('.st[data-s="1"]');
+  await page.click('.st[data-s="2"]');
   await Promise.all([page.waitForNavigation(), page.click("#go")]);
   await waitReady(page, { key: "__ready", timeout: 120000, failure: () => failure });
   const info = await page.evaluate(() => ({ sheet: !!window.__sheet, info: window.__sheetInfo, err: window.__error || null, link: document.getElementById("pick-link").href }));
@@ -369,11 +387,11 @@ try {
     const growBy = async (dx, dy) => { await page.evaluate(() => document.getElementById("prev").scrollIntoView({ block: "center" })); /* sonst liegt die Statusleiste unten ueber dem Griff */ const z = await page.locator("#pv-map-rz").boundingBox(); await page.mouse.move(z.x + z.width / 2, z.y + z.height / 2); await page.mouse.down(); await page.mouse.move(z.x + z.width / 2 + dx, z.y + z.height / 2 + dy, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300); };
     await page.goto(`${BASE}/pick.html?paper=a3l&side=none&scale=5000`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
-    await page.click('.st[data-s="1"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
+    await page.click('.st[data-s="2"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
     check(await handleFree(), "Ohne Leiste: der Griff zum Groessemachen liegt ueber dem Verzeichnis und ist erreichbar");
     await page.goto(`${BASE}/pick.html?paper=a3l&side=right&scale=5000&fmt=fill`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
-    await page.click('.st[data-s="1"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
+    await page.click('.st[data-s="2"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
     const f0 = await rectOf("#pv-map");
     await growBy(400, 300);
     const f1 = await rectOf("#pv-map");

@@ -21,7 +21,7 @@ const startLon = +(q.get("lon") || areaInfo?.lon || 11.3181);
 
 // ---- Einstellungen: Standard, zuletzt benutzt (localStorage, darf fehlen), Adresse gewinnt ----
 const KEY = "ofm_ortsplan_wizard";
-const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "left", manual: false, pos: null, onmap: false, obg: "white", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, iauto: true, dpi: 150 };
+const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "none", manual: false, pos: null, onmap: false, obg: "white", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, iauto: true, dpi: 150 };
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { /* ohne Speicher */ }
 const S = { ...DEFAULTS };
@@ -162,7 +162,7 @@ function groupClampMap(m) {
   return { x: (L.frame.x + d.dx) / wMm, y: (L.frame.y + d.dy) / hMm };
 }
 const resetPos = () => { S.pos = null; S.posKey = undefined; };
-const onMapOk = () => S.side === "none" || S.onmap; // ohne Leiste liegen die Bloecke zwangslaeufig auf der Karte
+const onMapOk = () => S.side === "none" || S.onmap; // "Auf der Karte": Legende, Massstab und Co. liegen zwangslaeufig auf der Karte
 /** Liegt ein Block (geschaetzt) ganz oder teilweise auf dem Kartenfenster? */
 function overlapsMap(pos, name) {
   const { L, wMm, hMm } = layout();
@@ -213,6 +213,8 @@ function drawPreview() {
   const { wMm, hMm, L } = layout();
   const prev = $("prev");
   prev.style.aspectRatio = `${wMm} / ${hMm}`;
+  prev.style.setProperty("--pui", String(L.ui));
+  fitStage(); // Papierverhaeltnis geaendert: Buehne neu fuellen
   $("pv-map-label").textContent = `Karte 1:${S.scale.toLocaleString("de-DE")}`;
   $("pv-title").replaceChildren(...[T.title || "Orts- und Hydrantenplan", T.place || "Ortsname"].map((t) => { const s = document.createElement("span"); s.textContent = t; return s; }));
   const manual = isManual();
@@ -227,7 +229,7 @@ function drawPreview() {
 
 /** Kaesten der vier Bloecke in der Vorschau (nur bei freier Anordnung): Lage aus S.pos, Groesse geschaetzt (das Blatt zeichnet die echten Masse). */
 function drawBlocks(manual, L, wMm, hMm) {
-  const pos = curPos(), sz = estimateSizes({ lsym: S.lsym, lroad: S.lroad });
+  const pos = curPos(), sz = estimateSizes({ lsym: S.lsym, lroad: S.lroad, frameW: L.frame.w, ui: L.ui });
   // Titel und Karte: bei freier Anordnung an ihrer eigenen Lage (verschiebbar), sonst an der Lage, die die Seitenleiste vorgibt
   const place = (el, r) => { el.style.left = `${(r.x / wMm) * 100}%`; el.style.top = `${(r.y / hMm) * 100}%`; el.style.width = `${(r.w / wMm) * 100}%`; el.style.height = `${(r.h / hMm) * 100}%`; };
   const t = estimateTitle({ title: T.title, place: T.place });
@@ -298,7 +300,7 @@ const chips = (id, items, key, refit) => {
 };
 chips("g-size", [["a4", "A4"], ["a3", "A3"], ["a2", "A2"], ["a1", "A1"]], "size", true);
 chips("g-orient", [["l", "Quer"], ["p", "Hoch"]], "orient", true);
-chips("g-side", [["top", "Oben"], ["bottom", "Unten"], ["left", "Links"], ["right", "Rechts"], ["none", "Ohne Leiste"]], "side", true);
+chips("g-side", [["none", "Auf der Karte"], ["top", "Oben"], ["bottom", "Unten"], ["left", "Links"], ["right", "Rechts"]], "side", true);
 $("scale").addEventListener("change", () => { S.scale = +$("scale").value; fit(); refresh(); });
 $("fmt").addEventListener("change", () => { S.fmt = $("fmt").value; resetPos(); fit(); refresh(); });
 $("c-manual").addEventListener("change", () => { S.manual = $("c-manual").checked; if (S.manual) S.pos = null; refresh(); });
@@ -443,13 +445,29 @@ $("o-isize").addEventListener("change", () => { S.isize = num($("o-isize").value
 
 // Schritte
 let step = 0;
+/** Schritt 3: die Vorschau fuellt die Buehne (Papierverhaeltnis bleibt); die Schrift in den Kaesten waechst mit (--k, 1 = die frueheren 327 px Breite). */
+function fitStage() {
+  const st = $("stage");
+  if (st.hidden) return;
+  const { wMm, hMm } = layout();
+  const aw = st.clientWidth - 28, ah = st.clientHeight - 28;
+  if (aw <= 0 || ah <= 0) return;
+  const w = Math.floor(Math.min(aw, (ah * wMm) / hMm));
+  $("prev").style.width = `${w}px`;
+  $("prev").style.setProperty("--k", String(Math.max(0.8, w / 327)));
+  $("prev").style.setProperty("--pxmm", String(w / wMm)); // Pixel je mm Papier: Titelschrift in der Vorschau so gross wie auf dem Blatt
+}
+new ResizeObserver(fitStage).observe($("stage"));
 function go(n) {
-  step = Math.max(0, Math.min(1, n));
+  step = Math.max(0, Math.min(2, n));
   document.querySelectorAll(".sec").forEach((s) => s.classList.toggle("on", +s.dataset.s === step));
   document.querySelectorAll(".st").forEach((b) => { if (+b.dataset.s === step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
   $("back").hidden = step === 0;
-  $("next").hidden = step === 1;
-  $("go").hidden = step !== 1;
+  $("next").hidden = step === 2;
+  $("go").hidden = step !== 2;
+  const arrange = step === 2; // Anordnen: die grosse Vorschau ersetzt die Karte und den Rahmen
+  $("stage").hidden = !arrange; $("frame").hidden = arrange; $("maphint").hidden = arrange;
+  if (arrange) { drawPreview(); fitStage(); } else map.resize();
   if (step === 1) suggestPlace();
 }
 document.querySelectorAll(".st").forEach((b) => b.addEventListener("click", () => go(+b.dataset.s)));

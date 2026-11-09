@@ -41,13 +41,15 @@
     select, input[type=number], input[type=text] { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: #0f172a; color: var(--text); }
     label.row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
     button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
-    #prev { position: relative; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+    /* Schritt 3 "Anordnen": die Vorschau des Blatts fuellt den ganzen Platz links neben dem Menue (Papierverhaeltnis bleibt; Schrift waechst mit, --k) */
+    #stage { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; padding: 14px; background: #0b1220; overflow: hidden; }
+    #prev { position: relative; flex: none; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 6px 30px rgba(0, 0, 0, .5); }
     #prev div { position: absolute; border-radius: 2px; overflow: hidden; }
-    #pv-map { background: #cfe3c4; color: #27500a; font-size: 11px; display: flex; align-items: center; justify-content: center; }
-    #pv-panel { background: #fde9c8; color: #633806; font-size: 10px; display: flex; gap: 3px; padding: 3px; }
-    #pv-title { background: #fde9c8; color: #633806; font-size: 9px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0 6px; font-weight: 600; line-height: 1.15; }
-    #pv-title span:last-child { font-size: 12px; font-weight: 700; }
-    #prev .blk { z-index: 2; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; line-height: 1.1; font-weight: 600; border: 1px solid rgba(15, 23, 42, .55); cursor: grab; touch-action: none; user-select: none; color: #0f172a; border-radius: 2px; }
+    #pv-map { background: #cfe3c4; color: #27500a; font-size: calc(11px * var(--k, 1)); display: flex; align-items: center; justify-content: center; }
+    #pv-panel { background: #fde9c8; color: #633806; font-size: calc(10px * var(--k, 1)); display: flex; gap: 3px; padding: 3px; }
+    #pv-title { background: #fde9c8; color: #633806; font-size: calc(6px * var(--pxmm, 0.78) * var(--pui, 1)); /* Ueberschrift 6 mm wie auf dem Blatt */ display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 0 6px; font-weight: 600; line-height: 1.15; }
+    #pv-title span:last-child { font-size: calc(9px * var(--pxmm, 0.78) * var(--pui, 1)); /* Ortsname 9 mm */ font-weight: 700; }
+    #prev .blk { z-index: 2; display: flex; align-items: center; justify-content: center; text-align: center; font-size: calc(9px * var(--k, 1)); line-height: 1.1; font-weight: 600; border: 1px solid rgba(15, 23, 42, .55); cursor: grab; touch-action: none; user-select: none; color: #0f172a; border-radius: 2px; }
     #prev .mv { z-index: 2; cursor: grab; touch-action: none; user-select: none; outline: 1px dashed rgba(15, 23, 42, .55); outline-offset: -1px; }
     #prev #pv-map.mv { z-index: 1; }
     #prev .mv.drag { cursor: grabbing; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
@@ -55,8 +57,8 @@
     #prev .blk:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
     #prev .blk.drag { cursor: grabbing; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
     /* Griff zum Groessemachen der Karte: eigenes Element ueber allen Kaesten, sonst verdeckt ihn z. B. das Verzeichnis am Kartenrand */
-    #prev #pv-map-rz { z-index: 5; width: 16px; height: 16px; background: #0f172a; opacity: .8; cursor: nwse-resize; border-radius: 3px; border: 1px solid #fff; touch-action: none; transform: translate(-50%, -50%); }
-    #prev .rz { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; background: #0f172a; opacity: .75; cursor: nwse-resize; border-radius: 2px 0 0 0; }
+    #prev #pv-map-rz { z-index: 5; width: calc(16px * var(--k, 1)); height: calc(16px * var(--k, 1)); background: #0f172a; opacity: .8; cursor: nwse-resize; border-radius: 3px; border: 1px solid #fff; touch-action: none; transform: translate(-50%, -50%); }
+    #prev .rz { position: absolute; right: 0; bottom: 0; width: calc(12px * var(--k, 1)); height: calc(12px * var(--k, 1)); background: #0f172a; opacity: .75; cursor: nwse-resize; border-radius: 2px 0 0 0; }
     #pv-panel span { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 255, 255, .55); border-radius: 2px; }
     details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
     details summary { cursor: pointer; color: var(--muted); }
@@ -90,13 +92,25 @@
         <div class="handle edge" data-c="w" style="left:0;top:50%"></div>
         <div class="handle edge" data-c="e" style="left:100%;top:50%"></div>
       </div>
+      <div id="stage" hidden>
+        <div id="prev" role="group" aria-label="Vorschau der Blattaufteilung">
+            <div id="pv-title" data-b="title"></div><div id="pv-map" data-b="map"><span id="pv-map-label"></span></div><div id="pv-panel"></div>
+            <div class="blk" id="pv-b-legend" data-b="legend" tabindex="0" role="button" aria-label="Legende verschieben" style="background:#dbeafe">Legende</div>
+            <div class="blk" id="pv-b-scale" data-b="scale" tabindex="0" role="button" aria-label="Maßstab verschieben" style="background:#fef3c7">Maßstab</div>
+            <div class="blk" id="pv-b-north" data-b="north" tabindex="0" role="button" aria-label="Nordpfeil verschieben" style="background:#fee2e2">N</div>
+            <div class="blk" id="pv-b-source" data-b="source" tabindex="0" role="button" aria-label="Quellenangabe verschieben" style="background:#ede9fe">Quellen</div>
+            <div class="blk" id="pv-b-index" data-b="index" tabindex="0" role="button" aria-label="Straßenverzeichnis verschieben" style="background:#dcfce7">Verzeichnis<span class="rz" data-rz="1" aria-hidden="true"></span></div>
+            <div id="pv-map-rz" data-b="map" data-rz="1" title="Größe der Karte ändern" aria-hidden="true"></div>
+          </div>
+      </div>
       <div id="maphint">Karte ziehen und zoomen. Den Rahmen am Griff oben verschieben, an Kanten und Ecken aufziehen.</div>
     </div>
     <aside id="panel" aria-label="Ortsplan erstellen">
       <h1>Ortsplan erstellen</h1>
       <nav id="steps" aria-label="Schritte">
         <button class="st" type="button" data-s="0">1 Ausschnitt und Format</button>
-        <button class="st" type="button" data-s="1">2 Legende</button>
+        <button class="st" type="button" data-s="1">2 Inhalt</button>
+        <button class="st" type="button" data-s="2">3 Anordnen</button>
       </nav>
       <div id="body">
         <section class="sec" data-s="0">
@@ -106,7 +120,7 @@
           <div><p class="lab">Ausrichtung</p><div class="chips" id="g-orient"></div></div>
           <div id="fmt-wrap"><p class="lab" id="lab-fmt">Kartenform</p>
             <select id="fmt" aria-labelledby="lab-fmt"><option value="fill">Papier füllen</option><option value="1:1">Quadrat 1:1</option><option value="3:2">Quer 3:2</option><option value="4:3">Quer 4:3</option><option value="2:3">Hoch 2:3</option><option value="3:4">Hoch 3:4</option></select></div>
-          <div><p class="lab">Wo steht die Legende?</p><div class="chips" id="g-side"></div></div>
+          <div><p class="lab">Anordnung: Wo stehen Legende, Maßstab und Verzeichnis?</p><div class="chips" id="g-side"></div></div>
           <div><p class="lab" id="lab-scale">Maßstab 1 :</p><select id="scale" aria-labelledby="lab-scale"></select></div>
           <label class="row"><input type="checkbox" id="c-round"> Maßstab auf Standardwert runden (z. B. 1:4.000)</label>
           <div><button class="btn" id="fit" type="button">Rahmen einpassen</button></div>
@@ -119,23 +133,6 @@
             <label class="lab" for="o-place">Ortsname</label><input id="o-place" type="text" maxlength="60" autocomplete="off" style="width:100%;box-sizing:border-box">
             <p class="hint" id="place-hint" style="margin-top:4px"></p>
             <label class="lab" for="o-title" style="margin-top:8px;display:block">Überschrift</label><input id="o-title" type="text" maxlength="60" placeholder="Orts- und Hydrantenplan" autocomplete="off" style="width:100%;box-sizing:border-box">
-          </div>
-          <label class="row"><input type="checkbox" id="c-manual"> Blöcke selbst anordnen</label>
-          <div id="onmap-wrap" hidden>
-            <label class="row"><input type="checkbox" id="c-onmap"> Blöcke dürfen auf der Karte liegen</label>
-            <div id="obg-wrap" hidden style="margin-top:6px"><p class="lab">Untergrund auf der Karte</p><div class="chips" id="g-obg"></div></div>
-          </div>
-          <p class="hint" id="pos-hint" hidden>Ziehe die Kästen in die freien Flächen der Vorschau (oder Pfeiltasten, mit Umschalt weiter). Auch Titel und Karte lassen sich verschieben; die Karte rastet nahe am Rand ein und bleibt immer ganz auf dem Blatt. An der Ecke unten rechts der Karte änderst du ihre Größe (Alt + Pfeiltasten): der Maßstab bleibt, sie zeigt dann mehr oder weniger Gebiet; sie wächst bis zum Papierrand, aber nicht über Kästen hinweg (verschiebe sie oder erlaube sie auf der Karte). Das Straßenverzeichnis lässt sich an der Ecke unten rechts größer ziehen (mit Tastatur: Alt + Pfeiltasten). Die Größe der Kästen ist geschätzt.</p>
-          <p class="hint" id="mv-hint" hidden>Titel und Karte lassen sich in der Vorschau verschieben (Pfeiltasten gehen auch); die Leiste folgt der Karte, die Karte rastet nahe am Rand ein. An der Ecke unten rechts der Karte änderst du ihre Größe: der Maßstab bleibt, sie zeigt dann mehr oder weniger Gebiet.</p>
-          <div id="pos-reset-wrap" hidden><button class="btn" id="pos-reset" type="button">Anordnung zurücksetzen</button></div>
-          <div id="prev" role="group" aria-label="Vorschau der Blattaufteilung">
-            <div id="pv-title" data-b="title"></div><div id="pv-map" data-b="map"><span id="pv-map-label"></span></div><div id="pv-panel"></div>
-            <div class="blk" id="pv-b-legend" data-b="legend" tabindex="0" role="button" aria-label="Legende verschieben" style="background:#dbeafe">Legende</div>
-            <div class="blk" id="pv-b-scale" data-b="scale" tabindex="0" role="button" aria-label="Maßstab verschieben" style="background:#fef3c7">Maßstab</div>
-            <div class="blk" id="pv-b-north" data-b="north" tabindex="0" role="button" aria-label="Nordpfeil verschieben" style="background:#fee2e2">N</div>
-            <div class="blk" id="pv-b-source" data-b="source" tabindex="0" role="button" aria-label="Quellenangabe verschieben" style="background:#ede9fe">Quellen</div>
-            <div class="blk" id="pv-b-index" data-b="index" tabindex="0" role="button" aria-label="Straßenverzeichnis verschieben" style="background:#dcfce7">Verzeichnis<span class="rz" data-rz="1" aria-hidden="true"></span></div>
-            <div id="pv-map-rz" data-b="map" data-rz="1" title="Größe der Karte ändern" aria-hidden="true"></div>
           </div>
           <div>
             <p class="lab">Was steht darin?</p>
@@ -152,6 +149,17 @@
               <label for="o-isize">Verzeichnis: Grundgröße der Schrift</label><input id="o-isize" type="number" min="0.5" max="3" step="0.1" style="width:4.5em">
             </div>
           </details>
+        </section>
+        <section class="sec" data-s="2">
+          <p class="hint">Hier ordnest du den Plan auf dem Blatt an. Die Vorschau füllt den Platz links.</p>
+          <label class="row"><input type="checkbox" id="c-manual"> Blöcke selbst anordnen</label>
+          <div id="onmap-wrap" hidden>
+            <label class="row"><input type="checkbox" id="c-onmap"> Blöcke dürfen auf der Karte liegen</label>
+            <div id="obg-wrap" hidden style="margin-top:6px"><p class="lab">Untergrund auf der Karte</p><div class="chips" id="g-obg"></div></div>
+          </div>
+          <p class="hint" id="pos-hint" hidden>Ziehe die Kästen in die freien Flächen der Vorschau (oder Pfeiltasten, mit Umschalt weiter). Auch Titel und Karte lassen sich verschieben; die Karte rastet nahe am Rand ein und bleibt immer ganz auf dem Blatt. An der Ecke unten rechts der Karte änderst du ihre Größe (Alt + Pfeiltasten): der Maßstab bleibt, sie zeigt dann mehr oder weniger Gebiet. Das Straßenverzeichnis lässt sich an der Ecke unten rechts größer ziehen (mit Tastatur: Alt + Pfeiltasten). Die Größe der Kästen ist geschätzt.</p>
+          <p class="hint" id="mv-hint" hidden>Titel und Karte lassen sich in der Vorschau verschieben (Pfeiltasten gehen auch); die Leiste folgt der Karte, die Karte rastet nahe am Rand ein. An der Ecke unten rechts der Karte änderst du ihre Größe: der Maßstab bleibt, sie zeigt dann mehr oder weniger Gebiet.</p>
+          <div id="pos-reset-wrap" hidden><button class="btn" id="pos-reset" type="button">Anordnung zurücksetzen</button></div>
         </section>
       </div>
       <p id="msg" role="status"></p>

@@ -56,16 +56,17 @@ const setField = (el, v) => {
   if (el.tagName === "SELECT" && ![...el.options].some((o) => o.value === val)) el.add(new Option(val, val));
   el.value = val;
 };
-for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "right", icols: q.get("icols") || "0", fmt, place, title: sheetTitle })) setField(form.elements[k], v);
-document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "right", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), iauto: q.get("iauto") === "0" ? "0" : "1", dpi: String(dpi), ...(areaName ? { area: areaName } : {}), ...(q.get("place") ? { place: q.get("place") } : {}), ...(q.get("title") ? { title: q.get("title") } : {}), ...(q.get("pos") ? { pos: q.get("pos") } : {}), ...(q.get("onmap") ? { onmap: q.get("onmap") } : {}), ...(q.get("obg") ? { obg: q.get("obg") } : {}) })}`;
+for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "none", icols: q.get("icols") || "0", fmt, place, title: sheetTitle })) setField(form.elements[k], v);
+document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "none", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), iauto: q.get("iauto") === "0" ? "0" : "1", dpi: String(dpi), ...(areaName ? { area: areaName } : {}), ...(q.get("place") ? { place: q.get("place") } : {}), ...(q.get("title") ? { title: q.get("title") } : {}), ...(q.get("pos") ? { pos: q.get("pos") } : {}), ...(q.get("onmap") ? { onmap: q.get("onmap") } : {}), ...(q.get("obg") ? { obg: q.get("obg") } : {}) })}`;
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
 
-// Blatt-Modus (sheet=1): Karte nur im Kartenfenster, daneben Seitenleiste mit Legende und Verzeichnis.
-const sheet = q.get("sheet") === "1";
+// Blatt-Modus (Standard, sheet=0 schaltet ihn ab): der fertige Plan mit Titel, Planquadraten, Legende und Verzeichnis; "PNG/PDF speichern" speichert das Blatt.
+// Ohne Blatt (sheet=0) gibt es nur das Kartenfenster: fuer Stilvergleiche und Messungen (shot.mjs, stress.mjs).
+const sheet = q.get("sheet") !== "0";
 // Lage von Legende, Massstab und Verzeichnis: side=right (Standard) | left | top | bottom; icols = Spaltenzahl des Verzeichnisses (0 = automatisch)
 // Kartenformat: fmt=fill (Papier fuellen, Standard) | 1:1 | 3:2 | 2:3 | 4:3 | 3:4 ... (Seitenverhaeltnis des Kartenfensters). Geometrie in layout.js.
-const side = ALL_SIDES.includes(q.get("side")) ? q.get("side") : "right"; // "none": keine Seitenleiste, Karte fuellt das Blatt
+const side = ALL_SIDES.includes(q.get("side")) ? q.get("side") : NO_SIDE; // Standard "none" (Auf der Karte): Legende und Co. auf der Karte, nur das Verzeichnis ausserhalb
 // Freie Lage der Bloecke (pos=l:x,y;s:x,y;q:x,y;i:x,y,b,h als Anteile des Papiers, siehe freelayout.js). Bei side=none immer, sonst nur mit pos.
 const posParam = parsePos(q.get("pos"));
 const indexCols = Math.min(6, Math.max(0, Math.round(+(q.get("icols") || 0))));
@@ -284,8 +285,10 @@ async function buildSheet() {
     document.body.insertBefore(bar, document.getElementById("map"));
   }
   if (sheet) {
-    // Stand der Feuerwehr-Daten (meta.json) und der Basiskarte (Metadaten der PMTiles-Datei) sind zwei verschiedene Zeitpunkte
-    const fireMeta = await fetch("/meta.json").then((r) => r.json()).catch(() => null);
+    // Stand der Feuerwehr-Daten (<gebiet>.meta.json, vom Ausschnitt-Skript neben die Daten geschrieben; sonst meta.json) und der Basiskarte
+    // (Metadaten der PMTiles-Datei) sind zwei verschiedene Zeitpunkte
+    const getJson = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const fireMeta = (areaName && (await getJson(`/${areaName}.meta.json`))) || (await getJson("/meta.json"));
     const baseUntil = await new PMTiles(`${location.origin}/${baseFile}`).getMetadata().then(basemapUntil).catch(() => null);
     const meta = { ...(fireMeta || {}), basemap_until: baseUntil };
     const res = await composeSheet({

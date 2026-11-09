@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, mapSizeMm, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
 import { PAPER_MM, computeLayout, MIN_FRAME_MM } from "./layout.js";
+import { attributionStrip } from "./attribution.js";
 
 test("parsePos/formatPos: Rundreise, Reihenfolge und Rundung", () => {
   const pos = { legend: { x: 0.71, y: 0.12 }, scale: { x: 0.7, y: 0.5 }, source: { x: 0.1, y: 0.9 }, north: { x: 0.9, y: 0.4 }, index: { x: 0.05, y: 0.6, w: 0.5, h: 0.3 } };
@@ -48,13 +49,15 @@ test("defaultPos: alle Lagen und Papiere liefern gueltige Anteile, Bloecke liege
 test("defaultPos: Seitenleiste rechts - Bloecke stehen untereinander rechts neben der Karte", () => {
   const p = defaultPos({ paper: "a3l", side: "right" });
   assert.equal(p.legend.x, p.scale.x);
-  assert.ok(p.legend.y < p.scale.y && p.scale.y < p.source.y && p.source.y < p.index.y);
+  assert.ok(p.legend.y < p.scale.y && p.scale.y < p.index.y);
   assert.ok(p.legend.x > 0.6, "rechts");
+  const { frame } = computeLayout({ wMm: 420, hMm: 297, side: "right" });
+  assert.ok(Math.abs(p.source.x * 420 - frame.x) < 1e-9 && p.source.y * 297 >= frame.y + frame.h, "Quellenangabe: Streifen unter der Karte, linksbuendig mit ihr");
 });
 
 test("defaultPos: oben/unten - Bloecke stehen nebeneinander", () => {
   const p = defaultPos({ paper: "a3l", side: "bottom" });
-  assert.ok(p.legend.x < p.scale.x && p.scale.x < p.source.x && p.source.x < p.index.x);
+  assert.ok(p.legend.x < p.scale.x && p.scale.x < p.index.x);
 });
 
 test("defaultPos: ohne Legendenpunkte fehlt die Legende, der Rest rueckt auf", () => {
@@ -63,12 +66,23 @@ test("defaultPos: ohne Legendenpunkte fehlt die Legende, der Rest rueckt auf", (
   assert.ok(p.scale && p.index);
 });
 
-test("defaultPos: ohne Seitenleiste liegen die Bloecke innen an der Kartenkante oder im freien Rand, nie ueber dem Kartenrand hinaus", () => {
-  const full = defaultPos({ paper: "a2p", side: "none" });
-  const [W] = PAPER_MM.a2p;
-  assert.ok(full.legend.x * W + 62 * 1.4 <= W - 14 * 1.4 + 1e-6, "endet innerhalb der Karte");
-  const narrow = defaultPos({ paper: "a2p", side: "none", fmt: "1:1" }); // Rand rechts neben der quadratischen Karte
-  assert.ok(narrow.legend.x > full.legend.x - 1, "gueltige Lage");
+test("defaultPos: Auf der Karte (none) - Legende, Massstab und Nordpfeil liegen innen auf der Karte, nur das Verzeichnis ausserhalb (quer: Spalte rechts, hoch: Streifen unten)", () => {
+  for (const paper of Object.keys(PAPER_MM)) for (const fmt of ["fill", "3:2", "1:1"]) {
+    const [W, H] = PAPER_MM[paper];
+    const ui = Math.max(1, Math.max(W, H) / 420);
+    const { frame, panel } = computeLayout({ wMm: W, hMm: H, side: "none", fmt });
+    const p = defaultPos({ paper, side: "none", fmt });
+    const F = { x: frame.x / W, y: frame.y / H, w: frame.w / W, h: frame.h / H };
+    for (const n of ["legend", "scale", "north"]) {
+      const r = blockRect(n, p, { ui, W, H, frame });
+      assert.ok(r.x >= F.x - 1e-9 && r.y >= F.y - 1e-9 && r.x + r.w <= F.x + F.w + 1e-9, `${paper} ${fmt}: ${n} liegt auf der Karte`);
+    }
+    assert.ok(!rectsOverlap(p.index, F), `${paper} ${fmt}: das Verzeichnis liegt ausserhalb der Karte`);
+    assert.ok(Math.abs(p.index.x * W - panel.x) < 1e-9 && Math.abs(p.index.y * H - panel.y) < 1e-9, `${paper} ${fmt}: Verzeichnis in der Leiste`);
+    if (W >= H) assert.ok(p.index.x * W >= frame.x + frame.w - 1e-9, `${paper} ${fmt}: quer - rechts neben der Karte`);
+    else assert.ok(p.index.y * H >= frame.y + frame.h - 1e-9, `${paper} ${fmt}: hoch - unter der Karte`);
+    assert.ok(p.source.y * H >= frame.y + frame.h, `${paper} ${fmt}: Quellenstreifen unter der Karte`);
+  }
 });
 
 test("rectsOverlap: Beruehren ist keine Ueberlappung", () => {
@@ -90,7 +104,7 @@ test("clampPos mit Groessen: der ganze Block bleibt im Papier, nicht nur seine E
   const c = clampPos({ source: { x: 0.98, y: 0.99 }, legend: { x: 1, y: 1 } }, dims);
   assert.ok(c.source.x + dims.source.w <= 1 + 1e-9 && c.source.y + dims.source.h <= 1 + 1e-9);
   assert.ok(c.legend.x + dims.legend.w <= 1 + 1e-9 && c.legend.y + dims.legend.h <= 1 + 1e-9);
-  assert.deepEqual(clampPos({ source: { x: 0.1, y: 0.1 } }, dims).source, { x: 0.1, y: 0.1 }, "was passt, bleibt");
+  assert.deepEqual(clampPos({ source: { x: 0.02, y: 0.1 } }, dims).source, { x: 0.02, y: 0.1 }, "was passt, bleibt");
 });
 
 test("defaultPos: Legende, Massstab und Quellen ueberlappen sich in keiner Standardlage (alle Papiere, Lagen, Formate)", () => {
@@ -98,7 +112,10 @@ test("defaultPos: Legende, Massstab und Quellen ueberlappen sich in keiner Stand
     const [W, H] = PAPER_MM[paper];
     const ui = Math.max(1, Math.max(W, H) / 420);
     const pos = defaultPos({ paper, side, fmt });
-    const rects = ["legend", "scale", "source", "north"].map((n) => [n, blockRect(n, pos, { ui, W, H })]);
+    // Die Quellenangabe ist ein Streifen unter der Karte. Bei Leiste oben/unten ist die Leiste oft niedriger als die Legende im Hoechstfall
+    // (geschaetzt); dort wird die Legende nach oben geklemmt und kann den Streifen beruehren, das Blatt zeichnet die echte, kuerzere Legende.
+    const smallBar = side === "top" || side === "bottom";
+    const rects = ["legend", "scale", ...(smallBar ? [] : ["source"]), "north"].map((n) => [n, blockRect(n, pos, { ui, W, H, frame: computeLayout({ wMm: W, hMm: H, side, fmt }).frame })]);
     for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
       assert.ok(!rectsOverlap(rects[i][1], rects[j][1]), `${paper} ${side} ${fmt}: ${rects[i][0]} / ${rects[j][0]}`);
     }
@@ -264,6 +281,14 @@ test("computeLayout mit size: das Mindestmass haelt das Seitenverhaeltnis (feste
   assert.ok(Math.min(l.frame.w, l.frame.h) >= MIN_FRAME_MM - 1e-9, "kuerzere Seite mindestens MIN_FRAME_MM");
   const wide = computeLayout({ wMm: 420, hMm: 297, side: "none", fmt: "3:2", size: { w: 9999, h: 6666 } });
   assert.ok(Math.abs(wide.frame.w / wide.frame.h - 1.5) < 1e-9, "zu gross: gemeinsam auf das Fenster der Lage, Verhaeltnis bleibt");
+});
+
+test("Quellenangabe: ein Streifen (eine Zeile) so breit wie der Text, bei schmaler Karte schmaler und zweizeilig", () => {
+  const wide = estimateSizes({ frameW: 392, ui: 1 }).source, narrow = estimateSizes({ frameW: 120, ui: 1 }).source;
+  assert.ok(wide.w <= 190 && wide.w > narrow.w && wide.h < narrow.h, `breit ${wide.w}x${wide.h}, schmal ${narrow.w}x${narrow.h}`);
+  assert.ok(narrow.w >= 62, "nie schmaler als 62");
+  assert.equal(estimateSizes().source.w, 190, "ohne Kartenbreite: Laenge der Zeile");
+  assert.equal(attributionStrip("2026-11-08T21:21:00Z", "2026-11-09T00:00:00Z"), "© OpenStreetMap contributors (ODbL; https://www.openstreetmap.org/copyright) · Karte: Protomaps · Daten: OpenFireMap.org · Stand: Feuerwehr-Daten 08.11.2026 · Basiskarte 09.11.2026");
 });
 
 test("computeLayout mit size und sizeMax: bei freier Anordnung darf die Karte ueber das Fenster der Lage hinaus bis sizeMax wachsen", () => {

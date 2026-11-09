@@ -12,7 +12,8 @@ export const TOP_BAND = 27;
 export const TOP_PANEL_Y = 21;
 
 export const SIDES = ["right", "left", "top", "bottom"];
-/** Zusaetzliche Lage "none": keine Seitenleiste, die Karte fuellt das Blatt; Legende und Co. liegen frei verschiebbar (freelayout.js). */
+/** Zusaetzliche Lage "none" (Auf der Karte, Standard): Legende, Massstab, Nordpfeil und Quelle liegen frei verschiebbar auf der Karte (freelayout.js),
+ *  nur das Strassenverzeichnis steht ausserhalb (Querformat: Spalte rechts, Hochformat: Streifen unten). */
 export const NO_SIDE = "none";
 export const ALL_SIDES = [...SIDES, NO_SIDE];
 
@@ -43,22 +44,22 @@ export const MIN_FRAME_MM = 40;
  */
 export function computeLayout({ wMm, hMm, side = "right", fmt = "fill", size = null, sizeMax = null }) {
   const ui = Math.max(1, Math.max(wMm, hMm) / 420); // A3 = 1, A2 = 1,4, A1 = 2
+  // "none" (Auf der Karte): Legende, Massstab, Nordpfeil und Quelle liegen auf der Karte, nur das Verzeichnis steht ausserhalb: bei Querformat in einer
+  // Spalte rechts, bei Hochformat in einem Streifen unten (dieselbe Aufteilung wie die Leiste rechts bzw. unten)
   const sd = ALL_SIDES.includes(side) ? side : "right";
+  const sg = sd === NO_SIDE ? (wMm >= hMm ? "right" : "bottom") : sd;
   const sidebarW = Math.min(92 * ui, Math.max(62, 0.24 * wMm));
   const panelH = Math.min(0.45 * hMm, Math.max(72 * ui, (wMm < hMm ? 0.36 : 0.28) * hMm)); // Hochformat hoeher: Legende und Massstab koennen untereinander stehen
   let frame, panel;
-  if (sd === NO_SIDE) {
-    frame = { x: 14 * ui, y: TOP_BAND * ui, w: wMm - 28 * ui, h: hMm - TOP_BAND * ui - 14 * ui };
-    panel = { x: wMm - 14 * ui, y: frame.y, w: 0, h: 0 };
-  } else if (sd === "left") {
+  if (sg === "left") {
     panel = { x: 6 * ui, y: TOP_BAND * ui, w: sidebarW, h: hMm - TOP_BAND * ui - 14 * ui };
     const fx = panel.x + sidebarW + 9 * ui;
     frame = { x: fx, y: TOP_BAND * ui, w: wMm - fx - 14 * ui, h: hMm - TOP_BAND * ui - 14 * ui };
-  } else if (sd === "top") {
+  } else if (sg === "top") {
     panel = { x: 14 * ui, y: TOP_PANEL_Y * ui, w: wMm - 28 * ui, h: panelH };
     const fy = panel.y + panelH + 14 * ui;
     frame = { x: 14 * ui, y: fy, w: wMm - 28 * ui, h: hMm - fy - 14 * ui };
-  } else if (sd === "bottom") {
+  } else if (sg === "bottom") {
     const fh = hMm - TOP_BAND * ui - panelH - 20 * ui;
     frame = { x: 14 * ui, y: TOP_BAND * ui, w: wMm - 28 * ui, h: fh };
     panel = { x: 14 * ui, y: frame.y + fh + 14 * ui, w: wMm - 28 * ui, h: panelH };
@@ -71,15 +72,12 @@ export function computeLayout({ wMm, hMm, side = "right", fmt = "fill", size = n
     // Kartenfenster auf das Format zuschneiden; der Bereich fuer Legende usw. rueckt direkt an die Karte
     // Seitenleiste: der Bereich behaelt die volle Hoehe, auch wenn die Karte flach wird (breites Format); sonst liefen Legende
     // und Massstab unten aus dem Blatt. Die Karte sitzt oben buendig mit dem Bereich.
-    if (sd === NO_SIDE) {
-      frame = fitRatio(frame, ratio, 0, 0);
-      panel = { ...panel, x: frame.x + frame.w };
-    } else if (sd === "right") {
+    if (sg === "right") {
       frame = fitRatio(frame, ratio, 0, 0);
       panel = { ...panel, x: frame.x + frame.w + 6.5 * ui };
-    } else if (sd === "left") {
+    } else if (sg === "left") {
       frame = fitRatio(frame, ratio, 0, 0);
-    } else if (sd === "top") {
+    } else if (sg === "top") {
       frame = fitRatio(frame, ratio, 0.5, 0);
     } else {
       frame = fitRatio(frame, ratio, 0.5, 0);
@@ -93,9 +91,8 @@ export function computeLayout({ wMm, hMm, side = "right", fmt = "fill", size = n
     const lift = Math.max(1, Math.min(MIN_FRAME_MM, frame.w) / w, Math.min(MIN_FRAME_MM, frame.h) / h);
     w = Math.min(sizeMax?.w ?? frame.w, w * lift); h = Math.min(sizeMax?.h ?? frame.h, h * lift);
     frame = { ...frame, w, h };
-    if (sd === NO_SIDE) panel = { ...panel, x: frame.x + frame.w };
-    else if (sd === "right") panel = { ...panel, x: frame.x + frame.w + 6.5 * ui };
-    else if (sd === "bottom") panel = { ...panel, y: frame.y + frame.h + 14 * ui };
+    if (sg === "right") panel = { ...panel, x: frame.x + frame.w + 6.5 * ui };
+    else if (sg === "bottom") panel = { ...panel, y: frame.y + frame.h + 14 * ui };
   }
   return { ui, frame, panel, ratio };
 }

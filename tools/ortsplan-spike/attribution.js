@@ -26,6 +26,16 @@ export function formatDay(iso) {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : null;
 }
 
+/** Eine Zeile fuer den Streifen am Kartenrand (frei gelegter Quellenblock): Pflichttext, freiwillige Hinweise und beide Staende. */
+export function attributionStrip(fireIso, baseIso) {
+  return [OSM_NOTICE, CREDIT, standLine(fireIso, baseIso)].join(" · ");
+}
+
+/** Ungefaehre Laenge dieser Zeile bei SRC_SIZE in "virtuellen" mm (A3 = 1): fuer Schaetzung und Standardlage; das Blatt misst den echten Text. */
+export const STRIP_TEXT_MM = 190;
+/** Breite des Streifens in virtuellen mm: so lang wie die Zeile, hoechstens so breit wie das Kartenfenster (abzueglich Rand), mindestens 62 (dann in mehreren Zeilen). */
+export const stripWidth = (frameWmm, ui = 1) => (frameWmm > 0 ? Math.min(STRIP_TEXT_MM, Math.max(62, frameWmm / ui - 8)) : STRIP_TEXT_MM);
+
 /** Eine Zeile mit beiden Staenden: "Stand: Feuerwehr-Daten 24.10.2026 · Basiskarte 01.11.2026" (fehlt einer, entfaellt er). */
 export function standLine(fireIso, baseIso) {
   const parts = [["Feuerwehr-Daten", formatDay(fireIso)], ["Basiskarte", formatDay(baseIso)]].filter(([, d]) => d).map(([n, d]) => `${n} ${d}`);
