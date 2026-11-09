@@ -30,11 +30,11 @@ if (areaName) {
   try { areaInfo = await (await fetch(`/${areaName}.json`)).json(); } catch { /* ohne Beschreibung */ }
 }
 const baseFile = areaName ? `${areaName}.pmtiles` : "neunkirchen.pmtiles";
-// Messungen (r2bench.mjs): die Grundkarte von einem Test-Pfad der Pipeline-Domain statt von der Platte laden (base=https://pipeline.openfiremap.org/ortsplan-test/...).
+// Messungen (r2bench.mjs): die Grundkarte von einem Test-Pfad der Pipeline-Domain statt von der Platte laden (base=https://pipeline.openfiremap.org/eu/ortsplan-test-...).
 // Nur dieser Pfad ist erlaubt; sonst gilt die lokale Datei. Die Karte der Anwendung nutzt das nicht.
-const BASE_TEST_PREFIX = "https://pipeline.openfiremap.org/ortsplan-test/";
+const BASE_TEST_PREFIXES = ["https://pipeline.openfiremap.org/ortsplan-test/", "https://pipeline.openfiremap.org/eu/ortsplan-test-"]; // der zweite Pfad liegt unter der Cache-Regel der Pipeline-Domain
 const baseParam = q.get("base") || "";
-const baseUrl = baseParam.startsWith(BASE_TEST_PREFIX) && !baseParam.includes("..") ? baseParam : `${location.origin}/${baseFile}`;
+const baseUrl = BASE_TEST_PREFIXES.some((p) => baseParam.startsWith(p)) && !baseParam.includes("..") ? baseParam : `${location.origin}/${baseFile}`;
 const ofmFile = areaName ? `${areaName}-ofm.pmtiles` : "ofm.pmtiles";
 const onewayFile = areaName ? `${areaName}-oneway.geojson` : "oneway.geojson";
 const lat = +(q.get("lat") || areaInfo?.lat || 49.5252);
