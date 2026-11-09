@@ -127,6 +127,8 @@ Der Spike läuft mit maplibre-gl 5.x und 6.x. Für 6 nötig (alle drei sind scho
 (`localStorage`); Angaben in der Adresse haben Vorrang. Die Geometrie steht in `layout.js`, die Rahmenrechnung in `framegeo.js`, beide getestet.
 Bedienprobe im echten Browser (Rahmen ziehen, Schritte, Blatt erzeugen): `SPIKE_URL=http://127.0.0.1:5173 node wizard.mjs`.
 
+Barrierefreiheit im echten Browser (axe WCAG 2.2 AA plus Best Practices, eigene Kontrastmessung, alle drei Schritte und das Blatt): `SPIKE_URL=http://127.0.0.1:5173 node a11y.mjs`.
+
 Rauchtest aller Seiten und Parameter-Kombinationen (fängt Startfehler, die die Unit-Tests nicht sehen): `SPIKE_URL=http://127.0.0.1:5173 node smoke.mjs`.
 
 ## Messung: Grundkarte auf R2 (09.11.2026)
