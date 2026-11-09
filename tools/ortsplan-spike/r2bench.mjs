@@ -25,7 +25,7 @@ for (const src of sources) {
       if (!isMap(r.url())) return;
       const t = r.request().timing();
       const h = r.headers();
-      reqs.push({ status: r.status(), bytes: +(h["content-length"] || 0), ttfb: t.responseStart - t.requestStart, total: t.responseEnd - t.requestStart, cache: h["cf-cache-status"] || "-" });
+      reqs.push({ status: r.status(), range: r.request().headers()["range"] || "-", bytes: +(h["content-length"] || 0), ttfb: t.responseStart - t.requestStart, total: t.responseEnd - t.requestStart, cache: h["cf-cache-status"] || "-" });
     });
     let failure = null;
     page.on("pageerror", (e) => { failure = e.message; });
@@ -35,7 +35,8 @@ for (const src of sources) {
     const wall = Date.now() - t0;
     const err = await page.evaluate(() => window.__error || null);
     const cache = {};
-    for (const q of reqs) cache[q.cache] = (cache[q.cache] || 0) + 1;
+    for (const q of reqs) cache[`${q.status}/${q.cache}`] = (cache[`${q.status}/${q.cache}`] || 0) + 1; // Status der Antwort / Cache-Status der Kante
+    for (const q of reqs.filter((x) => x.status !== 206)) console.log("  nicht 206:", q.status, "Range:", q.range, "Bytes:", q.bytes, "Cache:", q.cache);
     rows.push({ quelle: src === "lokal" ? "lokal" : src.split("/").pop(), lauf: run, wartezeit_s: +(wall / 1000).toFixed(1), anfragen: reqs.length, MB: +(reqs.reduce((a, q) => a + q.bytes, 0) / 1e6).toFixed(1),
       ttfb_median_ms: Math.round(pct(reqs.map((q) => q.ttfb), 0.5)), ttfb_p95_ms: Math.round(pct(reqs.map((q) => q.ttfb), 0.95)), dauer_p95_ms: Math.round(pct(reqs.map((q) => q.total), 0.95)), cache, fehler: err || failure || null });
     await ctx.close();
