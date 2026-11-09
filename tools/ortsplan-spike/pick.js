@@ -326,19 +326,21 @@ function movePos(name, dx, dy, resize, raw = null) {
     // Die linke obere Ecke bleibt stehen: groesser als der Platz ab der jetzigen Lage (mit Rand, bei fester Leiste samt Leiste) wird es nicht,
     // sonst verschoebe das Klemmen der Lage die Ecke
     const at = { x: pos.map.x * wMm, y: pos.map.y * hMm }, cur = { w: L.frame.w, h: L.frame.h };
+    const prev = S.pos, prevKey = S.posKey, basePos = ownPos() || pos;
+    const setSize = (z) => { S.pos = { ...basePos, msize: { w: z.w / wMm, h: z.h / hMm } }; S.posKey = layoutKey(); };
     const fits = (z) => {
       const l2 = computeLayout({ wMm, hMm, side: S.side, fmt: layoutFmt(), size: z, sizeMax: sizeBase });
       const want2 = { dx: at.x - l2.frame.x, dy: at.y - l2.frame.y };
       const d = clampGroupOffset({ frame: l2.frame, panel: isManual() ? null : l2.panel, W: wMm, H: hMm, ui: l2.ui, ...want2 });
-      return Math.abs(d.dx - want2.dx) < 1e-6 && Math.abs(d.dy - want2.dy) < 1e-6;
+      if (Math.abs(d.dx - want2.dx) > 1e-6 || Math.abs(d.dy - want2.dy) > 1e-6) return false;
+      // ohne Erlaubnis keine Bloecke auf der Karte: ein groesseres Fenster darf keinen Block ueberdecken
+      setSize(z);
+      return !(isManual() && !onMapOk() && anyOnMap(curPos()));
     };
     const lerp = (t) => ({ w: cur.w + (want.w - cur.w) * t, h: cur.h + (want.h - cur.h) * t });
     let sz = want;
     if (!fits(want)) { let lo = 0, hi = 1; for (let i = 0; i < 16; i++) { const mid = (lo + hi) / 2; if (fits(lerp(mid))) lo = mid; else hi = mid; } sz = lerp(lo); }
-    const prev = S.pos, prevKey = S.posKey;
-    S.pos = { ...(ownPos() || pos), msize: { w: sz.w / wMm, h: sz.h / hMm } }; S.posKey = layoutKey();
-    // ohne Erlaubnis keine Bloecke auf der Karte: ein groesseres Fenster darf keinen Block ueberdecken
-    if (isManual() && !onMapOk() && anyOnMap(curPos())) { S.pos = prev; S.posKey = prevKey; }
+    if (fits(sz)) setSize(sz); else { S.pos = prev; S.posKey = prevKey; } // wuchs nichts, bleibt alles wie es war
     return;
   }
   // Wo es nicht auf die Karte darf, gilt die Bewegung nur, solange der Block ausserhalb des Kartenfensters bleibt (sonst wenigstens eine Achse)

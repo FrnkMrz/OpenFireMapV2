@@ -380,6 +380,12 @@ try {
     check(Math.abs(f1.w - f0.w) < 2 && Math.abs(f1.h - f0.h) < 2, `feste Leiste: nicht groesser als das Fenster der Lage (${Math.round(f0.w)}x${Math.round(f0.h)} -> ${Math.round(f1.w)}x${Math.round(f1.h)} px)`);
     await page.check("#c-manual");
     await page.locator("#prev").scrollIntoViewIfNeeded();
+    const h0 = await rectOf("#pv-map");
+    await growBy(400, 300);
+    const h1 = await rectOf("#pv-map");
+    check(Math.abs(h1.w - h0.w) < 2, `Bloecke im Weg und nicht auf der Karte erlaubt: die Karte waechst nicht ueber sie hinweg (${Math.round(h0.w)} -> ${Math.round(h1.w)} px)`);
+    await page.check("#c-onmap");
+    await page.locator("#prev").scrollIntoViewIfNeeded();
     const g0 = await rectOf("#pv-map");
     await growBy(400, 300);
     const g1 = await rectOf("#pv-map"), pv = await rectOf("#prev");
