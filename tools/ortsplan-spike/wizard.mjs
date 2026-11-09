@@ -148,10 +148,10 @@ try {
   check(sp.get("side") === "top" && sp.get("lsym") === "0" && sp.get("index") === "0" && sp.get("lroad") === "1" && sp.get("paper") === "a2p", `Link traegt die Wahl: ${link}`);
   check(await page.isVisible("#go") && !(await page.isVisible("#next")), "Schritt 2: Knopf 'Ortsplan erstellen' statt 'Weiter'");
 
-  // Freie Anordnung: "Ohne Leiste" setzt Positionen, ein Kasten laesst sich ziehen, eine andere Lage setzt zurueck
+  // Freie Anordnung: "Auf der Karte" setzt Positionen, ein Kasten laesst sich ziehen, eine andere Lage setzt zurueck
   await side("none");
   const posOf = async () => new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos");
-  check(await page.isChecked("#c-manual") && await page.isDisabled("#c-manual"), "Ohne Leiste: Bloecke frei, Schalter fest an");
+  check(await page.isChecked("#c-manual") && await page.isDisabled("#c-manual"), "Auf der Karte: Bloecke frei, Schalter fest an");
   const pos0 = await posOf();
   check(/^l:[\d.]+,[\d.]+;s:/.test(pos0 || ""), `Link traegt Positionen: ${pos0}`);
   check(/;n:[\d.]+,[\d.]+/.test(pos0 || "") && await page.isVisible("#pv-b-north") && await page.isVisible("#pv-b-scale"), "Nordpfeil und Massstab sind getrennte Kaesten");

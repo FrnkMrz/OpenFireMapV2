@@ -66,12 +66,23 @@ test("defaultPos: ohne Legendenpunkte fehlt die Legende, der Rest rueckt auf", (
   assert.ok(p.scale && p.index);
 });
 
-test("defaultPos: ohne Seitenleiste liegen die Bloecke innen an der Kartenkante oder im freien Rand, nie ueber dem Kartenrand hinaus", () => {
-  const full = defaultPos({ paper: "a2p", side: "none" });
-  const [W] = PAPER_MM.a2p;
-  assert.ok(full.legend.x * W + 62 * 1.4 <= W - 14 * 1.4 + 1e-6, "endet innerhalb der Karte");
-  const narrow = defaultPos({ paper: "a2p", side: "none", fmt: "1:1" }); // Rand rechts neben der quadratischen Karte
-  assert.ok(narrow.legend.x > full.legend.x - 1, "gueltige Lage");
+test("defaultPos: Auf der Karte (none) - Legende, Massstab und Nordpfeil liegen innen auf der Karte, nur das Verzeichnis ausserhalb (quer: Spalte rechts, hoch: Streifen unten)", () => {
+  for (const paper of Object.keys(PAPER_MM)) for (const fmt of ["fill", "3:2", "1:1"]) {
+    const [W, H] = PAPER_MM[paper];
+    const ui = Math.max(1, Math.max(W, H) / 420);
+    const { frame, panel } = computeLayout({ wMm: W, hMm: H, side: "none", fmt });
+    const p = defaultPos({ paper, side: "none", fmt });
+    const F = { x: frame.x / W, y: frame.y / H, w: frame.w / W, h: frame.h / H };
+    for (const n of ["legend", "scale", "north"]) {
+      const r = blockRect(n, p, { ui, W, H, frame });
+      assert.ok(r.x >= F.x - 1e-9 && r.y >= F.y - 1e-9 && r.x + r.w <= F.x + F.w + 1e-9, `${paper} ${fmt}: ${n} liegt auf der Karte`);
+    }
+    assert.ok(!rectsOverlap(p.index, F), `${paper} ${fmt}: das Verzeichnis liegt ausserhalb der Karte`);
+    assert.ok(Math.abs(p.index.x * W - panel.x) < 1e-9 && Math.abs(p.index.y * H - panel.y) < 1e-9, `${paper} ${fmt}: Verzeichnis in der Leiste`);
+    if (W >= H) assert.ok(p.index.x * W >= frame.x + frame.w - 1e-9, `${paper} ${fmt}: quer - rechts neben der Karte`);
+    else assert.ok(p.index.y * H >= frame.y + frame.h - 1e-9, `${paper} ${fmt}: hoch - unter der Karte`);
+    assert.ok(p.source.y * H >= frame.y + frame.h, `${paper} ${fmt}: Quellenstreifen unter der Karte`);
+  }
 });
 
 test("rectsOverlap: Beruehren ist keine Ueberlappung", () => {

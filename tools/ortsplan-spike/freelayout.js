@@ -162,12 +162,12 @@ export function defaultPos({ paper = "a3l", side = "right", fmt = "fill", lsym =
     const w = Math.max(0.12 * W, right - x);
     out.index = { x: x / W, y: panel.y / H, w: w / W, h: panel.h / H };
   } else {
-    const colW = side === "none" ? 62 * ui : panel.w;
-    // ohne Seitenleiste: im Rand rechts von der Karte, wenn er breit genug ist, sonst innen an der rechten Kartenkante
-    const margin = W - (frame.x + frame.w + 8 * ui) - 6 * ui;
-    const x = side !== "none" ? panel.x : margin >= colW ? frame.x + frame.w + 8 * ui : frame.x + frame.w - colW - 4 * ui;
-    const y0 = side === "none" ? frame.y + 4 * ui : panel.y;
-    const bottom = H - 14 * ui;
+    // Auf der Karte ("none"): Legende, Massstab und Nordpfeil stehen innen an der rechten Kartenkante, das Verzeichnis ausserhalb in der Leiste
+    // (Spalte rechts bzw. Streifen unten, siehe computeLayout); sonst in der Leiste untereinander
+    const onMap = side === "none";
+    const x = onMap ? frame.x + frame.w - 62 * ui - 4 * ui : panel.x;
+    const y0 = onMap ? frame.y + 4 * ui : panel.y;
+    const bottom = onMap ? frame.y + frame.h - 2 * ui : H - 14 * ui; // auf der Karte: der Stapel bleibt im Kartenfenster
     // Platz fuer die volle Legende reservieren; passt der Stapel so nicht aufs Blatt (kleine Papiere), gilt der typische Umfang
     const stack = (sizes) => { let yy = y0; const at = {}; for (const name of ["legend", "scale"]) { if (!sizes[name]) continue; at[name] = yy; yy += sizes[name].h * ui + gap; } return { at, end: yy }; };
     let st = stack(sz);
@@ -175,7 +175,9 @@ export function defaultPos({ paper = "a3l", side = "right", fmt = "fill", lsym =
     for (const [name, yy] of Object.entries(st.at)) put(name, x, yy);
     northAt(x, st.at.scale);
     const y = st.end;
-    out.index = { x: x / W, y: y / H, w: colW / W, h: Math.max(30 * ui, bottom - y) / H };
+    out.index = onMap
+      ? { x: panel.x / W, y: panel.y / H, w: panel.w / W, h: panel.h / H }
+      : { x: x / W, y: y / H, w: panel.w / W, h: Math.max(30 * ui, bottom - y) / H };
   }
   // Quellenangabe: ein Streifen unter der Karte (im unteren Rand, unter den Planquadrat-Buchstaben), linksbuendig mit der Karte
   put("source", frame.x, frame.y + frame.h + 7 * ui);

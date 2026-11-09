@@ -21,7 +21,7 @@ const startLon = +(q.get("lon") || areaInfo?.lon || 11.3181);
 
 // ---- Einstellungen: Standard, zuletzt benutzt (localStorage, darf fehlen), Adresse gewinnt ----
 const KEY = "ofm_ortsplan_wizard";
-const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "left", manual: false, pos: null, onmap: false, obg: "white", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, iauto: true, dpi: 150 };
+const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "none", manual: false, pos: null, onmap: false, obg: "white", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, iauto: true, dpi: 150 };
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { /* ohne Speicher */ }
 const S = { ...DEFAULTS };
@@ -160,7 +160,7 @@ function groupClampMap(m) {
   return { x: (L.frame.x + d.dx) / wMm, y: (L.frame.y + d.dy) / hMm };
 }
 const resetPos = () => { S.pos = null; S.posKey = undefined; };
-const onMapOk = () => S.side === "none" || S.onmap; // ohne Leiste liegen die Bloecke zwangslaeufig auf der Karte
+const onMapOk = () => S.side === "none" || S.onmap; // "Auf der Karte": Legende, Massstab und Co. liegen zwangslaeufig auf der Karte
 /** Liegt ein Block (geschaetzt) ganz oder teilweise auf dem Kartenfenster? */
 function overlapsMap(pos, name) {
   const { L, wMm, hMm } = layout();
@@ -295,7 +295,7 @@ const chips = (id, items, key, refit) => {
 };
 chips("g-size", [["a4", "A4"], ["a3", "A3"], ["a2", "A2"], ["a1", "A1"]], "size", true);
 chips("g-orient", [["l", "Quer"], ["p", "Hoch"]], "orient", true);
-chips("g-side", [["top", "Oben"], ["bottom", "Unten"], ["left", "Links"], ["right", "Rechts"], ["none", "Ohne Leiste"]], "side", true);
+chips("g-side", [["none", "Auf der Karte"], ["top", "Oben"], ["bottom", "Unten"], ["left", "Links"], ["right", "Rechts"]], "side", true);
 $("scale").addEventListener("change", () => { S.scale = +$("scale").value; fit(); refresh(); });
 $("fmt").addEventListener("change", () => { S.fmt = $("fmt").value; resetPos(); fit(); refresh(); });
 $("c-manual").addEventListener("change", () => { S.manual = $("c-manual").checked; if (S.manual) S.pos = null; refresh(); });
