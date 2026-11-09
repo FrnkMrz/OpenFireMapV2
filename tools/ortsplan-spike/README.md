@@ -121,3 +121,23 @@ Der Spike läuft mit maplibre-gl 5.x und 6.x. Für 6 nötig (alle drei sind scho
 Bedienprobe im echten Browser (Rahmen ziehen, Schritte, Blatt erzeugen): `SPIKE_URL=http://127.0.0.1:5173 node wizard.mjs`.
 
 Rauchtest aller Seiten und Parameter-Kombinationen (fängt Startfehler, die die Unit-Tests nicht sehen): `SPIKE_URL=http://127.0.0.1:5173 node smoke.mjs`.
+
+## Messung: Grundkarte auf R2 (09.11.2026)
+
+Frage: Wie schnell entsteht das Blatt, wenn die Grundkarte (Protomaps-PMTiles) aus R2 hinter der Pipeline-Domain kommt statt von der Platte, und was heißt die Grenze von 512 MiB des Cloudflare-Caches? Dazu `r2bench.mjs` (Seite von `localhost:5173`, weil R2-CORS nur diese Herkunft erlaubt; `base=…` lädt die Karte aus einem Test-Pfad der Pipeline-Domain, andere Adressen lehnt `main.js` ab). Drei Testdateien aus dem Gebiet Franken: 58,6 MB (Nürnberger Land), 494,6 MB (471,7 MiB, knapp unter dem Limit) und 1,05 GB (1005 MiB, darüber), hochgeladen mit demselben `Cache-Control` wie die Pipeline-Dateien und nach der Messung wieder gelöscht. Blatt A3 quer, 1:5000, 96 dpi, headless Chromium im Heimnetz, je Lauf ein neuer Browser-Kontext (kein HTTP-Cache).
+
+| Quelle | Cache der Kante | Antwortzeit je Bereichsanfrage (Median / 95 %) | Blatt fertig nach |
+|---|---|---|---|
+| Platte | – | 1 ms | 4,7–5,7 s |
+| 58,6 MB | erster Abruf MISS, danach HIT | 18–55 ms / ~66 ms | 7,7 s (kalt), danach 4,8 s |
+| 494,6 MB | erster Abruf MISS, danach HIT | 19–32 ms / ~50 ms | **24,5 s (kalt)**, danach 4,6–4,8 s |
+| 1,05 GB | immer BYPASS (über 512 MiB nicht im Cache) | 103–154 ms / 147–249 ms | 4,9–6,0 s (kein Kaltstart) |
+
+Befunde:
+- **Ein Blatt braucht nur 10–11 Bereichsanfragen (zusammen etwa 0,1 MB)**, die Karte besteht aus wenigen Vektorkacheln. Auch ohne Cache (BYPASS, jede Anfrage geht an R2) kostet das nur etwa 0,1 s je Anfrage, im Ganzen 0,2–1,3 s mehr als von der Platte.
+- **Cache-Treffer sind schnell (20–55 ms), aber der erste Abruf je Rechenzentrum füllt die ganze Datei in den Cache:** +3 s bei 58 MB, +20 s bei 495 MB. Je größer die Datei unter dem Limit, desto länger der Kaltstart (Grund für die kleinen Pipeline-Dateien).
+- **Dateien über 512 MiB werden nie gecacht**, haben dafür keinen Kaltstart. Für ein Blatt reicht das; Cloudflare berechnet R2-Lesevorgänge (Klasse B) einzeln, bei 11 je Blatt vernachlässigbar.
+- **Der Cache gilt nur für Pfade, die die Cloudflare-Regel der Domain erfasst:** gleiche Dateien unter einem frischen Pfad (`ortsplan-test/`) blieben auch klein BYPASS, unter `eu/` wurden sie gecacht. Eine Basiskarte braucht also einen Pfad mit Cache-Regel oder eine neue Regel.
+- Einmal lieferte der erste Lauf der 1-GB-Datei eine Antwort ohne Bereich (rund 1 GB übertragen); in drei weiteren Läufen nicht mehr reproduzierbar, aber ein Grund, die Datei beim echten Betrieb im Auge zu behalten.
+
+Schluss für die Entscheidung „eine Gesamtkarte auf R2 ja/nein“: Eine einzelne Multi-GB-Datei ohne Cache ist für den Ortsplan brauchbar (etwa 0,1 s je Anfrage mehr, kein Kaltstart) und die einfachste Lösung; Aufteilen auf Dateien bis etwa 200 MiB mit Cache-Treffern bringt 20–50 ms je Anfrage, kostet aber je Rechenzentrum einen Kaltstart von einigen Sekunden und mehr Pflege. Gemessen wurde von einem Ort, an einem Tag.
