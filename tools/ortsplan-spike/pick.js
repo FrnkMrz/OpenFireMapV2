@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol, PMTiles } from "pmtiles";
 import { buildStyle } from "./style.js";
 import { PAPER_MM, ALL_SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES, parseFormat } from "./layout.js";
-import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset, mapSizeMm, MAP_MARGIN, snapToFrameInset, EDGE_INSET, EDGE_SNAP } from "./freelayout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset, mapSizeMm, MAP_MARGIN, snapToFrameInset, EDGE_INSET, EDGE_SNAP, sourceSize } from "./freelayout.js";
 import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE, RATIO_MIN, RATIO_MAX } from "./framegeo.js";
 
 const q = new URLSearchParams(location.search);
@@ -150,7 +150,7 @@ const layoutKey = () => `${paperKey()}|${S.side}|${layoutFmt()}`;
 if (S.pos && S.posKey === null) S.posKey = layoutKey();
 const ownPos = () => (S.pos && S.posKey === layoutKey() ? S.pos : null);
 /** Groesse der Bloecke als Anteil des Papiers (geschaetzt): damit bleibt ein Block ganz im Papier, nicht nur seine Ecke. */
-const dimsNow = () => { const [wMm, hMm] = PAPER_MM[paperKey()]; return blockDims({ lsym: S.lsym, lroad: S.lroad, ui: Math.max(1, Math.max(wMm, hMm) / 420), W: wMm, H: hMm, frame: layout().L.frame, title: T.title, place: T.place }); };
+const dimsNow = () => { const [wMm, hMm] = PAPER_MM[paperKey()]; return blockDims({ lsym: S.lsym, lroad: S.lroad, ui: Math.max(1, Math.max(wMm, hMm) / 420), W: wMm, H: hMm, frame: layout().L.frame, title: T.title, place: T.place, sourcew: ownPos()?.sourcew?.w || 0 }); };
 const curPos = () => {
   const pos = clampPos({ ...defaultPos({ paper: paperKey(), side: S.side, fmt: layoutFmt(), lsym: S.lsym, lroad: S.lroad }), ...(ownPos() || {}) }, dimsNow());
   if (!isManual() && pos.map) pos.map = groupClampMap(pos.map); // feste Leiste: Karte und Leiste bleiben zusammen im Papier
@@ -248,7 +248,8 @@ function drawBlocks(manual, L, wMm, hMm) {
     const show = manual && p && (name !== "legend" || sz.legend) && (name !== "index" || S.index);
     el.hidden = !show;
     if (!show) continue;
-    const w = name === "index" ? p.w : (sz[name].w * L.ui) / wMm, h = name === "index" ? p.h : (sz[name].h * L.ui) / hMm;
+    const ss = name === "source" ? sourceSize({ sourcew: pos.sourcew?.w, frameW: L.frame.w, ui: L.ui, W: wMm, H: hMm }) : null;
+    const w = name === "index" ? p.w : ss ? ss.w : (sz[name].w * L.ui) / wMm, h = name === "index" ? p.h : ss ? ss.h : (sz[name].h * L.ui) / hMm;
     el.style.left = `${p.x * 100}%`; el.style.top = `${p.y * 100}%`; el.style.width = `${w * 100}%`; el.style.height = `${h * 100}%`;
   }
   $("pos-hint").hidden = !manual; $("pos-reset-wrap").hidden = !(manual || ownPos());
@@ -331,6 +332,13 @@ function snapBlock(cand, name) {
 function movePos(name, dx, dy, resize, raw = null) {
   const pos = curPos(), b = pos[name];
   if (!b) return;
+  if (name === "source" && resize) {
+    // Quellenangabe: Breite aendern, der Text bricht um (ein Kasten statt eines langen Streifens)
+    const { L, wMm, hMm } = layout();
+    const cur = sourceSize({ sourcew: pos.sourcew?.w, frameW: L.frame.w, ui: L.ui, W: wMm, H: hMm }).w;
+    S.pos = { ...(ownPos() || pos), sourcew: { w: Math.min(1, Math.max(0.08, cur + dx)) } }; S.posKey = layoutKey();
+    return;
+  }
   if (name === "map" && resize) {
     // Groesse des Kartenfensters aendern (linke obere Ecke bleibt): Massstab bleibt, das Fenster zeigt mehr oder weniger Gebiet.
     // Festes Kartenformat: das Verhaeltnis bleibt; sonst frei in beiden Richtungen. Nie groesser als das Fenster der Lage.
@@ -411,7 +419,7 @@ for (const el of document.querySelectorAll("#prev [data-b]")) {
     const d = e.shiftKey ? 0.05 : 0.01;
     const v = { ArrowLeft: [-d, 0], ArrowRight: [d, 0], ArrowUp: [0, -d], ArrowDown: [0, d] }[e.key];
     if (!v) return;
-    e.preventDefault(); movePos(name, v[0], v[1], (name === "index" || name === "map") && e.altKey); refresh(); el.focus();
+    e.preventDefault(); movePos(name, v[0], v[1], (name === "index" || name === "map" || name === "source") && e.altKey); refresh(); el.focus();
   });
 }
 // Rahmenform: Frei oder wie das Blatt. Beim Umschalten bleibt der Rahmen, wie er ist (frei übernimmt das Seitenverhältnis des Blatts, fest rastet den Maßstab ein)

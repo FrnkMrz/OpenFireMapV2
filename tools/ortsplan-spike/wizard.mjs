@@ -389,6 +389,16 @@ try {
     await page.focus("#pv-b-index"); await page.keyboard.press("ArrowRight");
     const i3 = await iOf();
     check(!!i3 && i3.every(Number.isFinite) && i3[0] > i2[0], "Verzeichnis mit der Pfeiltaste verschoben");
+    // Quellenangabe: an der Ecke schmaler ziehen -> bricht um (Kasten), Breite steht im Link (u); Alt + Pfeiltaste macht sie wieder breiter
+    const uOf = async () => { const p = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos") || ""; const m = /(?:^|;)u:([\d.]+)/.exec(p); return m ? +m[1] : null; };
+    check((await uOf()) === null, "Quellenangabe ohne eigene Breite: eine Zeile");
+    const sz = await page.locator("#pv-b-source .rz").boundingBox();
+    await page.mouse.move(sz.x + sz.width / 2, sz.y + sz.height / 2); await page.mouse.down(); await page.mouse.move(sz.x + sz.width / 2 - 230, sz.y + sz.height / 2, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300);
+    const u1 = await uOf();
+    check(u1 !== null && u1 < 0.45 && u1 >= 0.08, `Quellenangabe schmaler gezogen: Breite ${u1}`);
+    await page.focus("#pv-b-source"); await page.keyboard.press("Alt+ArrowRight");
+    const u2 = await uOf();
+    check(u2 !== null && u2 > u1, `Alt + Pfeiltaste macht die Quellenangabe breiter (${u1} -> ${u2})`);
   }
 
   // Abstand der Bloecke zum Kartenrand: Standard 4 mm, einstellbar, steht im Link (mi); der Wert bleibt beim Neuladen

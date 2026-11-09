@@ -426,7 +426,9 @@ export async function composeSheet(opts) {
     placeBlock("source", (x, y) => {
       const full = attributionStrip(meta?.osm_data_until, meta?.basemap_until);
       g.font = `${SRC_SIZE}px ${FONT}`;
-      const w = Math.min(g.measureText(full).width + 0.5, Math.max(62, F.w - 8));
+      // eigene Breite aus dem Assistenten (u): der Text bricht dort um (Kasten); sonst eine Zeile, hoechstens so breit wie die Karte
+      const wSet = pos.sourcew ? pos.sourcew.w * Wv : 0;
+      const w = Math.min(g.measureText(full).width + 0.5, wSet > 0 ? Math.max(20, wSet) : Math.max(62, F.w - 8));
       let ay = y + 2.2;
       for (const l of wrap(full, SRC_SIZE, w)) { text(l, x, ay, SRC_SIZE, { color: "#333" }); ay += SRC_STEP; }
       return { w, h: ay - y };

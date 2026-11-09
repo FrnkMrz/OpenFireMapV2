@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, mapSizeMm, snapToFrameInset, EDGE_INSET, EDGE_SNAP, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, mapSizeMm, sourceSize, snapToFrameInset, EDGE_INSET, EDGE_SNAP, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
 import { PAPER_MM, computeLayout, MIN_FRAME_MM } from "./layout.js";
 import { attributionStrip } from "./attribution.js";
 
@@ -40,7 +40,7 @@ test("estimateSizes: ohne Legendenpunkte keine Legende", () => {
 test("defaultPos: alle Lagen und Papiere liefern gueltige Anteile, Bloecke liegen im Blatt", () => {
   for (const paper of Object.keys(PAPER_MM)) for (const side of ["right", "left", "top", "bottom", "none"]) for (const fmt of ["fill", "2:3"]) {
     const p = defaultPos({ paper, side, fmt });
-    for (const name of BLOCKS.filter((n) => n !== "msize")) assert.ok(p[name], `${paper} ${side} ${fmt}: ${name}`); // msize (eigene Kartengroesse) fehlt in der Standardlage
+    for (const name of BLOCKS.filter((n) => n !== "msize" && n !== "sourcew")) assert.ok(p[name], `${paper} ${side} ${fmt}: ${name}`); // msize (eigene Kartengroesse) fehlt in der Standardlage
     for (const b of Object.values(p)) assert.ok(b.x >= 0 && b.y >= 0 && b.x <= 1 && b.y <= 1);
     assert.ok(p.index.x + p.index.w <= 1 + 1e-9 && p.index.y + p.index.h <= 1 + 1e-9, `${paper} ${side}`);
   }
@@ -336,4 +336,21 @@ test("Anker rechts/unten (r, b) stehen im Link und bleiben beim Klemmen erhalten
   assert.equal(parsePos("l:0.2,0.3,x"), null, "unbekannter Anker: Teil faellt weg");
   assert.equal(parsePos("i:0.1,0.1,0.2,0.2,r"), null, "Verzeichnis kennt keine Anker");
   assert.equal(parsePos("t:0.1,0.1,r"), null, "Titel kennt keine Anker");
+});
+
+test("Quellenangabe als Kasten: eigene Breite (u) hin und zurueck, bricht in mehr Zeilen um, bleibt im Papier", () => {
+  const p = parsePos("q:0.1,0.9;u:0.3");
+  assert.deepEqual(p.sourcew, { w: 0.3 });
+  assert.equal(formatPos(p), "q:0.1,0.9;u:0.3");
+  assert.deepEqual(parsePos(formatPos(p)), p);
+  assert.deepEqual(clampPos({ sourcew: { w: 5 } }).sourcew, { w: 1 }); assert.deepEqual(clampPos({ sourcew: { w: 0.001 } }).sourcew, { w: 0.08 });
+  assert.equal(parsePos("u:0.3,0.4"), null, "u hat genau einen Wert");
+  const line = sourceSize({ W: 420, H: 297, ui: 1 }), box = sourceSize({ sourcew: 0.2, W: 420, H: 297, ui: 1 }), narrow = sourceSize({ sourcew: 0.1, W: 420, H: 297, ui: 1 });
+  assert.equal(line.lines, 1, "ohne Breite: eine Zeile");
+  assert.ok(box.lines >= 2 && narrow.lines > box.lines && narrow.h > box.h && narrow.w < box.w, `Zeilen ${line.lines} / ${box.lines} / ${narrow.lines}`);
+  assert.ok(Math.abs(box.w - 0.2) < 1e-9, "Breite wie gesetzt");
+  assert.ok(sourceSize({ sourcew: 1, W: 420, H: 297, ui: 1 }).lines === 1, "breit genug: wieder eine Zeile");
+  // blockRect und blockDims nutzen die eigene Breite
+  assert.ok(Math.abs(blockRect("source", p, { W: 420, H: 297, ui: 1 }).w - 0.3) < 1e-9);
+  assert.ok(blockDims({ W: 420, H: 297, ui: 1, sourcew: 0.2 }).source.h > blockDims({ W: 420, H: 297, ui: 1 }).source.h);
 });
