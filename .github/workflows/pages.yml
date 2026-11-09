@@ -130,7 +130,7 @@ jobs:
       # --------------------------------------------------------------------
       - name: Build project
         env:
-          VITE_RASTER_MANIFEST_URL: ${{ vars.VITE_RASTER_MANIFEST_URL }}
+          VITE_RASTER_MANIFEST_URL: ${{ vars.VITE_RASTER_MANIFEST_URL || 'https://raster-pilot.openfiremap.org/manifest.json' }}
         run: npm run build
 
       # --------------------------------------------------------------------
