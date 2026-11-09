@@ -371,7 +371,7 @@ export async function composeSheet(opts) {
       if (p.ar) x = F.x + F.w - edgeInset - (sz.w + 4) + 2;
       if (p.ab) y = F.y + F.h - edgeInset - (sz.h + 3) + 1.5;
       // ein verankerter Block, der breiter/hoeher ist als das verkleinerte Kartenfenster, darf nicht ueber das Papier hinausragen
-      x = Math.max(0, Math.min(x, Wv - sz.w - 2)); y = Math.max(0, Math.min(y, Hv - sz.h - 2));
+      x = Math.max(2, Math.min(x, Wv - sz.w - 2)); y = Math.max(1.5, Math.min(y, Hv - sz.h - 2)); // der sichtbare Untergrund (2 / 1,5 mm ueber dem Inhalt) bleibt ganz auf dem Papier
     }
     box({ x: x - 2, y: y - 1.5, w: sz.w + 4, h: sz.h + 3 });
     draw(x, y);
