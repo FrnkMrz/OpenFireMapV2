@@ -154,8 +154,22 @@ const dimsNow = () => { const [wMm, hMm] = PAPER_MM[paperKey()]; return blockDim
 const curPos = () => {
   const pos = clampPos({ ...defaultPos({ paper: paperKey(), side: S.side, fmt: layoutFmt(), lsym: S.lsym, lroad: S.lroad }), ...(ownPos() || {}) }, dimsNow());
   if (!isManual() && pos.map) pos.map = groupClampMap(pos.map); // feste Leiste: Karte und Leiste bleiben zusammen im Papier
+  resolveAnchors(pos); // am rechten/unteren Kartenrand verankerte Bloecke folgen dem Kartenfenster (wie auf dem Blatt)
   return pos;
 };
+/** Bloecke mit Anker r (rechts) oder b (unten) stehen im Abstand der Einstellung zur Kante des Kartenfensters: neu berechnet, wenn sich Karte oder Groesse aendern. */
+function resolveAnchors(pos) {
+  const { L, wMm, hMm } = layout();
+  for (const name of ["legend", "scale", "north", "source"]) {
+    const b = pos[name];
+    if (!b || (!b.ar && !b.ab) || !(S.inset >= 0)) continue;
+    const r = blockRect(name, pos, { lsym: S.lsym, lroad: S.lroad, ui: L.ui, W: wMm, H: hMm, frame: L.frame });
+    if (!r) continue;
+    const fr = { x: (pos.map ? pos.map.x : L.frame.x / wMm) * wMm, y: (pos.map ? pos.map.y : L.frame.y / hMm) * hMm, w: L.frame.w, h: L.frame.h };
+    const bw = r.w * wMm + 4 * L.ui, bh = r.h * hMm + 3 * L.ui; // sichtbarer Untergrund wie auf dem Blatt
+    pos[name] = { ...b, x: b.ar ? (fr.x + fr.w - S.inset * L.ui - bw + 2 * L.ui) / wMm : b.x, y: b.ab ? (fr.y + fr.h - S.inset * L.ui - bh + 1.5 * L.ui) / hMm : b.y };
+  }
+}
 /** Bei fester Leiste wandern Karte und Leiste gemeinsam: Lage der Karte (Anteil des Papiers) so klemmen, dass beide im Papier bleiben. */
 function groupClampMap(m) {
   const { L, wMm, hMm } = layout();
