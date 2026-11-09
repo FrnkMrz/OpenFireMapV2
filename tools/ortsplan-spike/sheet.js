@@ -232,7 +232,7 @@ export async function composeSheet(opts) {
       maxUsed = Math.max(maxUsed, used);
       e.draw(x0 + col * LEG_COL_W, top + used);
     }
-    return { h: 2.2 + maxUsed, w: (col + 1) * LEG_COL_W, tw: Math.max(...legendEntries.map((e) => e.tw)) };
+    return { h: 2.2 + maxUsed, w: (col + 1) * LEG_COL_W, cols: col + 1, tw: Math.max(...legendEntries.map((e) => e.tw)) };
   };
 
   // ---- Block 3: Massstabsleiste und Nordpfeil; Block 3b: Datenstand und Quellenangabe ----
@@ -397,7 +397,18 @@ export async function composeSheet(opts) {
       headerBlock(F.x + 4, F.y + 7, w);
       halo = false;
     }
-    placeBlock("legend", (x, y) => { const r = legendBlock(x, y + 3.2, Infinity); return { w: r.tw, h: 3.2 + r.h }; });
+    placeBlock("legend", (x, y) => {
+      // Liegt der Massstab oder Nordpfeil unter der Legende (und ueberlappt sie seitlich), bricht die Legende in Spalten um, statt sie zu verdecken
+      // (auf kleinen Kartenfenstern reicht die Hoehe fuer alle moeglichen Eintraege nicht). Die Grenze folgt aus den Lagen, nicht aus x und y: Trockenlauf und Zeichnen stimmen.
+      const lp = pos.legend;
+      let maxH = Infinity;
+      for (const n of ["scale", "north"]) {
+        const b = pos[n];
+        if (b && lp && b.y * Hv > lp.y * Hv + 12 && b.x * Wv < lp.x * Wv + LEG_COL_W && (n === "scale" ? b.x * Wv + 40 : b.x * Wv + 10) > lp.x * Wv) maxH = Math.min(maxH, b.y * Hv - lp.y * Hv - 3.2 - 3);
+      }
+      const r = legendBlock(x, y + 3.2, maxH);
+      return { w: r.cols > 1 ? r.w : r.tw, h: 3.2 + r.h };
+    });
     placeBlock("scale", (x, y) => { const r = scaleBar(x, y + 2.8, 1); return { w: r.w, h: 2.8 + r.h }; });
     placeBlock("north", (x, y) => { const r = northArrow(x, y); return { w: r.w, h: r.h }; });
     // Quellenangabe frei gelegt: ein Streifen, eine Zeile so breit wie der Text (hoechstens so breit wie die Karte, sonst mehrzeilig)
