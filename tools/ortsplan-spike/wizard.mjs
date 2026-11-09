@@ -370,6 +370,20 @@ try {
   check(/lsym=0/.test(info.link) && /side=top/.test(info.link), "Rueckweg 'Ausschnitt waehlen' behaelt die Legende-Wahl");
   const png = await page.evaluate(() => window.__sheet[0]);
   fs.writeFileSync(`${OUT}/4-blatt.png`, Buffer.from(png.split(",")[1], "base64"));
+  // Abstand der Bloecke zum Kartenrand: Standard 4 mm, einstellbar, steht im Link (mi); der Wert bleibt beim Neuladen
+  {
+    await page.goto(`${BASE}/pick.html?paper=a3l&side=none&scale=5000`);
+    await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+    await page.click('.st[data-s="2"]');
+    const miOf = async () => new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("mi");
+    check((await miOf()) === "4" && (await page.inputValue("#o-inset")) === "4", `Abstand zum Kartenrand: Standard 4 mm im Feld und im Link (${await miOf()})`);
+    await page.fill("#o-inset", "7"); await page.dispatchEvent("#o-inset", "change");
+    check((await miOf()) === "7", `Abstand 7 mm steht im Link (${await miOf()})`);
+    await page.goto(`${BASE}/pick.html?paper=a3l&side=none&scale=5000&mi=2.5`);
+    await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+    check((await page.evaluate(() => window.__wizard.state().inset)) === 2.5, "Abstand aus der Adresse (mi=2.5)");
+  }
+
   // Adresse mit nur Titel und Karte (feste Leiste): beim Wiedereroeffnen bleibt die Leiste fest, die Adresse traegt weiter nur t und m
   await page.evaluate(() => { const k = "ofm_ortsplan_wizard"; const v = JSON.parse(localStorage.getItem(k) || "{}"); v.manual = true; localStorage.setItem(k, JSON.stringify(v)); }); // zuletzt benutzt: freie Bloecke
   await page.goto(`${BASE}/pick.html?paper=a3l&side=right&fmt=1:1&scale=5000&pos=t:0.1,0.02;m:0.12,0.2`);

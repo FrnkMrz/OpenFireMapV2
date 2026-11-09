@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, mapSizeMm, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, defaultPos, rectsOverlap, blockRect, blockDims, BLOCKS, snapMap, clampGroupOffset, mapSizeMm, snapToFrameInset, EDGE_INSET, EDGE_SNAP, estimateTitle, MAP_MARGIN, MAP_ANCHOR } from "./freelayout.js";
 import { PAPER_MM, computeLayout, MIN_FRAME_MM } from "./layout.js";
 import { attributionStrip } from "./attribution.js";
 
@@ -300,4 +300,24 @@ test("computeLayout mit size und sizeMax: bei freier Anordnung darf die Karte ue
   assert.ok(part.frame.w === base.frame.w + 40, "dazwischen: wie gewuenscht");
   const limited = computeLayout({ wMm: 420, hMm: 297, side: "right", size: { w: 9999, h: 9999 } });
   assert.deepEqual(limited.frame, base.frame, "ohne sizeMax: hoechstens das Fenster der Lage (feste Leiste)");
+});
+
+test("snapToFrameInset: Bloecke am Kartenrand rasten auf denselben Abstand ein (links/rechts/oben/unten), sonst bleibt die Lage", () => {
+  const frame = { x: 14, y: 27, w: 300, h: 200 };
+  const inset = 4, thr = 6;
+  // links oben: 2 mm daneben -> genau 4 mm vom Rand
+  assert.deepEqual(snapToFrameInset({ x: 14 + 6, y: 27 + 3, w: 60, h: 40 }, frame, inset, thr), { x: 14 + 4, y: 27 + 4 });
+  // rechts unten: die rechte/untere Kante soll 4 mm vom Rand stehen (Kantenabstand, nicht Ecke)
+  const br = snapToFrameInset({ x: 14 + 300 - 4 - 60 - 3, y: 27 + 200 - 4 - 40 + 2, w: 60, h: 40 }, frame, inset, thr);
+  assert.deepEqual(br, { x: 14 + 300 - 4 - 60, y: 27 + 200 - 4 - 40 });
+  // zwei verschiedene Bloecke am selben Rand haben danach denselben Abstand (auch bei verschiedener Groesse)
+  const a = snapToFrameInset({ x: 14 + 300 - 70, y: 100, w: 60, h: 30 }, frame, inset, thr), b = snapToFrameInset({ x: 14 + 300 - 45, y: 150, w: 38, h: 20 }, frame, inset, thr);
+  assert.ok(Math.abs(frame.x + frame.w - (a.x + 60) - 4) < 1e-9 && Math.abs(frame.x + frame.w - (b.x + 38) - 4) < 1e-9, "rechter Abstand gleich");
+  // weit weg vom Rand: unveraendert; ausserhalb der Karte (Mitte nicht auf der Karte): unveraendert
+  assert.deepEqual(snapToFrameInset({ x: 100, y: 100, w: 60, h: 40 }, frame, inset, thr), { x: 100, y: 100 });
+  assert.deepEqual(snapToFrameInset({ x: 330, y: 30, w: 60, h: 40 }, frame, inset, thr), { x: 330, y: 30 }, "ausserhalb der Karte");
+  // ohne Abstand (null/negativ): kein Einrasten; Abstand 0 rastet buendig ein
+  assert.deepEqual(snapToFrameInset({ x: 16, y: 29, w: 60, h: 40 }, frame, -1, thr), { x: 16, y: 29 });
+  assert.deepEqual(snapToFrameInset({ x: 16, y: 29, w: 60, h: 40 }, frame, 0, thr), { x: 14, y: 27 });
+  assert.equal(EDGE_INSET, 4); assert.ok(EDGE_SNAP > 0);
 });

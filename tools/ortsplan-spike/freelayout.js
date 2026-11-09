@@ -197,3 +197,30 @@ export function mapSizeMm(msize, { W, H, base, ratio = null }) {
   if (ratio) { h = Math.min(h, w / ratio); w = h * ratio; }
   return { w, h };
 }
+
+/** Standard-Abstand der Bloecke zum Kartenrand (Einheiten von ui, mm auf A3), wenn sie am Rand der Karte liegen. */
+export const EDGE_INSET = 4;
+/** Fang: bis zu diesem Abstand (Einheiten von ui) von der Sollkante rastet ein Block ein. */
+export const EDGE_SNAP = 6;
+
+/**
+ * Block auf der Karte: liegt seine Mitte im Kartenfenster, rastet jede Kante, die hoechstens thr von "Kartenkante + inset" entfernt ist, genau darauf ein.
+ * So haben alle Bloecke am Rand denselben Abstand zur Karte. rect = sichtbares Rechteck des Blocks (samt Untergrund), frame = Kartenfenster, alles in
+ * derselben Einheit. Rueckgabe: neue linke obere Ecke {x, y}. Ohne inset (null oder < 0) oder ausserhalb der Karte unveraendert.
+ */
+export function snapToFrameInset(rect, frame, inset, thr) {
+  const out = { x: rect.x, y: rect.y };
+  if (!(inset >= 0) || !frame) return out;
+  const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
+  if (cx < frame.x || cx > frame.x + frame.w || cy < frame.y || cy > frame.y + frame.h) return out;
+  const axis = (v, len, lo, size) => {
+    const a = lo + inset, b = lo + size - inset - len; // linke/obere und rechte/untere Sollkante
+    const da = Math.abs(v - a), db = Math.abs(v - b);
+    if (da <= thr && da <= db) return a;
+    if (db <= thr) return b;
+    return v;
+  };
+  out.x = axis(rect.x, rect.w, frame.x, frame.w);
+  out.y = axis(rect.y, rect.h, frame.y, frame.h);
+  return out;
+}

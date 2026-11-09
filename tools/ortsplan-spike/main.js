@@ -9,7 +9,7 @@ import { collectElements, buildFeatures, addFireLayers } from "./fire.js";
 import { composeSheet } from "./sheet.js";
 import { PAPER_MM, ALL_SIDES, NO_SIDE, computeLayout, NICE_SCALES } from "./layout.js";
 import { pdfFileName, buildPdf } from "./pdfout.js";
-import { parsePos, defaultPos, clampPos, blockDims, clampGroupOffset, mapSizeMm, MAP_MARGIN } from "./freelayout.js";
+import { parsePos, defaultPos, clampPos, blockDims, clampGroupOffset, mapSizeMm, MAP_MARGIN, EDGE_INSET } from "./freelayout.js";
 import { indexNote } from "./indexnote.js";
 import { arrowsAlong, onlyLocalStreets } from "./oneway.js";
 import { streetLabelPoints, clipLineToBox } from "./labelpoints.js";
@@ -57,7 +57,7 @@ const setField = (el, v) => {
   el.value = val;
 };
 for (const [k, v] of Object.entries({ scale, paper, dpi, mode, lat, lon, index: indexOn ? "1" : "0", isize: indexSize, side: q.get("side") || "none", icols: q.get("icols") || "0", fmt, place, title: sheetTitle })) setField(form.elements[k], v);
-document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "none", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), iauto: q.get("iauto") === "0" ? "0" : "1", dpi: String(dpi), ...(areaName ? { area: areaName } : {}), ...(q.get("place") ? { place: q.get("place") } : {}), ...(q.get("title") ? { title: q.get("title") } : {}), ...(q.get("pos") ? { pos: q.get("pos") } : {}), ...(q.get("onmap") ? { onmap: q.get("onmap") } : {}), ...(q.get("obg") ? { obg: q.get("obg") } : {}) })}`;
+document.getElementById("pick-link").href = `/pick.html?${new URLSearchParams({ paper, side: q.get("side") || "none", fmt, scale: String(scale), lat: String(lat), lon: String(lon), index: indexOn ? "1" : "0", lsym: q.get("lsym") === "0" ? "0" : "1", lroad: q.get("lroad") === "0" ? "0" : "1", icols: String(q.get("icols") || 0), isize: String(indexSize), iauto: q.get("iauto") === "0" ? "0" : "1", dpi: String(dpi), ...(areaName ? { area: areaName } : {}), ...(q.get("place") ? { place: q.get("place") } : {}), ...(q.get("title") ? { title: q.get("title") } : {}), ...(q.get("pos") ? { pos: q.get("pos") } : {}), ...(q.get("mi") ? { mi: q.get("mi") } : {}), ...(q.get("onmap") ? { onmap: q.get("onmap") } : {}), ...(q.get("obg") ? { obg: q.get("obg") } : {}) })}`;
 document.getElementById("info").textContent =
   `1:${scale} · ${paper.toUpperCase()} · ${dpi} dpi · ${mode} · Bild ${Math.round(wMm * CSS_PX_PER_MM * dpi / 96)}×${Math.round(hMm * CSS_PX_PER_MM * dpi / 96)} px`;
 
@@ -295,6 +295,7 @@ async function buildSheet() {
       map, scale, dpi, paperMm: [wMm, hMm], frame, meta, ui, index: indexOn, legendSymbols: q.get("lsym") !== "0", legendRoads: q.get("lroad") !== "0", indexSize, warning, side, panel, indexCols, pos: freePos, titlePos: allPos.title, overBg: q.get("obg") === "clear" ? "clear" : "white",
       title: sheetTitle, place,
       indexAuto: q.get("iauto") !== "0",
+      edgeInset: q.has("mi") ? Math.min(20, Math.max(0, +q.get("mi") || 0)) : EDGE_INSET, // Abstand der Bloecke zum Kartenrand (mm auf A3), wenn sie am Rand der Karte liegen
     });
     window.__sheet = res.pages;
     window.__sheetInfo = { panelFit: res.panelFit, mapDpi, index: res.indexCount, indexPage: res.indexPage, cellM: res.cellM, cols: res.cols, rows: res.rows, pages: res.pages.length };

@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol, PMTiles } from "pmtiles";
 import { buildStyle } from "./style.js";
 import { PAPER_MM, ALL_SIDES, computeLayout, groundSizeM, metersPerPx, NICE_SCALES, parseFormat } from "./layout.js";
-import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset, mapSizeMm, MAP_MARGIN } from "./freelayout.js";
+import { parsePos, formatPos, clampPos, estimateSizes, estimateTitle, defaultPos, rectsOverlap, blockRect, blockDims, snapMap, clampGroupOffset, mapSizeMm, MAP_MARGIN, snapToFrameInset, EDGE_INSET, EDGE_SNAP } from "./freelayout.js";
 import { resizeFromCorner, resizeFree, snapScale, clampCenterPx, ratioFmt, parseRatioFmt, roundUpScale, pickFreeScale, MIN_SCALE, RATIO_MIN, RATIO_MAX } from "./framegeo.js";
 
 const q = new URLSearchParams(location.search);
@@ -21,7 +21,7 @@ const startLon = +(q.get("lon") || areaInfo?.lon || 11.3181);
 
 // ---- Einstellungen: Standard, zuletzt benutzt (localStorage, darf fehlen), Adresse gewinnt ----
 const KEY = "ofm_ortsplan_wizard";
-const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "none", manual: false, pos: null, onmap: false, obg: "white", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, iauto: true, dpi: 150 };
+const DEFAULTS = { size: "a2", orient: "l", fmt: "fill", free: true, ratio: 0, round: false, side: "none", manual: false, pos: null, onmap: false, obg: "white", scale: 4000, lsym: true, lroad: true, index: true, icols: 0, isize: 1, iauto: true, dpi: 150, inset: EDGE_INSET };
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { /* ohne Speicher */ }
 const S = { ...DEFAULTS };
@@ -49,6 +49,7 @@ function apply(src) {
   for (const k of ["lsym", "lroad", "index", "round", "iauto"]) if (src[k] !== undefined && src[k] !== null) S[k] = src[k] === true || src[k] === "1";
   S.icols = Math.round(num(src.icols, 0, 6, S.icols));
   S.isize = num(src.isize, 0.5, 3, S.isize);
+  S.inset = num(src.mi !== undefined ? src.mi : src.inset, 0, 20, S.inset); // Abstand der Bloecke zum Kartenrand (mm)
   if ([96, 150, 200, 300].includes(+src.dpi)) S.dpi = +src.dpi;
 }
 apply(saved);
@@ -176,7 +177,7 @@ function goLink() {
   const p = new URLSearchParams({
     sheet: "1", dpi: String(S.dpi), paper: paperKey(), side: S.side, fmt: layoutFmt(), scale: String(S.scale),
     lat: fc.lat.toFixed(5), lon: fc.lng.toFixed(5), index: S.index ? "1" : "0", lsym: S.lsym ? "1" : "0", lroad: S.lroad ? "1" : "0",
-    icols: String(S.icols), isize: String(S.isize), iauto: S.iauto ? "1" : "0",
+    icols: String(S.icols), isize: String(S.isize), iauto: S.iauto ? "1" : "0", mi: String(S.inset),
   });
   if (isManual()) {
     p.set("pos", formatPos(curPos()));
@@ -276,7 +277,7 @@ function refresh() {
     ? "Ziehe den Rahmen an den Kanten und Ecken so auf, wie du den Ausschnitt brauchst. Papier und Rahmen bestimmen den Maßstab."
     : "Der Rahmen hat das Seitenverhältnis des gewählten Blatts (Papier, Ausrichtung und Kartenform darunter). An den Ecken ziehen macht ihn größer oder kleiner und ändert den Maßstab.";
   $("c-sym").checked = S.lsym; $("c-road").checked = S.lroad; $("c-index").checked = S.index;
-  $("o-place").value = T.place; $("o-title").value = T.title; $("o-dpi").value = String(S.dpi); $("o-iauto").checked = S.iauto; $("o-icols").value = String(S.icols); $("o-isize").value = String(S.isize);
+  $("o-place").value = T.place; $("o-title").value = T.title; $("o-dpi").value = String(S.dpi); $("o-iauto").checked = S.iauto; $("o-icols").value = String(S.icols); $("o-isize").value = String(S.isize); $("o-inset").value = String(S.inset);
   drawFrame(); updateText(); drawPreview();
 }
 
@@ -313,6 +314,17 @@ $("g-obg").replaceChildren(...[["white", "Weiß"], ["clear", "Durchsichtig"]].ma
   return b;
 }));
 // Kaesten ziehen (Maus, Finger) oder mit Pfeiltasten schieben; das Verzeichnis zusaetzlich an der Ecke unten rechts in der Groesse aendern
+/** Block auf der Karte nahe am Kartenrand: rastet auf den eingestellten Abstand ein (Groesse geschaetzt; das Blatt rastet mit dem echten Mass nach). */
+function snapBlock(cand, name) {
+  if (!["legend", "scale", "north", "source"].includes(name) || !(S.inset >= 0) || !cand[name]) return cand;
+  const { L, wMm, hMm } = layout();
+  const r = blockRect(name, cand, { lsym: S.lsym, lroad: S.lroad, ui: L.ui, W: wMm, H: hMm, frame: L.frame });
+  if (!r) return cand;
+  const mm = { x: r.x * wMm - 2 * L.ui, y: r.y * hMm - 1.5 * L.ui, w: r.w * wMm + 4 * L.ui, h: r.h * hMm + 3 * L.ui }; // sichtbarer Untergrund wie auf dem Blatt
+  const fr = { x: (cand.map ? cand.map.x : L.frame.x / wMm) * wMm, y: (cand.map ? cand.map.y : L.frame.y / hMm) * hMm, w: L.frame.w, h: L.frame.h };
+  const s = snapToFrameInset(mm, fr, S.inset * L.ui, EDGE_SNAP * L.ui);
+  return { ...cand, [name]: { x: (s.x + 2 * L.ui) / wMm, y: (s.y + 1.5 * L.ui) / hMm } };
+}
 // raw (nur beim Ziehen mit der Maus): ungerasterte Lage der Karte; sonst bliebe sie am Magneten kleben, weil jeder Schritt kleiner ist als sein Fang
 function movePos(name, dx, dy, resize, raw = null) {
   const pos = curPos(), b = pos[name];
@@ -367,8 +379,12 @@ function movePos(name, dx, dy, resize, raw = null) {
       if (fixed || onMapOk() || !anyOnMap(cand)) { if (raw) raw.cur = free; S.pos = cand; S.posKey = layoutKey(); return; }
       continue;
     }
-    const cand = clampPos({ ...pos, [name]: resize ? { ...b, w: b.w + ax, h: b.h + ay } : { ...b, x: b.x + ax, y: b.y + ay } }, dimsNow());
-    if (onMapOk() || !isManual() || !overlapsMap(cand, name)) { S.pos = cand; S.posKey = layoutKey(); return; } // feste Leiste: der Titel darf auch ueber der Karte stehen
+    const base = !resize && raw?.cur ? raw.cur : b;
+    const cand = clampPos({ ...pos, [name]: resize ? { ...b, w: b.w + ax, h: b.h + ay } : { ...base, x: base.x + ax, y: base.y + ay } }, dimsNow());
+    if (onMapOk() || !isManual() || !overlapsMap(cand, name)) {
+      if (raw && !resize) raw.cur = cand[name];
+      S.pos = raw && !resize ? snapBlock(cand, name) : cand; S.posKey = layoutKey(); return; // feste Leiste: der Titel darf auch ueber der Karte stehen
+    }
   }
 }
 for (const el of document.querySelectorAll("#prev [data-b]")) {
@@ -379,7 +395,7 @@ for (const el of document.querySelectorAll("#prev [data-b]")) {
     el.setPointerCapture(e.pointerId); el.classList.add("drag");
     const rect = $("prev").getBoundingClientRect(), resize = !!e.target.dataset.rz;
     let last = { x: e.clientX, y: e.clientY };
-    const raw = name === "map" ? { cur: null } : null;
+    const raw = { cur: null }; // ungerasterte Lage waehrend des Ziehens (sonst bliebe ein Block am Rand kleben)
     const move = (ev) => {
       movePos(name, (ev.clientX - last.x) / rect.width, (ev.clientY - last.y) / rect.height, resize, raw);
       last = { x: ev.clientX, y: ev.clientY };
@@ -442,6 +458,7 @@ $("o-dpi").addEventListener("change", () => { S.dpi = +$("o-dpi").value; refresh
 $("o-iauto").addEventListener("change", () => { S.iauto = $("o-iauto").checked; refresh(); });
 $("o-icols").addEventListener("change", () => { S.icols = Math.round(num($("o-icols").value, 0, 6, 0)); refresh(); });
 $("o-isize").addEventListener("change", () => { S.isize = num($("o-isize").value, 0.5, 3, 1); refresh(); });
+$("o-inset").addEventListener("change", () => { S.inset = num($("o-inset").value, 0, 20, EDGE_INSET); refresh(); });
 
 // Schritte
 let step = 0;

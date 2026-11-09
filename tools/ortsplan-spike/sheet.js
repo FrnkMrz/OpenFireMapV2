@@ -6,6 +6,7 @@ import { cellsOfSegment, colLabel, formatCells } from "./grid.js";
 import { makeFitter, planBlock, drawColumns } from "./indexblock.js";
 import { fitText } from "./fittext.js";
 import { planHorizontal } from "./panelplan.js";
+import { snapToFrameInset, EDGE_SNAP } from "./freelayout.js";
 import { ATTRIBUTION_LINES, OSM_NOTICE, SRC_SIZE, SRC_STEP, SRC_FOOT_SIZE, standLine, attributionStrip } from "./attribution.js";
 
 const FONT = "'Noto Sans', 'Liberation Sans', Arial, sans-serif";
@@ -360,11 +361,17 @@ export async function composeSheet(opts) {
     if (!p) return;
     const sz = dry(() => draw(0, 0)); // das Mass haengt nicht von der Lage ab
     // Ein Block bleibt mit seinem echten Mass ganz im Papier (die Lage im Assistenten beruht auf einer Schaetzung)
-    const x = Math.max(0, Math.min(p.x * Wv, Wv - sz.w - 2)), y = Math.max(0, Math.min(p.y * Hv, Hv - sz.h - 2));
+    let x = Math.max(0, Math.min(p.x * Wv, Wv - sz.w - 2)), y = Math.max(0, Math.min(p.y * Hv, Hv - sz.h - 2));
+    // Block auf der Karte nahe am Kartenrand: auf den eingestellten Abstand zum Rand einrasten, gemessen am sichtbaren Untergrund; so haben alle Bloecke denselben Abstand
+    if (edgeInset >= 0 && !p.noSnap) {
+      const s = snapToFrameInset({ x: x - 2, y: y - 1.5, w: sz.w + 4, h: sz.h + 3 }, F, edgeInset, EDGE_SNAP);
+      x = s.x + 2; y = s.y + 1.5;
+    }
     box({ x: x - 2, y: y - 1.5, w: sz.w + 4, h: sz.h + 3 });
     draw(x, y);
     halo = false;
   };
+  const edgeInset = Number.isFinite(opts.edgeInset) ? opts.edgeInset : -1; // Abstand zum Kartenrand (virtuelle mm); < 0: kein Einrasten (aeltere Aufrufer)
   const placeBlock = (name, draw) => placeAt(pos?.[name], draw);
   // Titel: Ueberschrift (6 mm) und Ortsname (9 mm), beide fett, linksbuendig; erst verkleinert, dann gekuerzt, damit sie bis zum Blattrand passen
   // (fittext.js). Oberkante des Blocks y, Grundlinien 5 und 15,4 mm darunter (bisherige Hoehe bei y = 3,4).
