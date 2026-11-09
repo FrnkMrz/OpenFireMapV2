@@ -233,7 +233,8 @@ try {
       await page.mouse.move(rz1.x + 900, rz1.y + 900, { steps: 8 }); await page.mouse.up();
       await page.waitForTimeout(300);
       const big = await sizeInfo();
-      check(big && big.w <= full.w && big.h <= full.h && await inside("#pv-map"), `weit aufgezogen: nie groesser als das volle Fenster (${big && big.w}x${big && big.h} mm), bleibt auf dem Blatt`);
+      // freie Anordnung: hoechstens das Papier abzueglich Mindestrand (A2 hoch: 420 x 594 mm, ui 1,414, Rand 2 x 6 ui)
+      check(big && big.w <= 420 - 12 * 594 / 420 + 1 && big.h <= 594 - 12 * 594 / 420 + 1 && big.w >= small.w && await inside("#pv-map"), `weit aufgezogen: hoechstens das Papier abzueglich Rand (${big && big.w}x${big && big.h} mm), bleibt auf dem Blatt`);
       // klein ziehen, nach unten rechts schieben, dann aufziehen: die linke obere Ecke bleibt stehen (die Lage wird nicht nachgeschoben)
       const rz2 = await page.locator("#pv-map-rz").boundingBox();
       await page.mouse.move(rz2.x + rz2.width / 2, rz2.y + rz2.height / 2); await page.mouse.down();
@@ -370,7 +371,7 @@ try {
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
     await page.click('.st[data-s="1"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
     check(await handleFree(), "Ohne Leiste: der Griff zum Groessemachen liegt ueber dem Verzeichnis und ist erreichbar");
-    await page.goto(`${BASE}/pick.html?paper=a3l&side=right&scale=5000`);
+    await page.goto(`${BASE}/pick.html?paper=a3l&side=right&scale=5000&fmt=fill`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
     await page.click('.st[data-s="1"]'); await page.locator("#prev").scrollIntoViewIfNeeded();
     const f0 = await rectOf("#pv-map");
