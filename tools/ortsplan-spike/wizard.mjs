@@ -372,7 +372,7 @@ try {
   fs.writeFileSync(`${OUT}/4-blatt.png`, Buffer.from(png.split(",")[1], "base64"));
   // Standardlage "Auf der Karte": auch das Verzeichnis (ausserhalb der Karte) laesst sich verschieben, Groesse aendern und bleibt gueltig
   {
-    await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000`);
+    await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=none&index=1&lsym=1&lroad=1`);
     await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
     await page.click('.st[data-s="2"]'); await page.waitForTimeout(400);
     const iOf = async () => { const p = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos") || ""; const m = /(?:^|;)i:([^;]*)/.exec(p); return m ? m[1].split(",").map(Number) : null; };
