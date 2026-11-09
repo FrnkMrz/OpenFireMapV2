@@ -257,3 +257,11 @@ test("mapSizeMm: aus Anteilen in mm, nie groesser als das Fenster der Lage, fest
   const sq = mapSizeMm({ w: 0.5, h: 0.9 }, { W: 420, H: 297, base: { w: 256, h: 256 }, ratio: 1 });
   assert.ok(Math.abs(sq.w - sq.h) < 1e-9 && sq.w <= 210 + 1e-9, `quadratisch bleibt quadratisch: ${sq.w} x ${sq.h}`);
 });
+
+test("computeLayout mit size: das Mindestmass haelt das Seitenverhaeltnis (festes Format 3:2 bleibt 3:2)", () => {
+  const l = computeLayout({ wMm: 420, hMm: 297, side: "none", fmt: "3:2", size: { w: 45, h: 30 } });
+  assert.ok(Math.abs(l.frame.w / l.frame.h - 1.5) < 1e-9, `Verhaeltnis ${l.frame.w / l.frame.h}`);
+  assert.ok(Math.min(l.frame.w, l.frame.h) >= MIN_FRAME_MM - 1e-9, "kuerzere Seite mindestens MIN_FRAME_MM");
+  const wide = computeLayout({ wMm: 420, hMm: 297, side: "none", fmt: "3:2", size: { w: 9999, h: 6666 } });
+  assert.ok(Math.abs(wide.frame.w / wide.frame.h - 1.5) < 1e-9, "zu gross: gemeinsam auf das Fenster der Lage, Verhaeltnis bleibt");
+});

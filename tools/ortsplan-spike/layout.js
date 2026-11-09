@@ -87,8 +87,10 @@ export function computeLayout({ wMm, hMm, side = "right", fmt = "fill", size = n
   }
   if (size) {
     // Eigene Groesse: nie groesser als das Fenster der Lage, nie kleiner als MIN_FRAME_MM; die linke obere Ecke bleibt stehen
-    const w = Math.min(frame.w, Math.max(Math.min(MIN_FRAME_MM, frame.w), size.w));
-    const h = Math.min(frame.h, Math.max(Math.min(MIN_FRAME_MM, frame.h), size.h));
+    // Zu klein: beide Seiten gemeinsam auf das Minimum (das Seitenverhaeltnis, auch eines festen Kartenformats, bleibt); zu gross: auf das Fenster der Lage
+    let w = Math.max(size.w, 0.001), h = Math.max(size.h, 0.001);
+    const lift = Math.max(1, Math.min(MIN_FRAME_MM, frame.w) / w, Math.min(MIN_FRAME_MM, frame.h) / h);
+    w = Math.min(frame.w, w * lift); h = Math.min(frame.h, h * lift);
     frame = { ...frame, w, h };
     if (sd === NO_SIDE) panel = { ...panel, x: frame.x + frame.w };
     else if (sd === "right") panel = { ...panel, x: frame.x + frame.w + 6.5 * ui };
