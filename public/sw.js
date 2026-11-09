@@ -57,7 +57,8 @@ self.addEventListener('fetch', (e) => {
     // (Verhindert den bekannten Safari/WebKit-Bug, bei dem der SW Range-Header verwirft)
     if (e.request.headers.has('range') ||
         url.pathname.endsWith('.pmtiles') ||
-        url.hostname === 'pipeline.openfiremap.org') {
+        url.hostname === 'pipeline.openfiremap.org' ||
+        url.hostname === 'raster-pilot.openfiremap.org') {
         return;
     }
 

@@ -20,7 +20,7 @@
         script-src 'self';
         style-src 'self' 'unsafe-inline';
         img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://*.tile.opentopomap.org https://tile.openstreetmap.org https://tile.openstreetmap.de https://*.bayernwolke.de;
-        connect-src 'self' https://pipeline.openfiremap.org http://localhost:* ws://localhost:* https://*.overpass-api.de https://overpass-api.de https://overpass.kumi.systems https://nominatim.openstreetmap.org;
+        connect-src 'self' https://pipeline.openfiremap.org https://raster-pilot.openfiremap.org http://localhost:* ws://localhost:* https://*.overpass-api.de https://overpass-api.de https://overpass.kumi.systems https://nominatim.openstreetmap.org;
     ">
 
     <!-- DPR-Skalierung für Android-High-DPI-Displays: externe Datei, damit die CSP ohne 'unsafe-inline' für Skripte auskommt -->
@@ -165,6 +165,12 @@
                 <button id="mobile-open-share" type="button"
                     class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="share_map">Kartenansicht teilen</span>
+                </button>
+
+                <button id="mobile-open-raster-export" type="button" aria-haspopup="dialog"
+                    aria-controls="export-menu" aria-expanded="false"
+                    class="hidden w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span data-i18n="export_title">Export</span>
                 </button>
 
                 <button id="mobile-open-search"
@@ -458,6 +464,12 @@
                     class="w-full bg-emerald-700 hover:bg-emerald-800 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg border border-emerald-400/30">
                     <span data-i18n="gpx_btn">GPX Speichern</span>
                 </button>
+
+                <button id="raster-zip-btn" type="button" aria-describedby="raster-zip-hint"
+                    class="hidden w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-semibold transition-colors border border-white/10"
+                    data-i18n="raster_zip_btn">Feuerwehr-Overlay als ZIP</button>
+                <p id="raster-zip-hint" class="hidden text-xs text-slate-400"
+                    data-i18n="raster_zip_hint">Deutschland · Transparente Kacheln bis zur gewählten Zoomstufe</p>
 
                 <!-- 7. Daten Export CSV -->
                 <button id="csv-btn"

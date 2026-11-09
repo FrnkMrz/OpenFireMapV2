@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Neu
+- Optionaler Deutschland-Pilot im Exportmenü. Der Browser erstellt für den gewählten Ausschnitt eine ZIP-Datei mit transparenten Feuerwehrkacheln aus einem veröffentlichten Raster-PMTiles-Archiv.
+
 ### Changed
 - SVG-Formen und OSM-Tag-Zuordnung der Kartenmarker in `marker-symbols-core.js` ausgelagert. Die Karte nutzt weiterhin dieselben SVG-Ausgaben; das browserunabhängige Modul kann zusätzlich vom Raster-Renderer importiert werden.
 - Regressionstest vergleicht Kernmodul und Webkarten-SVG für Hydranten, Wasserstellen, Wache und AED.
