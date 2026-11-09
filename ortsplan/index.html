@@ -57,6 +57,9 @@
     .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
     select, input[type=number], input[type=text] { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: #0f172a; color: var(--text); }
     label.row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+    /* Zielgröße (WCAG 2.5.8): Kontrollkästchen mindestens 24 x 24 px */
+    input[type=checkbox] { width: 24px; height: 24px; margin: 0; flex: none; accent-color: var(--accent); }
+    ::placeholder { color: #94a3b8; opacity: 1; } /* 4,5:1 auf dem dunklen Feld (Standard-Platzhalter hat nur 3,9:1) */
     button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
     /* Schritt 3 "Anordnen": die Vorschau des Blatts fuellt den ganzen Platz links neben dem Menue (Papierverhaeltnis bleibt; Schrift waechst mit, --k) */
     #stage { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; padding: 14px; background: #0b1220; overflow: hidden; }
@@ -97,7 +100,7 @@
 <body>
   <main id="ortsplan-notice" hidden></main>
   <div id="app" data-ortsplan-app>
-    <div id="wrap">
+    <main id="wrap">
       <div id="map"></div>
       <div id="frame" tabindex="0" role="group" aria-label="Ausschnitt des Ortsplans. Pfeiltasten verschieben, Plus und Minus machen ihn größer oder kleiner.">
         <div id="grip"><span class="ic" aria-hidden="true">✥</span><span id="frame-label"></span></div>
@@ -122,7 +125,7 @@
           </div>
       </div>
       <div id="maphint">Karte ziehen und zoomen. Den Rahmen am Griff oben verschieben, an Kanten und Ecken aufziehen.</div>
-    </div>
+    </main>
     <aside id="panel" aria-label="Ortsplan erstellen">
       <h1>Ortsplan erstellen</h1>
       <nav id="steps" aria-label="Schritte">
@@ -175,7 +178,13 @@
             <label class="row"><input type="checkbox" id="c-onmap"> Blöcke dürfen auf der Karte liegen</label>
             <div id="obg-wrap" hidden style="margin-top:6px"><p class="lab">Untergrund auf der Karte</p><div class="chips" id="g-obg"></div></div>
           </div>
-          <p class="hint" id="pos-hint" hidden>Ziehe die Kästen in die freien Flächen der Vorschau (oder Pfeiltasten, mit Umschalt weiter). Auch Titel und Karte lassen sich verschieben; die Karte rastet nahe am Rand ein und bleibt immer ganz auf dem Blatt. An der Ecke unten rechts der Karte änderst du ihre Größe (Alt + Pfeiltasten): der Maßstab bleibt, sie zeigt dann mehr oder weniger Gebiet. Das Straßenverzeichnis lässt sich an der Ecke unten rechts größer ziehen (mit Tastatur: Alt + Pfeiltasten). Die Größe der Kästen ist geschätzt.</p>
+          <ul class="hint" id="pos-hint" hidden style="padding-left:18px;display:grid;gap:4px">
+            <li>Ziehe die Kästen in die freien Flächen der Vorschau, oder wähle einen mit Tab und verschiebe ihn mit den Pfeiltasten (mit Umschalt in größeren Schritten).</li>
+            <li>Auch Titel und Karte lassen sich verschieben. Die Karte rastet nahe am Rand ein und bleibt immer ganz auf dem Blatt.</li>
+            <li>An der Ecke unten rechts änderst du die Größe der Karte (mit Tastatur: Alt + Pfeiltasten). Der Maßstab bleibt, die Karte zeigt dann mehr oder weniger Gebiet.</li>
+            <li>Auch das Straßenverzeichnis lässt sich an seiner Ecke unten rechts größer ziehen.</li>
+            <li>Die Größe der Kästen ist geschätzt.</li>
+          </ul>
           <p class="hint" id="mv-hint" hidden>Titel und Karte lassen sich in der Vorschau verschieben (Pfeiltasten gehen auch); die Leiste folgt der Karte, die Karte rastet nahe am Rand ein. An der Ecke unten rechts der Karte änderst du ihre Größe: der Maßstab bleibt, sie zeigt dann mehr oder weniger Gebiet.</p>
           <div class="opts" style="display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center">
             <label for="o-inset" title="Blöcke auf der Karte rasten in diesem Abstand am Kartenrand ein, alle gleich">Abstand zum Kartenrand (mm)</label><input id="o-inset" type="number" min="0" max="20" step="0.5" style="width:4.5em">

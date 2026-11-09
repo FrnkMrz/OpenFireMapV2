@@ -22,6 +22,7 @@
     #ortsplan-notice { max-width: 34rem; margin: 12vh auto; padding: 0 1.25rem; font: 16px/1.6 system-ui, sans-serif; color: #111; }
     #ortsplan-notice a { color: #1d4ed8; }
     [hidden] { display: none !important; }
+    .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
     body { margin: 0; font: 14px system-ui, sans-serif; background: #ddd; }
     #bar { position: sticky; top: 0; z-index: 5; background: #fff; padding: 8px 12px; border-bottom: 1px solid #bbb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     #bar label { display: flex; gap: 4px; align-items: center; }
@@ -31,7 +32,7 @@
 </head>
 <body>
   <main id="ortsplan-notice" hidden></main>
-  <form id="ctl" method="get" data-ortsplan-app>
+  <form id="ctl" method="get" data-ortsplan-app aria-label="Einstellungen des Blatts">
     <div id="bar">
       <label>Maßstab 1:<select name="scale"><option>2500</option><option>5000</option><option>10000</option></select></label>
       <label>Papier<select name="paper"><option value="a4l">A4 quer</option><option value="a4p">A4 hoch</option><option value="a3l">A3 quer</option><option value="a3p">A3 hoch</option><option value="a2l">A2 quer</option><option value="a2p">A2 hoch</option><option value="a1l">A1 quer</option><option value="a1p">A1 hoch</option></select></label>
@@ -53,8 +54,11 @@
       <span id="info"></span>
     </div>
   </form>
-  <div id="map" data-ortsplan-app></div>
-  <div id="out" data-ortsplan-app></div>
+  <main data-ortsplan-app>
+    <h1 class="sr-only">Ortsplan</h1>
+    <div id="map"></div>
+    <div id="out"></div>
+  </main>
   <script type="module" src="/src/js/ortsplan/start-blatt.js"></script>
 </body>
 </html>

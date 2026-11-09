@@ -283,7 +283,9 @@ async function buildSheet() {
     const bar = document.createElement("div");
     bar.textContent = warning;
     bar.style.cssText = "background:#fde8e8;color:#8a1111;padding:8px 12px;border-bottom:1px solid #d99;font:14px system-ui,sans-serif";
-    document.body.insertBefore(bar, document.getElementById("map"));
+    bar.setAttribute("role", "alert");
+    const mapEl = document.getElementById("map");
+    mapEl.parentNode.insertBefore(bar, mapEl);
   }
   if (sheet) {
     // Stand der Feuerwehr-Daten (metadata.json der Pipeline, in der Entwicklung <gebiet>.meta.json) und der Basiskarte (Zeigerdatei, sonst die Metadaten
@@ -315,6 +317,7 @@ async function buildSheet() {
       }
       const img = new Image();
       img.src = url;
+      img.alt = res.pages.length > 1 ? `Ortsplan, Seite ${i + 1} von ${res.pages.length}` : "Ortsplan";
       img.style.cssText = "display:block;margin:12px;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.3);max-width:calc(100vw - 24px)";
       out.appendChild(img);
     });
