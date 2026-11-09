@@ -391,6 +391,21 @@ try {
     check(!!i3 && i3.every(Number.isFinite) && i3[0] > i2[0], "Verzeichnis mit der Pfeiltaste verschoben");
   }
 
+  // Am Kartenrand verankerte Bloecke (r/b) folgen dem Kartenfenster, auch wenn die Karte kleiner gezogen wird (Vorschau = Blatt)
+  {
+    await page.goto(`${BASE}/pick.html?paper=a3l&scale=5000&side=none&index=1&lsym=1&lroad=1&pos=s:0.4,0.3,b`);
+    await waitReady(page, { key: "__pickReady", timeout: 60000, failure: () => failure });
+    await page.click('.st[data-s="2"]'); await page.waitForTimeout(400);
+    const sy = async () => { const p = new URLSearchParams((await page.evaluate(() => window.__wizard.goLink())).split("?")[1]).get("pos") || ""; const m = /(?:^|;)s:([\d.]+),([\d.]+)/.exec(p); return m ? +m[2] : null; };
+    const y0 = await sy();
+    check(y0 !== null && y0 > 0.6, `Massstab mit Anker unten sitzt am unteren Kartenrand, nicht bei der gespeicherten Lage 0,3 (${y0})`);
+    await page.evaluate(() => document.getElementById("prev").scrollIntoView({ block: "center" }));
+    const rz = await page.locator("#pv-map-rz").boundingBox();
+    await page.mouse.move(rz.x + rz.width / 2, rz.y + rz.height / 2); await page.mouse.down(); await page.mouse.move(rz.x - 60, rz.y - 110, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300);
+    const y1 = await sy();
+    check(y1 !== null && y1 < y0 - 0.05, `Karte kleiner gezogen: der verankerte Massstab folgt dem unteren Kartenrand (${y0} -> ${y1})`);
+  }
+
   // Abstand der Bloecke zum Kartenrand: Standard 4 mm, einstellbar, steht im Link (mi); der Wert bleibt beim Neuladen
   {
     await page.goto(`${BASE}/pick.html?paper=a3l&side=none&scale=5000`);
