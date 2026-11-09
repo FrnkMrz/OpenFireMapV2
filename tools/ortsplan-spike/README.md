@@ -94,7 +94,7 @@ Der Spike läuft mit maplibre-gl 5.x und 6.x. Für 6 nötig (alle drei sind scho
 
 ## Ortsplan erstellen (Assistent)
 
-`/pick.html` (auch über den Link „Ausschnitt wählen …“ im Formular): Assistent in zwei Schritten, links die Karte, rechts das Panel.
+`/pick.html` (auch über den Link „Ausschnitt wählen …“ im Formular): Assistent in drei Schritten, links die Karte (in Schritt 3 die große Vorschau des Blatts), rechts das Panel.
 
 1. **Ausschnitt und Format:** der Rahmen ist das Kartenfenster des Blatts. Am Griff oben verschieben. Die Karte wird getrennt davon verschoben und
    gezoomt; der Rahmen klebt am Ort. Zwei Formen:
@@ -106,11 +106,13 @@ Der Spike läuft mit maplibre-gl 5.x und 6.x. Für 6 nötig (alle drei sind scho
    - **Wie das Blatt:** Seitenverhältnis wie Papier, Lage der Legende und Kartenform (weiter unten im selben Schritt); „Papier füllen“ nennt das echte Verhältnis des Kartenfensters; die Ecken ändern nur den Maßstab (Standardliste).
    Pfeiltasten verschieben den Rahmen, `+`/`-` machen ihn größer oder kleiner. Wird der Rahmen größer als die Ansicht, zoomt die Karte
    heraus. Ragt er über die geladenen Daten hinaus, steht ein Hinweis da.
-   Darunter im selben Schritt: Papier (A4 bis A1), Quer/Hoch, im festen Modus die Kartenform und die Lage der Legende (oben, unten, links, rechts, ohne
-   Leiste). Bei Hoch steht die Legende standardmäßig unten, sonst würde das Kartenfenster sehr schmal (A3 hoch mit Leiste links: Verhältnis 0,52 statt 0,71);
+   Darunter im selben Schritt: Papier (A4 bis A1), Quer/Hoch, im festen Modus die Kartenform und die Lage der Legende (auf der Karte (Standard), oben, unten, links, rechts). Bei Hoch steht die Legende standardmäßig unten, sonst würde das Kartenfenster sehr schmal (A3 hoch mit Leiste links: Verhältnis 0,52 statt 0,71);
    zurück auf Quer wieder links. Unten im Panel steht der Commit (`Stand …`) des ausgelieferten Quellcodes.
-2. **Legende:** Texte (Ortsname, Überschrift), Vorschau der Blattaufteilung mit frei verschiebbaren Blöcken (Legende, Maßstab, Nordpfeil, Quellenangabe,
-   Straßenverzeichnis); Inhalte per Häkchen (Symbole, Straßenarten und Gemeindegrenze, Straßenverzeichnis), unter „Mehr Optionen“ Auflösung, Spalten und Schriftgröße des Verzeichnisses.
+2. **Inhalt:** Texte (Ortsname, Überschrift), Inhalte per Häkchen (Symbole, Straßenarten und Gemeindegrenze, Straßenverzeichnis), unter „Mehr Optionen“
+   Auflösung, Spalten und Schriftgröße des Verzeichnisses.
+3. **Anordnen:** die Vorschau des Blatts mit frei verschiebbaren Blöcken (Titel, Karte, Legende, Maßstab, Nordpfeil, Quellenangabe, Straßenverzeichnis) füllt
+   den ganzen Platz links neben dem Panel (Papierverhältnis bleibt, passt sich der Fenstergröße an; die Titelschrift ist so groß wie auf dem Blatt). Hier steht
+   auch der Knopf „Ortsplan erstellen“. Standard ist die Lage „Auf der Karte“: Legende, Maßstab und Nordpfeil auf der Karte, nur das Verzeichnis außerhalb.
 
 „Ortsplan erstellen“ öffnet das Blatt (`/?sheet=1&...`). Neue Blattparameter dafür: `lsym=0` (ohne Symbole in der Legende), `lroad=0`
 (ohne Straßenarten und Gemeindegrenze); sind beide aus, entfällt die Legende samt Platz. Die letzte Wahl merkt sich der Browser
