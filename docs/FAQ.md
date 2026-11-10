@@ -24,9 +24,11 @@ Korrigiere die Quelle direkt in [OpenStreetMap](https://www.openstreetmap.org/),
 
 Der [Ortsplan](https://openfiremap.org/ortsplan/) ist ein eigenständiges Werkzeug für druckfertige PDF- und PNG-Pläne in unterstützten Gebieten Deutschlands. Du kannst Ausschnitt, Papier, Maßstab und Blattaufteilung wählen sowie Symbole, Straßen und ein optionales Straßenverzeichnis aufnehmen. Das Straßenverzeichnis kann bei Bedarf auf Folgeseiten weiterlaufen. Das Werkzeug ist für Computer und Tablets vorgesehen; auf Smartphones ist es nicht verfügbar. Die Daten stammen aus OpenStreetMap und vorbereiteten Pipeline-Dateien. Der Ortsplan ersetzt keine amtlichen Unterlagen, Feuerwehrpläne nach geltenden Vorgaben oder lokalen Einsatzinformationen.
 
-## Was macht „Feuerwehr-Overlay als ZIP“?
+## Wo kann ich Feuerwehr-Rasterkacheln herunterladen?
 
-Der optionale Raster-Pilot im Exportmenü erstellt für abgedeckte Gebiete in Deutschland ein ZIP mit transparenten Feuerwehr-PNG-Kacheln im XYZ-Schema. Das Archiv enthält `ATTRIBUTION.txt` mit den Quellenhinweisen und `selection.json` mit Ausschnitt, Zoomstufen und Kachelzahl. Du kannst die entpackten Kacheln in geeignete Kartenprogramme einbinden. Die Funktion ist an die veröffentlichte Rasterabdeckung und verfügbare Zoomstufen gebunden; sie ist keine weltweite Basiskarte und ersetzt weder die interaktive OpenFireMap noch deren Vektor- und Datenexporte.
+Auf der [Overlay-Seite](https://openfiremap.org/overlay/) kannst du den sichtbaren Ausschnitt übernehmen oder ein Rechteck zeichnen und die transparenten Feuerwehr-PNG-Kacheln als ZIP laden. Dort gibt es auch das vollständige Deutschland-PMTiles-Archiv und Beispiele zum Einbinden in Leaflet und MapLibre. Das Ausschnittsarchiv enthält `ATTRIBUTION.txt` und `selection.json`. Der Download ist auf die veröffentlichte Rasterabdeckung und verfügbaren Zoomstufen begrenzt; das Overlay ist keine weltweite Basiskarte.
+
+Die Raster-PNGs sind fertig gerenderte Bilder. Hydranten, Feuerwachen und andere sichtbare OFM-Inhalte sind gemeinsam darin enthalten und lassen sich in diesem Rasterprodukt nicht einzeln ein- oder ausschalten. Die Einzelschalter auf der Overlay-Seite steuern die separate Vektordemo.
 
 ## Warum kann die Karte bei Überlastung mehrmals laden müssen?
 

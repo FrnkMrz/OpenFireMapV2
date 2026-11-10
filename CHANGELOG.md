@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Datenprodukte und Betriebsgrenzen dokumentiert:** öffentliche Agent- und Architekturhinweise unterscheiden jetzt Hauptkarten-Vektordaten, Europa-Dateien, gemeinsam gerenderte Overlay-PNGs und die Ortsplan-Grundkarte. Interne Jobzeiten und VM-/Docker-Betrieb bleiben im privaten Pipeline-Repository.
+- **Overlay-Dokumentation berichtigt:** der Ausschnitts-ZIP-Download liegt auf `/overlay/`, nicht im Exportdialog der Hauptkarte; die Raster-PNGs enthalten gemeinsam gerenderte OFM-Symbole, während die Einzelschalter zur Vektordemo gehören.
+
 ## [v0.11.0] - 2026-11-10
 
 ### Neu
