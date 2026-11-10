@@ -25,3 +25,13 @@ Vor einer breiteren Freigabe sollte die Overlay-Demo mit Browser-Entwicklertools
 Die Rasterdatei ist ein PMTiles-Archiv mit transparenten PNG-Kacheln im XYZ-Schema und Zoomstufen 12–18. Es ist selbst keine klassische `{z}/{x}/{y}.png`-URL. Betreiber mit XYZ-Clients können das Archiv mit dem PMTiles-Kachelserver oder einem eigenen Tile-Service ausliefern. Dann verantworten sie selbst Hosting, TLS, Caching, Kapazität und CORS.
 
 Auf der Karte ist `© OpenStreetMap contributors` anzugeben. Die Ausschnitt-ZIP enthält dieselbe Quellenangabe in `ATTRIBUTION.txt`.
+
+## Abgrenzung der Datenprodukte
+
+Die Demo bietet zwei unterschiedliche Ansichten, weil sie unterschiedliche Datenprodukte zeigt:
+
+- **Raster-Overlay:** vorgerenderte transparente PNG-Kacheln in einem Raster-PMTiles-Archiv. Hydranten, Wachen und andere sichtbare Inhalte liegen gemeinsam in den Bildern; die Rasterdatei bietet keine OFM-Einzelschalter. Die Schalter innerhalb der Demo beziehen sich auf die separate Vektordemo.
+- **OFM-Einzelebenen:** fachliche Vektordaten aus den bestehenden Pipeline-PMTiles, gerendert im Browser mit den OFM-Symbolen. Die Schalter filtern diese Vektoransicht.
+- **Ortsplan-Grundkarte:** eigene Protomaps-Grundkarte für den Druck-Workflow. Feuerwehrdaten werden separat ergänzt. Sie ist weder das Raster-Overlay noch dieselbe Datei wie die Vektordaten der Hauptkarte.
+
+Die Raster-PNGs sind fertig gerendert, aber ihre Symbolgestaltung und Zoomstufen sind Teil des Raster-Builds. Ein Darstellungsfehler in Zoom 17/18 muss daher im Raster-Renderer bzw. dessen veröffentlichtem Archiv behoben werden; das Umschalten auf OFM-Einzelebenen ändert die PNG-Kacheln nicht. Die Betriebsabläufe und Renderquellen sind im privaten Pipeline-Repository dokumentiert.

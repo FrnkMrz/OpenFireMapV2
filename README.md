@@ -11,7 +11,7 @@
 
 Die Live-Karte ist unter **[openfiremap.org](https://openfiremap.org)** erreichbar. Der Quellcode und die technische Dokumentation liegen im **[GitHub-Repository FrnkMrz/OpenFireMapV2](https://github.com/FrnkMrz/OpenFireMapV2)**.
 
-OpenFireMapV2 ist aktuell **v0.11.0**. Die Hauptkarte ist weltweit nutzbar: Außerhalb der vorbereiteten Pipeline-Gebiete ruft sie Daten über Overpass ab. Für DACHLiLu sowie 40 weitere europäische Länder steht zusätzlich eine schnelle PMTiles-Versorgung über Cloudflare R2 bereit. Die Pipeline beschleunigt die Datenversorgung, erweitert aber nicht die weltweite Abdeckung. Neu in 0.11 ist der eigenständige **Ortsplan** unter `/ortsplan/`: Er erstellt für Gebiete in Deutschland druckfertige PDF- oder PNG-Pläne mit Feuerwehrsymbolen, Straßen, Legende und optionalem Straßenverzeichnis. Das Exportmenü kann außerdem transparente Feuerwehr-Rasterkacheln für abgedeckte Gebiete in Deutschland als ZIP ausgeben. Beide Funktionen beziehen vorbereitete Daten aus der Pipeline; Details und Einschränkungen stehen in der [FAQ](docs/FAQ.md) und [Architektur](docs/ARCHITEKTUR.md).
+OpenFireMapV2 ist aktuell **v0.11.0**. Die Hauptkarte ist weltweit nutzbar: Außerhalb der vorbereiteten Pipeline-Gebiete ruft sie Daten über Overpass ab. Für DACHLiLu sowie 40 weitere europäische Länder steht zusätzlich eine schnelle PMTiles-Versorgung über Cloudflare R2 bereit. Die Pipeline beschleunigt die Datenversorgung, erweitert aber nicht die weltweite Abdeckung. Neu in 0.11 sind der eigenständige **Ortsplan** unter `/ortsplan/` für druckfertige PDF- und PNG-Pläne sowie die **Overlay-Seite** unter `/overlay/` mit Rasterdemo, Kartenausschnitt- und Deutschland-Download und Einbindungsbeispielen. Die Ortsplan-Grundkarte, die OFM-Vektordaten und das fertig gerenderte Raster-Overlay sind getrennte Datenprodukte; Details stehen in der [FAQ](docs/FAQ.md), [Overlay-Dokumentation](docs/OVERLAY.md) und [Architektur](docs/ARCHITEKTUR.md).
 
 > OpenFireMapV2 ist ein nichtkommerzielles Open-Source-Projekt, das moderne Webtechnik mit offenen OpenStreetMap-Daten verbindet.
 
@@ -23,8 +23,7 @@ OpenFireMapV2 ist aktuell **v0.11.0**. Die Hauptkarte ist weltweit nutzbar: Auß
 - automatische Erkennung veralteter Pipeline-Abdeckung und Rückfall auf Overpass
 - Exporte als PNG, PDF, GPX und CSV
 - eigenständiger [Ortsplan](https://openfiremap.org/ortsplan/) für druckfertige PDF- und PNG-Pläne in Deutschland
-- optionaler Export transparenter Feuerwehr-Rasterkacheln als ZIP für abgedeckte Gebiete in Deutschland
-- Overlay-Demo und Einbindungsanleitung unter [openfiremap.org/overlay](https://openfiremap.org/overlay/), einschließlich PMTiles-Download und Leaflet-/MapLibre-Beispielen
+- Raster-Overlay-Demo, transparente PNG-Kacheln als Ausschnitts-ZIP und Deutschland-PMTiles unter [openfiremap.org/overlay](https://openfiremap.org/overlay/), mit Leaflet-/MapLibre-Beispielen
 - eine mehrsprachige [Übersicht der Kartenzeichen](https://openfiremap.org/symbols/) für Hydranten, Löschwasserstellen, Feuerwachen und Defibrillatoren
 - mehr als 30 Sprachen, IndexedDB-Cache sowie responsive Nutzung auf Desktop und Mobilgeräten
 - Barrierefreiheit nach WCAG 2.2 (A/AA): Bedienung per Tastatur mit Skip-Link, sichtbarem Fokus und Marker-Details auf Enter, Screenreader-Beschriftungen, geprüfte Farbkontraste und Rücksicht auf „Bewegung reduzieren“ (siehe [Erste Schritte](docs/ERSTE_SCHRITTE.md#bedienung-per-tastatur-und-screenreader))
@@ -80,6 +79,6 @@ OpenFireMapV2 is a worldwide, client-side web map for fire stations, hydrants, w
 
 The [map symbols guide](https://openfiremap.org/symbols/) explains hydrant, water-source, fire-station and AED symbols in all supported languages.
 
-Version **v0.11.0** adds a standalone town-plan tool for supported areas in Germany. It creates printable PDF and PNG plans with adjustable layout, map scale, symbols, roads, legend and an optional street index. The map export menu also offers a Germany raster pilot that packages transparent fire-service tiles as a ZIP for covered areas. Both tools use pre-built data and are separate from the worldwide interactive map. See the [FAQ](docs/FAQ.md) and [English project presentation](docs/PROJECT_PRESENTATION_EN.md).
+Version **v0.11.0** adds a standalone town-plan tool for supported areas in Germany and an overlay page at [openfiremap.org/overlay](https://openfiremap.org/overlay/). The overlay page provides the published raster demo, transparent PNG tile downloads for a selected area, the Germany PMTiles archive, and Leaflet/MapLibre examples. The town-plan basemap, OFM vector data and rendered raster overlay are separate data products. See the [FAQ](docs/FAQ.md), [overlay documentation](docs/OVERLAY.md) and [English project presentation](docs/PROJECT_PRESENTATION_EN.md).
 
 The map is keyboard-accessible and checked against WCAG 2.2 (A/AA) with automated axe and contrast tests: skip link, visible focus, keyboard-operable markers and dialogs, labelled controls in all supported languages, and support for reduced motion. Testing with a real screen reader on a device is still pending. A public pipeline status page is available at [openfiremap.org/status](https://openfiremap.org/status/).
