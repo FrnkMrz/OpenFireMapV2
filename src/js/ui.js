@@ -497,7 +497,6 @@ export function closeAllMenus() {
         layerBtn.setAttribute('aria-label', t('menu_layers_open'));
     }
 
-    document.getElementById('mobile-open-raster-export')?.setAttribute('aria-expanded', 'false');
     // 4. Barrierefreiheit: Export-Button zurücksetzen
     const exportBtn = document.getElementById('export-btn-trigger');
     if (exportBtn) {
@@ -553,7 +552,6 @@ export function toggleExportMenu() {
     if (isHidden) {
         menu.classList.remove('hidden');
         document.getElementById('export-btn-trigger')?.setAttribute('aria-expanded', 'true');
-        document.getElementById('mobile-open-raster-export')?.setAttribute('aria-expanded', 'true');
 
         // UI zurücksetzen (Ladebalken weg, Setup zeigen)
         const progress = document.getElementById('export-progress');
@@ -786,12 +784,6 @@ export function setupUI() {
     addClick('pdf-btn', withTitleConfirm('exportAsPDF'));
     addClick('gpx-btn', withTitleConfirm('exportAsGPX'));
     addClick('csv-btn', withTitleConfirm('exportAsCSV'));
-    if (Config.rasterExport.manifestUrl) {
-        document.getElementById('mobile-open-raster-export')?.classList.remove('hidden');
-        document.getElementById('raster-zip-btn')?.classList.remove('hidden');
-        document.getElementById('raster-zip-hint')?.classList.remove('hidden');
-        addClick('raster-zip-btn', async () => { const m = await getExport(); await m.exportAsRasterZip(); });
-    }
     addClick('cancel-export-btn', async () => { const m = await getExport(); m.cancelExport(); });
 
     // Der Fokus geht über registerDialog() (unten) zum Auslöser zurück
