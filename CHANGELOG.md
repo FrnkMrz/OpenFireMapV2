@@ -4,19 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Neu
-- Optionaler Deutschland-Pilot im Exportmenü. Der Browser erstellt für den gewählten Ausschnitt eine ZIP-Datei mit transparenten Feuerwehrkacheln aus einem veröffentlichten Raster-PMTiles-Archiv.
+## [v0.11.0] - 2026-11-10
 
-### Changed
-- SVG-Formen und OSM-Tag-Zuordnung der Kartenmarker in `marker-symbols-core.js` ausgelagert. Die Karte nutzt weiterhin dieselben SVG-Ausgaben; das browserunabhängige Modul kann zusätzlich vom Raster-Renderer importiert werden.
-- Regressionstest vergleicht Kernmodul und Webkarten-SVG für Hydranten, Wasserstellen, Wache und AED.
+### Neu
+- **Ortsplan-Assistent** (`/ortsplan/`): Neuer dreistufiger Ablauf für Ausschnitt und Papierformat, Planinhalt und Blattaufteilung. Für unterstützte Orte in Deutschland lassen sich A4 bis A1, Hoch- oder Querformat, Druckmaßstab und Kartenausschnitt wählen. Der Rahmen kann frei oder in vorgegebenen Seitenverhältnissen gestaltet werden.
+- **Ortsplan-Inhalt und Export** (`/ortsplan/blatt/`): Feuerwehrsymbole, Straßen, Einbahnstraßen, Gemeindegrenze, Legende, Maßstabsleiste, Nordpfeil und Straßenverzeichnis können je nach Bedarf aufgenommen und angeordnet werden. Karte und Titel lassen sich verschieben; Karte und Verzeichnis in der Vorschau anpassen. PNG und PDF werden in der gewählten Druckgröße ausgegeben; lange Straßenverzeichnisse laufen auf Folgeseiten weiter.
+- **Overlay-Demo und Download** (`/overlay/`): Neue Seite mit einer veröffentlichten Raster-Overlay-Karte und einer Vektordemo für Rollhofen, in der einzelne OpenFireMap-Ebenen umgeschaltet werden können. Dort lässt sich das Deutschland-PMTiles-Archiv herunterladen oder ein Kartenausschnitt als ZIP mit transparenten PNG-Kacheln exportieren. Beispiele zeigen die Einbindung des Archivs in Leaflet und MapLibre.
+- **Raster-Overlay aus der Hauptkarte**: Das Exportmenü kann für unterstützte Bereiche in Deutschland transparente Feuerwehr-Kacheln als ZIP ausgeben. Das Archiv enthält XYZ-PNG-Kacheln sowie `ATTRIBUTION.txt` und `selection.json` mit Quellen- und Auswahlinformationen.
 
 ### Geändert
-- **Kontaktadresse verlinkt**: Die E-Mail-Adresse im Impressum und in beiden Datenschutzhinweisen ist anklickbar und öffnet das Standard-Mailprogramm.
-- **Vorübergehender Erreichbarkeitshinweis**: Ein deutscher bzw. englischer Hinweis im Impressum informiert, dass die E-Mail-Adresse wieder funktioniert. Er wird am 19. November 2026 um 20:34 Uhr MEZ automatisch ausgeblendet.
-- **Overpass bei Überlast**: Das Live-Nachladen neben der Pipeline gibt jetzt schnell auf, statt jeden Server nacheinander 25 s lang zu fragen: Timeout 8 s je Server (`overpassDeltaTimeoutMs`), höchstens zwei Server (`overpassDeltaMaxEndpoints`), kein Warten auf abgelaufene Sperrzeiten, Server-Timeout der Abfrage 10 s. Die Konfigurationswerte `overpassTimeoutMs` (bisher fest im Code) werden jetzt tatsächlich gelesen; `overpassMaxRetries` war ohne Wirkung und entfällt.
-- **Frische-Check für das Live-Nachladen**: Jede Overpass-Antwort nennt ihren Datenstand (`osm3s.timestamp_osm_base`). Das Nachladen gilt nur noch, wenn dieser Stand neuer als der Pipeline-Stand ist und höchstens 6 Stunden zurückliegt (`liveDeltaMaxLagMs`). Ein Server mit älteren Daten (z. B. ein Spiegel mit Tagesauszug) hätte nichts Neues wissen können und ließ die Anzeige bisher „Aktiv, 0 Änderungen“ melden. Jetzt wird er für das Nachladen 15 Minuten übersprungen (`endpointStaleMs`, für normale Abfragen bleibt er nutzbar), der nächste Server gefragt, und gibt es keinen aktuellen, zeigt das Popover „Overpass-Server hat keine aktuelleren Daten“ (neuer Schlüssel `data_sync_stale`, 30 Sprachen) mit dem Knopf zum erneuten Versuchen.
-- **Serverreihenfolge nach Neuladen**: Ein Overpass-Server, der zuletzt fehlschlug, wird zwei Minuten lang (`endpointDemoteMs`) hinten einsortiert, auch nach einem Neuladen der Seite (`localStorage`, Schlüssel `ofm_ep_health_v1`). Er wird nicht gesperrt: scheitern die anderen, wird er weiter genutzt.
+- **Overpass-Live-Delta**: Bei hoher Last gibt die Änderungsabfrage schneller auf (höchstens zwei Endpunkte, 8 Sekunden je Endpunkt und 10 Sekunden serverseitiges Abfragelimit). Antworten werden nur übernommen, wenn ihr OSM-Datenstand (`osm3s.timestamp_osm_base`) neuer als der Pipeline-Stand und höchstens sechs Stunden alt ist; auch zwischengespeicherte Antworten durchlaufen diese Frischeprüfung. Veraltete Spiegel werden 15 Minuten für Live-Deltas übersprungen. Zuletzt fehlgeschlagene Server werden nach einem Neuladen zwei Minuten nach hinten sortiert und bleiben als Rückfall verfügbar.
+- **Gemeinsamer Symbolkern**: SVG-Formen und Tag-Zuordnung der Hauptkarte liegen jetzt in `marker-symbols-core.js`, damit der Raster-Renderer dieselben Feuerwehrsymbole verwenden kann. Ein Regressionstest vergleicht die Ausgabe für Wachen, Hydranten, Wasserstellen und AEDs.
+- **Verlinkte Kontaktadresse**: Die E-Mail-Adresse im Impressum und in beiden Datenschutzhinweisen öffnet das Standard-Mailprogramm. Ein befristeter Erreichbarkeitshinweis wird am 19. November 2026 um 20:34 Uhr MEZ automatisch ausgeblendet.
+
+### Bedienbarkeit und Korrekturen
+- Der Ortsplan unterstützt Tastaturbedienung; Fokusführung und Farbkontraste wurden nachgebessert. Die Blattvorschau hält verschiebbare Elemente an der Karte bzw. am Papierrand. Größenänderungen bewahren Rahmen, Maßstab und Seitenverhältnis; Fehler beim Verschieben und Vergrößern von Karte, Titel und Straßenverzeichnis wurden korrigiert.
+- Der Ortsplan ist derzeit deutschsprachig, für Computer und Tablets sowie unterstützte Gebiete in Deutschland ausgelegt. Die Ausgabe enthält OSM-Quellenangabe und Datenstand. Er ersetzt keine amtlichen Feuerwehr- oder Einsatzunterlagen.
+- Der Pages-Deploy-Workflow begrenzt die Laufzeit des Deploy-Schritts und protokolliert bei Fehlern zusätzliche Statusinformationen.
 
 ## [v0.10.3] - 2026-11-04
 

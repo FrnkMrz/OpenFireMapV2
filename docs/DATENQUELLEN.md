@@ -62,7 +62,12 @@ Wer Cloudflare-Funktionen wie Bot Fight Mode, Web Analytics oder Zaraz aktiviert
 
 - Die interaktive Karte zeigt die OSM-Attribution mit einem Link auf die Copyright- und Lizenzseite von OpenStreetMap.
 - PNG- und PDF-Karten enthalten direkt am Kartenbild die OSM-Attribution, den Hinweis auf die ODbL samt ausgeschriebener URL sowie die Attribution der gewählten Basiskarte.
+- Ortsplan-PDFs und -PNGs führen die OSM-Attribution und den Datenstand der Grundkarte und Feuerwehrdaten auf dem Blatt.
 - GPX-Dateien führen OpenStreetMap als Copyright-Inhaber in den Metadaten und verlinken die Lizenzseite. CSV-Dateien weisen Quelle und Lizenz in eigenen Spalten aus.
 - Beim Weitergeben oder Veröffentlichen eines Exports müssen diese Quellenhinweise erhalten bleiben.
+
+Das optionale Feuerwehr-Raster-Overlay ist eine abgeleitete Darstellung von OSM-Feuerwehrdaten. Sein ZIP-Archiv enthält `ATTRIBUTION.txt` mit OSM- und OpenFireMap-Quellenhinweisen sowie `selection.json` mit Metadaten zur Auswahl. Beim Einbinden der Kacheln müssen die Hinweise aus `ATTRIBUTION.txt` erhalten bleiben, da die transparenten PNG-Kacheln selbst keine Attributionsfläche haben.
+
+Die Ortsplan-Grundkarte stammt aus vorbereiteten Protomaps-Kacheln. Ortsplan-Ausgaben nennen OpenStreetMap mit ODbL sowie „Karte: Protomaps · Daten: OpenFireMap.org“ direkt auf dem Blatt; diese Angaben müssen bei einer Weitergabe erhalten bleiben.
 
 OpenFireMapV2 selbst ist als Software unter der [MIT-Lizenz](../LICENSE) veröffentlicht. Die Softwarelizenz ändert nichts an den Lizenzbedingungen der Kartendaten und Basiskarten.
