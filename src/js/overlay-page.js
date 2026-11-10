@@ -2,7 +2,7 @@ import { PMTiles, leafletRasterLayer } from 'pmtiles';
 import { Config } from './config.js';
 import { fetchPipelineData, fetchPipelineBoundaries } from './pipeline.js';
 import { getMarkerSvg, getHydrantMarkerType, getWaterMarkerKind } from './marker-symbols.js';
-import { initI18n, setLang, getLang, t } from './i18n.js';
+import { initI18n, updatePageLanguage, setLang, getLang, t } from './i18n.js';
 import { isRectWithinKm } from './geometry.js';
 import { buildRasterZip } from './raster-export.js';
 
@@ -305,6 +305,7 @@ $('download-zip').addEventListener('click', async () => {
 
 async function setupLanguage() {
   await initI18n();
+  updatePageLanguage();
   const select = $('overlay-language');
   select.value = getLang();
   select.addEventListener('change', async () => { await setLang(select.value); });

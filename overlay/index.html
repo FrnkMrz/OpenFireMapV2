@@ -12,12 +12,11 @@
     .overlay-map { height: clamp(330px, 52vw, 560px); }
     .overlay-map .leaflet-control-attribution { font-size: 10px; }
     .code-sample { white-space: pre; overflow-x: auto; tab-size: 2; }
-    .overlay-map .leaflet-marker-icon { background: transparent; border: 0; }
     .overlay-map .icon-container { background: transparent; border: 0; }
-    .overlay-map .hydrant-dot { background: #dc2626; border: 2px solid #fff; border-radius: 50%; }
+    body.overlay-page { overflow-x: hidden; overflow-y: auto; }
   </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100">
+<body class="overlay-page min-h-screen bg-slate-950 text-slate-100">
   <main class="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8">
     <header class="mb-7 flex flex-wrap items-center justify-between gap-4">
       <a href="/" class="rounded-lg text-sm font-semibold text-slate-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400">← <span data-i18n="overlay_back">Zur Karte</span></a>
