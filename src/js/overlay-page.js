@@ -113,18 +113,22 @@ function category(element) {
   const tags = element.tags || {};
   if (tags.amenity === 'fire_station' || tags.building === 'fire_station') return 'stations';
   if (tags.emergency === 'defibrillator') return 'defibs';
-  const water = getWaterMarkerKind(tags.emergency || tags['fire_hydrant:type'], tags) ||
+  // Ein Hydrant bleibt ein Hydrant, auch wenn Zusatz-Tags wie water_source gesetzt sind.
+  if (tags.emergency === 'fire_hydrant') return 'hydrants';
+  const water = getWaterMarkerKind(tags.emergency, tags) ||
     ['water_tank', 'fire_water_pond', 'suction_point', 'cistern'].includes(tags.emergency) ||
     Boolean(tags.water_source) || tags['fire_hydrant:pressure'] === 'suction';
-  return water ? 'water' : (tags.emergency === 'fire_hydrant' ? 'hydrants' : null);
+  return water ? 'water' : null;
 }
 
-function drawElements(elements) {
+function drawElements(elements, zoom) {
   for (const layer of Object.values(vectors)) layer.clearLayers();
   let shown = 0;
   for (const element of elements) {
     const kind = category(element);
     if (!kind || !Number.isFinite(element.lat) || !Number.isFinite(element.lon)) continue;
+    // Wie in der Hauptkarte: Stationen ab Zoom 12, alle übrigen POIs ab Zoom 15.
+    if (zoom < (kind === 'stations' ? 12 : 15)) continue;
     const tags = element.tags || {};
     const type = kind === 'stations' ? 'station' : kind === 'defibs' ? 'defibrillator' :
       getHydrantMarkerType(tags['fire_hydrant:type'] || tags.emergency, tags);
@@ -139,30 +143,36 @@ function drawElements(elements) {
     if (input.checked) layer.addTo(map); else map.removeLayer(layer);
   }
   $('vector-status').textContent = t('overlay_vector_count').replace('{count}', String(shown));
+  return shown;
 }
 
 async function loadVectorView() {
-  if (activeView !== 'vector' || map.getZoom() < 12) return;
+  if (activeView !== 'vector') return;
   vectorController?.abort();
+  const zoom = map.getZoom();
+  if (zoom < 12) {
+    drawElements([], zoom);
+    $('vector-status').textContent = t('overlay_vector_count').replace('{count}', '0');
+    return;
+  }
   const controller = new AbortController();
   vectorController = controller;
   $('vector-status').textContent = t('overlay_vector_loading');
   const bounds = map.getBounds();
-  const zoom = map.getZoom();
   try {
     const [elements, boundaryElements] = await Promise.all([
       fetchPipelineData(bounds, 'all', { signal: controller.signal, zoom, standalone: true }),
       fetchPipelineBoundaries(bounds, { signal: controller.signal, zoom, standalone: true })
     ]);
     if (controller.signal.aborted) return;
-    drawElements(elements);
+    const shown = drawElements(elements, zoom);
     boundaryElements.forEach((element) => {
       if (element.geometry?.length < 2) return;
       L.polyline(element.geometry.map(({ lat, lon }) => [lat, lon]), {
         color: '#f59e0b', weight: 1.5, opacity: 0.7
       }).addTo(vectors.boundaries);
     });
-    $('vector-status').textContent = t('overlay_vector_count').replace('{count}', String(elements.length));
+    $('vector-status').textContent = t('overlay_vector_count').replace('{count}', String(shown));
   } catch (error) {
     if (error.name === 'AbortError') return;
     console.warn('OFM-Vektordemo:', error);
@@ -172,6 +182,16 @@ async function loadVectorView() {
 
 function scheduleVectorFetch() {
   if (activeView !== 'vector') return;
+  vectorController?.abort();
+  const zoom = map.getZoom();
+  if (zoom < 15) {
+    vectors.hydrants.clearLayers();
+    vectors.water.clearLayers();
+    vectors.defibs.clearLayers();
+  }
+  if (zoom < 12) {
+    Object.values(vectors).forEach((layer) => layer.clearLayers());
+  }
   clearTimeout(vectorDebounce);
   vectorDebounce = setTimeout(loadVectorView, 350);
 }
