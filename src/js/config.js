@@ -242,7 +242,7 @@ export const Config = {
    */
   exportMaxSideKm: 10,
   rasterExport: {
-    manifestUrl: import.meta.env.VITE_RASTER_MANIFEST_URL?.trim(),
+    manifestUrl: import.meta.env.VITE_RASTER_MANIFEST_URL?.trim() || 'https://raster-pilot.openfiremap.org/manifest.json',
     minZoom: 12,
     maxZoom: 18,
     maxTiles: 2000,
