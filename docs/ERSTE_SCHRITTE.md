@@ -49,6 +49,8 @@ Die vorhandenen Kacheln werden als Ganzes exportiert. An den Rändern kann eine
 Kachel daher über das Rechteck hinausragen. Für größere Flächen wähle eine
 niedrigere Zoomstufe oder exportiere mehrere kleinere Ausschnitte.
 
+Unter [OpenFireMap-Overlay](https://openfiremap.org/overlay/) findest du zusätzlich eine interaktive Raster- und Vektordemo, den Download des Deutschland-Archivs und Beispiele zur Einbindung in Leaflet oder MapLibre. Das Rasterarchiv umfasst Deutschland in den Zoomstufen 12–18; die Rasterdatei fasst die sichtbaren Feuerwehrinhalte zusammen und bietet keine einzelnen Ebenenschalter. Für fremde Websites kann eine eigene CORS-Freigabe nötig sein.
+
 ## Mobile Nutzung
 
 Die Oberfläche ist für Smartphones und Tablets angepasst. Verschiebe die Karte mit einem Finger und zoome mit zwei Fingern. Suche, Layer, Standortbestimmung und Export sind auch mobil verfügbar.

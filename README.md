@@ -24,6 +24,7 @@ OpenFireMapV2 ist aktuell **v0.11.0**. Die Hauptkarte ist weltweit nutzbar: Auß
 - Exporte als PNG, PDF, GPX und CSV
 - eigenständiger [Ortsplan](https://openfiremap.org/ortsplan/) für druckfertige PDF- und PNG-Pläne in Deutschland
 - optionaler Export transparenter Feuerwehr-Rasterkacheln als ZIP für abgedeckte Gebiete in Deutschland
+- Overlay-Demo und Einbindungsanleitung unter [openfiremap.org/overlay](https://openfiremap.org/overlay/), einschließlich PMTiles-Download und Leaflet-/MapLibre-Beispielen
 - eine mehrsprachige [Übersicht der Kartenzeichen](https://openfiremap.org/symbols/) für Hydranten, Löschwasserstellen, Feuerwachen und Defibrillatoren
 - mehr als 30 Sprachen, IndexedDB-Cache sowie responsive Nutzung auf Desktop und Mobilgeräten
 - Barrierefreiheit nach WCAG 2.2 (A/AA): Bedienung per Tastatur mit Skip-Link, sichtbarem Fokus und Marker-Details auf Enter, Screenreader-Beschriftungen, geprüfte Farbkontraste und Rücksicht auf „Bewegung reduzieren“ (siehe [Erste Schritte](docs/ERSTE_SCHRITTE.md#bedienung-per-tastatur-und-screenreader))
@@ -48,6 +49,7 @@ Der Browser lädt bei PMTiles nur die für den sichtbaren Kartenausschnitt benö
 - [Kartenzeichen](https://openfiremap.org/symbols/) – Symbole und ihre Bedeutung in allen unterstützten Sprachen
 - [Pipeline-Statusseite](https://openfiremap.org/status/) – Datenstand und Upload je Land (Deutsch und Englisch)
 - [Ortsplan erstellen](https://openfiremap.org/ortsplan/) – druckfertige Pläne für unterstützte Gebiete in Deutschland (am Computer oder Tablet)
+- [OpenFireMap-Overlay](https://openfiremap.org/overlay/) – Demo, Deutschland-Archiv, Ausschnitt-Download und Einbindungsbeispiele
 - [Geschichte von OpenFireMap](docs/GESCHICHTE.md) – belegbare Meilensteine seit 2010
 - [Projektvorstellung Deutsch](docs/PROJEKT_VORSTELLUNG_DE.md) / [English](docs/PROJECT_PRESENTATION_EN.md)
 - [Mitmachen](CONTRIBUTING.md) und [Sicherheit](SECURITY.md)
