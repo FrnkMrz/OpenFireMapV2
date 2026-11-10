@@ -27,7 +27,8 @@ let selectedBounds = null;
 let drawing = false;
 let firstCorner = null;
 let drawnRect = null;
-let activeController = null;
+let vectorController = null;
+let downloadController = null;
 let downloadBusy = false;
 let vectorDebounce = null;
 let activeView = 'raster';
@@ -141,9 +142,9 @@ function drawElements(elements) {
 
 async function loadVectorView() {
   if (activeView !== 'vector' || map.getZoom() < 12) return;
-  activeController?.abort();
+  vectorController?.abort();
   const controller = new AbortController();
-  activeController = controller;
+  vectorController = controller;
   $('vector-status').textContent = t('overlay_vector_loading');
   const bounds = map.getBounds();
   const zoom = map.getZoom();
@@ -186,8 +187,9 @@ function setView(view) {
   $('view-vector').classList.toggle('bg-blue-600', !isRaster);
   $('view-vector').classList.toggle('bg-slate-700', isRaster);
   if (isRaster) {
-    activeController?.abort();
+    vectorController?.abort();
     Object.values(vectors).forEach((layer) => map.removeLayer(layer));
+    rasterGroup.addTo(map);
     if ($('raster-toggle').checked && rasterLayer) rasterLayer.addTo(rasterGroup);
   } else {
     map.removeLayer(rasterGroup);
@@ -261,7 +263,7 @@ $('download-zip').addEventListener('click', async () => {
   }
   downloadBusy = true;
   const controller = new AbortController();
-  activeController = controller;
+  downloadController = controller;
   const timer = setTimeout(() => controller.abort(new DOMException('Raster export timed out', 'TimeoutError')), Config.rasterExport.timeoutMs);
   $('download-zip').disabled = true;
   $('cancel-download').classList.remove('hidden');
@@ -294,12 +296,12 @@ $('download-zip').addEventListener('click', async () => {
   } finally {
     clearTimeout(timer);
     downloadBusy = false;
-    if (activeController === controller) activeController = null;
+    if (downloadController === controller) downloadController = null;
     $('download-zip').disabled = false;
     $('cancel-download').classList.add('hidden');
   }
 });
-$('cancel-download').addEventListener('click', () => activeController?.abort());
+  $('cancel-download').addEventListener('click', () => downloadController?.abort());
 
 async function setupLanguage() {
   await initI18n();
