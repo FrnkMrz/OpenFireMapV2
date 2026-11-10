@@ -30,13 +30,21 @@ Die Karte lädt nur für den aktuellen Ausschnitt relevante Daten. In DACHLiLu u
 - **PDF** für einen druckbaren Plan
 - **GPX** für sichtbare Punkte in GPS-Anwendungen
 - **CSV** für weitere Auswertung, zum Beispiel in Tabellenprogrammen
+- **Feuerwehr-Overlay als ZIP** für abgedeckte Gebiete in Deutschland: transparente Rasterkacheln für die Einbindung in andere Kartenprogramme. Die verfügbare Zoomstufe wird vor dem Download gewählt.
 
 Vor einem großen Export sollte der Ausschnitt sinnvoll eingegrenzt werden. Die Anwendung begrenzt große Bereiche, um Browser-Abstürze und unnötig große Dateien zu vermeiden.
+
+### Druckfertigen Ortsplan erstellen
+
+Unter [Ortsplan erstellen](https://openfiremap.org/ortsplan/) kannst du für unterstützte Gebiete in Deutschland einen druckfertigen Plan gestalten. Wähle Ausschnitt, Papierformat und Maßstab, bestimme die Inhalte und passe die Blattaufteilung an. Möglich sind PDF und PNG; bei langen Straßenverzeichnissen kann der Plan mehrere Seiten umfassen. Der Ortsplan läuft derzeit in einem Browser am Computer oder Tablet, nicht auf dem Smartphone. Er verwendet vorbereitete Kartendaten und ist kein amtlicher oder einsatzverbindlicher Feuerwehrplan.
+
+Der Ortsplan ist eine eigenständige Seite und hat absichtlich keinen Menüeintrag in der Hauptkarte. Die Detailseite zum fertigen Blatt kann bei Bedarf über `/ortsplan/blatt/` geöffnet werden. Beide Seiten sind derzeit auf Deutschland begrenzt; wenn das gewählte Gebiet nicht in den veröffentlichten Daten liegt, wird eine Meldung angezeigt.
 
 Wenn der Deutschland-Pilot aktiviert ist, gibt es **Feuerwehr-Overlay als
 ZIP**. Wähle eine Fläche oder übernimm den sichtbaren Ausschnitt. Die
 gewählte Zoomstufe ist die höchste Stufe im ZIP. Es enthält transparente
-PNG-Kacheln als `z/x/y.png`, den gewählten Ausschnitt und die OSM-Quellenangabe.
+PNG-Kacheln als `z/x/y.png`, `ATTRIBUTION.txt` mit den Quellenhinweisen und
+`selection.json` mit Ausschnitt und Zoomstufen.
 Die vorhandenen Kacheln werden als Ganzes exportiert. An den Rändern kann eine
 Kachel daher über das Rechteck hinausragen. Für größere Flächen wähle eine
 niedrigere Zoomstufe oder exportiere mehrere kleinere Ausschnitte.

@@ -31,12 +31,14 @@ Die R2-Synchronisation überträgt PMTiles zuerst, GeoJSON mit kürzerer Cache-D
 
 ## Aktuelle Messwerte und Funktionen
 
-- Version **v0.10.3**
+- Version **v0.11.0**
 - rund **1,2 Millionen** feuerwehrrelevante Objekte in der DACHLiLu-Pipeline, dazu rund **1,0 Millionen** in 40 europäischen Länder-Dateien (etwa 634 MB)
 - PMTiles-Datei mit etwa **182,4 MiB** (**191.243.978 Bytes**)
 - Cloudflare R2 als primäre öffentliche Pipeline-Quelle
-- rund 490 Vitest-Tests, rund 110 Playwright-End-to-End-Tests und Python-Tests für den Pipeline-Builder
+- automatisierte Unit- und End-to-End-Tests für die Webanwendung sowie separate Tests für den Pipeline-Builder
 - Exporte als PNG, PDF, GPX und CSV
+- Ortsplan-Werkzeug für druckfertige PDF- und PNG-Pläne in unterstützten Gebieten Deutschlands; Bedienung am Computer oder Tablet
+- optionaler Export transparenter Feuerwehr-Rasterkacheln als ZIP für Gebiete mit veröffentlichter Rasterabdeckung
 - mehr als 30 Sprachen
 - Barrierefreiheit nach WCAG 2.2 (A/AA): Tastaturbedienung, Screenreader-Beschriftungen, geprüfte Kontraste
 - öffentliche Pipeline-Statusseite unter `/status/`
@@ -47,6 +49,8 @@ Die R2-Synchronisation überträgt PMTiles zuerst, GeoJSON mit kürzerer Cache-D
 OSM-Mitwirkende erhalten eine sichtbare Anwendung, mit der fehlende oder widersprüchliche Einträge in einem Gebiet leichter auffallen können. Feuerwehren und interessierte Organisationen können offene Daten in einer schnellen Karte betrachten und Ausschnitte für weitere Arbeit exportieren.
 
 OpenFireMap ist keine amtliche Einsatzkarte. OSM-Daten können unvollständig oder veraltet sein und müssen vor einer operativen Nutzung mit lokalen, verlässlichen Quellen abgeglichen werden.
+
+Der Ortsplan ist ebenfalls kein amtlicher Feuerwehrplan und ersetzt keine vorgeschriebenen Einsatzunterlagen. Er nutzt vorbereitete OpenStreetMap-Daten; Verfügbarkeit und Abdeckung können eingeschränkt sein.
 
 ## Daten und Lizenzen
 

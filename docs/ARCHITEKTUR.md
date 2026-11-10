@@ -12,6 +12,8 @@ OpenFireMapV2 ist eine clientseitige Webanwendung. Es gibt kein eigenes Backend,
 - lazy geladene Exportmodule für PNG und PDF sowie Datenexporte als GPX und CSV
 - 30+ Sprachdateien mit Deutsch als Standardsprache und Englisch als Fallback
 
+Die interaktive Hauptkarte bleibt eine Leaflet-Anwendung. Der Ortsplan unter `/ortsplan/` und `/ortsplan/blatt/` ist ein separater, nicht in der Hauptnavigation verlinkter Druck-Workflow auf Basis von MapLibre GL JS. Er verwendet dieselben fachlichen Feuerwehrdaten, aber eine eigene Grundkarte und Druckdarstellung; er ist auf Computer und Tablets beschränkt und derzeit auf Deutschland begrenzt.
+
 Der Build wird nach `docs/` geschrieben und über GitHub Pages veröffentlicht.
 
 ## Datenpfad
@@ -83,3 +85,9 @@ Nach dem Laden aus den PMTiles fragt das Frontend im Hintergrund Overpass nach �
 4. Liegt der Ausschnitt außerhalb von DACHLiLu und der Europa-Abdeckung (oder fehlt ein nötiges Land im Manifest), wird Overpass direkt als normale Datenquelle verwendet.
 
 Die Abdeckung wird vor der Anfrage geprüft, damit ein veralteter PMTiles-Header nicht zu einer scheinbar leeren Karte führt.
+
+## Ortsplan und Rasterexport
+
+Der Ortsplan lädt seine versionierte Grundkarte, Feuerwehr-PMTiles und weitere Kartendaten über die Pipeline-Domain. Der Browser rendert die Grundkarte mit MapLibre, ergänzt Feuerwehrsymbole und Straßeninformationen und setzt daraus das gewählte Druckblatt zusammen. Der Assistent `/ortsplan/` führt durch Ausschnitt, Papierformat, Maßstab und Inhalte; `/ortsplan/blatt/` rendert das Blatt und unterstützt PNG- und PDF-Ausgabe. Schriftdateien werden vom Projekt selbst ausgeliefert. Ortsplan-Einstellungen bleiben im Browser gespeichert. Die Seiten sind am Computer oder Tablet verfügbar und nicht über einen Menüeintrag der Hauptkarte erreichbar.
+
+Der optionale Raster-Pilot stellt Feuerwehrsymbole als transparente Raster-PMTiles bereit. Das Hauptkarten-Exportmenü kann für den abgedeckten Bereich in Deutschland und eine unterstützte Zoomstufe einzelne Kacheln per Range-Request laden und als ZIP verpacken. Dieser Weg ist vom Vektor-PMTiles-Pfad getrennt; die veröffentlichte Manifestdatei steuert, ob der Pilot verfügbar ist.

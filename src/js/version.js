@@ -1,3 +1,3 @@
 // This file is auto-generated or manually updated during releases.
 // It isolates the app version from other runtime logic.
-export const APP_VERSION = '0.10.3';
+export const APP_VERSION = '0.11.0';

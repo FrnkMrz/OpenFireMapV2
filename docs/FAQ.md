@@ -20,6 +20,14 @@ Overpass liefert Daten aus dem Stand, den der verwendete Dienst aktuell bereitst
 
 Korrigiere die Quelle direkt in [OpenStreetMap](https://www.openstreetmap.org/), zum Beispiel mit iD oder JOSM. Achte auf die lokalen Mapping-Regeln und ergänze nur Informationen, die du zuverlässig belegen kannst. Nach einer Änderung müssen Overpass und gegebenenfalls der nächste PMTiles-Build die Änderung übernehmen.
 
+## Was ist der Ortsplan?
+
+Der [Ortsplan](https://openfiremap.org/ortsplan/) ist ein eigenständiges Werkzeug für druckfertige PDF- und PNG-Pläne in unterstützten Gebieten Deutschlands. Du kannst Ausschnitt, Papier, Maßstab und Blattaufteilung wählen sowie Symbole, Straßen und ein optionales Straßenverzeichnis aufnehmen. Das Straßenverzeichnis kann bei Bedarf auf Folgeseiten weiterlaufen. Das Werkzeug ist für Computer und Tablets vorgesehen; auf Smartphones ist es nicht verfügbar. Die Daten stammen aus OpenStreetMap und vorbereiteten Pipeline-Dateien. Der Ortsplan ersetzt keine amtlichen Unterlagen, Feuerwehrpläne nach geltenden Vorgaben oder lokalen Einsatzinformationen.
+
+## Was macht „Feuerwehr-Overlay als ZIP“?
+
+Der optionale Raster-Pilot im Exportmenü erstellt für abgedeckte Gebiete in Deutschland ein ZIP mit transparenten Feuerwehr-PNG-Kacheln im XYZ-Schema. Das Archiv enthält `ATTRIBUTION.txt` mit den Quellenhinweisen und `selection.json` mit Ausschnitt, Zoomstufen und Kachelzahl. Du kannst die entpackten Kacheln in geeignete Kartenprogramme einbinden. Die Funktion ist an die veröffentlichte Rasterabdeckung und verfügbare Zoomstufen gebunden; sie ist keine weltweite Basiskarte und ersetzt weder die interaktive OpenFireMap noch deren Vektor- und Datenexporte.
+
 ## Warum kann die Karte bei Überlastung mehrmals laden müssen?
 
 Overpass ist ein öffentlicher Gemeinschaftsdienst und kann Abfragen bei hoher Last verzögern oder ablehnen. OpenFireMap bricht veraltete Abrufe ab, versucht bei Bedarf einen anderen Endpunkt und nutzt Backoff sowie Wiederholungen. Bei PMTiles kann zusätzlich die Verfügbarkeit oder Aktualisierung der Pipeline geprüft werden.

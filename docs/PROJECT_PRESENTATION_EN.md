@@ -31,12 +31,14 @@ The R2 publication flow uploads PMTiles first, GeoJSON with a shorter cache life
 
 ## Current facts and features
 
-- version **v0.10.3**
+- version **v0.11.0**
 - approximately **1.2 million** fire-service-related objects in the DACHLiLu pipeline, plus roughly **1.0 million** in 40 European country files (about 634 MB)
 - PMTiles archive of approximately **182.4 MiB** (**191,243,978 bytes**)
 - Cloudflare R2 as the primary public pipeline source
-- about 490 Vitest tests, about 110 Playwright end-to-end tests and Python tests for the pipeline builder
+- automated unit and end-to-end tests for the web app, plus separate tests for the pipeline builder
 - PNG, PDF, GPX and CSV exports
+- a standalone town-plan tool for printable PDF and PNG plans in supported areas of Germany, designed for desktop and tablet browsers
+- optional ZIP export of transparent fire-service raster tiles where pilot coverage is published
 - more than 30 languages
 - accessibility against WCAG 2.2 (A/AA): keyboard operation, labelled controls for screen readers, checked contrast
 - public pipeline status page at `/status/`
@@ -47,6 +49,8 @@ The R2 publication flow uploads PMTiles first, GeoJSON with a shorter cache life
 OSM contributors get a practical view that can make missing or inconsistent entries easier to spot. Fire departments and interested organizations can inspect open data in a responsive map and export areas for further work.
 
 OpenFireMap is not an official dispatch or operational map. OSM data can be incomplete or outdated and should be checked against trusted local sources before operational use.
+
+The town-plan tool is not an official fire-service plan and does not replace required operational documents. It uses pre-built OpenStreetMap data, and its coverage and availability may be limited.
 
 ## Data and licensing
 

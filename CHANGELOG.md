@@ -4,14 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.11.0] - 2026-11-10
+
 ### Neu
-- Optionaler Deutschland-Pilot im Exportmenü. Der Browser erstellt für den gewählten Ausschnitt eine ZIP-Datei mit transparenten Feuerwehrkacheln aus einem veröffentlichten Raster-PMTiles-Archiv.
+- Optionaler Deutschland-Pilot im Exportmenü: Für abgedeckte Gebiete erstellt der Browser ein ZIP mit transparenten Feuerwehr-PNG-Kacheln sowie `ATTRIBUTION.txt` und `selection.json`.
+- Eigenständiger Ortsplan-Assistent unter `/ortsplan/` und Druckblatt unter `/ortsplan/blatt/` für unterstützte Gebiete in Deutschland.
 
 ### Changed
 - SVG-Formen und OSM-Tag-Zuordnung der Kartenmarker in `marker-symbols-core.js` ausgelagert. Die Karte nutzt weiterhin dieselben SVG-Ausgaben; das browserunabhängige Modul kann zusätzlich vom Raster-Renderer importiert werden.
 - Regressionstest vergleicht Kernmodul und Webkarten-SVG für Hydranten, Wasserstellen, Wache und AED.
 
 ### Geändert
+- **Gemeinsame Markersymbole**: SVG-Formen und OSM-Tag-Zuordnung liegen in `marker-symbols-core.js`; ein Regressionstest hält die App-Symbole und die Wiederverwendung im Raster-Renderer synchron.
 - **Kontaktadresse verlinkt**: Die E-Mail-Adresse im Impressum und in beiden Datenschutzhinweisen ist anklickbar und öffnet das Standard-Mailprogramm.
 - **Vorübergehender Erreichbarkeitshinweis**: Ein deutscher bzw. englischer Hinweis im Impressum informiert, dass die E-Mail-Adresse wieder funktioniert. Er wird am 19. November 2026 um 20:34 Uhr MEZ automatisch ausgeblendet.
 - **Overpass bei Überlast**: Das Live-Nachladen neben der Pipeline gibt jetzt schnell auf, statt jeden Server nacheinander 25 s lang zu fragen: Timeout 8 s je Server (`overpassDeltaTimeoutMs`), höchstens zwei Server (`overpassDeltaMaxEndpoints`), kein Warten auf abgelaufene Sperrzeiten, Server-Timeout der Abfrage 10 s. Die Konfigurationswerte `overpassTimeoutMs` (bisher fest im Code) werden jetzt tatsächlich gelesen; `overpassMaxRetries` war ohne Wirkung und entfällt.
