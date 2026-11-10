@@ -72,7 +72,7 @@ export const strings = {
     overlay_back: "Back to map",
     overlay_heading: "OpenFireMap Overlay",
     overlay_intro: "View transparent fire-service map layers, download an area, and add the overlay to your own map.",
-    overlay_demo_title: "Demo near Neunkirchen am Sand",
+    overlay_demo_title: "Demo in Rollhofen",
     overlay_demo_hint: "The vector demo loads data when opened and whenever the map view moves.",
     overlay_view_group: "Demo view",
     overlay_map_label: "OpenFireMap overlay demo map",

@@ -70,7 +70,7 @@ export const strings = {
     overlay_back: "Zur Karte",
     overlay_heading: "OpenFireMap-Overlay",
     overlay_intro: "Transparente Feuerwehr-Kartenebenen ansehen, Ausschnitte herunterladen und in eigene Karten einbinden.",
-    overlay_demo_title: "Demo bei Neunkirchen am Sand",
+    overlay_demo_title: "Demo in Rollhofen",
     overlay_demo_hint: "Die Vektordemo lädt Daten beim Öffnen und Verschieben der Ansicht.",
     overlay_view_group: "Demo-Ansicht",
     overlay_map_label: "OpenFireMap-Overlay-Demo",

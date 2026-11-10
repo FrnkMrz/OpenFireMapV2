@@ -6,7 +6,8 @@ import { initI18n, updatePageLanguage, setLang, getLang, t } from './i18n.js';
 import { isRectWithinKm } from './geometry.js';
 import { buildRasterZip } from './raster-export.js';
 
-const center = [49.5105, 11.345];
+// Rollhofen, Gemeinde Neunkirchen am Sand
+const center = [49.54224, 11.340026];
 const map = L.map('overlay-map', { zoomControl: true, preferCanvas: true }).setView(center, 15);
 L.tileLayer(Config.layers.voyager.url, {
   maxZoom: Config.layers.voyager.maxZoom,
