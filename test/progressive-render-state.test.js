@@ -164,7 +164,6 @@ describe('Progressives Rendern: Zustand, Status-Flackern & Export-Konsistenz', (
       enabled: true,
       url: 'https://pipeline.example.com',
       usePmtiles: true,
-      geojsonFallback: false
     };
   });
 

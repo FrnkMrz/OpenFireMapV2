@@ -43,7 +43,7 @@ Für 40 weitere Länder (ohne Russland, Ukraine, Belarus, Türkei) gibt es je La
 ### Datenqualität und Veröffentlichung
 
 - **Nur passende Objekte je Ebene.** Beim Filtern bringt osmium zu einer Feuerwache auch Referenzobjekte mit (Knoten und Mitgliedswege für die Geometrie, etwa Tore, Eingänge, Türen, Gebäudeteile). Der Builder entfernt deren Tags (`osmium tags-filter --remove-tags`), damit sie nicht als eigene Objekte exportiert werden. Am 04.10.2026 waren es 5.421 von 47.392 Einträgen der Wachen-Ebene (11,4 %), die als falsche Hydranten-Punkte gezeichnet wurden. Zusätzlich ignoriert der Client in der Wachen-Ebene Objekte ohne `amenity=fire_station` oder `building=fire_station` (`LAYER_TAG_GUARDS` in `pipeline.js`), auch mit noch gecachten älteren Kacheln.
-- **Veröffentlichung nur vollständig.** Der Builder erzeugt GeoJSON, PMTiles und `metadata.json` zunächst in einem Zwischenordner, prüft sie (GeoJSON lesbar, PMTiles-Header und Länge) und schaltet sie erst dann um, `metadata.json` zuletzt. Ein abgebrochener Build ändert den veröffentlichten Stand nicht. Ein Build wird nur übersprungen, wenn die veröffentlichten Dateien vollständig und stimmig sind.
+- **Veröffentlichung nur vollständig.** Der Builder erzeugt GeoJSON als internes Zwischenprodukt für PMTiles, prüft die PMTiles-Datei und schaltet anschließend Archiv und `metadata.json` um. Einzelne GeoJSON-Dateien werden nicht veröffentlicht. Ein abgebrochener Build ändert den veröffentlichten Stand nicht. Ein Build wird nur übersprungen, wenn die veröffentlichten Dateien vollständig und stimmig sind.
 - **Quellen.** Zeigt `-latest` bei Geofabrik auf einen hinterherhinkenden Spiegel, nutzt der Builder einen neueren datierten Tagesauszug. Heruntergeladene Auszüge werden vollständig auf Struktur geprüft, und ein älterer Quellstand überschreibt nie einen neueren lokalen.
 
 ## Cloudflare R2
@@ -55,9 +55,8 @@ Cloudflare R2 ist die primäre öffentliche Quelle für die vorbereiteten PMTile
 Die Veröffentlichung ist auf die unterschiedlichen Datenrollen abgestimmt:
 
 1. PMTiles werden zuerst mit einer Cache-Dauer von 24 Stunden übertragen.
-2. Optionale GeoJSON-Dateien erhalten eine kürzere Cache-Dauer von einer Stunde.
-3. `metadata.json` wird zuletzt und mit `no-cache` veröffentlicht. Dadurch markiert es erst dann eine neue Pipeline-Version, wenn die Datenartefakte bereits übertragen wurden.
-4. Anschließend prüft der Update-Lauf den öffentlichen `generated_at`-Wert und ermittelt die PMTiles-Gesamtgröße über einen HTTP-Range-Request. Bei Abweichungen wird der Lauf mit Fehler beendet; ein optionaler Cloudflare-Cache-Purge erfolgt nur nach erfolgreicher Synchronisation.
+2. AED-Snapshots werden vor ihrem Manifest veröffentlicht; `metadata.json` folgt als letzter Versionszeiger mit `no-cache`.
+3. Anschließend prüft der Update-Lauf den öffentlichen `generated_at`-Wert und ermittelt die PMTiles-Gesamtgröße über einen HTTP-Range-Request. Erst nach erfolgreicher Prüfung löscht er die fünf bekannten Root-GeoJSON-Altdateien. Schlägt die Bereinigung fehl, versucht ein späterer Lauf sie erneut.
 
 Für PMTiles ist die Nginx-Kompression deaktiviert, damit HTTP-206-Range-Responses und `Content-Range` zuverlässig funktionieren. ETags, CORS und die exponierten Range-Header unterstützen Browser- und R2-Kompatibilität. Der aktuelle MaxZoom-14-Build bleibt mit rund 182,4 MiB unter dem 512-MiB-Free-Cache-Limit.
 

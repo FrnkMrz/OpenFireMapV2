@@ -819,11 +819,10 @@ describe('fetchPipelineBoundaries über mehrere Quellen', () => {
   });
 });
 
-describe('kein GeoJSON-Rückfall außerhalb von DACHLiLu', () => {
+describe('kein GeoJSON-Rückfall in DACHLiLu oder Europa', () => {
   let fetched;
   beforeEach(() => {
     fetched = [];
-    Config.pipeline.geojsonFallback = true;
     globalThis.fetch.mockImplementation(async (url) => {
       fetched.push(String(url));
       if (String(url).includes('metadata.json')) return { ok: true, json: async () => ({ generated_at: iso(0), osm_data_until: iso(3) }) };
@@ -849,13 +848,12 @@ describe('kein GeoJSON-Rückfall außerhalb von DACHLiLu', () => {
     expect(geojsonFetched()).toBe(false);
   });
 
-  it('Gegenprobe: DACHLiLu-Ausschnitt fällt bei Ausfall von PMTiles weiter auf GeoJSON zurück (bisheriges Verhalten)', async () => {
+  it('DACHLiLu-Ausschnitt: PMTiles-Ausfall ergibt einen Fehler für den Overpass-Fallback', async () => {
     useEurope({ netherlands: {} });
     headerFailing.add('openfiremap.pmtiles');
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const els = await fetchPipelineData(MUNICH, 'all', { zoom: 16 });
-    expect(els).toEqual([]);
-    expect(geojsonFetched()).toBe(true);
+    await expect(fetchPipelineData(MUNICH, 'all', { zoom: 16 })).rejects.toThrow(/PMTiles-Abruf fehlgeschlagen/);
+    expect(geojsonFetched()).toBe(false);
   });
 
   it('PMTiles aus (usePmtiles false): ein Europa-Ausschnitt ist nicht geeignet, München weiter', () => {
