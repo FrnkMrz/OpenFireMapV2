@@ -2,8 +2,8 @@
  * ==========================================================================================
  * DATEI: pipeline.js
  * ZWECK: Adapter für die OpenFireMap-Daten-Pipeline (PMTiles-Vektorkacheln über Cloudflare R2).
- *        Lädt vorbereitete GeoJSON-Objekte blitzschnell im Heimnetzwerk und wandelt sie
- *        in das Standard-Elementformat von OpenFireMap um.
+ *        Liest vorbereitete PMTiles-Vektorkacheln und wandelt sie in das Standard-Elementformat
+ *        von OpenFireMap um. Bei Abruffehlern übernimmt api.js den Overpass-Fallback.
  * ==========================================================================================
  */
 
@@ -17,12 +17,6 @@ import { resolveEuropeSources, loadEuropeData, buildRegionUrl, getEuropeData, vi
 
 // Geometrie-Hilfen liegen in geometry.js; hier weiter exportiert, damit Aufrufer und Tests unverändert bleiben
 export { isPointInPolygon, isRectInPolygon };
-
-let _pipelineCache = {
-  stations: null,
-  all: null,
-  timestamp: 0
-};
 
 /**
  * Fehlerklasse für den Fall, dass der angeforderte Viewport außerhalb der
@@ -402,21 +396,12 @@ export function isPipelineEligible(bounds, zoom) {
   if (isDachliluEligible(bounds, zoom)) return true;
   // Europa-Erweiterung (nur mit Schalter und geladenen Daten, sonst false wie bisher)
   if (!Config.pipeline?.enabled || !Config.pipeline?.url) return false;
-  // Länder-Dateien gibt es nur als PMTiles; der GeoJSON-Rückfall kennt nur DACHLiLu
+  // Länder-Dateien gibt es ausschließlich als PMTiles.
   if (!Config.pipeline?.usePmtiles) return false;
   // Noch nicht geladen, abgelaufen oder zuvor gescheitert: im Hintergrund (neu) laden, ohne zu warten. Ein Fehler beim
   // Start sperrt Europa so nicht für die ganze Sitzung; die nächste Prüfung (Kartenbewegung) sieht die Daten.
   loadEuropeData();
   return resolveEuropeSources(bounds, zoom, getEuropeData()).eligible;
-}
-
-/**
- * Liegt der Ausschnitt nur dank der Europa-Erweiterung in der Pipeline (Schalter an, nicht in DACHLiLu)? Dann darf
- * kein GeoJSON-Rückfall greifen: Die GeoJSON-Dateien enthalten nur DACHLiLu und lieferten für ein anderes Land
- * eine leere Liste als "Erfolg", statt dass api.js auf Overpass zurückfällt.
- */
-function isEuropeOnlyViewport(bounds, zoom) {
-  return Boolean(Config.pipeline?.europe?.enabled) && !isDachliluEligible(bounds, typeof zoom === 'number' ? zoom : 14);
 }
 
 /**
@@ -1165,48 +1150,8 @@ export async function fetchPipelinePmtiles(bounds, mode, { signal, zoom, onProgr
 }
 
 /**
- * Lädt GeoJSON-Dateien von der lokalen Pipeline und konvertiert sie.
- * @param {string} baseUrl 
- * @param {string} mode 'stations' | 'all'
- * @param {Object} options 
- * @returns {Promise<Array<Object>>}
- */
-async function loadPipelineDataset(baseUrl, mode, { signal } = {}) {
-  const endpoints = [];
-  if (mode === 'stations') {
-    endpoints.push({ name: 'fire_stations', file: 'fire_stations.geojson' });
-  } else {
-    endpoints.push(
-      { name: 'fire_stations', file: 'fire_stations.geojson' },
-      { name: 'hydrants', file: 'hydrants.geojson' },
-      { name: 'water_points', file: 'water_points.geojson' },
-      { name: 'defibrillators', file: 'defibrillators.geojson' }
-    );
-  }
-
-  const requests = endpoints.map(async (ep) => {
-    const url = `${baseUrl.replace(/\/+$/, '')}/${ep.file}`;
-    const res = await fetch(url, { signal, cache: 'no-cache' });
-    if (!res.ok) {
-      throw new Error(`Pipeline-Abruf fehlgeschlagen: ${ep.file} (HTTP ${res.status})`);
-    }
-    const data = await res.json();
-    const features = Array.isArray(data?.features) ? data.features : [];
-    const elements = [];
-    for (let i = 0; i < features.length; i++) {
-      const el = geoJsonFeatureToElement(features[i], ep.name);
-      if (el) elements.push(el);
-    }
-    return elements;
-  });
-
-  const results = await Promise.all(requests);
-  return results.flat();
-}
-
-/**
  * Hauptabruf-Funktion für Pipeline-Daten.
- * Nutzt primär PMTiles Vektorkacheln und fällt bei Bedarf transparent auf GeoJSON zurück.
+ * Nutzt PMTiles-Vektorkacheln. Bei Fehlern übernimmt api.js den Overpass-Fallback.
  * @param {L.LatLngBounds} bounds 
  * @param {string} mode 'stations' | 'all'
  * @param {Object} options 
@@ -1225,49 +1170,14 @@ export async function fetchPipelineData(bounds, mode, { signal, zoom, onProgress
       }
     } catch (err) {
       if (err?.name === 'AbortError') throw err;
-      if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
-        throw new Error(`PMTiles-Abruf fehlgeschlagen (${err.message}). GeoJSON-Fallback ist deaktiviert oder gilt nicht für diesen Ausschnitt.`, { cause: err });
-      }
-      console.warn('[Pipeline] PMTiles-Abruf fehlgeschlagen, wechsle auf GeoJSON-Fallback:', err.message);
+      throw new Error(`PMTiles-Abruf fehlgeschlagen (${err.message}).`, { cause: err });
     }
   }
-
-  // 2. Optionaler Fallback: GeoJSON-Dataset mit 10-Minuten-In-Memory-Cache
-  if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
-    throw new Error('PMTiles nicht aktiv oder fehlgeschlagen und GeoJSON-Fallback ist deaktiviert.');
-  }
-
-  const now = Date.now();
-  const cacheKey = mode === 'stations' ? 'stations' : 'all';
-  const isCacheValid = _pipelineCache[cacheKey] && (now - _pipelineCache.timestamp < 10 * 60 * 1000);
-
-  if (!isCacheValid) {
-    const elements = await loadPipelineDataset(baseUrl, mode, { signal });
-    _pipelineCache[cacheKey] = elements;
-    _pipelineCache.timestamp = now;
-  }
-
-  const allElements = _pipelineCache[cacheKey] || [];
-  if (!bounds || typeof bounds.getSouth !== 'function') {
-    return allElements;
-  }
-
-  const pad = 0.02;
-  const south = bounds.getSouth() - pad;
-  const north = bounds.getNorth() + pad;
-  const west = bounds.getWest() - pad;
-  const east = bounds.getEast() + pad;
-
-  return allElements.filter(el => (
-    el.lat >= south &&
-    el.lat <= north &&
-    el.lon >= west &&
-    el.lon <= east
-  ));
+  throw new Error('PMTiles ist nicht aktiv; die Pipeline stellt keine GeoJSON-POI-Dateien bereit.');
 }
 
 /**
- * Lädt Gemeindegrenzen via PMTiles oder GeoJSON von der lokalen Pipeline.
+ * Lädt Gemeindegrenzen via PMTiles von der lokalen Pipeline.
  * @param {L.LatLngBounds} bounds 
  * @param {Object} options 
  * @returns {Promise<Array<Object>>}
@@ -1497,37 +1407,10 @@ export async function fetchPipelineBoundaries(bounds, { signal, zoom, onProgress
       return elements;
     } catch (pmErr) {
       if (pmErr?.name === 'AbortError') throw pmErr;
-      if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
-        throw new Error(`PMTiles-Boundary-Abruf fehlgeschlagen (${pmErr.message}). GeoJSON-Fallback ist deaktiviert.`, { cause: pmErr });
-      }
-      console.warn('[Pipeline] PMTiles-Boundary-Abruf fehlgeschlagen, wechsle auf GeoJSON:', pmErr.message);
+      throw new Error(`PMTiles-Boundary-Abruf fehlgeschlagen (${pmErr.message}).`, { cause: pmErr });
     }
   }
-
-  // Stufe 2: Optionaler Fallback auf boundaries.geojson
-  if (!Config.pipeline?.geojsonFallback || isEuropeOnlyViewport(bounds, zoom)) {
-    throw new Error('PMTiles nicht aktiv oder fehlgeschlagen und GeoJSON-Fallback ist deaktiviert.');
-  }
-
-  try {
-    const url = `${baseUrl.replace(/\/+$/, '')}/boundaries.geojson`;
-    const res = await fetch(url, { signal, cache: 'no-cache' });
-    if (res.ok) {
-      const data = await res.json();
-      const features = Array.isArray(data?.features) ? data.features : [];
-      const elements = [];
-      for (let i = 0; i < features.length; i++) {
-        const feat = features[i];
-        elements.push(...boundaryGeometryToElements(feat.geometry, feat.properties, feat.id || `boundary_${i}`));
-      }
-      return elements;
-    }
-  } catch (geoErr) {
-    if (geoErr?.name === 'AbortError') throw geoErr;
-    console.warn('[Pipeline] GeoJSON-Boundary-Abruf fehlgeschlagen:', geoErr.message);
-  }
-
-  return [];
+  throw new Error('PMTiles ist nicht aktiv; die Pipeline stellt keine GeoJSON-Grenzdatei bereit.');
 }
 
 /**
@@ -1575,11 +1458,6 @@ export async function waitForPendingBuffers({ signal, timeoutMs = 5000 } = {}) {
  * Setzt den Pipeline-Cache zurück (z. B. für Tests oder nach Aktualisierungen).
  */
 export function clearPipelineCache() {
-  _pipelineCache = {
-    stations: null,
-    all: null,
-    timestamp: 0
-  };
   _pmtilesInstance = null;
   _pmtilesUrl = null;
   _pmtilesHeader = null;

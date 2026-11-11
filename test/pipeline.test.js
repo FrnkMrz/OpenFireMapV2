@@ -572,11 +572,10 @@ describe('pipeline.js', () => {
     });
   });
 
-  describe('geojsonFallback Steuerung', () => {
-    it('sollte bei PMTiles-Fehler und geojsonFallback=false eine Exception werfen und KEIN GeoJSON fetchen', async () => {
+  describe('PMTiles-Fehlerbehandlung ohne GeoJSON-Fallback', () => {
+    it('sollte bei PMTiles-Fehler eine Exception werfen und KEIN GeoJSON fetchen', async () => {
       Config.pipeline.enabled = true;
       Config.pipeline.usePmtiles = true;
-      Config.pipeline.geojsonFallback = false;
       Config.pipeline.url = 'https://pipeline.example.com';
       Config.pipeline.pmtilesFile = 'test_error.pmtiles';
 
@@ -601,7 +600,7 @@ describe('pipeline.js', () => {
       vi.spyOn(instance, 'getHeader').mockRejectedValueOnce(new Error('PMTiles network failure'));
 
       await expect(fetchPipelineData(bounds, 'all', { zoom: 14 })).rejects.toThrow(
-        /PMTiles-Abruf fehlgeschlagen.*GeoJSON-Fallback ist deaktiviert/
+        /PMTiles-Abruf fehlgeschlagen/
       );
 
       const geoJsonCalls = fetchSpy.mock.calls.filter(call => {
@@ -611,10 +610,9 @@ describe('pipeline.js', () => {
       expect(geoJsonCalls.length).toBe(0);
     });
 
-    it('sollte bei Boundary-PMTiles-Fehler und geojsonFallback=false eine Exception werfen und KEIN boundaries.geojson fetchen', async () => {
+    it('sollte bei Boundary-PMTiles-Fehler eine Exception werfen und KEIN boundaries.geojson fetchen', async () => {
       Config.pipeline.enabled = true;
       Config.pipeline.usePmtiles = true;
-      Config.pipeline.geojsonFallback = false;
       Config.pipeline.url = 'https://pipeline.example.com';
       Config.pipeline.pmtilesFile = 'boundary_error.pmtiles';
 
@@ -639,7 +637,7 @@ describe('pipeline.js', () => {
       vi.spyOn(instance, 'getHeader').mockRejectedValueOnce(new Error('PMTiles boundary failure'));
 
       await expect(fetchPipelineBoundaries(bounds, { zoom: 14 })).rejects.toThrow(
-        /PMTiles-Boundary-Abruf fehlgeschlagen.*GeoJSON-Fallback ist deaktiviert/
+        /PMTiles-Boundary-Abruf fehlgeschlagen/
       );
 
       const geoJsonCalls = fetchSpy.mock.calls.filter(call => {
@@ -738,7 +736,6 @@ describe('pipeline.js', () => {
     it('Test 1: Header nur Bayern + Viewport Berlin -> wirft PmtilesCoverageMismatch und liefert KEIN leeres Array', async () => {
       Config.pipeline.enabled = true;
       Config.pipeline.usePmtiles = true;
-      Config.pipeline.geojsonFallback = false;
       Config.pipeline.url = 'https://pipeline.example.com';
       Config.pipeline.pmtilesFile = 'openfiremap.pmtiles';
 
@@ -792,7 +789,6 @@ describe('pipeline.js', () => {
     it('Test 2: Header DACHLiLu + Viewport Berlin -> normaler Ablauf, liefert Elemente', async () => {
       Config.pipeline.enabled = true;
       Config.pipeline.usePmtiles = true;
-      Config.pipeline.geojsonFallback = false;
       Config.pipeline.url = 'https://pipeline.example.com';
       Config.pipeline.pmtilesFile = 'openfiremap.pmtiles';
 

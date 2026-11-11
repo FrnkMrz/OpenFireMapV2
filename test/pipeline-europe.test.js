@@ -823,7 +823,6 @@ describe('kein GeoJSON-Rückfall außerhalb von DACHLiLu', () => {
   let fetched;
   beforeEach(() => {
     fetched = [];
-    Config.pipeline.geojsonFallback = true;
     globalThis.fetch.mockImplementation(async (url) => {
       fetched.push(String(url));
       if (String(url).includes('metadata.json')) return { ok: true, json: async () => ({ generated_at: iso(0), osm_data_until: iso(3) }) };

@@ -81,8 +81,6 @@ export const Config = {
     url: "https://pipeline.openfiremap.org",
     usePmtiles: true,
     pmtilesFile: "openfiremap.pmtiles",
-    // GeoJSON-Fallback für POIs und Grenzen (Default: false, um MB-Downloads auf Mobilgeräten zu verhindern)
-    geojsonFallback: false,
     // Änderungen seit dem OSM-Datenstand der Pipeline (metadata.json: osm_data_until) per Overpass
     // `newer:` für den sichtbaren Ausschnitt nachladen. Findet neue und geänderte Objekte, keine gelöschten.
     liveDelta: true,
