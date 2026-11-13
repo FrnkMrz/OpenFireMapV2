@@ -247,7 +247,7 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank allein verrät nicht, ob ein Speicher offen oder abgedeckt ist.",
     symbols_groundwater_note: "Das Rohrsymbol bleibt; Blau zeigt water_source=groundwater.",
     symbols_suction_note: "Vorgesehener Ort, um Wasser aus einem Gewässer anzusaugen.",
-    overlay_contact_title: 'OpenFireMap ist eine Demo',
+    overlay_contact_title: 'OpenFireMap Overlay ist eine Demo',
     overlay_contact_intro: 'Diese Seite zeigt eine Demo von OpenFireMap. Wenn Sie OpenFireMap nutzen möchten und Zugang oder Unterstützung benötigen, schreiben Sie mir gern:',
     overlay_contact_offer: 'Bei Bedarf kann ich OpenFireMap auch mit besonderen Vorgaben bereitstellen. Ich freue mich auf den Kontakt.',
 };

@@ -185,7 +185,7 @@ export const strings = {
     symbols_tank_unknown_note: "لا يحدد الوسم emergency=water_tank وحده ما إذا كان الخزان مفتوحاً أو مغطى.",
     symbols_groundwater_note: "يبقى رمز الأنبوب؛ ويشير اللون الأزرق إلى water_source=groundwater.",
     symbols_suction_note: "المكان المحدد لسحب المياه من مسطح مائي.",
-    overlay_contact_title: 'OpenFireMap نسخة تجريبية',
+    overlay_contact_title: 'طبقة OpenFireMap هي نسخة تجريبية',
     overlay_contact_intro: 'تعرض هذه الصفحة نسخة تجريبية من OpenFireMap. إذا أردت استخدام OpenFireMap وكنت بحاجة إلى وصول أو مساعدة، يسعدني أن تراسلني:',
     overlay_contact_offer: 'يمكنني أيضًا توفير OpenFireMap وفق متطلبات خاصة عند الحاجة. يسعدني التواصل معك.',
 };
