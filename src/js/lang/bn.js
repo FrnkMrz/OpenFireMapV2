@@ -185,8 +185,8 @@ export const strings = {
     symbols_tank_unknown_note: "শুধু emergency=water_tank ট্যাগে ট্যাংক খোলা না ঢাকা তা জানা যায় না।",
     symbols_groundwater_note: "পাইপের প্রতীক অপরিবর্তিত থাকে; নীল রং water_source=groundwater বোঝায়।",
     symbols_suction_note: "জলাশয় থেকে পানি তোলার জন্য নির্ধারিত স্থান।",
-    symbols_demo_title: 'OpenFireMap একটি ডেমো',
-    symbols_demo_intro: 'এই পৃষ্ঠায় OpenFireMap-এর একটি ডেমো দেখানো হয়েছে। আপনি OpenFireMap ব্যবহার করতে চাইলে এবং অ্যাক্সেস বা সহায়তার প্রয়োজন হলে আমাকে লিখুন:',
-    symbols_demo_offer: 'প্রয়োজনে বিশেষ চাহিদা অনুযায়ী OpenFireMap সরবরাহ করতে পারি। আপনার সঙ্গে যোগাযোগ করতে ভালো লাগবে।',
+    overlay_contact_title: 'OpenFireMap একটি ডেমো',
+    overlay_contact_intro: 'এই পৃষ্ঠায় OpenFireMap-এর একটি ডেমো দেখানো হয়েছে। আপনি OpenFireMap ব্যবহার করতে চাইলে এবং অ্যাক্সেস বা সহায়তার প্রয়োজন হলে আমাকে লিখুন:',
+    overlay_contact_offer: 'প্রয়োজনে বিশেষ চাহিদা অনুযায়ী OpenFireMap সরবরাহ করতে পারি। আপনার সঙ্গে যোগাযোগ করতে ভালো লাগবে।',
 };
 export default strings;

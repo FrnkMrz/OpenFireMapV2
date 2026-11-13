@@ -187,8 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "仅凭 emergency=water_tank 无法判断水池是开放还是有盖。",
     symbols_groundwater_note: "保留管道符号；蓝色表示 water_source=groundwater。",
     symbols_suction_note: "从水域取水的指定地点。",
-    symbols_demo_title: 'OpenFireMap 是演示版本',
-    symbols_demo_intro: '本页面展示 OpenFireMap 的演示版本。如果您想使用 OpenFireMap，并需要访问权限或帮助，欢迎给我写信：',
-    symbols_demo_offer: '如有需要，我也可以按照特定要求提供 OpenFireMap。期待与您交流。',
+    overlay_contact_title: 'OpenFireMap 是演示版本',
+    overlay_contact_intro: '本页面展示 OpenFireMap 的演示版本。如果您想使用 OpenFireMap，并需要访问权限或帮助，欢迎给我写信：',
+    overlay_contact_offer: '如有需要，我也可以按照特定要求提供 OpenFireMap。期待与您交流。',
 };
 export default strings;

@@ -187,8 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank만으로는 탱크가 개방형인지 덮개형인지 알 수 없습니다.",
     symbols_groundwater_note: "파이프 기호는 그대로 두고 파란색으로 water_source=groundwater를 나타냅니다.",
     symbols_suction_note: "수역에서 물을 흡입하도록 지정된 장소입니다.",
-    symbols_demo_title: 'OpenFireMap은 데모입니다',
-    symbols_demo_intro: '이 페이지는 OpenFireMap 데모를 보여 줍니다. OpenFireMap을 사용하고 싶고 접근 권한이나 도움이 필요하시면 연락해 주세요:',
-    symbols_demo_offer: '필요하다면 특별한 요구 사항에 맞춰 OpenFireMap을 제공할 수도 있습니다. 연락 기다리겠습니다.',
+    overlay_contact_title: 'OpenFireMap은 데모입니다',
+    overlay_contact_intro: '이 페이지는 OpenFireMap 데모를 보여 줍니다. OpenFireMap을 사용하고 싶고 접근 권한이나 도움이 필요하시면 연락해 주세요:',
+    overlay_contact_offer: '필요하다면 특별한 요구 사항에 맞춰 OpenFireMap을 제공할 수도 있습니다. 연락 기다리겠습니다.',
 };
 export default strings;

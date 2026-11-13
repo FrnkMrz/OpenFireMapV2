@@ -187,8 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank seul ne précise pas si la réserve est ouverte ou couverte.",
     symbols_groundwater_note: "Le symbole de conduite reste le même ; le bleu indique water_source=groundwater.",
     symbols_suction_note: "Emplacement prévu pour pomper l’eau d’un plan d’eau.",
-    symbols_demo_title: 'OpenFireMap est une démo',
-    symbols_demo_intro: 'Cette page présente une démo d’OpenFireMap. Si vous souhaitez utiliser OpenFireMap et avez besoin d’un accès ou d’aide, écrivez-moi :',
-    symbols_demo_offer: 'Je peux également proposer OpenFireMap selon des exigences particulières. Au plaisir d’échanger avec vous.',
+    overlay_contact_title: 'OpenFireMap est une démo',
+    overlay_contact_intro: 'Cette page présente une démo d’OpenFireMap. Si vous souhaitez utiliser OpenFireMap et avez besoin d’un accès ou d’aide, écrivez-moi :',
+    overlay_contact_offer: 'Je peux également proposer OpenFireMap selon des exigences particulières. Au plaisir d’échanger avec vous.',
 };
 export default strings;
