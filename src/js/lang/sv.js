@@ -187,5 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank ensamt visar inte om tanken är öppen eller täckt.",
     symbols_groundwater_note: "Rörsymbolen behålls; blått anger water_source=groundwater.",
     symbols_suction_note: "Anvisad plats för att ta upp vatten från ett vattendrag.",
+    symbols_demo_title: 'OpenFireMap är en demo',
+    symbols_demo_intro: 'Den här sidan visar en demo av OpenFireMap. Om du vill använda OpenFireMap och behöver åtkomst eller hjälp får du gärna kontakta mig:',
+    symbols_demo_offer: 'Vid behov kan jag även erbjuda OpenFireMap med särskilda anpassningar. Jag ser fram emot att höra från dig.',
 };
 export default strings;

@@ -187,5 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "Pelkkä emergency=water_tank ei kerro, onko säiliö avoin vai katettu.",
     symbols_groundwater_note: "Putkisymboli säilyy; sininen ilmaisee water_source=groundwater.",
     symbols_suction_note: "Määritetty paikka veden pumppaamiseen vesistöstä.",
+    symbols_demo_title: 'OpenFireMap on esittelyversio',
+    symbols_demo_intro: 'Tällä sivulla esitellään OpenFireMapin demoversio. Jos haluat käyttää OpenFireMapia ja tarvitset käyttöoikeuden tai apua, ota yhteyttä:',
+    symbols_demo_offer: 'Voin tarvittaessa tarjota OpenFireMapin myös erityisvaatimusten mukaisesti. Kuulen mielelläni sinusta.',
 };
 export default strings;

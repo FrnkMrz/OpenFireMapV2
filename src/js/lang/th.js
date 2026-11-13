@@ -187,5 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "แท็ก emergency=water_tank เพียงอย่างเดียวไม่ระบุว่าถังเปิดหรือมีฝาครอบ",
     symbols_groundwater_note: "คงสัญลักษณ์ท่อไว้; สีน้ำเงินหมายถึง water_source=groundwater",
     symbols_suction_note: "จุดที่กำหนดไว้สำหรับสูบน้ำจากแหล่งน้ำ",
+    symbols_demo_title: 'OpenFireMap เป็นเดโม',
+    symbols_demo_intro: 'หน้านี้แสดงเดโมของ OpenFireMap หากคุณต้องการใช้ OpenFireMap และต้องการสิทธิ์เข้าถึงหรือความช่วยเหลือ โปรดติดต่อฉัน:',
+    symbols_demo_offer: 'หากจำเป็น ฉันสามารถจัดเตรียม OpenFireMap ตามข้อกำหนดเฉพาะได้ ยินดีที่ได้พูดคุยกับคุณ',
 };
 export default strings;

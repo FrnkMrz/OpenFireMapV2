@@ -249,5 +249,8 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank alone does not say whether a tank is open or covered.",
     symbols_groundwater_note: "The pipe symbol stays; blue indicates water_source=groundwater.",
     symbols_suction_note: "The designated place to draw water from a body of water.",
+    symbols_demo_title: 'OpenFireMap is a demo',
+    symbols_demo_intro: 'This page presents a demo of OpenFireMap. If you would like to use OpenFireMap and need access or assistance, please get in touch:',
+    symbols_demo_offer: 'I can also provide OpenFireMap with specific requirements if needed. I look forward to hearing from you.',
 };
 export default strings;

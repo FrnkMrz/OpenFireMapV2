@@ -185,5 +185,8 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank tek başına deponun açık mı kapalı mı olduğunu belirtmez.",
     symbols_groundwater_note: "Boru sembolü korunur; mavi renk water_source=groundwater anlamına gelir.",
     symbols_suction_note: "Bir su kaynağından su çekmek için belirlenmiş yer.",
+    symbols_demo_title: 'OpenFireMap bir demodur',
+    symbols_demo_intro: 'Bu sayfa OpenFireMap demosunu sunar. OpenFireMap’i kullanmak istiyor ve erişim ya da yardıma ihtiyaç duyuyorsanız bana yazabilirsiniz:',
+    symbols_demo_offer: 'Gerekirse OpenFireMap’i özel gereksinimlere göre de sunabilirim. Sizden haber almayı isterim.',
 };
 export default strings;
