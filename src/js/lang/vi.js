@@ -185,5 +185,8 @@ export const strings = {
     symbols_tank_unknown_note: "Chỉ emergency=water_tank không cho biết bể hở hay có nắp.",
     symbols_groundwater_note: "Giữ ký hiệu đường ống; màu xanh biểu thị water_source=groundwater.",
     symbols_suction_note: "Vị trí được chỉ định để hút nước từ vùng nước.",
+    symbols_demo_title: 'OpenFireMap là bản demo',
+    symbols_demo_intro: 'Trang này giới thiệu bản demo OpenFireMap. Nếu bạn muốn sử dụng OpenFireMap và cần quyền truy cập hoặc trợ giúp, hãy liên hệ với tôi:',
+    symbols_demo_offer: 'Nếu cần, tôi cũng có thể cung cấp OpenFireMap theo các yêu cầu riêng. Rất mong được trao đổi với bạn.',
 };
 export default strings;

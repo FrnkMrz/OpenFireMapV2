@@ -185,5 +185,8 @@ export const strings = {
     symbols_tank_unknown_note: "صرف emergency=water_tank سے معلوم نہیں ہوتا کہ ٹینک کھلا ہے یا ڈھکا۔",
     symbols_groundwater_note: "پائپ کی علامت وہی رہتی ہے؛ نیلا رنگ water_source=groundwater دکھاتا ہے۔",
     symbols_suction_note: "آبی ذخیرے سے پانی کھینچنے کے لیے مقررہ جگہ۔",
+    symbols_demo_title: 'OpenFireMap ایک ڈیمو ہے',
+    symbols_demo_intro: 'یہ صفحہ OpenFireMap کا ڈیمو پیش کرتا ہے۔ اگر آپ OpenFireMap استعمال کرنا چاہتے ہیں اور رسائی یا مدد درکار ہے تو مجھے لکھیں:',
+    symbols_demo_offer: 'ضرورت پڑنے پر میں OpenFireMap کو خصوصی تقاضوں کے مطابق بھی فراہم کر سکتا ہوں۔ آپ کے پیغام کا منتظر ہوں۔',
 };
 export default strings;

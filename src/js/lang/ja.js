@@ -187,5 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tankだけでは、タンクが開放型か被覆型か分かりません。",
     symbols_groundwater_note: "パイプ記号はそのまま使い、青でwater_source=groundwaterを示します。",
     symbols_suction_note: "水域から取水するために指定された場所です。",
+    symbols_demo_title: 'OpenFireMap はデモです',
+    symbols_demo_intro: 'このページでは OpenFireMap のデモをご覧いただけます。OpenFireMap の利用をご希望で、アクセスやサポートが必要な場合はご連絡ください：',
+    symbols_demo_offer: 'ご希望に応じて、特別な要件に合わせた OpenFireMap の提供も可能です。ご連絡をお待ちしています。',
 };
 export default strings;

@@ -187,5 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank alleen vertelt niet of de tank open of afgedekt is.",
     symbols_groundwater_note: "Het buissymbool blijft; blauw staat voor water_source=groundwater.",
     symbols_suction_note: "Aangewezen plek om water uit een waterlichaam op te pompen.",
+    symbols_demo_title: 'OpenFireMap is een demo',
+    symbols_demo_intro: 'Op deze pagina ziet u een demo van OpenFireMap. Wilt u OpenFireMap gebruiken en hebt u toegang of hulp nodig, neem dan gerust contact met mij op:',
+    symbols_demo_offer: 'Indien gewenst kan ik OpenFireMap ook volgens specifieke vereisten aanbieden. Ik hoor graag van u.',
 };
 export default strings;

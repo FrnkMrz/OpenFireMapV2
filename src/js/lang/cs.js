@@ -187,5 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "Samotný tag emergency=water_tank neurčuje, zda je nádrž otevřená nebo zakrytá.",
     symbols_groundwater_note: "Symbol potrubí zůstává; modrá označuje water_source=groundwater.",
     symbols_suction_note: "Určené místo pro čerpání vody z vodní plochy.",
+    symbols_demo_title: 'OpenFireMap je ukázka',
+    symbols_demo_intro: 'Tato stránka představuje ukázku OpenFireMap. Pokud chcete OpenFireMap používat a potřebujete přístup nebo pomoc, napište mi:',
+    symbols_demo_offer: 'V případě zájmu mohu OpenFireMap připravit i podle zvláštních požadavků. Budu rád/a, když se ozvete.',
 };
 export default strings;
