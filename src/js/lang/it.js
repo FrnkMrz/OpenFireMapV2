@@ -187,5 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "Il solo tag emergency=water_tank non indica se il serbatoio è aperto o coperto.",
     symbols_groundwater_note: "Il simbolo del tubo resta invariato; il blu indica water_source=groundwater.",
     symbols_suction_note: "Punto designato per aspirare acqua da uno specchio d’acqua.",
+    overlay_contact_title: 'OpenFireMap è una demo',
+    overlay_contact_intro: 'Questa pagina presenta una demo di OpenFireMap. Se desideri utilizzare OpenFireMap e hai bisogno di accesso o assistenza, scrivimi:',
+    overlay_contact_offer: 'Se necessario, posso fornire OpenFireMap anche con requisiti specifici. Sarò felice di sentirti.',
 };
 export default strings;

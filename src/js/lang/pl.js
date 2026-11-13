@@ -187,5 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "Sam tag emergency=water_tank nie określa, czy zbiornik jest otwarty czy przykryty.",
     symbols_groundwater_note: "Symbol rury pozostaje; niebieski oznacza water_source=groundwater.",
     symbols_suction_note: "Wyznaczone miejsce poboru wody ze zbiornika wodnego.",
+    overlay_contact_title: 'OpenFireMap to wersja demonstracyjna',
+    overlay_contact_intro: 'Ta strona przedstawia wersję demonstracyjną OpenFireMap. Jeśli chcesz korzystać z OpenFireMap i potrzebujesz dostępu lub pomocy, napisz do mnie:',
+    overlay_contact_offer: 'W razie potrzeby mogę też przygotować OpenFireMap zgodnie ze szczególnymi wymaganiami. Chętnie nawiążę kontakt.',
 };
 export default strings;

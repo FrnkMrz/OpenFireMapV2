@@ -185,5 +185,8 @@ export const strings = {
     symbols_tank_unknown_note: "Сам тег emergency=water_tank не указывает, открыт резервуар или закрыт.",
     symbols_groundwater_note: "Символ трубы остается прежним; синий цвет обозначает water_source=groundwater.",
     symbols_suction_note: "Обозначенное место для забора воды из водоема.",
+    overlay_contact_title: 'OpenFireMap — демонстрационная версия',
+    overlay_contact_intro: 'На этой странице представлена демонстрация OpenFireMap. Если вы хотите пользоваться OpenFireMap и вам нужен доступ или помощь, напишите мне:',
+    overlay_contact_offer: 'При необходимости я также могу предоставить OpenFireMap с учётом особых требований. Буду рад(а) общению.',
 };
 export default strings;
