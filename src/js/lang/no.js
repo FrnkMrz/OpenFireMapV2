@@ -187,7 +187,7 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank alene sier ikke om tanken er åpen eller tildekket.",
     symbols_groundwater_note: "Rørsymbolet beholdes; blått angir water_source=groundwater.",
     symbols_suction_note: "Angitt sted for å pumpe vann fra et vannområde.",
-    overlay_contact_title: 'OpenFireMap er en demo',
+    overlay_contact_title: 'OpenFireMap-overlegget er en demo',
     overlay_contact_intro: 'Denne siden viser en demo av OpenFireMap. Hvis du vil bruke OpenFireMap og trenger tilgang eller hjelp, kan du gjerne skrive til meg:',
     overlay_contact_offer: 'Jeg kan også tilby OpenFireMap med spesielle tilpasninger ved behov. Jeg ser frem til å høre fra deg.',
 };

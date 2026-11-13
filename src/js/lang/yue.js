@@ -187,7 +187,7 @@ export const strings = {
     symbols_tank_unknown_note: "單靠 emergency=water_tank 睇唔出水池係開放式定有蓋。",
     symbols_groundwater_note: "保留管道符號；藍色表示 water_source=groundwater。",
     symbols_suction_note: "指定從水域抽水嘅位置。",
-    overlay_contact_title: 'OpenFireMap 係示範版',
+    overlay_contact_title: 'OpenFireMap 疊加層係示範版',
     overlay_contact_intro: '呢個頁面展示 OpenFireMap 嘅示範版。如果你想使用 OpenFireMap，需要存取權限或者協助，歡迎寫信畀我：',
     overlay_contact_offer: '如有需要，我亦可以按特別要求提供 OpenFireMap。期待同你交流。',
 };

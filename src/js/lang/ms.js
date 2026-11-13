@@ -187,7 +187,7 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank sahaja tidak menyatakan sama ada tangki terbuka atau bertutup.",
     symbols_groundwater_note: "Simbol paip dikekalkan; warna biru menandakan water_source=groundwater.",
     symbols_suction_note: "Lokasi yang ditetapkan untuk menyedut air dari badan air.",
-    overlay_contact_title: 'OpenFireMap ialah demo',
+    overlay_contact_title: 'Lapisan tindanan OpenFireMap ialah demo',
     overlay_contact_intro: 'Halaman ini memaparkan demo OpenFireMap. Jika anda ingin menggunakan OpenFireMap dan memerlukan akses atau bantuan, sila hubungi saya:',
     overlay_contact_offer: 'Jika perlu, saya juga boleh menyediakan OpenFireMap mengikut keperluan khusus. Saya menantikan maklum balas anda.',
 };
