@@ -187,8 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank por si só não indica se o depósito é aberto ou coberto.",
     symbols_groundwater_note: "O símbolo do tubo mantém-se; azul indica water_source=groundwater.",
     symbols_suction_note: "Local designado para captar água de uma massa de água.",
-    symbols_demo_title: 'OpenFireMap é uma demonstração',
-    symbols_demo_intro: 'Esta página apresenta uma demonstração do OpenFireMap. Se quiser utilizar o OpenFireMap e precisar de acesso ou ajuda, escreva-me:',
-    symbols_demo_offer: 'Se necessário, também posso disponibilizar o OpenFireMap com requisitos específicos. Terei todo o gosto em conversar consigo.',
+    overlay_contact_title: 'OpenFireMap é uma demonstração',
+    overlay_contact_intro: 'Esta página apresenta uma demonstração do OpenFireMap. Se quiser utilizar o OpenFireMap e precisar de acesso ou ajuda, escreva-me:',
+    overlay_contact_offer: 'Se necessário, também posso disponibilizar o OpenFireMap com requisitos específicos. Terei todo o gosto em conversar consigo.',
 };
 export default strings;

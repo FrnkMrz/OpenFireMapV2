@@ -187,8 +187,8 @@ export const strings = {
     symbols_tank_unknown_note: "emergency=water_tank eleng seet net, ob de Reservoir oppen oder ofgedeckt ass.",
     symbols_groundwater_note: "D’Päifsymbol bleift; blo weist water_source=groundwater un.",
     symbols_suction_note: "Déi virgesinn Plaz fir Waasser aus engem Gewässer ze pompelen.",
-    symbols_demo_title: 'OpenFireMap ass eng Demo',
-    symbols_demo_intro: 'Dës Säit weist eng Demo vun OpenFireMap. Wann Dir OpenFireMap benotze wëllt an Zougang oder Hëllef braucht, kënnt Dir mir gär schreiwen:',
-    symbols_demo_offer: 'Bei Bedarf kann ech OpenFireMap och no spezielle Viraussetzungen ubidden. Ech freeë mech op de Kontakt.',
+    overlay_contact_title: 'OpenFireMap ass eng Demo',
+    overlay_contact_intro: 'Dës Säit weist eng Demo vun OpenFireMap. Wann Dir OpenFireMap benotze wëllt an Zougang oder Hëllef braucht, kënnt Dir mir gär schreiwen:',
+    overlay_contact_offer: 'Bei Bedarf kann ech OpenFireMap och no spezielle Viraussetzungen ubidden. Ech freeë mech op de Kontakt.',
 };
 export default strings;
