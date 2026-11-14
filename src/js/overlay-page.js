@@ -105,7 +105,8 @@ function markerIcon(element, kind, type, size = 30) {
     const className = kind === 'defibs' ? 'defib-dot' : kind === 'water' ? 'tank-dot' : 'hydrant-dot';
     return L.divIcon({ className, iconSize: [10, 10], iconAnchor: [5, 5] });
   }
-  const html = getMarkerSvg(type, size, 2, element.tags || {});
+  const markerType = element.clusterCount > 1 ? 'cluster_badge' : type;
+  const html = getMarkerSvg(markerType, size, element.clusterCount || 2, element.tags || {});
   return L.divIcon({ className: 'icon-container', html, iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
 }
 
@@ -121,19 +122,101 @@ function category(element) {
   return water ? 'water' : null;
 }
 
+function elementKey(element) {
+  return `${element.type || 'node'}:${element.id}`;
+}
+
+function elementPosition(element) {
+  const lat = element.lat ?? element.center?.lat;
+  const lon = element.lon ?? element.center?.lon;
+  return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+}
+
+function distanceMeters(a, b) {
+  const radians = (value) => value * Math.PI / 180;
+  const dLat = radians(b.lat - a.lat);
+  const dLon = radians(b.lon - a.lon);
+  const lat1 = radians(a.lat);
+  const lat2 = radians(b.lat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function clusterElements(elements, { kinds, radiusMeters, zoom, zoomRange, stations = false }) {
+  if (zoomRange && (zoom < zoomRange[0] || zoom >= zoomRange[1])) return elements;
+  const candidates = [];
+  const others = [];
+  for (const element of elements) {
+    const kind = category(element);
+    if (kinds.includes(kind) && elementPosition(element)) candidates.push(element);
+    else others.push(element);
+  }
+  if (candidates.length < 2) return elements;
+
+  if (stations) {
+    candidates.sort((a, b) => Object.keys(b.tags || {}).length - Object.keys(a.tags || {}).length);
+  } else {
+    candidates.sort((a, b) => String(a.id ?? '').localeCompare(String(b.id ?? ''), undefined, { numeric: true }));
+  }
+
+  const processed = new Set();
+  const clustered = [];
+  for (const master of candidates) {
+    const key = elementKey(master);
+    if (processed.has(key)) continue;
+    const masterPosition = elementPosition(master);
+    const members = [master];
+    let sumLat = masterPosition.lat;
+    let sumLon = masterPosition.lon;
+    for (const candidate of candidates) {
+      const candidateKey = elementKey(candidate);
+      if (candidate === master || processed.has(candidateKey)) continue;
+      const position = elementPosition(candidate);
+      if (distanceMeters(masterPosition, position) < radiusMeters) {
+        processed.add(candidateKey);
+        members.push(candidate);
+        sumLat += position.lat;
+        sumLon += position.lon;
+      }
+    }
+    processed.add(key);
+    if (members.length === 1) {
+      clustered.push(master);
+      continue;
+    }
+    const lat = sumLat / members.length;
+    const lon = sumLon / members.length;
+    clustered.push({
+      ...master,
+      lat,
+      lon,
+      center: master.center ? { ...master.center, lat, lon } : master.center,
+      clusterCount: members.length,
+      clusterMembers: members
+    });
+  }
+  return clustered.concat(others);
+}
+
 function drawElements(elements, zoom) {
   for (const layer of Object.values(vectors)) layer.clearLayers();
   let shown = 0;
-  for (const element of elements) {
+  const stationClusters = clusterElements(elements, { kinds: ['stations'], radiusMeters: 150, zoom, stations: true });
+  const displayElements = clusterElements(stationClusters, { kinds: ['hydrants'], radiusMeters: 5, zoom, zoomRange: [17, 19] });
+  for (const element of displayElements) {
     const kind = category(element);
-    if (!kind || !Number.isFinite(element.lat) || !Number.isFinite(element.lon)) continue;
+    const position = elementPosition(element);
+    if (!kind || !position) continue;
     // Wie in der Hauptkarte: Stationen ab Zoom 12, alle übrigen POIs ab Zoom 15.
     if (zoom < (kind === 'stations' ? 12 : 15)) continue;
     const tags = element.tags || {};
     const type = kind === 'stations' ? 'station' : kind === 'defibs' ? 'defibrillator' :
       getHydrantMarkerType(tags['fire_hydrant:type'] || tags.emergency, tags);
-    L.marker([element.lat, element.lon], {
-      icon: markerIcon(element, kind, type), keyboard: false, title: tags.name || t(kind === 'stations' ? 'station' : kind === 'defibs' ? 'defib' : kind === 'water' ? 'marker_water' : 'hydrant')
+    const title = element.clusterCount > 1
+      ? `${element.clusterCount} ${t(kind === 'stations' ? 'station' : 'cluster_info')}`
+      : tags.name || t(kind === 'stations' ? 'station' : kind === 'defibs' ? 'defib' : kind === 'water' ? 'marker_water' : 'hydrant');
+    L.marker([position.lat, position.lon], {
+      icon: markerIcon(element, kind, type), keyboard: false, title
     }).addTo(vectors[kind]);
     shown++;
   }
@@ -145,7 +228,6 @@ function drawElements(elements, zoom) {
   $('vector-status').textContent = t('overlay_vector_count').replace('{count}', String(shown));
   return shown;
 }
-
 async function loadVectorView() {
   if (activeView !== 'vector') return;
   vectorController?.abort();
