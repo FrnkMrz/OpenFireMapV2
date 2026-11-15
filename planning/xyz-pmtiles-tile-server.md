@@ -268,10 +268,10 @@ Die Pakete 1–3 sind ohne Cloudflare-Zugang und ohne Antwort auf die offenen En
 
 ## Abgrenzung und offene Entscheidungen
 
-1. **Gebiet:** Das aktive Archiv deckt nur Deutschland ab (Header 15.11.2026). Reicht das für den ersten Test, oder muss der erste Live-Stand direkt DACH abdecken? Dann ist zuerst ein DACH-Raster-Build nötig.
+1. **Gebiet (entschieden 15.11.2026):** Der Start deckt nur Deutschland ab (aktives Archiv, Header 15.11.2026). Ein DACH-Raster-Build ist dafür nicht nötig; er bleibt ein eigenes Datenaufbereitungs-Paket für später.
 2. **Datenquelle (geklärt):** Das Live-Manifest zeigt auf ein Raster-PMTiles (Typ PNG, Zoom 12–18, unkomprimierte Kacheln). Typ und Zoomstufen passen zum Endpunkt; die Kachelgröße ist gemessen (256×256, RGBA); offen bleibt die visuelle Prüfung der Symbolqualität. Vektor-PMTiles kann dieser Raster-Endpunkt nicht direkt als PNG ausliefern.
 3. **Symbolstil:** Soll der Kachelserver die Symbole unverändert aus dem Archiv übernehmen oder wird vor dem Test ein Raster-Build mit historischen Hydrantenzeichen und Durchmesserkennzeichnung benötigt? Der Server kann die Pixel einer gerenderten Kachel nicht nachträglich sinnvoll umstylen.
-4. **Host:** Der Apex ist nicht über Cloudflare geproxied, die Root-Route ist also nicht ohne DNS-Umbau möglich. Entscheidung: Subdomain `tiles.openfiremap.org` als Standard, Apex-Umstellung nur bewusst und getrennt.
+4. **Host (entschieden und ausgerollt 15.11.2026):** Der Apex ist nicht über Cloudflare geproxied, die Root-Route ist also nicht ohne DNS-Umbau möglich. Der Worker läuft deshalb auf der Subdomain `tiles.openfiremap.org` als Custom Domain; eine Apex-Umstellung bleibt eine bewusste, getrennte Entscheidung.
 5. **Client:** Welche ALARMiator-Origin, Zoomgrenzen, Attribution und Updatefrequenz müssen im Test unterstützt werden? Dazu: kommt der Client mit transparenten Ersatzkacheln (200) zurecht, und fragt er über z18 hinaus an?
 6. **Rollback:** Soll der Veröffentlichungslauf das Vorgängerarchiv bis zum nächsten Wechsel im Bucket behalten (schnelles Zurückstellen des Manifests, rund 4,4 GB mehr Speicher), oder bleibt Rollback ein erneutes Veröffentlichen des alten Archivs? Für einen produktiven Kachel-Endpunkt mit fremden Nutzern spricht viel für das Behalten.
 
