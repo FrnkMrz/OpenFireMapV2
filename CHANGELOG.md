@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Overlay-Leitfaden als Handout (Markdown → PDF):** Neuer Ordner `handouts/` mit dem Leitfaden zum Overlay von openfiremap.org (Kachel-URL `tiles.openfiremap.org`, HTTPS, klassische Kachel-URL als bewährter Weg, PMTiles als Zielweg, Overlay-Seite und Symbolseite, Hinweis zu eigenen Symbolen, Datenschutz, Impressum). Die Quelle ist Markdown; `npm run handout:build -- handouts/overlay-leitfaden` erzeugt daraus das PDF (`scripts/build-handout.mjs`, `marked` und Playwright als Entwicklungsabhängigkeiten, Test in `test/build-handout.test.js`). Kein Einfluss auf die Website oder den Client.
 - **GeoJSON-Pipeline-Fallback entfernt:** Der Client liest Fachobjekte und Grenzen ausschließlich aus PMTiles; bei einem Pipeline-Fehler übernimmt wie bisher Overpass. Die fünf großen Root-GeoJSON-Dateien werden nach erfolgreicher PMTiles-Veröffentlichung aus R2 entfernt. Interne GeoJSON-Zwischendateien bleiben für den PMTiles-Build erforderlich.
 - **Datenprodukte und Betriebsgrenzen dokumentiert:** öffentliche Agent- und Architekturhinweise unterscheiden jetzt Hauptkarten-Vektordaten, Europa-Dateien, gemeinsam gerenderte Overlay-PNGs und die Ortsplan-Grundkarte. Interne Jobzeiten und VM-/Docker-Betrieb bleiben im privaten Pipeline-Repository.
 - **Overlay-Dokumentation berichtigt:** der Ausschnitts-ZIP-Download liegt auf `/overlay/`, nicht im Exportdialog der Hauptkarte; die Raster-PNGs enthalten gemeinsam gerenderte OFM-Symbole, während die Einzelschalter zur Vektordemo gehören.
