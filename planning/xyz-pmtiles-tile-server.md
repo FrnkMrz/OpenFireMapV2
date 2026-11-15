@@ -12,6 +12,21 @@ https://tiles.openfiremap.org/hytiles/{z}/{x}/{y}.png
 
 Damit kann ALARMiator den Layer wie den früheren OpenFireMap-Endpunkt als XYZ-Kachelebene einbinden. Das PMTiles-Archiv bleibt die gespeicherte Quelle; der Endpunkt liest daraus nur die angeforderte Kachel und liefert ein PNG zurück. Das Subprojekt rendert in seiner ersten Stufe keine OSM-Daten und verändert weder den bestehenden Kartenclient noch die produktive Vektor-Pipeline.
 
+## Stand der Umsetzung (15.11.2026)
+
+Der Kachelserver läuft im Testbetrieb unter `https://tiles.openfiremap.org/hytiles/{z}/{x}/{y}.png` (nur Deutschland, Zoom 12–18). Worker, Runbook und Rauchtest liegen im privaten Pipeline-Repository (siehe „Repository-Grenze“).
+
+| Paket | Stand |
+| --- | --- |
+| 0. Datei- und Domain-Check | Archiv und Manifest geprüft, Host `tiles.openfiremap.org` entschieden. Clientvertrag mit den Interessenten steht noch aus |
+| 1–3. Gerüst, PMTiles-Adapter, Tests | umgesetzt und in der CI, 99 Tests; Kachel aus dem Live-Archiv ist byte-identisch zur Archivkachel |
+| 4. Testbereitstellung | ausgerollt (Test auf `workers.dev`, Produktion auf der Custom Domain); Browser-Prüfseite getrennt von der Overlay-Demo, Letztere bleibt unverändert |
+| 5. Produktionsroute und Betrieb | Subdomain live, Runbook (Ausrollen, Rollback, Fehlerbilder), Rauchtest und Betriebsstatistik vorhanden. Zugriffsschutz und Rate-Limit stehen aus |
+
+**Abnahmebedingungen, soweit geprüft:** reale PNG-Kachel per HTTPS, Nutzung ohne PMTiles-Unterstützung, nur Bereichslesezugriffe, Abdeckung (Deutschland) und Zoomstufen dokumentiert, transparente Ersatzkacheln. **Noch nicht abgenommen:** Durchmesser im Raster für den Kartendruck, Kachelränder in Stichproben, Archivwechsel im Betrieb (erster automatischer Wechsel: Raster-Timer vom 16.11.2026), Zugriffsschutz, Monitoring über die Betriebsstatistik hinaus, Rollback des Archivs (das Vorgängerarchiv wird 120 s nach dem Wechsel gelöscht, Entscheidung 6).
+
+**Zielweg:** Mittelfristig ist der effizientere Weg, das PMTiles-Archiv direkt von den Clients per HTTP-Bereichsabruf lesen zu lassen (oder als Vektorarchiv, das der Client selbst zeichnet). Dann braucht es keinen Kachelserver. Die klassische Kachel-URL bleibt als einfacher Weg für Clients ohne PMTiles-Unterstützung bestehen.
+
 ## Ausgangslage im OpenFireMap-Projekt
 
 - Die Website wird statisch mit Vite gebaut und über GitHub Pages veröffentlicht. GitHub Pages kann eine feste Datei wie `z/x/y.png` ausliefern, aber keine beliebigen dynamischen XYZ-Pfade aus einem Archiv auflösen.
@@ -134,6 +149,7 @@ Liefert TileJSON 3.0 aus Header und Archiv-Metadaten: `tiles` (die URL-Vorlage a
 - Der Layer muss von ALARMiators tatsächlicher Einbindungs-Origin aus erreichbar sein. Vor dem Rollout wird geklärt, ob ALARMiator die Kacheln nativ oder in einer WebView lädt.
 - Bei Browser/WebView-Zugriff wird die benötigte Origin gezielt freigegeben; keine beliebigen Origins mit Credentials. Die CORS-Regeln des Workers sind die einzige Stelle für den XYZ-Weg; die R2-CORS-Allowlist des Pilot-Archivs betrifft nur den direkten PMTiles-Zugriff und muss dafür nicht erweitert werden.
 - OpenStreetMap-Attribution und ODbL-Hinweis werden dokumentiert und in der ALARMiator-Einbindung sichtbar gehalten. Der Tile-Endpunkt selbst kann zusätzlich Attribution-Metadaten liefern, ersetzt aber keine sichtbare Quellenangabe auf der Karte.
+- **CORS ist kein Zugriffsschutz.** Die CORS-Freigabe steuert nur, ob ein Browser einem Skript einer fremden Seite die Antwort zeigt. Normale Kachelbilder, Serverabrufe und `curl` ignorieren sie. Eine echte Beschränkung auf berechtigte Clients ist mittelfristig vorgesehen und läuft über Cloudflare vor dem Worker (Regeln nach IP-Adresse, Schlüssel oder Header; Auswahl nach der Abrufart der Clients), ergänzt um eine Mengenbegrenzung. Im Testbetrieb ist der Zugriff offen. Die Grenzwerte werden aus gemessener Nutzung abgeleitet (Betriebsstatistik ohne Koordinaten, Pfade und IP-Adressen).
 
 ## Was für die Umsetzung gebraucht wird
 
