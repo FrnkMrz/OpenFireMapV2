@@ -51,6 +51,8 @@ Die vorberechneten PMTiles und `metadata.json` liegen in Cloudflare R2 und werde
 
 Wer Cloudflare-Funktionen wie Bot Fight Mode, Web Analytics oder Zaraz aktiviert, muss vorher die Datenschutzerklärung in `index.html` prüfen, da diese Funktionen Cookies oder Skripte einbringen können.
 
+Der XYZ-Kachelserver für Einbindungen (`tiles.openfiremap.org`, Betrieb im privaten Pipeline-Repository) ist ein eigener Cloudflare-Dienst und wird von der Karte dieser Seite nicht genutzt. Seine Betriebsstatistik (ohne Koordinaten, Pfade und IP-Adressen, mit täglich wechselnder pseudonymer Kennung, etwa drei Monate gespeichert) ist in der Datenschutzerklärung in `index.html` unter „Kachelserver für Einbindungen“ beschrieben. Wer die Statistik ändert, muss diesen Text mitprüfen.
+
 ## Lizenzen und Quellenhinweise
 
 - OSM-Daten: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), verfügbar unter der [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/). Die OSM-Daten stehen **nicht** unter CC BY-SA.

@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Datenschutzerklärung um den Kachelserver ergänzt (Deutsch und Englisch):** Neuer Absatz „Kachelserver für Einbindungen“ (`tiles.openfiremap.org`: Cloudflare, Betriebsstatistik ohne Koordinaten, Pfade und IP-Adressen, pseudonyme Tageskennung, etwa drei Monate, Rechtsgrundlage). Die Aussage „kein eigener Server mit Nutzerdaten, kein Tracking“ gilt jetzt ausdrücklich für diese Webseite. Die Karte selbst nutzt den Kachelserver nicht.
 - **GeoJSON-Pipeline-Fallback entfernt:** Der Client liest Fachobjekte und Grenzen ausschließlich aus PMTiles; bei einem Pipeline-Fehler übernimmt wie bisher Overpass. Die fünf großen Root-GeoJSON-Dateien werden nach erfolgreicher PMTiles-Veröffentlichung aus R2 entfernt. Interne GeoJSON-Zwischendateien bleiben für den PMTiles-Build erforderlich.
 - **Datenprodukte und Betriebsgrenzen dokumentiert:** öffentliche Agent- und Architekturhinweise unterscheiden jetzt Hauptkarten-Vektordaten, Europa-Dateien, gemeinsam gerenderte Overlay-PNGs und die Ortsplan-Grundkarte. Interne Jobzeiten und VM-/Docker-Betrieb bleiben im privaten Pipeline-Repository.
 - **Overlay-Dokumentation berichtigt:** der Ausschnitts-ZIP-Download liegt auf `/overlay/`, nicht im Exportdialog der Hauptkarte; die Raster-PNGs enthalten gemeinsam gerenderte OFM-Symbole, während die Einzelschalter zur Vektordemo gehören.
