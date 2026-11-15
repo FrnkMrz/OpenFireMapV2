@@ -39,7 +39,7 @@ Cloudflare Worker auf der OpenFireMap-Domain
         └─ gibt image/png mit Cache- und CORS-Headern zurück
 ```
 
-Der Worker liegt als abgegrenztes Quellprojekt unter `tools/xyz-tile-server/` mit eigener Abhängigkeit, Wrangler-Konfiguration, lokaler Entwicklungsanleitung und Tests. Er bekommt ausschließlich ein lesendes R2-Binding. Ein explizit veröffentlichter, unveränderlicher Archivname wird über ein Manifest oder eine Worker-Konfiguration ausgewählt. Benutzer dürfen über URL-Parameter keine beliebigen R2-Objekte oder Archive öffnen. Auch das Manifest gilt als Eingabe: der Dateiname wird vor der Verwendung als R2-Key gegen `^germany-[0-9a-f]{64}\.pmtiles$` geprüft, ein ungültiges oder nicht erreichbares Manifest lässt den zuletzt gültigen Stand weiterlaufen (kein Wechsel auf einen unbekannten Namen).
+**Repository-Grenze:** Dieses öffentliche Repository enthält nur den Vertrag (dieses Dokument: URL-Vorlage, API-Verhalten, Cache-/CORS-Regeln, Attribution) und eine spätere Client-Doku. Der Worker selbst (Quellcode, Wrangler-Konfiguration, Bucket-Binding, Deployment, Runbook, Monitoring) ist Betrieb und liegt im privaten Pipeline-Repository `FrnkMrz/openfiremap-dach-pipeline`, wie alle anderen Betriebsteile der Datenprodukte. Hier entsteht kein `tools/xyz-tile-server/` und keine Wrangler-Konfiguration. Der Worker bekommt ausschließlich ein lesendes R2-Binding. Ein explizit veröffentlichter, unveränderlicher Archivname wird über ein Manifest oder eine Worker-Konfiguration ausgewählt. Benutzer dürfen über URL-Parameter keine beliebigen R2-Objekte oder Archive öffnen. Auch das Manifest gilt als Eingabe: der Dateiname wird vor der Verwendung als R2-Key gegen `^germany-[0-9a-f]{64}\.pmtiles$` geprüft, ein ungültiges oder nicht erreichbares Manifest lässt den zuletzt gültigen Stand weiterlaufen (kein Wechsel auf einen unbekannten Namen).
 
 ### Warum Worker plus PMTiles/R2
 
@@ -100,8 +100,8 @@ Die Headerprüfung (Stand 15.11.2026) bestätigt Deutschlandabdeckung und Zoom 1
 
 ### Cloudflare und Domain
 
-- R2-Bucket beziehungsweise vorhandene Rasterablage mit lesendem Worker-Binding (Bucketname gehört in die private Worker-Konfiguration, nicht in dieses Repository).
-- Worker-Projekt, Testumgebung und ein Produktionsrelease. Wegen der CPU- und Request-Limits des kostenlosen Worker-Tarifs den bezahlten Plan einplanen; Druckläufe holen viele Kacheln in kurzer Zeit.
+- R2-Bucket beziehungsweise vorhandene Rasterablage mit lesendem Worker-Binding (Bucketname und Wrangler-Konfiguration gehören ins private Pipeline-Repository, nicht in dieses).
+- Worker-Projekt (privates Pipeline-Repository), Testumgebung und ein Produktionsrelease. Wegen der CPU- und Request-Limits des kostenlosen Worker-Tarifs den bezahlten Plan einplanen; Druckläufe holen viele Kacheln in kurzer Zeit.
 - Missbrauchsschutz für den öffentlichen Endpunkt (WAF-/Rate-Limit-Regel), Grenzwerte nach Messung.
 - TLS/HTTPS für den öffentlichen Host.
 - **Befund DNS (15.11.2026):** Die Nameserver von `openfiremap.org` sind Cloudflare, die A-Records des Apex zeigen aber direkt auf die GitHub-Pages-IPs (185.199.x), sind also nicht über Cloudflare geproxied. Eine Worker-Route auf `openfiremap.org/hytiles/*` setzt einen geproxten Record voraus; damit liefe die gesamte Website über Cloudflare (Risiko: Pages-Zertifikat, SSL-Modus, Caching der Seite). Das ist ein eigener Umbau mit Rollback-Plan, kein Nebeneffekt des Workers.
@@ -119,9 +119,11 @@ Die Headerprüfung (Stand 15.11.2026) bestätigt Deutschlandabdeckung und Zoom 1
 
 **Ergebnis:** dokumentierter Datenvertrag, bestätigter Host und Go/No-Go für den Test mit dem vorhandenen Archiv.
 
+Die Arbeitspakete 1–5 werden im privaten Pipeline-Repository umgesetzt (siehe „Repository-Grenze“). Hier bleiben nur dieses Dokument und die Client-Doku; nach Paket 4 und 5 wird der bestätigte Vertrag hier nachgeführt.
+
 ### 1. Isoliertes Worker-Gerüst
 
-- `tools/xyz-tile-server/` mit eigenem Paket und fest gepinnten Laufzeitabhängigkeiten anlegen.
+- Worker-Projekt im privaten Pipeline-Repository mit eigenem Paket und fest gepinnten Laufzeitabhängigkeiten anlegen.
 - R2-Binding lesend konfigurieren; Test- und Produktionskonfiguration trennen.
 - Request-Parser für genau `/hytiles/{z}/{x}/{y}.png` bauen.
 - Koordinaten validieren, erlaubte Methoden festlegen und Fehlerantworten standardisieren.
@@ -164,7 +166,7 @@ Die Headerprüfung (Stand 15.11.2026) bestätigt Deutschlandabdeckung und Zoom 1
 - Mit `tiles.openfiremap.org` als Worker Custom Domain starten; die Pfadvorlage bleibt gleich.
 - Die Route `openfiremap.org/hytiles/*` nur nach bewusster Umstellung des Apex auf den Cloudflare-Proxy aktivieren (siehe Befund DNS), nicht als Nebeneffekt.
 - TLS, CORS, Cachezeiten, Statusantwort und Logs überprüfen.
-- Kurze Runbook-Anleitung ergänzen: Archiv validieren, versioniert hochladen, Manifest umschalten, Stichprobe abrufen, rollback.
+- Kurze Runbook-Anleitung im privaten Pipeline-Repository ergänzen: Archiv validieren, versioniert hochladen, Manifest umschalten, Stichprobe abrufen, Rollback. Hier wird nur der öffentliche Vertrag nachgeführt.
 - Keine personenbezogenen oder vollständigen Request-URLs mit Koordinaten dauerhaft protokollieren; operative Metriken auf Status, Latenz, Cache-Hit und Fehlerklasse begrenzen.
 
 **Ergebnis:** dauerhaft nutzbare HTTPS-XYZ-URL mit dokumentiertem Update- und Rollbackweg.
@@ -195,7 +197,7 @@ Diese Entscheidungen blockieren das isolierte Worker-Gerüst nicht. Sie blockier
 - OSM-PBF-Verarbeitung oder regelmäßiger Raster-Renderer.
 - Hydrantendurchmesser nachträglich aus Vektordaten in den Tile-Worker zeichnen.
 - Getrennte PNG-URLs pro Objektklasse, sofern das Quellarchiv nur einen kombinierten Rasterlayer enthält.
-- Betrieb im privaten Pipeline-Repository oder Veröffentlichung interner Pipeline-Hosts, Dateipfade und Zugangsdaten.
+- Betriebsdetails in diesem öffentlichen Repository: Worker-Code, Wrangler-Konfiguration, Bucketname, interne Hosts, Dateipfade und Zugangsdaten bleiben im privaten Pipeline-Repository.
 - Änderung des OpenFireMap-Hauptclients.
 
 Wenn Archivprüfung zeigt, dass der Durchmesser oder die gewünschte DACH-Abdeckung fehlt, wird zuerst ein eigenes Raster-Build-Arbeitspaket festgelegt. Danach bleibt der XYZ-Worker als stabiler, unveränderter Auslieferungsweg bestehen.
