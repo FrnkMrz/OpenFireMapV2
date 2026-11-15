@@ -1,0 +1,212 @@
+/* Druckstil für die Handouts (Markdown → HTML → PDF über Chromium, siehe scripts/build-handout.mjs). */
+:root {
+  --ink: #1f2937;
+  --muted: #6b7280;
+  --dark: #111827;
+  --red: #d62828;
+  --line: #d1d5db;
+  --soft: #f3f4f6;
+  --code: #0f172a;
+  --green: #15803d;
+  --amber: #d97706;
+  --slate: #6b7280;
+}
+
+@page {
+  size: A4;
+  margin: 18mm 18mm 22mm 18mm;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+body {
+  margin: 0;
+  font-family: "Helvetica Neue", Arial, "Segoe UI", sans-serif;
+  font-size: 10.2pt;
+  line-height: 1.56;
+  color: var(--ink);
+  orphans: 3;
+  widows: 3;
+}
+
+/* ---------- Kopf auf der ersten Seite ---------- */
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--dark);
+  color: #fff;
+  border-bottom: 5px solid var(--red);
+  border-radius: 6px;
+  padding: 22px 26px 20px;
+  margin: 0 0 8px;
+}
+.hero .mark {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--red);
+  position: relative;
+}
+.hero .mark::after {
+  content: "";
+  position: absolute;
+  inset: 13px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+}
+.hero h1 { margin: 0; font-size: 28pt; line-height: 1.1; letter-spacing: -0.01em; }
+.hero .sub { margin: 4px 0 0; font-size: 11.4pt; color: #d1d5db; line-height: 1.4; }
+.hero-meta { margin: 0 0 18px; font-size: 8.8pt; color: var(--muted); }
+
+/* ---------- Überschriften ---------- */
+h2 {
+  font-size: 18pt;
+  line-height: 1.25;
+  margin: 24px 0 10px;
+  padding-bottom: 5px;
+  color: var(--dark);
+  border-bottom: 2px solid var(--red);
+  break-after: avoid;
+}
+h3 {
+  font-size: 12.6pt;
+  margin: 16px 0 5px;
+  color: var(--dark);
+  break-after: avoid;
+}
+h2 + h3 { margin-top: 12px; }
+
+p { margin: 0 0 10px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin: 0 0 6px; }
+li > p { margin: 0; }
+a { color: #1d4ed8; text-decoration: none; }
+strong { color: var(--dark); }
+hr { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
+
+/* ---------- Code ---------- */
+code {
+  font-family: Menlo, "Courier New", monospace;
+  font-size: 0.88em;
+  background: var(--soft);
+  padding: 1px 4px;
+  border-radius: 3px;
+  overflow-wrap: anywhere;
+}
+pre {
+  margin: 8px 0 14px;
+  padding: 12px 14px;
+  background: var(--code);
+  border-radius: 5px;
+  break-inside: avoid;
+}
+pre code {
+  display: block;
+  background: none;
+  padding: 0;
+  color: #e5e7eb;
+  font-size: 8.6pt;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.urlbox {
+  margin: 14px 0 12px;
+  padding: 14px 18px 15px;
+  background: var(--code);
+  border-left: 4px solid var(--red);
+  border-radius: 5px;
+  break-inside: avoid;
+}
+.urlbox .label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 7.6pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fca5a5;
+}
+.urlbox code {
+  display: block;
+  background: none;
+  padding: 0;
+  color: #fff;
+  font-size: 12pt;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Tabellen ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 16px;
+  font-size: 9.8pt;
+  line-height: 1.5;
+  break-inside: avoid;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 7px 11px;
+  border-bottom: 1px solid var(--line);
+}
+thead th {
+  background: var(--dark);
+  color: #fff;
+  font-size: 8.6pt;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+tbody tr:nth-child(even) td { background: var(--soft); }
+tbody td:first-child { font-weight: 700; color: var(--dark); width: 27%; }
+
+/* ---------- Karten und Spalten ---------- */
+.cols { display: grid; gap: 14px; margin: 10px 0 14px; }
+.cols.two { grid-template-columns: 1fr 1fr; }
+.cols.three { grid-template-columns: 1fr 1fr 1fr; }
+.card {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--slate);
+  border-radius: 5px;
+  padding: 12px 14px 8px;
+  break-inside: avoid;
+}
+.card h3 { margin: 0 0 6px; font-size: 11.6pt; }
+.card p, .card li { font-size: 9.8pt; line-height: 1.5; }
+.card ul { padding-left: 18px; }
+.card.legacy { border-top-color: var(--amber); }
+.card.legacy h3 { color: var(--amber); }
+.card.future { border-top-color: var(--green); }
+.card.future h3 { color: var(--green); }
+.card.ok { border-top-color: var(--green); }
+.card.ok h3 { color: var(--green); }
+.card.maybe { border-top-color: var(--amber); }
+.card.maybe h3 { color: var(--amber); }
+.card.no h3 { color: var(--slate); }
+.card.plain { border-top-color: var(--red); }
+.cols.three .card li { font-size: 9.2pt; }
+
+/* ---------- Hinweiskasten ---------- */
+blockquote {
+  margin: 14px 0 16px;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid var(--red);
+  border-radius: 4px;
+  break-inside: avoid;
+}
+blockquote p { margin: 0; }
+
+/* ---------- Bilder ---------- */
+.fig { display: block; margin: 10px 0 16px; break-inside: avoid; }
+.fig img { display: block; width: auto; max-width: 80%; max-height: 78mm; border: 1px solid var(--line); border-radius: 4px; }
+.fig .cap { display: block; margin-top: 5px; font-size: 8.6pt; color: var(--muted); line-height: 1.4; }
+
+/* ---------- Seitenumbruch ---------- */
+.pb { break-before: page; height: 0; }
