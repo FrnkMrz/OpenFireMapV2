@@ -149,7 +149,6 @@ Liefert TileJSON 3.0 aus Header und Archiv-Metadaten: `tiles` (die URL-Vorlage a
 - Der Layer muss von ALARMiators tatsächlicher Einbindungs-Origin aus erreichbar sein. Vor dem Rollout wird geklärt, ob ALARMiator die Kacheln nativ oder in einer WebView lädt.
 - Bei Browser/WebView-Zugriff wird die benötigte Origin gezielt freigegeben; keine beliebigen Origins mit Credentials. Die CORS-Regeln des Workers sind die einzige Stelle für den XYZ-Weg; die R2-CORS-Allowlist des Pilot-Archivs betrifft nur den direkten PMTiles-Zugriff und muss dafür nicht erweitert werden.
 - OpenStreetMap-Attribution und ODbL-Hinweis werden dokumentiert und in der ALARMiator-Einbindung sichtbar gehalten. Der Tile-Endpunkt selbst kann zusätzlich Attribution-Metadaten liefern, ersetzt aber keine sichtbare Quellenangabe auf der Karte.
-
 - **CORS ist kein Zugriffsschutz.** Die CORS-Freigabe steuert nur, ob ein Browser einem Skript einer fremden Seite die Antwort zeigt. Normale Kachelbilder, Serverabrufe und `curl` ignorieren sie. Eine echte Beschränkung auf berechtigte Clients ist mittelfristig vorgesehen und läuft über Cloudflare vor dem Worker (Regeln nach IP-Adresse, Schlüssel oder Header; Auswahl nach der Abrufart der Clients), ergänzt um eine Mengenbegrenzung. Im Testbetrieb ist der Zugriff offen. Die Grenzwerte werden aus gemessener Nutzung abgeleitet (Betriebsstatistik ohne Koordinaten, Pfade und IP-Adressen).
 
 ## Was für die Umsetzung gebraucht wird
