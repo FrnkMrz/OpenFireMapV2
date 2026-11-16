@@ -13,7 +13,7 @@
 //   - <div class="pb"></div> erzwingt einen Seitenumbruch.
 //   - Ein Bild mit Alternativtext erhält den Alternativtext als Bildunterschrift.
 
-import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Marked } from 'marked';
@@ -102,6 +102,7 @@ export async function buildHandout(directory) {
   const html = renderHandoutHtml(readFileSync(join(dir, source), 'utf8'), { css });
   const htmlPath = join(dir, '.build.tmp.html');
   const pdfPath = join(dir, `${basename(source, '.md')}.pdf`);
+  const publicPdfPath = resolve(process.cwd(), 'public/downloads/OpenFireMap-Overlay-Leitfaden.pdf');
   writeFileSync(htmlPath, html);
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch();
@@ -114,6 +115,8 @@ export async function buildHandout(directory) {
     await browser.close();
     rmSync(htmlPath, { force: true });
   }
+  mkdirSync(join(process.cwd(), 'public/downloads'), { recursive: true });
+  copyFileSync(pdfPath, publicPdfPath);
   return pdfPath;
 }
 

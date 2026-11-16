@@ -14,7 +14,7 @@ npx playwright install chromium                # einmalig, falls noch kein Chrom
 npm run handout:build -- handouts/overlay-leitfaden
 ```
 
-Das Skript [`scripts/build-handout.mjs`](../scripts/build-handout.mjs) wandelt die Markdown-Datei mit `marked` in HTML und rendert sie mit Chromium (Playwright) zu einem A4-PDF. Der Stil liegt in `style.css` im jeweiligen Ordner. Nach jeder Änderung an der Markdown-Datei, am Stil oder an den Bildern das PDF neu bauen und mit einchecken.
+Das Skript [`scripts/build-handout.mjs`](../scripts/build-handout.mjs) wandelt die Markdown-Datei mit `marked` in HTML und rendert sie mit Chromium (Playwright) zu einem A4-PDF. Der Stil liegt in `style.css` im jeweiligen Ordner. `npm run build` rendert das PDF bei jedem Website-Build neu und kopiert es nach `public/downloads/`, von wo es zusammen mit der Website veröffentlicht wird. So genügt es, die Markdown-Quelle zu aktualisieren; das gerenderte PDF muss nicht separat eingecheckt werden.
 
 ## Aufbau eines Handout-Ordners
 
