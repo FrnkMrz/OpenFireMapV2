@@ -68,10 +68,15 @@ export function renderHandoutHtml(markdown, { css = '' } = {}) {
   const { data, body } = parseFrontMatter(markdown);
   const html = createMarked().parse(body);
   const title = data.title || 'Handout';
+  const generatedDate = new Intl.DateTimeFormat('de-DE', {
+    dateStyle: 'long',
+    timeZone: 'Europe/Berlin',
+  }).format(new Date());
+  const meta = [data.meta, `PDF erstellt am ${generatedDate}`].filter(Boolean).join(' · ');
   const hero = `<header class="hero"><div class="mark"></div><div><h1>${escapeHtml(title)}</h1>`
     + (data.subtitle ? `<p class="sub">${escapeHtml(data.subtitle)}</p>` : '')
     + '</div></header>'
-    + (data.meta ? `<p class="hero-meta">${escapeHtml(data.meta)}</p>` : '');
+    + (meta ? `<p class="hero-meta">${escapeHtml(meta)}</p>` : '');
   const footerCss = data.footer
     ? `@page { @bottom-left { content: "${data.footer.replace(/["\\]/g, '')}"; font: 8px "Helvetica Neue", Arial, sans-serif; color: #6b7280; }`
       + ' @bottom-right { content: "openfiremap.org · Seite " counter(page) " von " counter(pages);'
