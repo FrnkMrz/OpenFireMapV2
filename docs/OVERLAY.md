@@ -12,6 +12,8 @@ npm run dev -- --host localhost --port 5173
 
 `VITE_RASTER_MANIFEST_URL` kann für einen abweichenden Manifest-Endpunkt gesetzt werden. Ohne Variable verwendet die Seite `https://raster-pilot.openfiremap.org/manifest.json`. Der Pages-Workflow setzt die Variable mit demselben Standardwert. Vite baut die Seite nach `docs/overlay/`.
 
+Der Einbindungsleitfaden liegt als Markdown unter `handouts/overlay-leitfaden/`. `npm run build` rendert daraus mit Playwright/Chromium das PDF und veröffentlicht es unter `/downloads/OpenFireMap-Overlay-Leitfaden.pdf`. Inhaltliche Änderungen am Leitfaden werden in der Markdown-Datei vorgenommen; der Pages-Build erzeugt die Download-Datei bei jedem Website-Build neu.
+
 Die Demo liest `schema_version`, `file` und `published_at` aus `manifest.json`. Der versionsgebundene Archivname darf nicht fest in die Seite eingetragen werden. Die Dateigröße für den Deutschland-Download kommt aus `Content-Length`; falls der Server sie nicht liefert, zeigt die Seite „Dateigröße nicht ermittelt“.
 
 ## Voraussetzungen für Browserzugriffe
