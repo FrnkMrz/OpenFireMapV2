@@ -6,9 +6,9 @@ lead: Byplanen samler kort, gitter, signaturforklaring, nordpil og gadeindeks p�
 order: 6
 ---
 
-## Før du begynder {#start}
+## Hvad byplanen bruges til {#wofuer}
 
-Byplanen er kun tilgængelig på en computer og for steder i Tyskland. Vælg et passende område; data skal være indlæst.
+Et trykt bykort kan bruges uden netværk eller batteri. Det er nyttigt til opslag på brandstationen, i køretøjer, til øvelser og til planlægning.\n\n## Forudsætninger {#voraussetzungen}\n\nByplanen kræver en computer og dækker aktuelt steder i Tyskland. Åbn værktøjet, flyt og zoom kortet til byen, og tegn derefter rammen.
 
 ## Trin 1: område og format {#schritt-1}
 
