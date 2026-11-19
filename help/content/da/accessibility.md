@@ -3,7 +3,7 @@ title: Tilgængelighed
 description: Brug OpenFireMap med tastatur, skærmlæser, forstørrelse og reduceret bevægelse.
 eyebrow: Tilgængelighed
 lead: OpenFireMap skal kunne bruges uden mus, med skærmlæser og ved stor forstørrelse. Her beskrives funktionerne og de kendte huller.
-order: 8
+order: 9
 ---
 
 ## Vores mål {#ziel}
