@@ -3,7 +3,7 @@ title: Časté dotazy
 description: Odpovědi na běžné otázky o OpenFireMapu, mapě, datech, aktuálnosti, exportu, plánu města, přispívání, projektu a právních údajích.
 eyebrow: Časté dotazy
 lead: Odpovědi na nejčastější otázky. Nenašli jste svou otázku? Napište nám na info@openfiremap.org.
-order: 9
+order: 10
 ---
 
 ## Mapa a ovládání {#karte}
@@ -89,6 +89,10 @@ Ano. Data jsou licencována pod Open Database License. Na každém plánu musí 
 ### Hydrant chybí nebo je špatně. Kdo ho opraví? {#korrigieren}
 
 Můžete ho opravit v OpenStreetMap. Potřebujete pouze bezplatný účet. Průvodce nástroji Hydrantenjäger, StreetComplete, iD a JOSM najdete v části [Přidávání hydrantů](../contribute/).
+
+### Jsme hasičský sbor a chceme zmapovat hydranty v našem rajónu. Jak na to? {#feuerwehr}
+
+Nejlepší je uspořádat cvičební večer nebo obchůzku města v týmech. Průvodce [Pro hasičské sbory](../fire-brigades/) popisuje přípravu, průběh, bezpečnost i následné kroky.
 
 ### Mohu kopírovat plány hydrantů od obce nebo vodáren? {#plaene}
 
