@@ -3,7 +3,7 @@ title: Toegankelijkheid
 description: OpenFireMap gebruiken met toetsenbord, schermlezer, vergroting en minder beweging.
 eyebrow: Toegankelijkheid
 lead: OpenFireMap moet werken zonder muis, met een schermlezer en bij sterke vergroting. Hier lees je de functies en bekende beperkingen.
-order: 8
+order: 9
 ---
 
 ## Ons doel {#ziel}
