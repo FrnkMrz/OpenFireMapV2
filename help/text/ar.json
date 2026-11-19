@@ -212,5 +212,8 @@
   "sheet.source": "© OpenStreetMap contributors (ODbL) · الخريطة: Protomaps",
   "sheet.source2": "البيانات: OpenFireMap.org · التاريخ على الورقة",
   "nav.a11y": "إمكانية الوصول",
-  "faq.all": "كل الأسئلة"
+  "faq.all": "كل الأسئلة",
+  "topics.brigades": "لأقسام الإطفاء",
+  "topics.brigades_text": "افحصوا صنابير المياه خلال تدريب أو جولة في المدينة",
+  "contrib.cta_brigades": "دليل لفرق الإطفاء"
 }
