@@ -31,6 +31,15 @@ Den ansvarlige planlægger turen en til to uger før:
 OSM-regler og forældresamtykke gælder. De unge kan finde, kontrollere og notere; en voksen indfører data med sin egen konto.
 :::
 
+## Til udskrivning {#ausdrucken}
+
+| Dokument | Til hvem | Fil |
+|---|---|---|
+| **Holdkort**: seks trin, sikkerhed, aflæsning af skilt og brandhanetyper | hvert hold, A4 på begge sider | [Hent PDF](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) (på tysk) |
+| **Registreringsark, mangelliste** og skabelon til brev til kommunen eller vandværket | hold og opfølgning, liggende A4 | [Hent PDF](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) (på tysk) |
+
+Materialerne er en første version før en felttest med et brandvæsen og findes indtil videre kun på tysk. Send gerne kommentarer og forslag til info@openfiremap.org.
+
 ## Øvelsens forløb {#ablauf}
 
 Til 90 minutter: 15 minutter briefing og demonstration, 60 minutters holdvis gennemgang og 15 minutters opsamling. Et hold på to eller tre fordeler telefon, trafiksikkerhed og noter.
