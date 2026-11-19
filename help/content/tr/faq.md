@@ -90,6 +90,10 @@ Evet. “© OpenStreetMap contributors” atfı görünür kalmalıdır.
 
 Ücretsiz hesapla OpenStreetMap’te düzeltebilirsiniz. [Hidrant ekleme](../contribute/).
 
+### İtfaiyeyiz ve bölgemizdeki hidrantları kaydetmek istiyoruz. Nasıl yapabiliriz? {#feuerwehr}
+
+En iyisi ekipler halinde bir tatbikat akşamı veya şehir turu düzenlemektir. [İtfaiye ekipleri için](../fire-brigades/) rehberi hazırlık, uygulama, güvenlik ve takip adımlarını anlatır.
+
 ### Belediye planlarını kopyalayabilir miyim? {#plaene}
 
 Yalnızca açık izinle. Sahada bizzat gördüğünüz bilgileri ekleyin.
