@@ -3,7 +3,7 @@ title: Accessibilité
 description: Utiliser OpenFireMap au clavier, avec un lecteur d’écran, un fort agrandissement et la réduction des animations.
 eyebrow: Accessibilité
 lead: OpenFireMap doit fonctionner sans souris, avec un lecteur d’écran et à fort agrandissement. Voici les fonctions et les limites connues.
-order: 8
+order: 9
 ---
 
 ## Notre objectif {#ziel}
