@@ -10,11 +10,11 @@ order: 6
 
 Et trykt bykort kan bruges uden netværk eller batteri. Det er nyttigt til opslag på brandstationen, i køretøjer, til øvelser og til planlægning.\n\n## Forudsætninger {#voraussetzungen}\n\nByplanen kræver en computer og dækker aktuelt steder i Tyskland. Åbn værktøjet, flyt og zoom kortet til byen, og tegn derefter rammen.
 
-## Trin 1: område og format {#schritt-1}
+## Trin 1: område og format {#schritt-1}\n\n:::figure plan-1 frame=browser\nTrin 1: rammen på kortet og papirindstillingerne.\n:::
 
 Åbn byplanværktøjet, tegn området på kortet, og vælg papirformat og målestok. Et mindre område giver flere detaljer.
 
-## Trin 2: indhold {#schritt-2}
+## Trin 2: indhold {#schritt-2}\n\n:::figure plan-2 frame=browser\nTrin 2: valg af indhold på arket.\n:::
 
 Vælg objekter, signaturforklaring og gadeindeks. Kontrollér, at kortet viser de ønskede brandhaner og stationer.
 
