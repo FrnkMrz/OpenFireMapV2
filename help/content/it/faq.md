@@ -90,6 +90,10 @@ Sì. L’attribuzione “© OpenStreetMap contributors” deve restare visibile.
 
 Puoi correggerlo in OpenStreetMap con un account gratuito. Vedi [Aggiungere idranti](../contribute/).
 
+### Siamo un corpo dei vigili del fuoco e vogliamo censire gli idranti nella nostra zona. Come procediamo? {#feuerwehr}
+
+L’ideale è organizzare una serata di esercitazione o un giro in città in squadre. La guida [Per i vigili del fuoco](../fire-brigades/) spiega preparazione, svolgimento, sicurezza e seguito.
+
 ### Posso copiare piani comunali? {#plaene}
 
 Solo con autorizzazione esplicita. Aggiungi preferibilmente ciò che hai verificato sul posto.
