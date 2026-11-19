@@ -11,7 +11,7 @@ const SLUGS = ['map', 'phone', 'layers', 'data', 'export', 'town-plan', 'contrib
 const HELP_DEFAULT_LANG = 'de';
 const HELP_LANGS = readdirSync(resolve(process.cwd(), 'help', 'text'))
     .filter((file) => file.endsWith('.json'))
-    .map((file) => file.replace(/\\.json$/, ''));
+    .map((file) => file.replace(/\.json$/, ''));
 const helpUrl = (lang, page = 'index') => {
     const base = lang === HELP_DEFAULT_LANG ? '/help/' : `/help/${lang}/`;
     return page === 'index' ? base : `${base}${page}/`;
