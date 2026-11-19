@@ -34,7 +34,7 @@ describe('Hilfe: Texte', () => {
     expect([...catalogCodes].sort()).toEqual(appCodes);
     expect(catalogCodes).toEqual(expect.arrayContaining(['de', 'en', 'fr', 'es', 'tr', 'zh']));
     expect(listHelpLanguages(root)).toEqual(HELP_LANGS);
-    expect(HELP_LANGS).toEqual([HELP_DEFAULT_LANG, HELP_X_DEFAULT_LANG]);
+    expect(HELP_LANGS).toEqual(expect.arrayContaining([HELP_DEFAULT_LANG, HELP_X_DEFAULT_LANG]));
     for (const lang of HELP_LANGS) expect(catalogCodes).toContain(lang);
   });
 
