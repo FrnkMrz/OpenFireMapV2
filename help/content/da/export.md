@@ -38,7 +38,15 @@ Under eksporten vises fremdrift; **Cancel Process** afbryder.
 
 PNG og PDF indeholder kort, titel, målestok, dato og OpenStreetMap-kreditering. GPX og CSV indeholder objekterne i det valgte område og deres registrerede data.
 
-## Begrænsninger {#grenzen}
+## GPX og CSV {#gpx-csv}
+
+GPX indeholder waypoints med navn og detaljer. CSV er en tabel med type, reference, koordinater og andre registrerede data.
+
+:::figure title frame=plain
+Den foreslåede titel kan ændres før planen oprettes.
+:::
+
+## Begrænsninger {#grænser}
 
 Det valgte område må højst være 10 × 10 km. Vælg lavere detaljeniveau for store områder. Hvis området overskrider grænsen, skal du vælge et mindre udsnit.
 
