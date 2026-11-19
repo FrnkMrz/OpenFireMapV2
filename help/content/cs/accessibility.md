@@ -3,7 +3,7 @@ title: Přístupnost
 description: Používání OpenFireMapu s klávesnicí, čtečkou obrazovky, zvětšením a omezením pohybu – co funguje, jak a co ještě nebylo otestováno.
 eyebrow: Přístupnost
 lead: OpenFireMap by měl fungovat pro každého, i bez myši, se čtečkou obrazovky nebo při velkém zvětšení. Zde se dozvíte jak a kde zůstávají nedostatky.
-order: 8
+order: 9
 ---
 
 ## Náš cíl {#ziel}
