@@ -212,5 +212,8 @@
   "sheet.source": "© OpenStreetMap contributors (ODbL) · Carte : Protomaps",
   "sheet.source2": "Données : OpenFireMap.org · date sur la feuille",
   "nav.a11y": "Accessibilité",
-  "faq.all": "Toutes les questions"
+  "faq.all": "Toutes les questions",
+  "topics.brigades": "Pour les services d’incendie",
+  "topics.brigades_text": "Vérifiez les bornes lors d’un exercice ou d’une visite de la ville",
+  "contrib.cta_brigades": "Guide pour les services d’incendie"
 }
