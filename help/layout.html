@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- Erzeugt von scripts/build-help.mjs aus help/layout.html, help/pages/ und help/text/. Nicht von Hand ändern. -->
-<html lang="{{@lang}}">
+<html lang="{{@htmlLang}}" dir="{{@dir}}">
 
 <head>
     <meta charset="UTF-8">
@@ -13,9 +13,7 @@
     <meta property="og:description" content="{{@metaDescription}}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://openfiremap.org{{@self}}">
-    <link rel="alternate" hreflang="de" href="https://openfiremap.org{{@urlDe}}">
-    <link rel="alternate" hreflang="en" href="https://openfiremap.org{{@urlEn}}">
-    <link rel="alternate" hreflang="x-default" href="https://openfiremap.org{{@urlEn}}">
+    {{@alternates}}
 
     <!-- SECURITY: Content Security Policy (CSP). Die Hilfe lädt nichts von fremden Servern (Schriften liegen unter /help/fonts/). -->
     <meta http-equiv="Content-Security-Policy" content="
@@ -80,10 +78,10 @@
                 <a href="{{@home}}faq/">{{nav.faq}}</a>
             </nav>
             <div class="top-actions">
-                <div class="lang" role="group" aria-label="{{ui.lang_label}}">
-                    <a href="{{@urlDe}}" lang="de" hreflang="de" {{@curDe}}>DE</a>
-                    <a href="{{@urlEn}}" lang="en" hreflang="en" {{@curEn}}>EN</a>
-                </div>
+                <details class="lang-picker">
+                    <summary aria-label="{{ui.lang_label}}: {{@langName}}"><span aria-hidden="true">{{@langShort}}</span><span class="sr-only">{{@langName}}</span></summary>
+                    <ul class="lang-options" aria-label="{{ui.lang_label}}">{{@languageLinks}}</ul>
+                </details>
                 <a class="btn btn-primary btn-small" href="/"><span class="hide-sm">{{ui.to_map}}</span><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="sr-only show-sm">{{ui.to_map}}</span></a>
                 <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="nav" aria-label="{{ui.menu}}">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>

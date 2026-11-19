@@ -9,6 +9,7 @@ import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
+import { listHelpLanguages } from '../scripts/build-help.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const imgDir = join(root, 'public', 'help', 'img');
@@ -17,7 +18,7 @@ mkdirSync(imgDir, { recursive: true });
 // Fester Ort: Nürnberger Altstadt, Zoom 17 (Symbole sichtbar), Hintergrund Standard (Voyager)
 const BASE = process.env.HELP_SHOTS_URL || 'https://openfiremap.org/';
 const HASH = '#17/49.45280/11.07700/voyager';
-const LANGS = ['de', 'en'];
+const LANGS = listHelpLanguages(root);
 
 // Ankerpunkt eines Hotspots relativ zum Element: below = unter der Mitte, right = rechts innen, left = links oben
 function anchor(box, where) {
