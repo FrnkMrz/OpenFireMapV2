@@ -161,7 +161,7 @@
   "faq.q4": "¿Puedo imprimir planos para mi parque de bomberos?",
   "faq.a4": "Sí. Los datos usan la Open Database License. Cada plano debe mostrar “© OpenStreetMap contributors”. El plano urbano añade el crédito automáticamente.",
   "faq.q5": "¿Funciona el mapa sin conexión?",
-  "faq.a5": "Solo parcialmente. Las zonas cargadas se conservan un tiempo. Las zonas nuevas y las búsquedas requieren conexión. Un <a href=\"../town-plan/\">plano impreso</a> es más fiable durante el trayecto.",
+  "faq.a5": "Solo parcialmente. Las zonas cargadas se conservan un tiempo. Las zonas nuevas y las búsquedas requieren conexión. Un plano urbano impreso es más fiable durante el trayecto.",
   "faq.q6": "¿Es un mapa oficial de bomberos?",
   "faq.a6": "No. OpenFireMap es un proyecto privado y sin ánimo de lucro basado en OpenStreetMap. No colabora oficialmente con autoridades ni parques de bomberos.",
   "faq.q7": "¿Cómo uso las capas de bomberos en mi propio mapa?",
