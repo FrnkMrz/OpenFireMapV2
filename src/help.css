@@ -218,9 +218,6 @@ a.topic:hover { color: var(--ink); border-color: var(--ink); transform: translat
 .sheet-wrap { position: relative; padding: 24px; }
 .sheet-wrap::before { content: ""; position: absolute; inset: 0 12% 0 0; background: var(--mist); border-radius: var(--r-lg); z-index: -1; }
 .sheet { width: 100%; height: auto; display: block; filter: drop-shadow(0 24px 40px rgba(15, 27, 42, .18)); }
-.sheet-d { font-family: var(--f-display); font-weight: 700; }
-.sheet-b { font-family: var(--f-body); }
-.sheet-mono { font-family: var(--f-mono); }
 .plan-steps { margin-top: 30px; display: grid; }
 .plan-steps li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 18px; padding: 18px 0; border-top: 1px solid var(--line); }
 .plan-steps li:last-child { border-bottom: 1px solid var(--line); }
