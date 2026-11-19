@@ -212,5 +212,8 @@
   "sheet.source": "© OpenStreetMap contributors (ODbL) · Mapa: Protomaps",
   "sheet.source2": "Dane: OpenFireMap.org · data na arkuszu",
   "nav.a11y": "Dostępność",
-  "faq.all": "Wszystkie pytania"
+  "faq.all": "Wszystkie pytania",
+  "topics.brigades": "Dla straży pożarnej",
+  "topics.brigades_text": "Sprawdź hydranty podczas ćwiczeń lub obchodu miasta",
+  "contrib.cta_brigades": "Przewodnik dla straży pożarnej"
 }
