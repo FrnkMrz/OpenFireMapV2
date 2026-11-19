@@ -62,7 +62,7 @@ A team has two or three people: one uses the phone, one watches the traffic and 
 ## At the hydrant: six steps {#am-hydranten}
 
 :::steps
-1. **Find the hydrant.** Look for the sign. In Germany, “H” stands for hydrant and the number next to it is the nominal size in millimetres. The two numbers on the lines of the sign give the distance from the sign to the hydrant in metres: sideways and forwards.
+1. **Find the hydrant.** Look for the sign. In Germany, “H” stands for hydrant and the number next to it is the nominal size (DN) of the pipe, e.g. DN 100. The two numbers on the lines of the sign give the distance from the sign to the hydrant in metres: sideways and forwards.
 2. **Check whether it is already recorded.** Look for markers nearby in Hydrantenjäger or OpenFireMap.
 3. **Add a new one.** Stand about three metres in front of the hydrant, point the phone at it, choose the type (underground, pillar, wall, suction point …) and the position. Only enter the size and number if you are sure, for example from the sign.
 4. **Check an existing one.** Are the type, size and number correct? If the point is more than a few metres off, move it.

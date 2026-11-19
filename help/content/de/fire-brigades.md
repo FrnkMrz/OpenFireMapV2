@@ -62,7 +62,7 @@ Ein Trupp besteht aus zwei bis drei Personen: eine Person bedient das Handy, ein
 ## Am Hydranten: sechs Schritte {#am-hydranten}
 
 :::steps
-1. **Hydranten finden.** Nach dem Hinweisschild suchen. „H“ steht für Hydrant, die Zahl daneben für die Nennweite in Millimetern. Die beiden Zahlen an den Linien des Schilds geben in Metern an, wie weit der Hydrant vom Schild entfernt liegt: seitlich und nach vorn.
+1. **Hydranten finden.** Nach dem Hinweisschild suchen. „H“ steht für Hydrant, die Zahl daneben für die Nennweite (DN) der Leitung, z. B. DN 100. Die beiden Zahlen an den Linien des Schilds geben in Metern an, wie weit der Hydrant vom Schild entfernt liegt: seitlich und nach vorn.
 2. **Nachsehen, ob er schon eingetragen ist.** In Hydrantenjäger oder OpenFireMap auf Marker in der Nähe achten.
 3. **Neu eintragen.** Etwa drei Meter vor den Hydranten stellen, das Handy auf ihn richten, Typ (Unterflur, Überflur, Wand, Saugstelle …) und Lage wählen. Nennweite und Nummer nur angeben, wenn sie sicher sind, etwa vom Schild.
 4. **Vorhandenen prüfen.** Stimmen Typ, Nennweite und Nummer? Liegt der Punkt mehr als ein paar Meter daneben, verschieben.
