@@ -31,6 +31,15 @@ Etkinliği yöneten kişi bir iki hafta önceden plan yapar:
 OSM kuralları ve ebeveyn izni geçerlidir. Gençler arayıp kontrol ederek not alabilir; yetişkin verileri kendi hesabından ekler.
 :::
 
+## Yazdırılabilir belgeler {#ausdrucken}
+
+| Belge | Kimler için | Dosya |
+|---|---|---|
+| **Ekip kartı**: altı adım, güvenlik, hidrant tabelasını okuma ve hidrant türleri | her ekip, çift taraflı A4 | [PDF’yi indir](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) (Almanca) |
+| **Kayıt formu, arıza listesi** ve belediye veya su idaresine mektup şablonu | ekipler ve takip çalışması, yatay A4 | [PDF’yi indir](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) (Almanca) |
+
+Bunlar itfaiyeyle saha testi öncesi ilk sürüm belgelerdir ve şimdilik yalnızca Almanca mevcuttur. Görüş ve önerilerinizi info@openfiremap.org adresine iletebilirsiniz.
+
 ## Tatbikatın akışı {#ablauf}
 
 90 dakika için: 15 dakika bilgilendirme ve gösterim, 60 dakika ekiplerle saha turu, 15 dakika değerlendirme. İki veya üç kişilik ekipte biri telefonu kullanır, biri trafiğe dikkat eder, gerekirse biri not alır.
