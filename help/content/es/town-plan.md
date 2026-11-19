@@ -8,13 +8,25 @@ order: 6
 
 ## Para qué sirve el plano urbano {#wofuer}
 
-Un plano impreso funciona sin red ni batería. Es útil en el parque de bomberos, en vehículos, para formación y planificación.\n\n## Requisitos {#voraussetzungen}\n\nSe necesita un ordenador. La cobertura actual del plano incluye Alemania. Desplaza y acerca el mapa hasta tu ciudad y después dibuja el marco.
+Un plano impreso funciona sin red ni batería. Es útil en el parque de bomberos, en vehículos, para formación y planificación.
 
-## Paso 1: área y formato {#schritt-1}\n\n:::figure plan-1 frame=browser\nPaso 1: marco del mapa y ajustes del papel.\n:::
+## Requisitos {#voraussetzungen}
+
+Se necesita un ordenador. La cobertura actual del plano incluye Alemania. Desplaza y acerca el mapa hasta tu ciudad y después dibuja el marco.
+
+## Paso 1: área y formato {#schritt-1}
+
+:::figure plan-1 frame=browser
+Paso 1: marco del mapa y ajustes del papel.
+:::
 
 Abre la herramienta, marca el área y elige papel y escala. Un área menor ofrece más detalle.
 
-## Paso 2: contenido {#schritt-2}\n\n:::figure plan-2 frame=browser\nPaso 2: selección del contenido de la hoja.\n:::
+## Paso 2: contenido {#schritt-2}
+
+:::figure plan-2 frame=browser
+Paso 2: selección del contenido de la hoja.
+:::
 
 Selecciona objetos, leyenda e índice de calles. Comprueba que el mapa contiene los elementos deseados.
 
