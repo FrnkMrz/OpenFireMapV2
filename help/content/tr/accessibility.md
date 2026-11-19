@@ -3,7 +3,7 @@ title: Erişilebilirlik
 description: OpenFireMap’i klavye, ekran okuyucu, büyütme ve azaltılmış hareketle kullanma.
 eyebrow: Erişilebilirlik
 lead: OpenFireMap fare olmadan, ekran okuyucuyla ve yüksek büyütmede çalışmalıdır. Özellikler ve bilinen eksikler burada açıklanır.
-order: 8
+order: 9
 ---
 
 ## Hedefimiz {#ziel}
