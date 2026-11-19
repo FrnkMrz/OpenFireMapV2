@@ -90,6 +90,10 @@ Sim. A atribuição “© OpenStreetMap contributors” tem de permanecer visív
 
 Pode corrigi-lo no OpenStreetMap com uma conta gratuita. Consulte [Adicionar hidrantes](../contribute/).
 
+### Somos um corpo de bombeiros e queremos registar os hidrantes da nossa zona. Como fazer? {#feuerwehr}
+
+O ideal é organizar uma noite de exercício ou um percurso pela cidade em equipas. O guia [Para os corpos de bombeiros](../fire-brigades/) explica a preparação, o decorrer, a segurança e o acompanhamento.
+
 ### Posso copiar plantas municipais? {#plaene}
 
 Só com autorização explícita. Adicione preferencialmente o que verificou no local.
