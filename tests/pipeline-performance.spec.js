@@ -1,6 +1,30 @@
 import { test, expect } from '@playwright/test';
 
+// Das Live-Delta nach den PMTiles fragt öffentliche Overpass-Server ab. Sind sie überlastet oder nicht erreichbar,
+// zeigt die Status-Box nur den Basis-Stand ohne „Sync“, und die Tests schwankten mit der Overpass-Erreichbarkeit.
+// Diese Tests prüfen Pipeline und Kachel-Cache, nicht Overpass: Overpass antwortet hier deshalb mit einem frischen,
+// leeren Delta (Datenstand jetzt, keine Änderungen). Die Pipeline selbst bleibt live.
+async function stubOverpassDelta(page) {
+  const base = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  await page.route('**/api/interpreter', (route) => route.fulfill({
+    status: 200,
+    headers: { 'access-control-allow-origin': '*' },
+    contentType: 'application/json',
+    body: JSON.stringify({ version: 0.6, osm3s: { timestamp_osm_base: base }, elements: [] })
+  }));
+}
+
+// Wartet, bis das (nachgebildete) Delta durch ist, und prüft dann die Anzeige
+async function expectSynced(page) {
+  await expect.poll(() => page.evaluate(() => window.State?.dataStatus?.deltaStatus), { timeout: 10000 }).toBe('success');
+  await expect(page.locator('#data-status')).toContainText('+Sync');
+}
+
 test.describe('Pipeline E2E Performance & Deduplication', () => {
+  test.beforeEach(async ({ page }) => {
+    await stubOverpassDelta(page);
+  });
+
   test.beforeAll(async () => {
     try {
       const res = await fetch('https://pipeline.openfiremap.org/metadata.json', { signal: AbortSignal.timeout(2000) });
@@ -80,9 +104,8 @@ test.describe('Pipeline E2E Performance & Deduplication', () => {
     // 2. PMTiles Range-Requests dürfen den sichtbaren Kachel-Grid nicht überschreiten (<= 45 Kacheln)
     expect(rangeRequests.length).toBeLessThanOrEqual(45);
 
-    // 3. Status-Indikator muss Datenstatus der Pipeline anzeigen (Quelle: pipeline)
-    const statusText = await page.textContent('#data-status');
-    expect(statusText).toMatch(/Sync/);
+    // 3. Status-Indikator muss Datenstatus der Pipeline anzeigen (Quelle: pipeline, Delta abgeschlossen)
+    await expectSynced(page);
     const dataSource = await page.evaluate(() => window.State?.dataStatus?.source);
     expect(dataSource).toBe('pipeline');
   });
@@ -129,8 +152,7 @@ test.describe('Pipeline E2E Performance & Deduplication', () => {
     // und die Kacheln liegen im RAM-Cache -> 0 zusätzliche Kachelabrufe
     expect(callsAfterZ17 - callsAfterZ16).toBe(0);
 
-    const statusText = await page.textContent('#data-status');
-    expect(statusText).toMatch(/Sync/);
+    await expectSynced(page);
     const dataSource = await page.evaluate(() => window.State?.dataStatus?.source);
     expect(dataSource).toBe('pipeline');
   });
