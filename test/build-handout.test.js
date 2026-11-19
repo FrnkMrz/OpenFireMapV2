@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseFrontMatter, renderHandoutHtml } from '../scripts/build-handout.mjs';
 
@@ -80,6 +80,59 @@ describe('Handout: Overlay-Leitfaden', () => {
         expect(images.length).toBeGreaterThan(0);
         for (const path of images) {
             expect(() => readFileSync(new URL(`../handouts/overlay-leitfaden/${path}`, import.meta.url))).not.toThrow();
+        }
+    });
+});
+
+describe('Handouts: Feuerwehr-Material', () => {
+    const read = (path) => readFileSync(new URL(`../handouts/${path}`, import.meta.url), 'utf8');
+    const truppkarte = read('feuerwehr-truppkarte/OpenFireMap-Feuerwehr-Truppkarte.md');
+    const boegen = read('feuerwehr-boegen/OpenFireMap-Feuerwehr-Erfassungsbogen.md');
+    const prose = (source) => source.replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '');
+
+    it('jeder Handout-Ordner wird beim Website-Build gerendert', () => {
+        const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+        const folders = readdirSync(new URL('../handouts/', import.meta.url), { withFileTypes: true })
+            .filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+        expect(folders).toEqual(expect.arrayContaining(['feuerwehr-truppkarte', 'feuerwehr-boegen']));
+        for (const folder of folders) expect(pkg.scripts.build, folder).toContain(`handouts/${folder}`);
+    });
+
+    it('die Hilfe-Seite verlinkt beide PDFs unter dem Namen, den der Build erzeugt', () => {
+        for (const lang of ['de', 'en']) {
+            const page = readFileSync(new URL(`../help/content/${lang}/fire-brigades.md`, import.meta.url), 'utf8');
+            expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf');
+            expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf');
+        }
+    });
+
+    it('Trupp-Karte: Sicherheitsregeln, Hashtag, Notruf, Mängel getrennt, Bild vorhanden', () => {
+        const html = renderHandoutHtml(truppkarte);
+        expect(html).toContain('Hydranten nicht öffnen');
+        expect(html).toContain('Warnweste');
+        expect(html).toContain('#OpenFireMap');
+        expect(html).toContain('112');
+        expect(html).toContain('<strong>nicht</strong> in OpenStreetMap');
+        const images = [...truppkarte.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1]);
+        expect(images.length).toBeGreaterThan(0);
+        for (const path of images) expect(() => read(`feuerwehr-truppkarte/${path}`)).not.toThrow();
+    });
+
+    it('Bögen: Erfassungsbogen und Mängelliste mit leeren Zeilen, Anschreiben-Vorlage', () => {
+        const html = renderHandoutHtml(boegen);
+        expect(html).toContain('<h2>Erfassungsbogen</h2>');
+        expect(html).toContain('<h2>Mängelliste</h2>');
+        expect(html).toContain('Anschreiben');
+        const tables = html.match(/<table>[\s\S]*?<\/table>/g) || [];
+        expect(tables.length).toBe(2);
+        for (const table of tables) expect((table.match(/<tr>/g) || []).length).toBeGreaterThanOrEqual(11);
+    });
+
+    it('keine Wir-Form außer in der Anschreiben-Vorlage, keine festen Zeitzusagen', () => {
+        const [beforeLetter] = boegen.split('## Vorlage: Anschreiben');
+        for (const text of [truppkarte, beforeLetter]) {
+            expect(prose(text)).not.toMatch(/\b(wir|uns|unser\w*)\b/i);
+            expect(prose(text)).not.toMatch(/(sofort|innerhalb von \d+|nach \d+ (Minuten|Stunden)) (sichtbar|erscheint)/i);
         }
     });
 });

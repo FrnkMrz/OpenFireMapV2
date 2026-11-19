@@ -1,9 +1,9 @@
 // Baut aus einer Markdown-Quelle ein PDF-Handout (A4).
 //
-//   npm run handout:build -- handouts/overlay-leitfaden
+//   npm run handout:build -- handouts/overlay-leitfaden [weitere Ordner …]
 //
 // Ordneraufbau: <ordner>/<Name>.md (Quelle mit Front Matter), <ordner>/style.css, <ordner>/img/ (Bilder).
-// Ergebnis: <ordner>/<Name>.pdf. Markdown wird mit „marked“ in HTML gewandelt, das PDF rendert Chromium über
+// Ergebnis: <ordner>/<Name>.pdf, dazu eine Kopie unter public/downloads/<Name>.pdf. Markdown wird mit „marked“ in HTML gewandelt, das PDF rendert Chromium über
 // Playwright (beide sind Entwicklungsabhängigkeiten, es gibt keinen Betrieb und keinen Eintrag im Browser-Bundle).
 //
 // Besonderheiten der Markdown-Quelle:
@@ -107,7 +107,7 @@ export async function buildHandout(directory) {
   const html = renderHandoutHtml(readFileSync(join(dir, source), 'utf8'), { css });
   const htmlPath = join(dir, '.build.tmp.html');
   const pdfPath = join(dir, `${basename(source, '.md')}.pdf`);
-  const publicPdfPath = resolve(process.cwd(), 'public/downloads/OpenFireMap-Overlay-Leitfaden.pdf');
+  const publicPdfPath = resolve(process.cwd(), 'public/downloads', `${basename(source, '.md')}.pdf`);
   writeFileSync(htmlPath, html);
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch();
@@ -126,12 +126,14 @@ export async function buildHandout(directory) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const directory = process.argv[2];
-  if (!directory) {
-    console.error('Aufruf: node scripts/build-handout.mjs <ordner>');
+  const directories = process.argv.slice(2);
+  if (directories.length === 0) {
+    console.error('Aufruf: node scripts/build-handout.mjs <ordner> [weitere Ordner …]');
     process.exit(2);
   }
-  buildHandout(directory).then((pdf) => console.log(`geschrieben: ${pdf}`), (error) => {
+  (async () => {
+    for (const directory of directories) console.log(`geschrieben: ${await buildHandout(directory)}`);
+  })().catch((error) => {
     console.error(error);
     process.exit(1);
   });

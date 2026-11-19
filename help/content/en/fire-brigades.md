@@ -31,12 +31,21 @@ The person leading the drill should plan one to two weeks ahead:
 3. **Look at the current state.** Open OpenFireMap at zoom level 17 or above and see where hydrants are already shown. A [CSV export](../export/#gpx-csv) of the area makes a good checklist for each team.
 4. **Create accounts.** Everyone who wants to add data creates their own free OpenStreetMap account beforehand ([here is how](../contribute/#vorher)). Please do not use one shared account for the whole brigade: OpenStreetMap wants to be able to see who changed what.
 5. **Describe the activity.** For joint, organised mapping, OpenStreetMap asks for a short description in the OSM wiki: who, where, when, what ([Organised Editing Guidelines](https://osmfoundation.org/wiki/Organised_Editing_Guidelines)). Add the hashtag `#OpenFireMap` to every changeset comment, so your changes are easy to find later.
-6. **Get the equipment ready.** Charged phones with [Hydrantenjäger](https://hydrantenjaeger.de/) open in the browser (allow location and compass once in advance), power banks, high-visibility vests, torches, a clipboard with paper for notes and the list of defects.
+6. **Get the equipment ready.** Charged phones with [Hydrantenjäger](https://hydrantenjaeger.de/) open in the browser (allow location and compass once in advance), power banks, high-visibility vests, torches, a clipboard with the [team card and forms](#ausdrucken).
 :::
 
 :::tip Youth fire brigade
 For children and teenagers, OpenStreetMap’s rules and parental consent apply. Often it is simpler if the young people search, check and take notes, and a supervisor adds the data with their own account.
 :::
+
+## To print {#ausdrucken}
+
+| What | For whom | File |
+|---|---|---|
+| **Team card**: six steps, safety, reading the hydrant sign, hydrant types | every team, A4 double-sided | [Download PDF](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) (German) |
+| **Recording sheet, list of defects** and a template for the cover letter to the municipality or water utility | every team and the follow-up, A4 landscape | [Download PDF](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) (German) |
+
+Both files are a first version before the field test with a fire brigade, and for now they are only available in German. We are happy to hear what is missing or unclear at info@openfiremap.org.
 
 ## Running the drill {#ablauf}
 
@@ -57,7 +66,7 @@ A team has two or three people: one uses the phone, one watches the traffic and 
 2. **Check whether it is already recorded.** Look for markers nearby in Hydrantenjäger or OpenFireMap.
 3. **Add a new one.** Stand about three metres in front of the hydrant, point the phone at it, choose the type (underground, pillar, wall, suction point …) and the position. Only enter the size and number if you are sure, for example from the sign.
 4. **Check an existing one.** Are the type, size and number correct? If the point is more than a few metres off, move it.
-5. **Upload.** Without a network connection, note the hydrant on paper (street, house number opposite, type, sign) and add it later.
+5. **Upload.** Without a network connection, note the hydrant on the [recording sheet](#ausdrucken) (street, house number opposite, type, sign) and add it later.
 6. **Note defects separately.** Missing or illegible sign, cover blocked by a parked car, tarred over or overgrown, damaged hydrant: this does **not** belong in OpenStreetMap, but on your list of defects.
 :::
 
@@ -93,7 +102,7 @@ One or two people at a computer usually need half an hour to an hour:
 1. **Check that everything has arrived.** New entries do not always appear in OpenFireMap right away. How long it takes depends on the services the map loads from; there is no fixed time. The reasons are explained under [Data & freshness](../data/#verzoegerung).
 2. **Add your paper notes**, most easily with the [iD editor](../contribute/#id).
 3. **A quick quality check:** duplicate points, hydrants without a type, points in the middle of a roof. You can find your own changes via your profile on openstreetmap.org or via the hashtag `#OpenFireMap`.
-4. **Send the list of defects** to the municipality or water utility.
+4. **Send the list of defects** to the municipality or water utility. A template for the cover letter is included in the [forms](#ausdrucken).
 5. **Print the town plan again** and put it up in the fire station, and in the vehicle folders too. The guide [Create a town plan](../town-plan/) shows how.
 :::
 
