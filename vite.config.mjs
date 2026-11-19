@@ -87,7 +87,7 @@ function ortsplanDevData() {
 }
 
 export default defineConfig({
-  plugins: [preserveRepositoryDocumentation(), stripDevOnlyCsp(), ortsplanDevData()],
+  plugins: [preserveRepositoryDocumentation(), stripDevOnlyCsp(), ortsplanDevData(), helpPagesPlugin()],
   // Required for GitHub Pages if the repo is not at root domain,
   // but usually './' works best for relative paths.
   base: './',

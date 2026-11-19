@@ -1,20 +1,17 @@
 {
   "meta.title": "Help & guide – OpenFireMap",
   "meta.description": "How OpenFireMap works: the map on desktop and smartphone, export, town plan, overlay, and how to add fire hydrants to OpenStreetMap.",
-
   "ui.skip": "Skip to content",
   "ui.brand_help": "Help",
   "ui.nav_label": "Help topics",
   "ui.lang_label": "Language",
   "ui.to_map": "Open map",
   "ui.menu": "Show topics",
-
   "nav.map": "Map",
   "nav.plan": "Town plan",
   "nav.overlay": "Overlay",
   "nav.contribute": "Contribute",
   "nav.faq": "FAQ",
-
   "hero.eyebrow": "Help & guide",
   "hero.title": "Find fire water.",
   "hero.title_accent": "In seconds.",
@@ -24,7 +21,6 @@
   "hero.fact_account": "No account needed",
   "hero.fact_coverage": "Worldwide, extra fast in 45 European countries",
   "hero.fact_free": "Free and open",
-
   "steps.eyebrow": "Get started",
   "steps.title": "Three steps to the nearest hydrant",
   "steps.label": "Step",
@@ -32,9 +28,8 @@
   "steps.s1_text": "Type a place or address into the search field and press <kbd>Enter</kbd>. Or use the location button to find yourself.",
   "steps.s2_title": "Zoom in",
   "steps.s2_text": "Fire stations show up early. Hydrants and defibrillators appear from zoom level 15, with symbols from 17.",
-  "steps.s3_title": "Tap a symbol",
-  "steps.s3_text": "Tapping a symbol shows type, diameter, number and more. For hydrants, a circle marks a 100 metre radius.",
-
+  "steps.s3_title": "Check a symbol",
+  "steps.s3_text": "From zoom level 18, a symbol shows type, diameter, number and more as soon as you point at it with the mouse. Clicking or tapping a hydrant draws a 100 metre radius.",
   "zoom.title": "What you see at each zoom level",
   "zoom.hint": "The current zoom level is shown in the status box.",
   "zoom.level": "Zoom level",
@@ -52,7 +47,6 @@
   "zoom.z17_text": "type at a glance",
   "zoom.z18_title": "Details",
   "zoom.z18_text": "on hover",
-
   "ui_tour.eyebrow": "The interface",
   "ui_tour.title": "Every button explained",
   "ui_tour.lead": "Choose your device and click an entry. On a computer the tools sit at the top left; on a smartphone they are in the menu.",
@@ -87,7 +81,6 @@
   "ui_tour.m_legal_text": "This is also where you find this help.",
   "ui_tour.m_locate_text": "Jumps to your position.",
   "ui_tour.m_note": "Export and the town plan are only available on a computer. On a smartphone you can start OpenFireMap like an app via “Add to Home Screen”.",
-
   "topics.eyebrow": "All topics",
   "topics.title": "What do you need help with?",
   "topics.new": "New",
@@ -110,7 +103,6 @@
   "topics.data_text": "Where the data comes from and how current it is",
   "topics.a11y": "Accessibility",
   "topics.a11y_text": "Keyboard, screen readers, reduced motion",
-
   "sheet.title": "Old Town South",
   "sheet.subtitle": "Hydrant plan · 1:2500",
   "sheet.hydrant": "Hydrant",
@@ -118,7 +110,6 @@
   "sheet.aed": "Defibrillator",
   "sheet.index": "Street index",
   "sheet.source": "Data © OpenStreetMap contributors (ODbL) · openfiremap.org",
-
   "plan.eyebrow": "Town plan",
   "plan.title": "From map view to printed plan",
   "plan.lead": "The town plan turns OpenFireMap into a print-ready sheet with grid, legend, north arrow, scale bar and street index. For the fire station wall, training or the folder in the vehicle.",
@@ -132,7 +123,6 @@
   "plan.chip_germany": "Base map for Germany",
   "plan.chip_formats": "PDF and PNG",
   "plan.cta": "Create a town plan",
-
   "contrib.eyebrow": "Contribute",
   "contrib.title": "A hydrant is missing? Add it.",
   "contrib.lead": "All data comes from OpenStreetMap. What you add there usually shows up in OpenFireMap within seconds. Pick the tool that suits you.",
@@ -151,7 +141,6 @@
   "contrib.rule_seen": "Only add what you have seen on site yourself.",
   "contrib.rule_copyright": "Do not copy data from water utility plans without their permission.",
   "contrib.rule_comment": "When saving, add a short note on what you changed.",
-
   "good.eyebrow": "Good to know",
   "good.title": "What OpenFireMap is and what it is not",
   "good.alarm_title": "In an emergency, always call first",
@@ -164,7 +153,6 @@
   "good.free_text": "A non-commercial project. The map runs in your browser.",
   "good.keys_title": "Works with a keyboard",
   "good.keys_text": "All menus, symbols and the export can be used without a mouse.",
-
   "faq.eyebrow": "FAQ",
   "faq.title": "Frequently asked questions",
   "faq.contact_title": "Your question is not here?",
@@ -185,7 +173,6 @@
   "faq.a6": "No. OpenFireMap is a private, non-commercial project based on OpenStreetMap. It does not officially work with any authority or fire service.",
   "faq.q7": "How do I get the fire service layers into my own map?",
   "faq.a7": "With the overlay. The <a href=\"/overlay/\">overlay page</a> has a demo and a PDF guide. To get your domain enabled, drop us a line.",
-
   "foot.about": "Fire service related objects from OpenStreetMap. A non-commercial learning project.",
   "foot.help": "Help",
   "foot.first_steps": "Get started",

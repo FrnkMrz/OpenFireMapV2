@@ -1,20 +1,17 @@
 {
   "meta.title": "Hilfe & Anleitung – OpenFireMap",
   "meta.description": "So funktioniert OpenFireMap: Karte am Computer und Smartphone, Export, Ortsplan, Overlay und wie du Hydranten in OpenStreetMap einträgst.",
-
   "ui.skip": "Zum Inhalt springen",
   "ui.brand_help": "Hilfe",
   "ui.nav_label": "Hilfe-Themen",
   "ui.lang_label": "Sprache",
   "ui.to_map": "Zur Karte",
   "ui.menu": "Themen anzeigen",
-
   "nav.map": "Karte",
   "nav.plan": "Ortsplan",
   "nav.overlay": "Overlay",
   "nav.contribute": "Mitmachen",
   "nav.faq": "FAQ",
-
   "hero.eyebrow": "Hilfe & Anleitung",
   "hero.title": "Löschwasser finden.",
   "hero.title_accent": "In Sekunden.",
@@ -24,7 +21,6 @@
   "hero.fact_account": "Ohne Konto",
   "hero.fact_coverage": "Weltweit, besonders schnell in 45 Ländern Europas",
   "hero.fact_free": "Kostenlos und offen",
-
   "steps.eyebrow": "Erste Schritte",
   "steps.title": "In drei Schritten zum nächsten Hydranten",
   "steps.label": "Schritt",
@@ -32,9 +28,8 @@
   "steps.s1_text": "Tippe einen Ort oder eine Adresse ins Suchfeld und drücke <kbd>Enter</kbd>. Oder lass dich über den Standort-Knopf orten.",
   "steps.s2_title": "Hineinzoomen",
   "steps.s2_text": "Feuerwachen siehst du schon im Überblick. Hydranten und Defibrillatoren erscheinen ab Zoomstufe 15, mit Symbol ab 17.",
-  "steps.s3_title": "Symbol antippen",
-  "steps.s3_text": "Ein Tipp auf ein Symbol zeigt Typ, Durchmesser, Nummer und mehr. Bei Hydranten zeigt ein Kreis den Umkreis von 100 Metern.",
-
+  "steps.s3_title": "Symbol ansehen",
+  "steps.s3_text": "Ab Zoomstufe 18 zeigt ein Symbol Typ, Durchmesser, Nummer und mehr, sobald du mit der Maus darauf zeigst. Ein Klick oder Tipp auf einen Hydranten zeichnet den Umkreis von 100 Metern.",
   "zoom.title": "Was du bei welcher Zoomstufe siehst",
   "zoom.hint": "Die aktuelle Zoomstufe steht in der Status-Box.",
   "zoom.level": "Zoomstufe",
@@ -52,7 +47,6 @@
   "zoom.z17_text": "Typ auf einen Blick",
   "zoom.z18_title": "Details",
   "zoom.z18_text": "schon beim Darüberfahren",
-
   "ui_tour.eyebrow": "Die Oberfläche",
   "ui_tour.title": "Jeder Knopf erklärt",
   "ui_tour.lead": "Wähle dein Gerät und klicke auf einen Eintrag. Am Computer liegen die Werkzeuge oben links, am Smartphone im Menü.",
@@ -87,7 +81,6 @@
   "ui_tour.m_legal_text": "Hier findest du auch den Weg zu dieser Hilfe.",
   "ui_tour.m_locate_text": "Springt zu deiner Position.",
   "ui_tour.m_note": "Export und Ortsplan gibt es nur am Computer. Am Smartphone kannst du OpenFireMap über „Zum Home-Bildschirm“ wie eine App starten.",
-
   "topics.eyebrow": "Alle Themen",
   "topics.title": "Wobei brauchst du Hilfe?",
   "topics.new": "Neu",
@@ -110,7 +103,6 @@
   "topics.data_text": "Woher die Daten kommen und wie frisch sie sind",
   "topics.a11y": "Barrierefreiheit",
   "topics.a11y_text": "Tastatur, Screenreader, weniger Bewegung",
-
   "sheet.title": "Altstadt Süd",
   "sheet.subtitle": "Hydrantenplan · 1:2500",
   "sheet.hydrant": "Hydrant",
@@ -118,7 +110,6 @@
   "sheet.aed": "Defibrillator",
   "sheet.index": "Straßenverzeichnis",
   "sheet.source": "Daten © OpenStreetMap-Mitwirkende (ODbL) · openfiremap.org",
-
   "plan.eyebrow": "Ortsplan",
   "plan.title": "Vom Kartenausschnitt zum gedruckten Plan",
   "plan.lead": "Der Ortsplan macht aus OpenFireMap ein druckfertiges Blatt mit Gitter, Legende, Nordpfeil, Maßstab und Straßenverzeichnis. Für den Aushang im Gerätehaus, die Übung oder die Mappe im Fahrzeug.",
@@ -132,7 +123,6 @@
   "plan.chip_germany": "Grundkarte für Deutschland",
   "plan.chip_formats": "PDF und PNG",
   "plan.cta": "Ortsplan erstellen",
-
   "contrib.eyebrow": "Mitmachen",
   "contrib.title": "Ein Hydrant fehlt? Trag ihn ein.",
   "contrib.lead": "Alle Daten stammen aus OpenStreetMap. Was du dort einträgst, erscheint meist nach wenigen Sekunden auch in OpenFireMap. Such dir das Werkzeug aus, das zu dir passt.",
@@ -151,7 +141,6 @@
   "contrib.rule_seen": "Trag nur ein, was du selbst vor Ort gesehen hast.",
   "contrib.rule_copyright": "Übernimm keine Daten aus Plänen der Wasserversorger ohne deren Erlaubnis.",
   "contrib.rule_comment": "Schreib beim Speichern kurz dazu, was du geändert hast.",
-
   "good.eyebrow": "Gut zu wissen",
   "good.title": "Was OpenFireMap ist und was nicht",
   "good.alarm_title": "Im Notfall immer zuerst den Notruf",
@@ -164,7 +153,6 @@
   "good.free_text": "Ein nicht-kommerzielles Projekt. Die Karte läuft in deinem Browser.",
   "good.keys_title": "Funktioniert mit Tastatur",
   "good.keys_text": "Alle Menüs, Symbole und der Export lassen sich ohne Maus bedienen.",
-
   "faq.eyebrow": "FAQ",
   "faq.title": "Häufige Fragen",
   "faq.contact_title": "Deine Frage ist nicht dabei?",
@@ -185,7 +173,6 @@
   "faq.a6": "Nein. OpenFireMap ist ein privates, nicht-kommerzielles Projekt auf Basis von OpenStreetMap. Es arbeitet mit keiner Behörde oder Feuerwehr offiziell zusammen.",
   "faq.q7": "Wie bekomme ich die Feuerwehr-Ebenen in meine eigene Karte?",
   "faq.a7": "Über das Overlay. Die <a href=\"/overlay/\">Overlay-Seite</a> zeigt eine Demo und bietet einen Leitfaden als PDF. Für die Freigabe deiner Domain schreib uns kurz.",
-
   "foot.about": "Feuerwehr-relevante Objekte aus OpenStreetMap. Ein nicht-kommerzielles Lernprojekt.",
   "foot.help": "Hilfe",
   "foot.first_steps": "Erste Schritte",
