@@ -186,3 +186,25 @@ test('Export-Titel-Modal schließt sich bei Klick auf Abbrechen', async ({ page 
     await expect(modal).toHaveClass(/hidden/);
 });
 
+
+// Zoom-Anzeige der Status-Box: Startzoom aus Permalink bzw. gespeicherter Ansicht, nicht der Platzhalter aus index.html
+test.describe('Zoom-Anzeige', () => {
+    test('übernimmt den Zoom aus dem Permalink beim Start', async ({ page }) => {
+        await gotoReady(page, '/?lang=de#17/49.45280/11.07700/voyager');
+        await expect(page.locator('#zoom-val')).toHaveText('17.0');
+    });
+
+    test('übernimmt den Zoom der gespeicherten Ansicht (ohne Hash)', async ({ page }) => {
+        await page.addInitScript(() => localStorage.setItem('ofm_last_view', JSON.stringify({ center: [49.4528, 11.077], zoom: 16 })));
+        await gotoReady(page, '/?lang=de');
+        await expect(page.locator('#zoom-val')).toHaveText('16.0');
+    });
+
+    test('folgt dem Zoom per Tastatur', async ({ page }) => {
+        await gotoReady(page, '/?lang=de#15/49.45280/11.07700/voyager');
+        await expect(page.locator('#zoom-val')).toHaveText('15.0');
+        await page.locator('#map').focus();
+        await page.keyboard.press('+');
+        await expect(page.locator('#zoom-val')).toHaveText('16.0');
+    });
+});

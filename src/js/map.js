@@ -714,10 +714,14 @@ export function initMapLogic() {
         }
     });
 
-    State.map.on('zoom', () => {
+    // Zoom-Anzeige: bei jeder Zoomänderung und einmal sofort. Die Startposition (Permalink, gespeicherte Ansicht)
+    // setzt schon der L.map-Konstruktor, bevor dieser Listener existiert; sonst bliebe der Platzhalter 14.0 aus index.html stehen.
+    const updateZoomDisplay = () => {
         const el = document.getElementById('zoom-val');
         if (el) el.innerText = State.map.getZoom().toFixed(1);
-    });
+    };
+    State.map.on('zoom zoomend', updateZoomDisplay);
+    updateZoomDisplay();
 
     // Initial load: 
     // Wir feuern 'moveend' SOFORT, damit Daten ohne Verzögerung geladen werden.
