@@ -58,5 +58,5 @@ From zoom level 17, if several objects lie within 5 metres, the map groups them 
 The **[map symbols](/symbols/)** page lists every symbol with its OpenStreetMap tags. It is also useful for mappers who want to know how a symbol comes about.
 
 :::note Where the details come from
-Type, diameter, number and everything else come from OpenStreetMap. If a hydrant has no type recorded, the map shows a red dot without a letter. [Contribute](../#mitmachen) explains how to add it.
+Type, diameter, number and everything else come from OpenStreetMap. If a hydrant has no type recorded, the map shows a red dot without a letter. [Contribute](../contribute/) explains how to add it.
 :::

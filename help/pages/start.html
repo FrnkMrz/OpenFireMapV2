@@ -7,7 +7,7 @@
                     <p class="lead">{{hero.lead}}</p>
                     <div class="cta">
                         <a class="btn btn-primary" href="#schritte">{{hero.cta_start}} <svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
-                        <a class="btn btn-ghost" href="#mitmachen">{{hero.cta_contribute}}</a>
+                        <a class="btn btn-ghost" href="{{@home}}contribute/">{{hero.cta_contribute}}</a>
                     </div>
                     <ul class="facts">
                         <li><svg aria-hidden="true"><use href="#i-check"/></svg>{{hero.fact_account}}</li>
@@ -22,13 +22,14 @@
                         <img src="{{@img:desktop}}" alt="" width="1440" height="900" fetchpriority="high">
                     </div>
                     <div class="phone"><img src="{{@img:mobile}}" alt="" width="780" height="1688" loading="lazy"></div>
-                    <!-- Hinweisschild für einen Unterflurhydranten (DIN 4066), stilisiert -->
-                    <svg class="sign" viewBox="0 0 200 250">
-                        <rect x="4" y="4" width="192" height="242" rx="12" fill="#fff" stroke="#c8102e" stroke-width="12"/>
-                        <text x="100" y="98" text-anchor="middle" class="sign-t" font-size="92">H 80</text>
-                        <path d="M30 140h140M100 140v70" stroke="#c8102e" stroke-width="7" stroke-linecap="round"/>
-                        <text x="62" y="186" text-anchor="middle" class="sign-t" font-size="40">1,5</text>
-                        <text x="140" y="228" text-anchor="middle" class="sign-t" font-size="40">6,2</text>
+                    <!-- Hinweisschild für einen Unterflurhydranten nach DIN 4066, Format 250 × 200 mm (quer), stilisiert -->
+                    <svg class="sign" viewBox="0 0 250 200">
+                        <rect x="3" y="3" width="244" height="194" rx="8" fill="#fff" stroke="#d6dde4" stroke-width="2"/>
+                        <rect x="11" y="11" width="228" height="178" rx="4" fill="none" stroke="#c8102e" stroke-width="10"/>
+                        <text x="125" y="84" text-anchor="middle" class="sign-t" font-size="66">H 80</text>
+                        <path d="M46 112h158M125 112v58" stroke="#c8102e" stroke-width="6" stroke-linecap="square"/>
+                        <text x="84" y="152" text-anchor="middle" class="sign-t" font-size="34">1,5</text>
+                        <text x="166" y="152" text-anchor="middle" class="sign-t" font-size="34">6,2</text>
                     </svg>
                 </div>
             </div>
@@ -164,7 +165,7 @@
                     <li><a class="topic" href="{{@home}}layers/"><span class="ic"><svg aria-hidden="true"><use href="#i-symbols"/></svg></span><h3>{{topics.symbols}}</h3><p>{{topics.symbols_text}}</p></a></li>
                     <li><a class="topic" href="{{@home}}town-plan/"><span class="ic"><svg aria-hidden="true"><use href="#i-sheet"/></svg></span><h3>{{topics.plan}} <span class="badge">{{topics.new}}</span></h3><p>{{topics.plan_text}}</p></a></li>
                     <li><a class="topic" href="/overlay/"><span class="ic"><svg aria-hidden="true"><use href="#i-overlay"/></svg></span><h3>{{topics.overlay}}</h3><p>{{topics.overlay_text}}</p></a></li>
-                    <li><a class="topic" href="#mitmachen"><span class="ic"><svg aria-hidden="true"><use href="#i-hand"/></svg></span><h3>{{topics.contribute}}</h3><p>{{topics.contribute_text}}</p></a></li>
+                    <li><a class="topic" href="{{@home}}contribute/"><span class="ic"><svg aria-hidden="true"><use href="#i-hand"/></svg></span><h3>{{topics.contribute}}</h3><p>{{topics.contribute_text}}</p></a></li>
                     <li><a class="topic" href="{{@home}}export/"><span class="ic"><svg aria-hidden="true"><use href="#i-download"/></svg></span><h3>{{topics.export}}</h3><p>{{topics.export_text}}</p></a></li>
                     <li><a class="topic" href="{{@home}}data/"><span class="ic"><svg aria-hidden="true"><use href="#i-clock"/></svg></span><h3>{{topics.data}}</h3><p>{{topics.data_text}}</p></a></li>
                     <li><div class="topic is-soon"><span class="ic"><svg aria-hidden="true"><use href="#i-a11y"/></svg></span><h3>{{topics.a11y}} <span class="badge muted">{{topics.soon}}</span></h3><p>{{topics.a11y_text}}</p></div></li>
@@ -290,6 +291,7 @@
                         <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>{{contrib.rule_seen}}</span></li>
                         <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>{{contrib.rule_copyright}}</span></li>
                         <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>{{contrib.rule_comment}}</span></li>
+                        <li class="rules-cta"><a class="btn btn-primary" href="{{@home}}contribute/">{{contrib.cta}} <svg aria-hidden="true"><use href="#i-arrow"/></svg></a></li>
                     </ul>
                 </div>
             </div>
@@ -329,6 +331,7 @@
                         <p>{{faq.contact_text}}</p>
                         <div class="mail"><a class="addr" id="mail" href="mailto:info@openfiremap.org">info@openfiremap.org</a><button class="copy" id="copy-mail" type="button" data-done="{{faq.copied}}">{{faq.copy}}</button></div>
                     </div>
+                    <p class="overlay-hint"><svg aria-hidden="true"><use href="#i-overlay"/></svg><span>{{faq.overlay_hint}}</span></p>
                 </div>
                 <div class="faq">
                     <details open><summary><span>{{faq.q1}}</span><span class="pm" aria-hidden="true"><svg><use href="#i-plus"/></svg></span></summary><p>{{faq.a1}}</p></details>

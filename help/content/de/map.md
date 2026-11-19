@@ -56,7 +56,7 @@ Ein Klick auf einen Hydranten zeichnet den Umkreis von 100 Metern ein.
 
 **Umkreis und Entfernung:** Ein Klick auf einen Hydranten zeigt ab Zoomstufe 16 einen gestrichelten Kreis mit 100 Metern Radius. So schätzt du schnell ab, welche Hydranten in Schlauchlänge liegen. Ab Zoomstufe 17 steht „100 m“ an der Kreislinie. Hast du vorher **Mein Standort** genutzt, zeichnet OpenFireMap ab Zoomstufe 17 außerdem eine blaue Linie von dir zum Hydranten mit der Entfernung.
 
-Die Details zeigen, was in OpenStreetMap eingetragen ist, zum Beispiel Typ, Durchmesser, Nummer, Druck, Lage oder Betreiber. Fehlt etwas, ist es noch nicht erfasst. Wie du es ergänzt, steht unter [Mitmachen](../#mitmachen).
+Die Details zeigen, was in OpenStreetMap eingetragen ist, zum Beispiel Typ, Durchmesser, Nummer, Druck, Lage oder Betreiber. Fehlt etwas, ist es noch nicht erfasst. Wie du es ergänzt, steht unter [Mitmachen](../contribute/).
 
 Was die Symbole und Farben bedeuten, erklärt die Seite [Ebenen & Kartenzeichen](../layers/).
 

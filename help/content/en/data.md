@@ -10,23 +10,51 @@ order: 4
 
 Hydrants, water points, fire stations and defibrillators are added by the [OpenStreetMap](https://www.openstreetmap.org/) community, often by local firefighters. OpenFireMap displays this data but does not change it.
 
-Depending on the area, the map loads in one of two ways:
+## How OpenFireMap loads hydrants {#ladeweg}
 
-- **Prepared tiles:** for Germany, Austria, Switzerland, Liechtenstein and Luxembourg plus 40 more European countries, the data is ready-made. This is fast, even for large areas.
-- **Live query (Overpass):** everywhere else, OpenFireMap asks a public OpenStreetMap service directly. This works worldwide but takes longer and depends on how busy those services are.
+Depending on the area, the map uses one of two ways:
+
+- **Prepared tiles:** for Germany, Austria, Switzerland, Liechtenstein and Luxembourg plus 40 more European countries, OpenFireMap builds data tiles in advance from the OpenStreetMap country extracts (Geofabrik). They are hosted at Cloudflare and delivered through its cache. Your browser fetches only the few tiles the view needs.
+- **Overpass API:** everywhere else, OpenFireMap queries a public Overpass server directly, for the visible area plus a margin around it.
+
+:::note Why it is faster in Germany and Europe
+The difference is not that Overpass answers faster there. In these countries the map does not need an Overpass query for the hydrants at all: it reads the prepared tiles. Overpass is only asked for the changes since the base data date, which is a much smaller query.
+:::
+
+### What the Overpass API is {#overpass}
+
+The [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) is a public service that queries OpenStreetMap data by feature and area, for example “all hydrants in this rectangle”. The servers are run by volunteers and organisations, and many applications share them.
+
+How fast an answer comes depends on:
+
+- the **load** on the server OpenFireMap is using,
+- the **size** of the area and thus how long the query runs,
+- **waiting times and rejections** when a server is overloaded or rate-limits requests.
+
+OpenFireMap knows four Overpass servers and tries them in random order. If one does not answer or reports overload, the map pauses it briefly and asks the next. Areas you have loaded are kept in the local cache in your browser.
 
 ## How current the data is {#aktualitaet}
 
-| Area | Base data | New entries |
+| Area | Base data | New and changed entries |
 |---|---|---|
-| Germany, Austria, Switzerland, Liechtenstein, Luxembourg | daily | fetched live |
-| 40 more European countries | weekly | fetched live as long as the base data is at most 10 days old |
-| rest of the world | always current (live query) | immediately |
+| Germany, Austria, Switzerland, Liechtenstein, Luxembourg | prepared tiles, usually rebuilt daily | requested from Overpass |
+| 40 more European countries | prepared tiles, usually rebuilt weekly | requested from Overpass as long as the base data is at most 10 days old |
+| rest of the world | state of the Overpass server | with every query |
 
-After loading the prepared tiles, OpenFireMap asks in the background for everything that has changed in the view since the base data date. New or changed objects usually appear within seconds.
+After loading the prepared tiles, OpenFireMap asks in the background for everything that has changed in the view since the base data date and adds it to the map.
+
+### Why a new entry does not appear immediately {#verzoegerung}
+
+A change in OpenStreetMap does not show up in OpenFireMap at the same moment:
+
+- **Processing:** the Overpass server must have taken in the change. If it reports data that is too old, OpenFireMap discards the answer and shows the base data.
+- **Caches:** the map keeps the result of that request for a few minutes per area, and loaded areas also in the local cache.
+- **Outages:** if Overpass is overloaded or unreachable, the base data stays until a later request succeeds. OpenFireMap cannot influence that.
+
+So no fixed time can be promised. If you do not see your entry yet, reload the map after a while.
 
 :::note Deleted objects
-The live update only detects new and changed objects. A hydrant deleted in OpenStreetMap only disappears with the next base data update, so after at most a day or a week.
+The update only detects new and changed objects. A hydrant deleted in OpenStreetMap only disappears with the next base data update of the prepared tiles.
 :::
 
 ## The “Data status & origin” window {#popover}
@@ -59,7 +87,7 @@ OpenFireMap is not an offline map. Areas from the cache stay visible for a while
 
 ## When loading takes a while {#laden}
 
-With the live query, many users share public servers. If one is busy, OpenFireMap automatically tries the next. If that does not help, zoom in a little so less data is needed, and try again shortly. The message at the bottom shows what is happening.
+Outside the prepared countries, everything comes through Overpass. If a server is busy, OpenFireMap automatically tries the next; the message at the bottom shows what is happening. If that does not help, zoom in a little so the query gets smaller, and try again shortly. If all servers report overload, the bottleneck is Overpass itself. Then the only option is to reload later.
 
 :::warn Not an operational resource
 The data is only as good as the entries in OpenStreetMap. It may be incomplete, outdated or wrong and does not replace information from dispatch centres or water utilities. In an emergency, always call your emergency number (112 in Europe).

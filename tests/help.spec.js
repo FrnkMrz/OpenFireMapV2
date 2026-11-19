@@ -5,7 +5,7 @@ import AxeBuilder from '@axe-core/playwright';
 // Bedienelemente (Tabs, Erklärer, Themenmenü). Die Seiten laden nichts von fremden Servern.
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
-const SLUGS = ['map', 'phone', 'layers', 'data', 'export', 'town-plan'];
+const SLUGS = ['map', 'phone', 'layers', 'data', 'export', 'town-plan', 'contribute'];
 const PAGES = [['de', '/help/'], ['en', '/help/en/']];
 const ARTICLES = SLUGS.flatMap((s) => [['de', `/help/${s}/`], ['en', `/help/en/${s}/`]]);
 
@@ -149,3 +149,24 @@ test('Anleitung: Inhaltsverzeichnis führt zum Abschnitt, Kopfzeile markiert die
     await page.click('.pager-link.next');
     await expect(page).toHaveURL(/\/help\/town-plan\/$/);
 });
+
+for (const lang of ['de', 'en', 'fr']) {
+    test(`Kartenzeichen (${lang}): Hilfe-Stil, Karten mit Tags, axe ohne Befund, kein seitliches Scrollen`, async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(e.message));
+        page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+        await page.goto(`/symbols/?lang=${lang}`);
+        await expect(page.locator('#hydrant-symbols .sym-card')).toHaveCount(6);
+        await expect(page.locator('#water-symbols .sym-card')).toHaveCount(6);
+        await expect(page.locator('#other-symbols .sym-card')).toHaveCount(2);
+        await expect(page.locator('.sym-card h3').first()).not.toBeEmpty();
+        await expect(page.locator('[data-help-link]').first()).toHaveAttribute('href', lang === 'de' ? '/help/' : '/help/en/');
+        expect(await page.evaluate(() => document.fonts.check('700 40px "Barlow Condensed"'))).toBe(true);
+        expect(errors).toEqual([]);
+        const result = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+        expect(result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual([]);
+        await page.setViewportSize({ width: 320, height: 800 });
+        const [scroll, inner] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+        expect(scroll).toBeLessThanOrEqual(inner);
+    });
+}

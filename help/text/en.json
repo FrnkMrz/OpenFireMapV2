@@ -125,7 +125,7 @@
   "plan.cta": "Create a town plan",
   "contrib.eyebrow": "Contribute",
   "contrib.title": "A hydrant is missing? Add it.",
-  "contrib.lead": "All data comes from OpenStreetMap. What you add there usually shows up in OpenFireMap within seconds. Pick the tool that suits you.",
+  "contrib.lead": "All data comes from OpenStreetMap. What you add there shows up in OpenFireMap once the services it relies on have processed the change. Pick the tool that suits you.",
   "contrib.hj_where": "On site · phone",
   "contrib.hj_text": "Stand in front of the hydrant, take a photo, choose the type, upload. In under 20 seconds.",
   "contrib.hj_link": "Guide",
@@ -147,8 +147,8 @@
   "good.alarm_text": "OpenFireMap is not an operational resource. The data may be incomplete or out of date and does not replace information from dispatch centres or water utilities. In Europe the emergency number is 112.",
   "good.osm_title": "Data from OpenStreetMap",
   "good.osm_text": "Volunteers add hydrants, stations and defibrillators. The more people contribute, the more complete the map becomes.",
-  "good.fresh_title": "Refreshed daily to weekly",
-  "good.fresh_text": "Germany, Austria, Switzerland, Liechtenstein and Luxembourg are refreshed daily, 40 more countries weekly. The map fetches new entries right away.",
+  "good.fresh_title": "Regularly refreshed",
+  "good.fresh_text": "For Germany, Austria, Switzerland, Liechtenstein and Luxembourg, OpenFireMap usually rebuilds the prepared data daily, for 40 more countries weekly. The map also requests new entries live.",
   "good.free_title": "No account, no ads",
   "good.free_text": "A non-commercial project. The map runs in your browser.",
   "good.keys_title": "Works with a keyboard",
@@ -162,7 +162,7 @@
   "faq.q1": "Why don't I see any hydrants?",
   "faq.a1": "Hydrants appear from zoom level 15. Zoom in further. If you still see none, nobody has added any in this area yet. You can change that.",
   "faq.q2": "When will my new hydrant appear?",
-  "faq.a2": "Usually within seconds to minutes. OpenFireMap fetches new and changed objects live. Deleted objects only disappear with the next data update (daily or weekly).",
+  "faq.a2": "This cannot be predicted exactly. OpenFireMap requests new and changed objects through the Overpass API. They appear once the Overpass server has processed the change; caches can delay this a little. If Overpass is overloaded or unreachable, the change appears later. Deleted objects only disappear with the next data update. More under <a href=\"data/#verzoegerung\">Data &amp; freshness</a>.",
   "faq.q3": "Why is there no export on a smartphone?",
   "faq.a3": "Print-ready plans need a lot of memory and a large screen for selecting the area. Export and the town plan are therefore only available on a computer.",
   "faq.q4": "May I print plans for my fire brigade?",
@@ -199,5 +199,7 @@
   "article.next": "Next",
   "article.contact": "Write to us:",
   "article.all_topics": "All topics",
-  "plan.cta_guide": "Read the guide"
+  "plan.cta_guide": "Read the guide",
+  "faq.overlay_hint": "Would you like to use the map in your own application? You will find information on our <a href=\"/overlay/\">overlay page</a>.",
+  "contrib.cta": "Step-by-step guide"
 }

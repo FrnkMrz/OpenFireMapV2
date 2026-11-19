@@ -1,6 +1,6 @@
 # Plan: Hilfe-Bereich für OpenFireMap
 
-Stand: 19.11.2026 · Status: Etappen 1–5 umgesetzt (Prototyp, Gerüst und Startseite, Bildschirmfotos, Anleitungen Karte/Smartphone/Ebenen/Daten/Export/Ortsplan); offen Overlay, Mitmachen, Barrierefreiheit, FAQ-Seite
+Stand: 19.11.2026 · Status: Etappen 1–7 umgesetzt (Prototyp, Gerüst und Startseite, Bildschirmfotos, Anleitungen Karte/Smartphone/Ebenen/Daten/Export/Ortsplan, Mitmachen, Kartenzeichen-Seite im Hilfe-Stil); Overlay wird nicht in der Hilfe erklärt, sondern auf /overlay/ verlinkt (Entscheidung 19.11.); offen siehe Abschnitt 10
 
 Vorbild ist die Hilfeseite des Hydrantenjägers (`hydrantenjaeger.de/help/`): dunkles Layout, große Überschrift mit kursivem Akzent, nummerierte Schritte, Typen-Karten, „Gut zu wissen“, FAQ, Kontakt. OpenFireMap bekommt einen eigenen, größeren Hilfe-Bereich mit Unterseiten, der optisch zur selben Familie gehört, aber die OFM-Farben trägt.
 
@@ -134,3 +134,11 @@ Gearbeitet wird in einem eigenen Worktree von `main` (der gemeinsame Checkout st
 5. **Kontakt:** `info@openfiremap.org` wird auf der Seite genannt.
 
 Seitenpfade in Abschnitt 3 gelten unter `/help/` statt `/hilfe/`. Bis der Bereich fertig ist, tragen die Seiten `noindex`; noch fehlende Themen stehen auf der Startseite als „Folgt“.
+
+## 10. To-do für spätere Arbeiten
+
+- [ ] Anleitung für Feuerwehren erstellen, mit der sie Hydranten und weitere relevante Objekte bei einer Übung oder einem Ortsrundgang selbst überprüfen und eintragen können. Mögliche Umsetzung: kurze Schritt-für-Schritt-Anleitung, Erklärvideo und ergänzender Comic. (aufgenommen 19.11.2026)
+- [ ] Referenzbild des Hydranten-Hinweisschilds (DIN 4066) besorgen und das Schild auf der Startseite daran angleichen; derzeit Format 250 × 200 mm quer, Feldaufteilung stilisiert.
+- [ ] Referenzbild für den Ortsplan (kommt vom Projektinhaber), danach Ortsplan-Gestaltung überarbeiten; die schematischen Einstellungen bleiben bis dahin.
+- [ ] Am echten Smartphone prüfen, ob ein Tipp auf ein Symbol bei Zoom 18 Details öffnet (Emulation: nein).
+- [ ] Seite Barrierefreiheit, eigene FAQ-Seite, danach `noindex` entfernen.

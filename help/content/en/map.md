@@ -56,7 +56,7 @@ Clicking a hydrant draws a 100 metre radius.
 
 **Radius and distance:** from zoom level 16, clicking a hydrant shows a dashed circle with a 100 metre radius. This helps you judge which hydrants are within hose length. From zoom level 17 the circle is labelled “100 m”. If you have used **My location** first, OpenFireMap also draws a blue line from you to the hydrant with the distance, from zoom level 17.
 
-The details show what is recorded in OpenStreetMap, for example type, diameter, number, pressure, position or operator. If something is missing, nobody has added it yet. [Contribute](../#mitmachen) explains how to add it.
+The details show what is recorded in OpenStreetMap, for example type, diameter, number, pressure, position or operator. If something is missing, nobody has added it yet. [Contribute](../contribute/) explains how to add it.
 
 The page [Layers & symbols](../layers/) explains the symbols and colours.
 
