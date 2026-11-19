@@ -46,7 +46,7 @@ GPX indeholder waypoints med navn og detaljer. CSV er en tabel med type, referen
 Den foreslåede titel kan ændres før planen oprettes.
 :::
 
-## Begrænsninger {#grænser}
+## Begrænsninger {#grenzen}
 
 Det valgte område må højst være 10 × 10 km. Vælg lavere detaljeniveau for store områder. Hvis området overskrider grænsen, skal du vælge et mindre udsnit.
 
