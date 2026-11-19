@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1125 900" role="img" aria-label="Hinweisschild: H 100, darunter ein T-förmiger Strich, rechts neben dem senkrechten Strich 12,7, darunter 6,4">
+  <!-- Hinweisschild für einen Unterflurhydranten nach DIN 4066 (wie auf der Hilfe-Startseite, Vorlage: Foto H 100) -->
+  <rect width="1125" height="900" rx="32" fill="#a3221f"/>
+  <rect x="90" y="90" width="945" height="720" rx="10" fill="#fff"/>
+  <g font-family="Helvetica Neue, Arial, sans-serif" font-weight="500" fill="#111">
+    <text x="296" y="285" font-size="252" textLength="542" lengthAdjust="spacingAndGlyphs">H 100</text>
+    <rect x="225" y="300" width="675" height="37"/>
+    <rect x="545" y="337" width="35" height="188"/>
+    <text x="655" y="550" font-size="252" textLength="190" lengthAdjust="spacingAndGlyphs">12</text>
+    <text x="842" y="550" font-size="252">,</text>
+    <text x="886" y="550" font-size="158" textLength="66" lengthAdjust="spacingAndGlyphs">7</text>
+    <text x="445" y="760" font-size="252" textLength="105" lengthAdjust="spacingAndGlyphs">6</text>
+    <text x="552" y="760" font-size="252">,</text>
+    <text x="594" y="760" font-size="158" textLength="78" lengthAdjust="spacingAndGlyphs">4</text>
+  </g>
+</svg>

@@ -5,16 +5,18 @@ Handouts sind verteilbare PDF-Leitfäden. Die **Quelle ist Markdown**, das PDF w
 | Ordner | Inhalt |
 | --- | --- |
 | [`overlay-leitfaden/`](overlay-leitfaden/) | Leitfaden zum Overlay von openfiremap.org: Kachel-URL, PMTiles, Symbole, Datenschutz, Impressum |
+| [`feuerwehr-truppkarte/`](feuerwehr-truppkarte/) | Trupp-Karte für den Hydranten-Rundgang (A4 beidseitig): sechs Schritte, Sicherheit, Hinweisschild, Hydrantentypen |
+| [`feuerwehr-boegen/`](feuerwehr-boegen/) | Erfassungsbogen, Mängelliste und Anschreiben-Vorlage (A4 quer, zum Ausfüllen von Hand) |
 
 ## PDF neu bauen
 
 ```bash
 npm install                                    # einmalig
 npx playwright install chromium                # einmalig, falls noch kein Chromium vorhanden ist
-npm run handout:build -- handouts/overlay-leitfaden
+npm run handout:build -- handouts/overlay-leitfaden   # auch mehrere Ordner auf einmal
 ```
 
-Das Skript [`scripts/build-handout.mjs`](../scripts/build-handout.mjs) wandelt die Markdown-Datei mit `marked` in HTML und rendert sie mit Chromium (Playwright) zu einem A4-PDF. Der Stil liegt in `style.css` im jeweiligen Ordner. `npm run build` rendert das PDF bei jedem Website-Build neu und kopiert es nach `public/downloads/`, von wo es zusammen mit der Website veröffentlicht wird. So genügt es, die Markdown-Quelle zu aktualisieren; das gerenderte PDF muss nicht separat eingecheckt werden.
+Das Skript [`scripts/build-handout.mjs`](../scripts/build-handout.mjs) wandelt die Markdown-Datei mit `marked` in HTML und rendert sie mit Chromium (Playwright) zu einem A4-PDF. Der Stil liegt in `style.css` im jeweiligen Ordner. `npm run build` rendert das PDF bei jedem Website-Build neu und kopiert es als `public/downloads/<Name>.pdf`, von wo es zusammen mit der Website veröffentlicht wird. So genügt es, die Markdown-Quelle zu aktualisieren; das gerenderte PDF muss nicht separat eingecheckt werden.
 
 ## Aufbau eines Handout-Ordners
 
@@ -36,6 +38,7 @@ Besonderheiten der Markdown-Quelle:
 ## Leitlinien für den Text
 
 - **Ich-Form.** Das Projekt betreibt eine Privatperson. Keine „wir/uns/unser“-Formulierungen, außer wenn Gesprächspartner gemeint sind („sprechen wir telefonisch“). Ein Test (`test/build-handout.test.js`) prüft das.
+- **Feuerwehr-Material** (`feuerwehr-*`) spricht die Wehr mit „ihr“ an. „Wir“ steht nur in der Anschreiben-Vorlage, dort spricht die Feuerwehr selbst. Neue Handout-Ordner auch im `build`-Skript in `package.json` eintragen, ein Test prüft das.
 - **Es geht um openfiremap.org.** Frühere Adressen unter .de werden nur erwähnt, um den Umstieg zu erklären.
 - **Keine festen Zusagen** zu Verfügbarkeit, Ländern oder Terminen. Verbindliches wird telefonisch besprochen.
 - Keine Betriebsdetails (Hosts, Pfade, Zugänge). Die stehen im privaten Pipeline-Repository.
