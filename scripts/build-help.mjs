@@ -12,11 +12,11 @@
 //
 // Platzhalter in Layout und Vorlagen:
 //   {{schlüssel}}          Text aus text/<sprache>.json (fehlt er, bricht der Build ab)
-//   {{@lang}}, {{@home}}, {{@altHome}}, {{@altLang}}, {{@content}}, {{@page}}
+//   {{@lang}}, {{@home}}, {{@content}}, {{@page}}, {{@languageLinks}}, {{@alternates}}
 //   {{@img:desktop}}       Pfad des Bildschirmfotos dieser Sprache (desktop, mobile, mobile-menu)
 //   {{@spot:desktop:search}} data-x/data-y (Prozent) für einen Hotspot
 //
-// Ausgabe: help/index.html (Deutsch) und help/en/index.html (Englisch), weitere Seiten unter help/[en/]<seite>/.
+// Ausgabe: help/index.html (Standardsprache) und help/<sprache>/index.html (weitere aktive Sprachen).
 // Die erzeugten Dateien sind nicht versioniert (.gitignore); vite.config.mjs ruft buildHelpPages() vor jedem Lauf auf.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -24,8 +24,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Marked } from 'marked';
 
-export const HELP_LANGS = ['de', 'en'];
 export const HELP_DEFAULT_LANG = 'de';
+export const HELP_X_DEFAULT_LANG = 'en';
 
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -42,6 +42,33 @@ export function helpOutFile(lang, page = 'index') {
   if (page !== 'index') parts.push(page);
   return join(...parts, 'index.html');
 }
+
+/** Sprachen mit Textdatei, in der Reihenfolge des gemeinsamen Sprachkatalogs. */
+export function listHelpLanguages(root = defaultRoot) {
+  const config = JSON.parse(readFileSync(join(root, 'help', 'languages.json'), 'utf8'));
+  if (config.default !== HELP_DEFAULT_LANG || config.xDefault !== HELP_X_DEFAULT_LANG) throw new Error('Standardsprachen in help/languages.json und build-help.mjs stimmen nicht überein');
+  const codes = new Set(config.languages.map(({ code }) => code));
+  if (codes.size !== config.languages.length) throw new Error('help/languages.json enthält doppelte Sprachcodes');
+  if (config.languages.some(({ code, name }) => !/^[a-z]+$/.test(code) || !name)) throw new Error('Jede Sprache braucht einen gültigen Code und einen nativen Namen');
+  if (config.languages.some(({ dir, hreflang }) => (dir && !['ltr', 'rtl'].includes(dir)) || (hreflang && !/^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(hreflang)))) throw new Error('Ungültige Schreibrichtung oder hreflang-Angabe in help/languages.json');
+  if (!codes.has(config.default) || !codes.has(config.xDefault)) throw new Error('Standard- und x-default-Sprache fehlen im Sprachkatalog');
+
+  const appLanguages = new Set(readdirSync(join(root, 'src', 'js', 'lang')).filter((f) => f.endsWith('.js')).map((f) => f.replace(/\.js$/, '')));
+  if (appLanguages.size !== codes.size || [...appLanguages].some((code) => !codes.has(code))) throw new Error('help/languages.json muss dieselben Sprachcodes wie src/js/lang/ enthalten');
+
+  const textDir = join(root, 'help', 'text');
+  const present = new Set(readdirSync(textDir).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, '')));
+  const unknown = [...present].filter((code) => !codes.has(code));
+  if (unknown.length) throw new Error(`Unbekannte Hilfe-Sprachen in help/text: ${unknown.join(', ')}`);
+  const langs = config.languages.filter(({ code }) => present.has(code)).map(({ code }) => code);
+  for (const required of [config.default, config.xDefault]) {
+    if (!present.has(required)) throw new Error(`Basissprache ${required} fehlt in help/text`);
+  }
+  return langs;
+}
+
+// Bleibt für Build- und Testwerkzeuge einfach nutzbar; die Liste kommt aus help/text/.
+export const HELP_LANGS = listHelpLanguages();
 
 export function loadHelpText(root, lang) {
   return JSON.parse(readFileSync(join(root, 'help', 'text', `${lang}.json`), 'utf8'));
@@ -178,6 +205,9 @@ export function renderArticle(md, { lang, shots, root, file, marked }) {
  * @param {{ root?: string, write?: boolean }} [options]
  */
 export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
+  const helpLangs = listHelpLanguages(root);
+  const catalog = JSON.parse(readFileSync(join(root, 'help', 'languages.json'), 'utf8'));
+  const languageByCode = Object.fromEntries(catalog.languages.map((entry) => [entry.code, entry]));
   const layout = readFileSync(join(root, 'help', 'layout.html'), 'utf8');
   const articleTpl = readFileSync(join(root, 'help', 'article.html'), 'utf8');
   const shotsFile = join(root, 'help', 'shots.json');
@@ -185,6 +215,13 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
   const marked = new Marked({ gfm: true });
   const inputs = {};
   const pages = {};
+
+  if (write) {
+    const languageFile = join(root, 'public', 'help', 'active-languages.json');
+    const languageJson = `${JSON.stringify({ default: HELP_DEFAULT_LANG, xDefault: HELP_X_DEFAULT_LANG, languages: helpLangs }, null, 2)}\n`;
+    mkdirSync(dirname(languageFile), { recursive: true });
+    if (!existsSync(languageFile) || readFileSync(languageFile, 'utf8') !== languageJson) writeFileSync(languageFile, languageJson);
+  }
 
   const emit = (lang, page, html) => {
     const out = helpOutFile(lang, page);
@@ -199,19 +236,31 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
   };
 
   const baseVars = (lang, page) => {
-    const altLang = HELP_LANGS.find((l) => l !== lang);
+    const altLang = lang === HELP_X_DEFAULT_LANG ? HELP_DEFAULT_LANG : HELP_X_DEFAULT_LANG;
+    const languageLinks = helpLangs.map((code) => {
+      const info = languageByCode[code];
+      const current = code === lang ? ' aria-current="page"' : '';
+      const htmlLang = info.hreflang || code;
+      return `<li><a href="${helpUrl(code, page)}" lang="${escapeAttr(htmlLang)}" hreflang="${escapeAttr(htmlLang)}" dir="auto"${current}>${escapeAttr(info.name)} <span>${escapeAttr(code.toUpperCase())}</span></a></li>`;
+    }).join('');
+    const alternates = helpLangs.map((code) =>
+      `<link rel="alternate" hreflang="${escapeAttr(languageByCode[code].hreflang || code)}" href="https://openfiremap.org${helpUrl(code, page)}">`
+    ).concat(`<link rel="alternate" hreflang="x-default" href="https://openfiremap.org${helpUrl(HELP_X_DEFAULT_LANG, page)}">`).join('\n    ');
+    const info = languageByCode[lang];
     return {
       lang,
+      htmlLang: info.hreflang || lang,
+      dir: info.dir || (['ar', 'ur'].includes(lang) ? 'rtl' : 'ltr'),
       altLang,
+      langShort: lang.toUpperCase(),
+      langName: info.name,
+      languageLinks,
+      alternates,
       page,
       home: helpUrl(lang),
       altHome: helpUrl(altLang),
       self: helpUrl(lang, page),
       alt: helpUrl(altLang, page),
-      urlDe: helpUrl('de', page),
-      urlEn: helpUrl('en', page),
-      curDe: lang === 'de' ? 'aria-current="page"' : '',
-      curEn: lang === 'en' ? 'aria-current="page"' : ''
     };
   };
 
@@ -223,7 +272,7 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
   for (const page of listHelpPages(root)) {
     const source = page === 'index' ? 'start' : page;
     const body = readFileSync(join(root, 'help', 'pages', `${source}.html`), 'utf8');
-    for (const lang of HELP_LANGS) {
+    for (const lang of helpLangs) {
       const text = loadHelpText(root, lang);
       const vars = { ...baseVars(lang, page), metaTitle: text['meta.title'], metaDescription: text['meta.description'] };
       const ctx = { text, shots, lang, file: `pages/${source}.html` };
@@ -234,7 +283,7 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
 
   // 2) Anleitungsseiten aus Markdown (help/content/<sprache>/<seite>.md)
   const slugs = listArticles(root);
-  for (const lang of HELP_LANGS) {
+  for (const lang of helpLangs) {
     const text = loadHelpText(root, lang);
     const articles = slugs.map((slug) => {
       const file = `content/${lang}/${slug}.md`;

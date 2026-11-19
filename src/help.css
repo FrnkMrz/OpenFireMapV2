@@ -106,10 +106,15 @@ code, kbd { font-family: var(--f-mono); }
 .nav a { color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: .98rem; padding: 8px 12px; border-radius: 8px; }
 .nav a:hover { color: var(--ink); background: var(--mist); }
 .top-actions { display: flex; align-items: center; gap: 10px; }
-.lang { display: flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; font-size: .82rem; font-weight: 600; }
-.lang a { padding: 4px 10px; border-radius: 999px; text-decoration: none; color: var(--ink-2); }
-.lang a:hover { color: var(--ink); background: var(--mist); }
-.lang a[aria-current] { background: var(--ink); color: #fff; }
+.lang-picker { position: relative; flex: none; font-size: .82rem; font-weight: 600; }
+.lang-picker summary { list-style: none; display: grid; place-items: center; min-width: 46px; min-height: 40px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); cursor: pointer; }
+.lang-picker summary::-webkit-details-marker { display: none; }
+.lang-picker summary:hover, .lang-picker[open] summary { border-color: var(--ink); background: var(--mist); }
+.lang-options { position: absolute; z-index: 80; top: calc(100% + 8px); right: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; width: min(360px, calc(100vw - 32px)); max-height: min(65vh, 440px); overflow: auto; padding: 8px; margin: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: var(--shadow-lg); list-style: none; }
+.lang-options a { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 8px; color: var(--ink); text-decoration: none; }
+.lang-options a:hover { background: var(--mist); color: var(--ink); }
+.lang-options a[aria-current="page"] { background: var(--water-tint); color: var(--water); font-weight: 700; }
+.lang-options a span { color: var(--ink-2); font-size: .75rem; }
 .menu-btn { display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; width: 42px; height: 42px; align-items: center; justify-content: center; color: var(--ink); cursor: pointer; }
 .menu-btn svg { width: 20px; height: 20px; }
 .show-sm { display: none; }

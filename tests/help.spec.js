@@ -1,13 +1,25 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-// Hilfe-Bereich (/help/, /help/en/): Barrierefreiheit, Darstellung auf schmalen Bildschirmen und die kleinen
+// Hilfe-Bereich: Barrierefreiheit, Darstellung auf schmalen Bildschirmen und die kleinen
 // Bedienelemente (Tabs, Erklärer, Themenmenü). Die Seiten laden nichts von fremden Servern.
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
 const SLUGS = ['map', 'phone', 'layers', 'data', 'export', 'town-plan', 'contribute', 'accessibility', 'faq'];
-const PAGES = [['de', '/help/'], ['en', '/help/en/']];
-const ARTICLES = SLUGS.flatMap((s) => [['de', `/help/${s}/`], ['en', `/help/en/${s}/`]]);
+const HELP_DEFAULT_LANG = 'de';
+const HELP_LANGS = readdirSync(resolve(process.cwd(), 'help', 'text'))
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => file.replace(/\.json$/, ''));
+const helpUrl = (lang, page = 'index') => {
+    const base = lang === HELP_DEFAULT_LANG ? '/help/' : `/help/${lang}/`;
+    return page === 'index' ? base : `${base}${page}/`;
+};
+const PAGES = HELP_LANGS.map((lang) => [lang, helpUrl(lang)]);
+const ARTICLES = HELP_LANGS.flatMap((lang) => SLUGS.map((slug) => [lang, helpUrl(lang, slug)]));
+const helpLangFor = (lang) => HELP_LANGS.includes(lang) ? lang : (lang === 'de' ? 'de' : 'en');
+const htmlLangFor = (lang) => ({ fl: 'nl-BE', tw: 'zh-Hant' })[lang] || lang;
 
 async function open(page, path) {
     const errors = [];
@@ -24,7 +36,7 @@ for (const [lang, path] of PAGES) {
         test('ohne Fehler, mit eigenen Schriften', async ({ page }) => {
             const errors = await open(page, path);
             expect(errors).toEqual([]);
-            expect(await page.evaluate(() => document.documentElement.lang)).toBe(lang);
+            expect(await page.evaluate(() => document.documentElement.lang)).toBe(htmlLangFor(lang));
             expect(await page.evaluate(() => document.fonts.check('700 40px "Barlow Condensed"'))).toBe(true);
             expect(await page.evaluate(() => document.fonts.check('400 16px "Barlow"'))).toBe(true);
         });
@@ -110,7 +122,8 @@ test('Themenmenü auf schmalen Bildschirmen, Escape schließt', async ({ page })
 
 test('Sprachwechsel führt zur Gegenseite', async ({ page }) => {
     await open(page, '/help/');
-    await page.click('.lang a[lang="en"]');
+    await page.locator('.lang-picker summary').click();
+    await page.click('.lang-picker a[lang="en"]');
     await expect(page).toHaveURL(/\/help\/en\/$/);
     await expect(page.locator('h1')).toContainText('Find fire water');
 });
@@ -119,14 +132,14 @@ test('Karte: „Info & Recht“ verlinkt die Hilfe in der passenden Sprache', as
     await page.goto('/?lang=de');
     await expect(page.locator('[data-help-link]')).toHaveAttribute('href', '/help/');
     await page.goto('/?lang=fr');
-    await expect(page.locator('[data-help-link]')).toHaveAttribute('href', '/help/en/');
+    await expect(page.locator('[data-help-link]')).toHaveAttribute('href', helpUrl(helpLangFor('fr')));
 });
 
 for (const [lang, path] of ARTICLES) {
     test(`Anleitung ${path}: ohne Fehler, axe ohne Befund, kein seitliches Scrollen`, async ({ page }) => {
         const errors = await open(page, path);
         expect(errors).toEqual([]);
-        expect(await page.evaluate(() => document.documentElement.lang)).toBe(lang);
+        expect(await page.evaluate(() => document.documentElement.lang)).toBe(htmlLangFor(lang));
         // Alle Bilder vorhanden (lazy: einzeln anfordern) und alle Nummern im Bild platziert
         for (const src of await page.evaluate(() => [...new Set([...document.images].map((i) => i.getAttribute('src')))])) {
             expect((await page.request.get(src)).status(), src).toBe(200);
@@ -160,7 +173,7 @@ for (const lang of ['de', 'en', 'fr']) {
         await expect(page.locator('#water-symbols .sym-card')).toHaveCount(6);
         await expect(page.locator('#other-symbols .sym-card')).toHaveCount(2);
         await expect(page.locator('.sym-card h3').first()).not.toBeEmpty();
-        await expect(page.locator('[data-help-link]').first()).toHaveAttribute('href', lang === 'de' ? '/help/' : '/help/en/');
+        await expect(page.locator('[data-help-link]').first()).toHaveAttribute('href', helpUrl(helpLangFor(lang)));
         expect(await page.evaluate(() => document.fonts.check('700 40px "Barlow Condensed"'))).toBe(true);
         expect(errors).toEqual([]);
         const result = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();

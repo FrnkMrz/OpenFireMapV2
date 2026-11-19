@@ -49,3 +49,4 @@ playwright/.cache/
 /help/index.html
 /help/*/index.html
 /help/*/*/index.html
+/public/help/active-languages.json

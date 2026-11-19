@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Marked } from 'marked';
-import { buildHelpPages, helpOutFile, helpUrl, HELP_LANGS, jpegSize, listArticles, loadHelpText, parseFrontmatter, renderArticle, renderTemplate } from '../scripts/build-help.mjs';
+import { buildHelpPages, helpOutFile, helpUrl, HELP_LANGS, HELP_DEFAULT_LANG, HELP_X_DEFAULT_LANG, jpegSize, listArticles, listHelpLanguages, loadHelpText, parseFrontmatter, renderArticle, renderTemplate } from '../scripts/build-help.mjs';
 
 // Hilfe-Seiten (/help/): Build aus help/ prüfen, ohne Dateien zu schreiben.
 
@@ -10,6 +10,7 @@ const root = resolve(__dirname, '..');
 const { pages } = buildHelpPages({ root, write: false });
 const texts = Object.fromEntries(HELP_LANGS.map((l) => [l, loadHelpText(root, l)]));
 const shots = JSON.parse(readFileSync(resolve(root, 'help/shots.json'), 'utf8'));
+const languageCatalog = JSON.parse(readFileSync(resolve(root, 'help/languages.json'), 'utf8'));
 
 function readCsp(html) {
   const m = html.match(/http-equiv="Content-Security-Policy"\s+content="([^"]*)"/i);
@@ -25,11 +26,23 @@ const tagsOf = (s) => [...String(s).matchAll(/<\/?([a-z]+)\b[^>]*>/g)].map((m) =
 const hrefsOf = (s) => [...String(s).matchAll(/href="([^"]*)"/g)].map((m) => m[1]).sort();
 
 describe('Hilfe: Texte', () => {
-  it('Deutsch und Englisch haben dieselben Schlüssel', () => {
+  it('führt nur katalogisierte Sprachen mit Textdatei auf', () => {
+    const catalog = JSON.parse(readFileSync(resolve(root, 'help/languages.json'), 'utf8'));
+    const catalogCodes = catalog.languages.map(({ code }) => code);
+    const appCodes = readdirSync(resolve(root, 'src/js/lang')).filter((f) => f.endsWith('.js')).map((f) => f.replace(/\.js$/, '')).sort();
+    expect(new Set(catalogCodes).size).toBe(catalogCodes.length);
+    expect([...catalogCodes].sort()).toEqual(appCodes);
+    expect(catalogCodes).toEqual(expect.arrayContaining(['de', 'en', 'fr', 'es', 'tr', 'zh']));
+    expect(listHelpLanguages(root)).toEqual(HELP_LANGS);
+    expect(HELP_LANGS).toEqual([HELP_DEFAULT_LANG, HELP_X_DEFAULT_LANG]);
+    for (const lang of HELP_LANGS) expect(catalogCodes).toContain(lang);
+  });
+
+  it('alle aktiven Sprachen haben dieselben Schlüssel wie Deutsch', () => {
     const de = Object.keys(texts.de).sort();
-    const en = Object.keys(texts.en).sort();
-    expect(de.filter((k) => !en.includes(k))).toEqual([]);
-    expect(en.filter((k) => !de.includes(k))).toEqual([]);
+    for (const lang of HELP_LANGS) {
+      expect(Object.keys(texts[lang]).sort(), lang).toEqual(de);
+    }
   });
 
   it('kein Text ist leer', () => {
@@ -38,10 +51,12 @@ describe('Hilfe: Texte', () => {
     }
   });
 
-  it('Auszeichnung und Links sind in beiden Sprachen gleich', () => {
-    for (const k of Object.keys(texts.de)) {
-      expect(tagsOf(texts.en[k]), k).toEqual(tagsOf(texts.de[k]));
-      expect(hrefsOf(texts.en[k]), k).toEqual(hrefsOf(texts.de[k]));
+  it('Auszeichnung und Links sind in allen aktiven Sprachen gleich', () => {
+    for (const lang of HELP_LANGS) {
+      for (const k of Object.keys(texts.de)) {
+        expect(tagsOf(texts[lang][k]), `${lang}:${k}`).toEqual(tagsOf(texts.de[k]));
+        expect(hrefsOf(texts[lang][k]), `${lang}:${k}`).toEqual(hrefsOf(texts.de[k]));
+      }
     }
   });
 });
@@ -72,17 +87,21 @@ describe('Hilfe: Vorlagen', () => {
 describe('Hilfe: erzeugte Seiten', () => {
   const entries = Object.entries(pages);
 
-  it('erzeugt Startseite und alle Anleitungen auf Deutsch und Englisch', () => {
+  it('erzeugt Startseite und Anleitungen für jede aktive Sprache', () => {
     const slugs = listArticles(root);
     expect(slugs).toEqual(expect.arrayContaining(['data', 'export', 'layers', 'map', 'phone', 'town-plan']));
-    const expected = ['help/index.html', 'help/en/index.html'];
-    for (const slug of slugs) expected.push(`help/${slug}/index.html`, `help/en/${slug}/index.html`);
+    const expected = [];
+    for (const lang of HELP_LANGS) {
+      expected.push(helpOutFile(lang));
+      for (const slug of slugs) expected.push(helpOutFile(lang, slug));
+    }
     expect(Object.keys(pages).sort()).toEqual(expected.sort());
   });
 
   for (const [file, html] of entries) {
-    const lang = file.startsWith('help/en/') ? 'en' : 'de';
-    const slug = file.replace(/^help\/(en\/)?/, '').replace(/index\.html$/, '').replace(/\/$/, '') || 'index';
+    const lang = HELP_LANGS.find((code) => file.startsWith(`help/${code}/`)) || HELP_DEFAULT_LANG;
+    const prefix = lang === HELP_DEFAULT_LANG ? 'help/' : `help/${lang}/`;
+    const slug = file.replace(prefix, '').replace(/index\.html$/, '').replace(/\/$/, '') || 'index';
 
     describe(file, () => {
       it('enthält keine offenen Platzhalter', () => {
@@ -90,10 +109,16 @@ describe('Hilfe: erzeugte Seiten', () => {
       });
 
       it('hat Seitensprache, Sprachverweise und markiert die aktuelle Sprache', () => {
-        expect(html).toMatch(new RegExp(`<html lang="${lang}">`));
-        expect(html).toContain(`hreflang="de" href="https://openfiremap.org${helpUrl('de', slug)}"`);
-        expect(html).toContain(`hreflang="en" href="https://openfiremap.org${helpUrl('en', slug)}"`);
-        expect(html).toMatch(new RegExp(`lang="${lang}" hreflang="${lang}" aria-current="page"`));
+        const info = languageCatalog.languages.find((item) => item.code === lang);
+        const htmlLang = info.hreflang || lang;
+        const dir = info.dir || (['ar', 'ur'].includes(lang) ? 'rtl' : 'ltr');
+        expect(html).toContain(`<html lang="${htmlLang}" dir="${dir}">`);
+        for (const alternate of HELP_LANGS) {
+          const altInfo = languageCatalog.languages.find((item) => item.code === alternate);
+          expect(html).toContain(`hreflang="${altInfo.hreflang || alternate}" href="https://openfiremap.org${helpUrl(alternate, slug)}"`);
+        }
+        expect(html).toContain(`hreflang="x-default" href="https://openfiremap.org${helpUrl(HELP_X_DEFAULT_LANG, slug)}"`);
+        expect(html).toContain(`lang="${htmlLang}" hreflang="${htmlLang}" dir="auto" aria-current="page"`);
       });
 
       it('ist für Suchmaschinen freigegeben und nennt die kanonische Adresse', () => {

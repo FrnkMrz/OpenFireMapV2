@@ -18,6 +18,7 @@ let currentLang = DEFAULT_LANG;
 let requestedLang = DEFAULT_LANG;
 let currentDict = null;
 let fallbackDict = null;
+let helpLanguagesPromise = null;
 
 /**
  * Aus einer Browser-Sprache (z.B. "de-DE") den Code ableiten.
@@ -163,10 +164,23 @@ export function updatePageLanguage() {
     el.classList.toggle('hidden', el.getAttribute('data-legal-lang') !== legalLang);
   });
 
-  // Hilfe gibt es auf Deutsch und Englisch: alle anderen Sprachen führen zur englischen Fassung
-  document.querySelectorAll('[data-help-link]').forEach(el => {
-    el.setAttribute('href', currentLang === 'de' ? '/help/' : '/help/en/');
-  });
+  // Bei übersetzter Hilfe zur passenden Seite führen, sonst auf Deutsch bzw. Englisch zurückfallen.
+  const helpLinks = [...document.querySelectorAll('[data-help-link]')];
+  if (helpLinks.length) {
+    const langAtUpdate = currentLang;
+    if (!helpLanguagesPromise) {
+      helpLanguagesPromise = fetch('/help/active-languages.json')
+        .then((response) => response.ok ? response.json() : null)
+        .then((config) => Array.isArray(config?.languages) ? config.languages : ['de', 'en'])
+        .catch(() => ['de', 'en']);
+    }
+    helpLanguagesPromise.then((languages) => {
+      if (langAtUpdate !== currentLang) return;
+      const targetLang = languages.includes(langAtUpdate) ? langAtUpdate : (langAtUpdate === 'de' ? 'de' : 'en');
+      const target = targetLang === 'de' ? '/help/' : `/help/${targetLang}/`;
+      helpLinks.forEach((el) => el.setAttribute('href', target));
+    });
+  }
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('ofm:langchange', { detail: { lang: currentLang } }));
