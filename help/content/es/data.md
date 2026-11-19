@@ -37,7 +37,11 @@ Overpass debe procesar el cambio. La caché del área, la caché local o una int
 
 Muestra fuente, fecha base y estado de la actualización en vivo. En ordenador se abre desde el cuadro de estado; en móvil, tocándolo.
 
-## Página de estado {#statusseite}\n\n:::figure data frame=plain\nLa ventana muestra la fuente y el estado de la actualización en vivo.\n:::
+## Página de estado {#statusseite}
+
+:::figure data frame=plain
+La ventana muestra la fuente y el estado de la actualización en vivo.
+:::
 
 La [página de estado](/status/) muestra la antigüedad de los datos y el número de objetos por país.
 
