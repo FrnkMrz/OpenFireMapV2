@@ -141,4 +141,5 @@ Seitenpfade in Abschnitt 3 gelten unter `/help/` statt `/hilfe/`. Bis der Bereic
 - [x] Hinweisschild auf der Startseite nach Referenzfoto (H 100, 5:4, Feldaufteilung wie das echte Schild) nachgebaut (19.11.2026).
 - [x] Ortsplan-Bild der Startseite nach dem Referenzausdruck „Orts- und Hydrantenplan Schnaittach“ neu gezeichnet (19.11.2026); die schematischen Einstellungen im Assistenten bleiben.
 - [ ] Am echten Smartphone prüfen, ob ein Tipp auf ein Symbol bei Zoom 18 Details öffnet (Emulation: nein).
-- [ ] Seite Barrierefreiheit, eigene FAQ-Seite, danach `noindex` entfernen.
+- [x] Seite Barrierefreiheit (`/help/accessibility/`) und eigene FAQ-Seite (`/help/faq/`), DE/EN (19.11.2026).
+- [ ] `noindex` entfernen, sobald der Projektinhaber den Hilfe-Bereich freigibt.

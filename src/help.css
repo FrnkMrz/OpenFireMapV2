@@ -273,6 +273,7 @@ a.topic:hover { color: var(--ink); border-color: var(--ink); transform: translat
 .faq summary .pm svg { width: 14px; height: 14px; }
 .faq details[open] summary .pm { transform: rotate(45deg); background: var(--ink); color: #fff; border-color: var(--ink); }
 .faq details p { padding: 0 44px 22px 2px; color: var(--ink-2); }
+.faq-more { margin-top: 22px; }
 .contact { margin-top: 28px; padding: 22px; border-radius: var(--r-lg); border: 1px solid var(--line); display: grid; gap: 10px; }
 .contact h3 { font-family: var(--f-body); font-size: 1.05rem; font-weight: 600; }
 .contact p { color: var(--ink-2); }
@@ -324,6 +325,8 @@ a.topic:hover { color: var(--ink); border-color: var(--ink); transform: translat
 .prose h2 { font-size: clamp(1.8rem, 3.2vw, 2.4rem); margin-top: 2.2em; padding-top: .2em; }
 .prose h2:first-child { margin-top: 0; }
 .prose h3 { margin-top: 1.6em; }
+.prose h2 + h3 { margin-top: 1em; }
+.prose h3[id] { scroll-margin-top: 96px; }
 .prose p, .prose li { color: var(--ink); }
 .prose ul, .prose ol:not(.legend) { padding-left: 1.3em; display: grid; gap: .45em; }
 .prose ul { list-style: disc; }

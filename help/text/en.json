@@ -210,5 +210,7 @@
   "sheet.scale": "Scale 1 : 7,500",
   "sheet.index": "Street index",
   "sheet.source": "© OpenStreetMap contributors (ODbL) · Map: Protomaps",
-  "sheet.source2": "Data: OpenFireMap.org · date on the sheet"
+  "sheet.source2": "Data: OpenFireMap.org · date on the sheet",
+  "nav.a11y": "Accessibility",
+  "faq.all": "All questions"
 }
