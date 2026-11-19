@@ -161,7 +161,7 @@
   "faq.q4": "Mohu tisknout plány pro svůj sbor?",
   "faq.a4": "Ano. Data jsou licencována pod Open Database License. Každý plán musí uvádět „© OpenStreetMap contributors“. Plán města tento údaj přidá automaticky.",
   "faq.q5": "Funguje mapa offline?",
-  "faq.a5": "Jen částečně. Načtené oblasti zůstávají chvíli v paměti. Nové oblasti a vyhledávání potřebují připojení. Na cestách je spolehlivější vytištěný <a href=\"../town-plan/\">plán města</a>.",
+  "faq.a5": "Jen částečně. Načtené oblasti zůstávají chvíli v paměti. Nové oblasti a vyhledávání potřebují připojení. Na cestách je spolehlivější vytištěný plán města.",
   "faq.q6": "Je to oficiální mapa hasičů?",
   "faq.a6": "Ne. OpenFireMap je soukromý neziskový projekt založený na OpenStreetMap. Oficiálně nespolupracuje s žádným úřadem ani hasičským sborem.",
   "faq.q7": "Jak dostanu vrstvy hasičských služeb do vlastní mapy?",
