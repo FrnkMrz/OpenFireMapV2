@@ -3,7 +3,7 @@ title: Accessibility
 description: Using OpenFireMap with a keyboard, screen reader, magnification and reduced motion – what works, how it works and what has not been tested yet.
 eyebrow: Accessibility
 lead: OpenFireMap should work for everyone, including without a mouse, with a screen reader or with strong magnification. Here is how, and where gaps remain.
-order: 8
+order: 9
 ---
 
 ## Our goal {#ziel}

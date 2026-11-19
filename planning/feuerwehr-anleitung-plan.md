@@ -1,6 +1,6 @@
 # Plan: Anleitung für Feuerwehren – Hydranten bei Übung und Ortsrundgang prüfen und eintragen
 
-Stand: 19.11.2026 · Status: Entwurf, Start in eigener Sitzung · Herkunft: To-do aus `planning/hilfe-bereich-plan.md` (Abschnitt 10)
+Stand: 19.11.2026 · Status: Entscheidungen geklärt, E1 in Arbeit · Herkunft: To-do aus `planning/hilfe-bereich-plan.md` (Abschnitt 10)
 
 > **Auftrag (Wortlaut Projektinhaber):** „Anleitung für Feuerwehren erstellen, mit der sie Hydranten und weitere relevante Objekte bei einer Übung oder einem Ortsrundgang selbst überprüfen und eintragen können. Mögliche Umsetzung: kurze Schritt-für-Schritt-Anleitung, Erklärvideo und ergänzender Comic.“
 
@@ -62,7 +62,7 @@ Reihenfolge der Umsetzung: D1 → D3 → D2 → D4 → D8 → D7 → D6 → D5 (
 2. **Gebiet festlegen und aufteilen:** Ortsplan des Ausrückebereichs drucken (`/ortsplan/`), Planquadrate auf Trupps verteilen (Richtwert: 1 Trupp je 15–25 Hydranten bzw. je 0,5–1 km² bebautes Gebiet bei 90 Minuten).
 3. **Ist-Stand ansehen:** OpenFireMap bei Zoom 17 öffnen, vorhandene Hydranten zählen; optional CSV-Export als Prüfliste je Planquadrat (`/help/export/`).
 4. **Konten:** Jede/r, der/die einträgt, legt vorher ein eigenes OpenStreetMap-Konto an (Anleitung `/help/contribute/#vorher`). Keine Sammelkonten (OSM-Regeln, Nachvollziehbarkeit). Jugendfeuerwehr: Konto nach Alters- und Einwilligungsregeln; Alternative: Jugendliche erfassen, Betreuer lädt hoch.
-5. **Organisierte Aktivität dokumentieren:** OpenStreetMap verlangt für organisierte Kartierungen eine kurze Beschreibung im OSM-Wiki (Organised Editing Guidelines der OSMF). Vorlage für eine Wiki-Seite mitliefern; einheitlicher Hashtag im Änderungssatz-Kommentar, z. B. `#OpenFireMap #Hydrantenrundgang-<Ort>`.
+5. **Organisierte Aktivität dokumentieren:** OpenStreetMap verlangt für organisierte Kartierungen eine kurze Beschreibung im OSM-Wiki (Organised Editing Guidelines der OSMF). Vorlage für eine Wiki-Seite mitliefern; einheitlicher Hashtag im Änderungssatz-Kommentar, `#OpenFireMap` (Entscheidung 9.6).
 6. **Material:** Handys geladen (Hydrantenjäger im Browser getestet, Standort/Kompass erlaubt), Powerbank, Warnwesten, Taschenlampe, Trupp-Karte (D3), Erfassungsbogen (D4) als Rückfall, Klemmbrett, ggf. Maßband.
 
 ### 4.3 Durchführung (90 Minuten, Übungsdienst)
@@ -165,16 +165,16 @@ public/downloads/…                        erzeugte PDFs (Build), wie Overlay-L
 - **Veralten** von App-Oberflächen (Hydrantenjäger, iD): Bildschirmfotos datieren, Video so schneiden, dass UI-Teile kurz sind.
 - **Aufwand Video/Comic**: teuer; daher zuletzt und nach Pilot.
 
-## 9. Offene Entscheidungen (vor E1 klären)
+## 9. Entscheidungen (geklärt 19.11.2026)
 
-1. **Adresse und Titel:** `/help/fire-brigades/` („Für Feuerwehren“) – passt das?
-2. **Hydrantenjäger-Bildschirmfotos** in Anleitung/Video verwenden? (gleicher Betreiber, Zustimmung festhalten)
-3. **Pilot-Feuerwehr** für Probedurchlauf und Videodreh: welche Wehr, wer ist Ansprechpartner/in?
-4. **Comic:** Illustrator/in beauftragen, selbst zeichnen (Vektor im Hilfe-Stil) oder Bildgenerierung mit Nachbearbeitung?
-5. **Video-Hosting:** selbst gehostet (bevorzugt) oder Plattform mit Zwei-Klick-Lösung?
-6. **Hashtag** für Änderungssätze, z. B. `#OpenFireMap`?
-7. **Mängelliste:** nur Vorlage, oder auch eine Sammelstelle (z. B. Mail an die Wehr) vorschlagen?
-8. **Englisch** für D2–D4 sofort oder nach dem Pilot?
+1. **Adresse und Titel:** `/help/fire-brigades/`, „Für Feuerwehren“ / „For fire brigades“. ✔
+2. **Hydrantenjäger-Bildschirmfotos:** in E1 keine; E1 verlinkt nur auf `hydrantenjaeger.de/help/`. Vor E2/E3 erneut klären.
+3. **Pilot-Feuerwehr:** offen, vor E3 klären.
+4. **Comic:** eigene Vektorzeichnung im Hilfe-Stil.
+5. **Video-Hosting:** selbst gehostet (`<video>` mit MP4/WebM + VTT), keine Plattform.
+6. **Hashtag:** nur `#OpenFireMap` (kein Orts-Hashtag).
+7. **Mängelliste:** nur Vorlage; die Wehr schickt sie selbst an Gemeinde/Wasserversorger, keine Sammelstelle bei OpenFireMap.
+8. **Englisch für D2–D4:** nach dem Pilot.
 
 ## 10. Startprompt für die neue Sitzung
 
