@@ -208,3 +208,54 @@ test.describe('Zoom-Anzeige', () => {
         await expect(page.locator('#zoom-val')).toHaveText('16.0');
     });
 });
+
+// Touch-Geräte: Details per Tipp (kein Darüberfahren möglich). Braucht echte Daten (Port 5173 wie in der CI).
+// Eigener Kontext statt test.use: nur so verhält sich Chromium wie ein Telefon (mit test.use öffnete Chromium die
+// Details auch ohne Fix über nachgebildete Maus-Ereignisse, der Test hätte den Fehler nicht erkannt).
+test.describe('Details per Tipp auf Touch-Geräten', () => {
+    for (const zoom of [17, 18]) {
+        test(`Tipp auf ein Symbol öffnet die Details (Zoom ${zoom}), Tipp auf die Karte schließt sie`, async ({ browser, baseURL }) => {
+            const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'de' });
+            const page = await context.newPage();
+            try {
+                await page.goto(`/?lang=de#${zoom}/49.45280/11.07700/voyager`);
+                await page.waitForFunction(() => document.querySelectorAll('.leaflet-marker-icon[aria-label="Hydrant"]').length > 5, null, { timeout: 60000 });
+                await page.waitForTimeout(500);
+                const xy = await page.evaluate(() => {
+                    for (const el of document.querySelectorAll('.leaflet-marker-icon[aria-label="Hydrant"]')) {
+                        const r = el.getBoundingClientRect();
+                        const x = r.x + r.width / 2, y = r.y + r.height / 2;
+                        if (x > 60 && x < innerWidth - 60 && y > 200 && y < innerHeight - 200) return [x, y];
+                    }
+                    return null;
+                });
+                expect(xy).not.toBeNull();
+                await page.touchscreen.tap(xy[0], xy[1]);
+                const tip = page.locator('.leaflet-tooltip:not(.range-label)');
+                await expect(tip).toHaveCount(1);
+                await expect(tip).toBeVisible();
+                await page.touchscreen.tap(30, 420);
+                await expect(tip).toHaveCount(0);
+            } finally {
+                await context.close();
+            }
+        });
+    }
+});
+
+test('Maus: Klick auf ein Symbol bei Zoom 17 zeichnet nur den Radius, keine Details', async ({ page }) => {
+    await gotoReady(page, '/?lang=de#17/49.45280/11.07700/voyager');
+    await page.waitForFunction(() => document.querySelectorAll('.leaflet-marker-icon[aria-label="Hydrant"]').length > 5, null, { timeout: 60000 });
+    const xy = await page.evaluate(() => {
+        for (const el of document.querySelectorAll('.leaflet-marker-icon[aria-label="Hydrant"]')) {
+            const r = el.getBoundingClientRect();
+            const x = r.x + r.width / 2, y = r.y + r.height / 2;
+            if (x > 300 && x < innerWidth - 300 && y > 200 && y < innerHeight - 200) return [x, y];
+        }
+        return null;
+    });
+    expect(xy).not.toBeNull();
+    await page.mouse.click(xy[0], xy[1]);
+    await expect(page.locator('.range-label')).toHaveCount(1);
+    await expect(page.locator('.leaflet-tooltip:not(.range-label)')).toHaveCount(0);
+});

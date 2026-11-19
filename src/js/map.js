@@ -711,6 +711,10 @@ export function initMapLogic() {
         if (!State.selection.active) {
             State.rangeLayerGroup.clearLayers();
             clearDistanceLine();
+            // Per Tipp oder Tastatur geöffnete Details schließt ein Tipp auf die freie Karte (Hover-Tooltips schließt ihr Timer)
+            if (State.keyboardTooltipMarker) {
+                try { State.keyboardTooltipMarker.closeTooltip(); } catch { /* ignore */ }
+            }
         }
     });
 
@@ -1555,15 +1559,36 @@ function createAndAddMarker(id, lat, lon, type, tags, mode, zoom, isStation, isD
         // Daher: alle Click-Listener entfernen und unseren Radius-Click danach gezielt wieder anbinden.
         marker.off('click');
 
-        // Klick bleibt ausschließlich für den 100 m Radius (Hydranten/Wasser etc.) und Distanz-Linie,
-        // NICHT für Tooltips.
-        if (!isStation && !isDefib) {
-            marker.on('click', (e) => {
-                L.DomEvent.stopPropagation(e);
+        // Touch-Geräte kennen kein Darüberfahren: Dort öffnet ein Tipp die Details, ab Zoom 17 wie per Tastatur.
+        // Mit der Maus bleibt es bei „Details beim Darüberfahren ab Zoom 18“, der Klick zeichnet nur Radius und Linie.
+        const isTouchTap = (e) => {
+            const oe = e?.originalEvent;
+            if (oe && typeof oe.pointerType === 'string' && oe.pointerType) return oe.pointerType !== 'mouse';
+            if (oe?.sourceCapabilities?.firesTouchEvents) return true;
+            return typeof window !== 'undefined' && !!window.matchMedia?.('(hover: none)').matches;
+        };
+        const openDetailsByTap = () => {
+            if (State.map.getZoom() < 17) return;
+            if (closeTimer) {
+                clearTimeout(closeTimer);
+                closeTimer = null;
+            }
+            closeOtherOpenTooltip(marker);
+            // „Ausdrücklich geöffnet“ wie per Tastatur: tooltipopen lässt den Tooltip dann auch unter Zoom 18 offen
+            State.keyboardTooltipMarker = marker;
+            marker.openTooltip();
+            State.openTooltipMarker = marker;
+        };
+
+        // Klick: 100 m Radius und Distanz-Linie (Hydranten/Wasser), auf Touch-Geräten zusätzlich die Details.
+        marker.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            if (!isStation && !isDefib) {
                 drawBlueLine(lat, lon); // Update Linie
                 showRangeCircle(lat, lon);
-            });
-        }
+            }
+            if (isTouchTap(e)) openDetailsByTap();
+        });
 
 
         // Mouseover auf den Marker: Tooltip sofort öffnen (ab Zoom >= 18).
