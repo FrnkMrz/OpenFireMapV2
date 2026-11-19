@@ -3,7 +3,7 @@ title: Preguntas frecuentes
 description: Respuestas sobre el mapa, datos, exportación, planos, contribuciones y el proyecto.
 eyebrow: Preguntas frecuentes
 lead: Respuestas a las dudas habituales. Si falta la tuya, escribe a info@openfiremap.org.
-order: 9
+order: 10
 ---
 
 ## Mapa y controles {#karte}
@@ -89,6 +89,10 @@ Sí. Debe mantenerse visible “© OpenStreetMap contributors”.
 ### Falta un hidrante o está mal ubicado. {#korrigieren}
 
 Puedes corregirlo en OpenStreetMap con una cuenta gratuita. Consulta [Añadir hidrantes](../contribute/).
+
+### Somos un parque de bomberos y queremos registrar los hidrantes de nuestra zona. ¿Cómo lo hacemos? {#feuerwehr}
+
+Lo mejor es organizar una jornada de prácticas o un recorrido por la ciudad en equipos. La guía [Para parques de bomberos](../fire-brigades/) explica la preparación, el desarrollo, la seguridad y el seguimiento.
 
 ### ¿Puedo copiar planos municipales? {#plaene}
 
