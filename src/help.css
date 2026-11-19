@@ -139,8 +139,9 @@ code, kbd { font-family: var(--f-mono); }
 .browser img, .phone img { display: block; width: 100%; height: auto; }
 .phone { position: absolute; right: -8px; bottom: 0; width: 27%; border-radius: 26px; padding: 7px; background: var(--ink); box-shadow: var(--shadow-lg); }
 .phone img { border-radius: 20px; }
-.sign { position: absolute; left: 0; top: 0; width: 176px; transform: rotate(-6deg); transform-origin: 50% 0; filter: drop-shadow(0 18px 24px rgba(15, 27, 42, .22)); animation: sway 7s ease-in-out infinite; }
-.sign-t { font-family: var(--f-display); font-weight: 700; fill: var(--ink); }
+.sign { position: absolute; left: 0; top: 0; width: 190px; transform: rotate(-6deg); transform-origin: 50% 0; filter: drop-shadow(0 18px 24px rgba(15, 27, 42, .22)); animation: sway 7s ease-in-out infinite; }
+/* Schrift des Schilds: Barlow kommt der DIN-Schrift des echten Schilds am nächsten */
+.sign-t { font-family: var(--f-body); font-weight: 500; fill: #111; }
 @keyframes sway { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(-3.5deg); } }
 
 /* ---------- Erste Schritte ---------- */
@@ -208,7 +209,7 @@ a.topic:hover { color: var(--ink); border-color: var(--ink); transform: translat
 .badge.muted { background: var(--paper); color: var(--ink-2); }
 
 /* ---------- Ortsplan ---------- */
-.plan { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(32px, 6vw, 88px); align-items: center; }
+.plan { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: clamp(32px, 6vw, 88px); align-items: center; }
 .sheet-wrap { position: relative; padding: 24px; }
 .sheet-wrap::before { content: ""; position: absolute; inset: 0 12% 0 0; background: var(--mist); border-radius: var(--r-lg); z-index: -1; }
 .sheet { width: 100%; height: auto; display: block; filter: drop-shadow(0 24px 40px rgba(15, 27, 42, .18)); }
@@ -434,7 +435,7 @@ a.topic:hover { color: var(--ink); border-color: var(--ink); transform: translat
   .topics, .editors, .good, .foot { grid-template-columns: minmax(0, 1fr); }
   .phone { display: none; }
   .stage { padding: 22px 0 0 14px; }
-  .sign { width: 118px; }
+  .sign { width: 124px; }
   .tabs { display: flex; }
   .tabs button { flex: 1; justify-content: center; padding: 9px 10px; }
   .spot { width: 24px; height: 24px; font-size: .85rem; }
