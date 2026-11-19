@@ -10,23 +10,51 @@ order: 4
 
 Hydranten, Löschwasserstellen, Feuerwachen und Defibrillatoren trägt die Gemeinschaft von [OpenStreetMap](https://www.openstreetmap.org/) ein, oft Feuerwehrleute aus dem Ort. OpenFireMap zeigt diese Daten an, ändert sie aber nicht.
 
-Je nach Gebiet lädt die Karte auf zwei Wegen:
+## So lädt OpenFireMap die Hydranten {#ladeweg}
 
-- **Vorbereitete Kacheln:** Für Deutschland, Österreich, die Schweiz, Liechtenstein und Luxemburg sowie 40 weitere Länder Europas liegen die Daten fertig aufbereitet bereit. Das geht schnell, auch bei großen Ausschnitten.
-- **Live-Abfrage (Overpass):** Überall sonst fragt OpenFireMap die Daten direkt bei einem öffentlichen OpenStreetMap-Dienst ab. Das funktioniert weltweit, dauert aber länger und hängt von der Auslastung dieser Dienste ab.
+Je nach Gebiet nutzt die Karte einen von zwei Wegen:
+
+- **Vorbereitete Kacheln:** Für Deutschland, Österreich, die Schweiz, Liechtenstein und Luxemburg sowie 40 weitere Länder Europas baut OpenFireMap aus den Länderauszügen von OpenStreetMap (Geofabrik) vorab Datenkacheln. Sie liegen bei Cloudflare und werden über dessen Zwischenspeicher ausgeliefert. Der Browser holt nur die wenigen Kacheln, die der Ausschnitt braucht.
+- **Overpass API:** Überall sonst fragt OpenFireMap die Daten direkt bei einem öffentlichen Overpass-Server ab, für den sichtbaren Ausschnitt und einen Rand drumherum.
+
+:::note Warum es in Deutschland und Europa schneller geht
+Der Unterschied liegt nicht daran, dass Overpass dort schneller antwortet. In diesen Ländern braucht die Karte für die Hydranten gar keine Overpass-Abfrage: Sie liest die vorbereiteten Kacheln. Overpass fragt sie dort nur noch nach den Änderungen seit dem Basis-Datenstand, und das ist eine deutlich kleinere Abfrage.
+:::
+
+### Was die Overpass API ist {#overpass}
+
+Die [Overpass API](https://wiki.openstreetmap.org/wiki/DE:Overpass_API) ist ein öffentlicher Dienst, der OpenStreetMap-Daten nach Merkmalen und Gebiet abfragt, zum Beispiel „alle Hydranten in diesem Rechteck“. Die Server betreiben Freiwillige und Vereine, viele Anwendungen teilen sie sich.
+
+Wie schnell eine Antwort kommt, hängt ab von:
+
+- der **Auslastung** des Servers, den OpenFireMap gerade nutzt,
+- der **Größe** des Ausschnitts und damit der Laufzeit der Abfrage,
+- **Wartezeiten und Ablehnungen**, wenn ein Server überlastet ist oder Anfragen begrenzt.
+
+OpenFireMap kennt vier Overpass-Server und probiert sie in zufälliger Reihenfolge. Antwortet einer nicht oder meldet Überlastung, setzt die Karte ihn kurz aus und fragt den nächsten. Bereits geladene Gebiete hält der Browser im lokalen Cache vor.
 
 ## Wie aktuell die Daten sind {#aktualitaet}
 
-| Gebiet | Basis-Datenstand | Neue Einträge |
+| Gebiet | Basis-Datenstand | Neue und geänderte Einträge |
 |---|---|---|
-| Deutschland, Österreich, Schweiz, Liechtenstein, Luxemburg | täglich | live nachgeladen |
-| 40 weitere Länder Europas | wöchentlich | live nachgeladen, solange der Stand höchstens 10 Tage alt ist |
-| übrige Welt | immer aktuell (Live-Abfrage) | sofort |
+| Deutschland, Österreich, Schweiz, Liechtenstein, Luxemburg | vorbereitete Kacheln, in der Regel täglich neu | über Overpass nachgefragt |
+| 40 weitere Länder Europas | vorbereitete Kacheln, in der Regel wöchentlich neu | über Overpass nachgefragt, solange der Stand höchstens 10 Tage alt ist |
+| übrige Welt | Stand des Overpass-Servers | mit jeder Abfrage |
 
-Nach dem Laden der vorbereiteten Kacheln fragt OpenFireMap im Hintergrund nach allem, was sich seit dem Basis-Datenstand im Ausschnitt geändert hat. Neu eingetragene oder geänderte Objekte erscheinen so meist nach wenigen Sekunden.
+Nach dem Laden der vorbereiteten Kacheln fragt OpenFireMap im Hintergrund nach allem, was sich seit dem Basis-Datenstand im Ausschnitt geändert hat, und ergänzt die Karte damit.
+
+### Warum ein neuer Eintrag nicht sofort erscheint {#verzoegerung}
+
+Eine Änderung in OpenStreetMap ist nicht im selben Moment in OpenFireMap zu sehen:
+
+- **Verarbeitung:** Der Overpass-Server muss die Änderung erst übernommen haben. Meldet er einen zu alten Stand, verwirft OpenFireMap die Antwort und zeigt den Basis-Stand.
+- **Zwischenspeicher:** Das Ergebnis der Nachfrage merkt sich die Karte für einige Minuten je Ausschnitt, geladene Gebiete außerdem im lokalen Cache.
+- **Ausfälle:** Ist Overpass überlastet oder nicht erreichbar, bleibt es beim Basis-Stand, bis eine spätere Abfrage gelingt. Darauf hat OpenFireMap keinen Einfluss.
+
+Eine feste Zeit lässt sich deshalb nicht versprechen. Siehst du deinen Eintrag noch nicht, lade die Karte nach einiger Zeit neu.
 
 :::note Gelöschte Objekte
-Das Nachladen erkennt nur neue und geänderte Objekte. Ein in OpenStreetMap gelöschter Hydrant verschwindet erst mit dem nächsten Basis-Datenstand, also nach spätestens einem Tag bzw. einer Woche.
+Das Nachfragen erkennt nur neue und geänderte Objekte. Ein in OpenStreetMap gelöschter Hydrant verschwindet erst mit dem nächsten Basis-Datenstand der vorbereiteten Kacheln.
 :::
 
 ## Das Fenster „Datenstand & Herkunft“ {#popover}
@@ -59,7 +87,7 @@ OpenFireMap ist keine Offline-Karte. Gebiete aus dem Cache bleiben eine Zeit lan
 
 ## Wenn das Laden dauert {#laden}
 
-Bei der Live-Abfrage teilen sich viele Nutzer öffentliche Server. Ist einer überlastet, versucht OpenFireMap von selbst den nächsten. Hilft das nicht, zoome etwas weiter hinein, damit weniger Daten nötig sind, und versuche es nach kurzer Zeit erneut. Die Meldung unten zeigt, was gerade passiert.
+Außerhalb der vorbereiteten Länder kommt alles über Overpass. Ist ein Server überlastet, versucht OpenFireMap von selbst den nächsten; die Meldung unten zeigt, was gerade passiert. Hilft das nicht, zoome etwas weiter hinein, damit die Abfrage kleiner wird, und versuche es nach kurzer Zeit erneut. Melden alle Server Überlastung, ist das ein Engpass bei Overpass selbst. Dann hilft nur, später erneut zu laden.
 
 :::warn Keine Einsatzgrundlage
 Die Daten sind so gut wie die Einträge in OpenStreetMap. Sie können unvollständig, veraltet oder falsch sein und ersetzen keine Unterlagen der Leitstelle oder des Wasserversorgers. Im Notfall immer den Notruf 112 wählen.

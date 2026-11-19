@@ -248,6 +248,7 @@ export const strings = {
     symbol_dry_barrel_hydrant: 'Dry-barrel hydrant',
     symbol_wall_hydrant: 'Wall hydrant',
     symbol_pipe_hydrant: 'Capped-pipe hydrant',
+    skip_to_content: "Skip to content",
     symbols_page_link: "Map symbols",
     symbols_title: "Map symbols & OSM tags",
     symbols_intro: "The map symbols are based on mapped OpenStreetMap tags. Tags are shown unchanged.",

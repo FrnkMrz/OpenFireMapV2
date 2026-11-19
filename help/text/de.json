@@ -125,7 +125,7 @@
   "plan.cta": "Ortsplan erstellen",
   "contrib.eyebrow": "Mitmachen",
   "contrib.title": "Ein Hydrant fehlt? Trag ihn ein.",
-  "contrib.lead": "Alle Daten stammen aus OpenStreetMap. Was du dort einträgst, erscheint meist nach wenigen Sekunden auch in OpenFireMap. Such dir das Werkzeug aus, das zu dir passt.",
+  "contrib.lead": "Alle Daten stammen aus OpenStreetMap. Was du dort einträgst, erscheint auch in OpenFireMap, sobald die genutzten Dienste die Änderung verarbeitet haben. Such dir das Werkzeug aus, das zu dir passt.",
   "contrib.hj_where": "Vor Ort · Handy",
   "contrib.hj_text": "Vor den Hydranten stellen, Foto machen, Typ wählen, hochladen. In unter 20 Sekunden.",
   "contrib.hj_link": "Anleitung",
@@ -147,8 +147,8 @@
   "good.alarm_text": "OpenFireMap ist keine Einsatzgrundlage. Die Daten können unvollständig oder veraltet sein und ersetzen keine Unterlagen der Leitstelle oder des Wasserversorgers.",
   "good.osm_title": "Daten aus OpenStreetMap",
   "good.osm_text": "Freiwillige tragen Hydranten, Wachen und Defibrillatoren ein. Je mehr mitmachen, desto vollständiger wird die Karte.",
-  "good.fresh_title": "Täglich bis wöchentlich frisch",
-  "good.fresh_text": "Für Deutschland, Österreich, die Schweiz, Liechtenstein und Luxemburg kommt der Datenstand täglich, für 40 weitere Länder wöchentlich. Neue Einträge holt die Karte sofort nach.",
+  "good.fresh_title": "Regelmäßig erneuert",
+  "good.fresh_text": "Für Deutschland, Österreich, die Schweiz, Liechtenstein und Luxemburg erneuert OpenFireMap die vorbereiteten Daten in der Regel täglich, für 40 weitere Länder wöchentlich. Neue Einträge fragt die Karte zusätzlich live nach.",
   "good.free_title": "Kein Konto, keine Werbung",
   "good.free_text": "Ein nicht-kommerzielles Projekt. Die Karte läuft in deinem Browser.",
   "good.keys_title": "Funktioniert mit Tastatur",
@@ -162,7 +162,7 @@
   "faq.q1": "Warum sehe ich keine Hydranten?",
   "faq.a1": "Hydranten erscheinen erst ab Zoomstufe 15. Zoome weiter hinein. Siehst du dann immer noch keine, sind in diesem Gebiet noch keine in OpenStreetMap eingetragen. Das kannst du ändern.",
   "faq.q2": "Wann erscheint mein neu eingetragener Hydrant?",
-  "faq.a2": "Meist nach wenigen Sekunden bis Minuten. OpenFireMap holt neue und geänderte Objekte live nach. Gelöschte Objekte verschwinden erst mit dem nächsten Datenstand (täglich bzw. wöchentlich).",
+  "faq.a2": "Das lässt sich nicht genau vorhersagen. OpenFireMap fragt neue und geänderte Objekte über die Overpass API nach. Sie erscheinen, sobald der Overpass-Server die Änderung verarbeitet hat; Zwischenspeicher können das etwas verzögern. Ist Overpass überlastet oder nicht erreichbar, erscheint die Änderung erst später. Gelöschte Objekte verschwinden erst mit dem nächsten Datenstand. Mehr unter <a href=\"data/#verzoegerung\">Daten &amp; Aktualität</a>.",
   "faq.q3": "Warum gibt es am Smartphone keinen Export?",
   "faq.a3": "Druckfertige Pläne brauchen viel Speicher und einen großen Bildschirm zum Auswählen. Export und Ortsplan gibt es deshalb nur am Computer.",
   "faq.q4": "Darf ich Pläne für meine Feuerwehr drucken?",
@@ -199,5 +199,7 @@
   "article.next": "Weiter",
   "article.contact": "Schreib uns:",
   "article.all_topics": "Alle Themen",
-  "plan.cta_guide": "Anleitung lesen"
+  "plan.cta_guide": "Anleitung lesen",
+  "faq.overlay_hint": "Möchtest du die Karte in deiner eigenen Anwendung nutzen? Informationen dazu findest du auf unserer <a href=\"/overlay/\">Overlay-Seite</a>.",
+  "contrib.cta": "Schritt-für-Schritt-Anleitung"
 }

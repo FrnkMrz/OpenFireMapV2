@@ -104,7 +104,7 @@ Das Blatt öffnet sich in voller Größe. Oben in der Leiste kannst du Maßstab,
 
 - Die Daten sind so aktuell wie OpenStreetMap; das Datum steht auf dem Blatt. Drucke Pläne nach größeren Änderungen im Ort neu.
 - Die Quellenangabe „© OpenStreetMap-Mitwirkende“ druckt der Ortsplan von selbst mit. Sie muss auf dem Plan bleiben.
-- Fehlt ein Hydrant auf dem Plan, fehlt er in OpenStreetMap. [Trag ihn ein](../#mitmachen), dann ist er beim nächsten Plan dabei.
+- Fehlt ein Hydrant auf dem Plan, fehlt er in OpenStreetMap. [Trag ihn ein](../contribute/), dann ist er beim nächsten Plan dabei.
 
 :::warn Keine amtliche Unterlage
 Der Ortsplan ersetzt keine Pläne des Wasserversorgers oder der Gemeinde. Prüfe wichtige Angaben vor Ort.

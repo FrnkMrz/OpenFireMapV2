@@ -63,14 +63,13 @@
             <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
             <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 005 5L13 18a2.1 2.1 0 01-3-3l6.5-6.5a4 4 0 01-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
             <symbol id="i-symbols" viewBox="0 0 24 24"><circle cx="7" cy="7" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 13.5l3.5 3.5L7 20.5 3.5 17z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 17h6M17 14v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-            <symbol id="i-brand" viewBox="0 0 40 40"><rect x="1.5" y="1.5" width="37" height="37" rx="7" fill="#fff" stroke="#c8102e" stroke-width="3"/><path d="M20 8c4.5 5 8 9 8 13.5A8 8 0 0112 21.5c0-3 1.5-5.2 3.5-7 .3 2.6 1.6 4.2 3.3 4.7C18.3 15 18.7 11.5 20 8z" fill="#c8102e"/><circle cx="20" cy="23.5" r="3" fill="#fff"/></symbol>
         </defs>
     </svg>
 
     <header class="top" id="top">
         <div class="wrap">
             <a class="brand" href="{{@home}}">
-                <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
+                <img class="brand-mark" src="/favicons/android-icon-96x96.png" width="34" height="34" alt="">
                 <span>OpenFireMap</span> <small>{{ui.brand_help}}</small>
             </a>
             <nav class="nav" id="nav" aria-label="{{ui.nav_label}}">
@@ -78,7 +77,7 @@
                 <a href="{{@home}}phone/">{{nav.phone}}</a>
                 <a href="{{@home}}export/">{{nav.export}}</a>
                 <a href="{{@home}}town-plan/">{{nav.plan}}</a>
-                <a href="{{@home}}#mitmachen">{{nav.contribute}}</a>
+                <a href="{{@home}}contribute/">{{nav.contribute}}</a>
                 <a href="{{@home}}#faq">{{nav.faq}}</a>
             </nav>
             <div class="top-actions">
@@ -103,7 +102,7 @@
             <div class="foot">
                 <div>
                     <a class="brand" href="{{@home}}">
-                        <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
+                        <img class="brand-mark" src="/favicons/android-icon-96x96.png" width="34" height="34" alt="">
                         <span>OpenFireMap</span>
                     </a>
                     <p>{{foot.about}}</p>
@@ -118,6 +117,7 @@
                         <li><a href="{{@home}}data/">{{nav.data}}</a></li>
                         <li><a href="{{@home}}export/">{{nav.export}}</a></li>
                         <li><a href="{{@home}}town-plan/">{{nav.plan}}</a></li>
+                        <li><a href="{{@home}}contribute/">{{nav.contribute}}</a></li>
                         <li><a href="{{@home}}#faq">{{nav.faq}}</a></li>
                     </ul>
                 </div>

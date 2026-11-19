@@ -58,5 +58,5 @@ Liegen ab Zoomstufe 17 mehrere Objekte innerhalb von 5 Metern, fasst die Karte s
 Alle Symbole mit den passenden OpenStreetMap-Tags zeigt die Seite **[Kartenzeichen](/symbols/)**. Sie ist auch für Mapper nützlich, die wissen wollen, wie ein Symbol entsteht.
 
 :::note Woher die Angaben kommen
-Typ, Durchmesser, Nummer und alles andere stammen aus OpenStreetMap. Ist ein Hydrant ohne Typ eingetragen, zeigt die Karte einen roten Punkt ohne Buchstaben. Wie du das ergänzt, steht unter [Mitmachen](../#mitmachen).
+Typ, Durchmesser, Nummer und alles andere stammen aus OpenStreetMap. Ist ein Hydrant ohne Typ eingetragen, zeigt die Karte einen roten Punkt ohne Buchstaben. Wie du das ergänzt, steht unter [Mitmachen](../contribute/).
 :::

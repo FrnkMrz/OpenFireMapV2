@@ -104,7 +104,7 @@ The sheet opens at full size. In the bar at the top you can still change scale, 
 
 - The data is as current as OpenStreetMap; the date is printed on the sheet. Print new plans after larger changes in your town.
 - The town plan prints the credit “© OpenStreetMap contributors” automatically. It must stay on the plan.
-- If a hydrant is missing from the plan, it is missing from OpenStreetMap. [Add it](../#mitmachen) and it will be on your next plan.
+- If a hydrant is missing from the plan, it is missing from OpenStreetMap. [Add it](../contribute/) and it will be on your next plan.
 
 :::warn Not an official document
 The town plan does not replace plans from the water utility or the municipality. Check important details on site.

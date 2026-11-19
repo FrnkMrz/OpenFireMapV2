@@ -1,4 +1,5 @@
 import { initI18n, updatePageLanguage, setLang, getLang } from './i18n.js';
+// Kartenzeichen im Stil der Hilfe (symbols/index.html, Stile in src/help.css). Der Hilfe-Link ([data-help-link]) folgt der Sprache über i18n.js.
 import { getHydrantMarkerType, getMarkerSvg } from './marker-symbols.js';
 
 const hydrantSymbols = [
@@ -29,13 +30,16 @@ function renderCards(containerId, cards) {
     container.innerHTML = cards.map(({ type, label, tags, lines, note }) => {
         const markerType = getHydrantMarkerType(type, tags);
         const icon = getMarkerSvg(markerType, 64, 2, tags);
-        const tagMarkup = lines.map((line) => `<code class="ofm-symbol-tag">${line}</code>`).join('');
-        const noteMarkup = note ? `<p class="ofm-symbol-note" data-i18n="${note}"></p>` : '';
-        return `<article class="ofm-symbol-card">
-            <div class="ofm-symbol-icon" aria-hidden="true">${icon}</div>
-            <h3 data-i18n="${label}"></h3>
-            <div class="ofm-symbol-tags" aria-label="OSM-Tags">${tagMarkup}</div>
-            ${noteMarkup}
+        // Umbruch nur nach „:“ und „=“, nicht mitten im Wort
+        const tagMarkup = lines.map((line) => `<code class="sym-tag">${line.replace(/([:=])/g, '$1<wbr>')}</code>`).join('');
+        const noteMarkup = note ? `<p class="sym-note" data-i18n="${note}"></p>` : '';
+        return `<article class="sym-card">
+            <div class="sym-icon" aria-hidden="true">${icon}</div>
+            <div class="sym-text">
+                <h3 data-i18n="${label}"></h3>
+                <div class="sym-tags" aria-label="OSM-Tags">${tagMarkup}</div>
+                ${noteMarkup}
+            </div>
         </article>`;
     }).join('');
 }
