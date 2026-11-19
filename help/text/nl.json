@@ -212,5 +212,8 @@
   "sheet.source": "© OpenStreetMap contributors (ODbL) · Kaart: Protomaps",
   "sheet.source2": "Gegevens: OpenFireMap.org · datum op het blad",
   "nav.a11y": "Toegankelijkheid",
-  "faq.all": "Alle vragen"
+  "faq.all": "Alle vragen",
+  "topics.brigades": "Voor brandweerkorpsen",
+  "topics.brigades_text": "Controleer brandkranen tijdens een oefening of stadswandeling",
+  "contrib.cta_brigades": "Gids voor brandweerkorpsen"
 }
