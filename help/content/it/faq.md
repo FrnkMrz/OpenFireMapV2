@@ -3,7 +3,7 @@ title: Domande frequenti
 description: Risposte su mappa, dati, esportazione, piani, contributi e progetto.
 eyebrow: FAQ
 lead: Risposte alle domande più comuni. Se non trovi la tua, scrivi a info@openfiremap.org.
-order: 9
+order: 10
 ---
 
 ## Mappa e controlli {#karte}
