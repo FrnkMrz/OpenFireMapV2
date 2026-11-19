@@ -17,7 +17,8 @@
     "i18n:check": "node ./scripts/i18n-check.mjs",
     "handout:build": "node ./scripts/build-handout.mjs",
     "help:build": "node ./scripts/build-help.mjs",
-    "help:shots": "node ./help/screenshots.mjs"
+    "help:shots": "node ./help/screenshots.mjs",
+    "icons": "node scripts/build-icons.mjs"
   },
   "repository": {
     "type": "git",
