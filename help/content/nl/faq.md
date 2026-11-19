@@ -90,6 +90,10 @@ Ja. De vermelding “© OpenStreetMap contributors” moet zichtbaar blijven.
 
 Je kunt die in OpenStreetMap corrigeren met een gratis account. Zie [Brandkranen toevoegen](../contribute/).
 
+### We zijn een brandweerkorps en willen de brandkranen in ons gebied opnemen. Hoe pakken we dat aan? {#feuerwehr}
+
+Organiseer bij voorkeur een oefenavond of stadswandeling met teams. De gids [Voor brandweerkorpsen](../fire-brigades/) beschrijft voorbereiding, verloop, veiligheid en opvolging.
+
 ### Mag ik gemeentelijke plannen kopiëren? {#plaene}
 
 Alleen met uitdrukkelijke toestemming. Voeg bij voorkeur alleen toe wat je zelf hebt gezien.
