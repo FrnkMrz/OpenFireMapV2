@@ -3,7 +3,7 @@ title: Najczęstsze pytania
 description: Odpowiedzi o mapie, danych, eksporcie, planach, współtworzeniu i projekcie.
 eyebrow: FAQ
 lead: Odpowiedzi na najczęstsze pytania. Jeśli brakuje Twojego, napisz na info@openfiremap.org.
-order: 9
+order: 10
 ---
 
 ## Mapa i obsługa {#karte}
