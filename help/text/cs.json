@@ -212,5 +212,8 @@
   "sheet.source": "© OpenStreetMap contributors (ODbL) · Mapa: Protomaps",
   "sheet.source2": "Data: OpenFireMap.org · datum na listu",
   "nav.a11y": "Přístupnost",
-  "faq.all": "Všechny otázky"
+  "faq.all": "Všechny otázky",
+  "topics.brigades": "Pro hasičské sbory",
+  "topics.brigades_text": "Kontrola hydrantů při cvičení nebo obchůzce města",
+  "contrib.cta_brigades": "Průvodce pro hasičské sbory"
 }
