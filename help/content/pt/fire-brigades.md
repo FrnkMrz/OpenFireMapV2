@@ -31,6 +31,15 @@ A pessoa responsável planeia uma ou duas semanas antes:
 Aplicam-se as regras do OSM e o consentimento dos pais. Os jovens podem procurar, verificar e tomar notas; um adulto introduz os dados com a sua conta.
 :::
 
+## Para imprimir {#ausdrucken}
+
+| Documento | Para quem | Ficheiro |
+|---|---|---|
+| **Cartão da equipa**: seis passos, segurança, leitura da placa e tipos de hidrantes | cada equipa, A4 frente e verso | [Descarregar PDF](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) (em alemão) |
+| **Folha de registo, lista de problemas** e modelo de carta para o município ou empresa de água | equipas e acompanhamento, A4 horizontal | [Descarregar PDF](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) (em alemão) |
+
+Estes materiais são uma primeira versão, antes do teste no terreno com um corpo de bombeiros; por enquanto, só estão disponíveis em alemão. Envie comentários para info@openfiremap.org.
+
 ## Decorrer do exercício {#ablauf}
 
 Para 90 minutos: 15 minutos de instrução e demonstração, 60 minutos de percurso pelas equipas e 15 minutos de balanço. Uma equipa de duas ou três pessoas divide telefone, atenção ao trânsito e notas.
