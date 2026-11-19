@@ -31,6 +31,15 @@ Vedoucí naplánuje obchůzku týden až dva předem:
 Platí pravidla OSM a souhlas rodičů. Mladí mohou hledat, kontrolovat a zapisovat; dospělý vloží údaje pod svým účtem.
 :::
 
+## K vytištění {#ausdrucken}
+
+| Dokument | Pro koho | Soubor |
+|---|---|---|
+| **Karta týmu**: šest kroků, bezpečnost, čtení hydrantové tabulky a typy hydrantů | každý tým, oboustranně A4 | [Stáhnout PDF](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) (německy) |
+| **Záznamový list, seznam závad** a vzor dopisu pro obec nebo vodárny | týmy a následné zpracování, A4 na šířku | [Stáhnout PDF](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) (německy) |
+
+Jde o první verzi před terénním testem s hasičským sborem; zatím jsou dokumenty pouze v němčině. Připomínky posílejte na info@openfiremap.org.
+
 ## Průběh cvičení {#ablauf}
 
 Pro 90 minut: 15 minut instruktáž a ukázka, 60 minut obchůzka týmů, 15 minut společné vyhodnocení. Dvou- až tříčlenný tým rozdělí ovládání telefonu, sledování provozu a zapisování.
