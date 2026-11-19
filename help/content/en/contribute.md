@@ -22,6 +22,8 @@ OpenFireMap shows data from [OpenStreetMap](https://www.openstreetmap.org/) (OSM
 - **When saving, briefly describe what you changed**, for example “Added hydrants on Main Street”.
 :::
 
+Want to check the hydrants in your response area together as a fire brigade? How to organise a drill evening or a walk through town for it is explained under [For fire brigades](../fire-brigades/).
+
 ## Which tool suits you? {#werkzeug}
 
 | You are … | Use | Why |

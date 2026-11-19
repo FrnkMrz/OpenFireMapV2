@@ -3,7 +3,7 @@ title: Barrierefreiheit
 description: OpenFireMap mit Tastatur, Screenreader, Vergrößerung und reduzierter Bewegung nutzen – was geht, wie es geht und was noch nicht geprüft ist.
 eyebrow: Barrierefreiheit
 lead: OpenFireMap soll für alle nutzbar sein, auch ohne Maus, mit Screenreader oder mit starker Vergrößerung. Hier steht, wie das geht und wo es noch Lücken gibt.
-order: 8
+order: 9
 ---
 
 ## Unser Ziel {#ziel}

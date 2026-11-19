@@ -3,7 +3,7 @@ title: Häufige Fragen
 description: Antworten auf häufige Fragen zu OpenFireMap – Karte, Daten und Aktualität, Export und Ortsplan, Mitmachen, Projekt und Recht.
 eyebrow: FAQ
 lead: Die Antworten auf das, was am häufigsten gefragt wird. Deine Frage ist nicht dabei? Schreib uns an info@openfiremap.org.
-order: 9
+order: 10
 ---
 
 ## Karte und Bedienung {#karte}
@@ -89,6 +89,10 @@ Ja. Die Daten stehen unter der Open Database License. Auf jedem Plan muss „© 
 ### Ein Hydrant fehlt oder ist falsch. Wer korrigiert das? {#korrigieren}
 
 Du selbst, in OpenStreetMap. Du brauchst nur ein kostenloses Konto. Die Anleitung mit Hydrantenjäger, StreetComplete, iD und JOSM steht unter [Hydranten eintragen](../contribute/).
+
+### Wir möchten als Feuerwehr die Hydranten in unserem Ort erfassen. Wie gehen wir vor? {#feuerwehr}
+
+Am besten als Übungsabend oder Ortsrundgang in Trupps. Vorbereitung, Ablauf, Sicherheitsregeln und Nachbereitung beschreibt die Anleitung [Für Feuerwehren](../fire-brigades/).
 
 ### Darf ich Hydrantenpläne der Gemeinde oder des Wasserversorgers übernehmen? {#plaene}
 

@@ -22,6 +22,8 @@ OpenFireMap zeigt die Daten von [OpenStreetMap](https://www.openstreetmap.org/) 
 - **Beim Speichern kurz beschreiben, was du geändert hast**, zum Beispiel „Hydranten Hauptstraße ergänzt“.
 :::
 
+Ihr wollt als Feuerwehr gemeinsam die Hydranten eures Ausrückebereichs prüfen? Wie ihr einen Übungsabend oder Ortsrundgang dafür organisiert, steht unter [Für Feuerwehren](../fire-brigades/).
+
 ## Welches Werkzeug passt zu dir? {#werkzeug}
 
 | Du bist … | Nimm | Warum |

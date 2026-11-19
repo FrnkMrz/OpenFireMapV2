@@ -3,7 +3,7 @@ title: Frequently asked questions
 description: Answers to common questions about OpenFireMap – map, data and freshness, export and town plan, contributing, project and legal.
 eyebrow: FAQ
 lead: Answers to the questions people ask most. Your question is not here? Write to us at info@openfiremap.org.
-order: 9
+order: 10
 ---
 
 ## Map and controls {#karte}
@@ -89,6 +89,10 @@ Yes. The data is licensed under the Open Database License. Every plan must keep 
 ### A hydrant is missing or wrong. Who fixes it? {#korrigieren}
 
 You can, in OpenStreetMap. All you need is a free account. The guide with Hydrantenjäger, StreetComplete, iD and JOSM is under [Add hydrants](../contribute/).
+
+### We are a fire brigade and want to record the hydrants in our area. How do we go about it? {#feuerwehr}
+
+Ideally as a drill evening or a walk through town in teams. Preparation, schedule, safety rules and follow-up are described in the guide [For fire brigades](../fire-brigades/).
 
 ### May I copy hydrant plans from the municipality or water utility? {#plaene}
 
