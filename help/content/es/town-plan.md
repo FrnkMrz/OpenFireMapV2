@@ -6,9 +6,9 @@ lead: El plano urbano reúne mapa, cuadrícula, leyenda, flecha norte y calles e
 order: 6
 ---
 
-## Antes de empezar {#start}
+## Para qué sirve el plano urbano {#wofuer}
 
-El plano urbano está disponible en ordenador para lugares de Alemania. Elige una zona adecuada y asegúrate de que los datos se hayan cargado.
+Un plano impreso funciona sin red ni batería. Es útil en el parque de bomberos, en vehículos, para formación y planificación.\n\n## Requisitos {#voraussetzungen}\n\nSe necesita un ordenador. La cobertura actual del plano incluye Alemania. Desplaza y acerca el mapa hasta tu ciudad y después dibuja el marco.
 
 ## Paso 1: área y formato {#schritt-1}
 
