@@ -37,7 +37,11 @@ Overpass skal først have behandlet ændringen. Områdecache, lokal cache eller 
 
 Vinduet viser datakilde, dato for grunddata og om liveopdatering lykkedes. På computer åbnes det via statusfeltet; på telefon trykkes på feltet.
 
-## Statusside {#statusseite}\n\n:::figure data frame=plain\nVinduet viser datakilden og status for liveopdateringen.\n:::
+## Statusside {#statusseite}
+
+:::figure data frame=plain
+Vinduet viser datakilden og status for liveopdateringen.
+:::
 
 [Statussiden](/status/) viser dataalder og objekttal for hvert land.
 
