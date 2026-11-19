@@ -3,7 +3,7 @@ title: Sık sorulan sorular
 description: Harita, veriler, dışa aktarma, şehir planı, katkılar ve proje hakkında yanıtlar.
 eyebrow: SSS
 lead: Sık sorulan soruların yanıtları. Aradığınızı bulamazsanız info@openfiremap.org adresine yazın.
-order: 9
+order: 10
 ---
 
 ## Harita ve kontroller {#karte}
