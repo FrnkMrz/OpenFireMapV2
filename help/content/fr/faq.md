@@ -90,6 +90,10 @@ Oui. La mention « © OpenStreetMap contributors » doit rester visible sur chaq
 
 Corrigez-la dans OpenStreetMap avec un compte gratuit. Voir [Ajouter des bornes](../contribute/).
 
+### Nous sommes un service d’incendie et voulons relever les hydrants de notre secteur. Comment faire ? {#feuerwehr}
+
+Le mieux est d’organiser une soirée d’exercice ou une visite de la ville en équipes. Le guide [Pour les services d’incendie](../fire-brigades/) explique la préparation, le déroulement, la sécurité et le suivi.
+
 ### Puis-je copier les plans de la commune ? {#plaene}
 
 Uniquement avec une autorisation explicite. Ajoutez de préférence ce que vous avez vérifié sur place.
