@@ -1,12 +1,21 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { HELP_LANGS, helpUrl } from '../scripts/build-help.mjs';
+import { readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // Hilfe-Bereich: Barrierefreiheit, Darstellung auf schmalen Bildschirmen und die kleinen
 // Bedienelemente (Tabs, Erklärer, Themenmenü). Die Seiten laden nichts von fremden Servern.
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
 const SLUGS = ['map', 'phone', 'layers', 'data', 'export', 'town-plan', 'contribute', 'accessibility', 'faq'];
+const HELP_DEFAULT_LANG = 'de';
+const HELP_LANGS = readdirSync(resolve(process.cwd(), 'help', 'text'))
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => file.replace(/\\.json$/, ''));
+const helpUrl = (lang, page = 'index') => {
+    const base = lang === HELP_DEFAULT_LANG ? '/help/' : `/help/${lang}/`;
+    return page === 'index' ? base : `${base}${page}/`;
+};
 const PAGES = HELP_LANGS.map((lang) => [lang, helpUrl(lang)]);
 const ARTICLES = HELP_LANGS.flatMap((lang) => SLUGS.map((slug) => [lang, helpUrl(lang, slug)]));
 const helpLangFor = (lang) => HELP_LANGS.includes(lang) ? lang : (lang === 'de' ? 'de' : 'en');
