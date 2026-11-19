@@ -20,7 +20,7 @@ Vælg objekter, signaturforklaring og gadeindeks. Kontrollér, at kortet viser d
 
 ## Trin 3: layout {#schritt-3}
 
-:::figure plan-layout frame=plain
+:::figure plan-3 frame=browser
 Layoutet med kort, signaturforklaring og indeks.
 :::
 
