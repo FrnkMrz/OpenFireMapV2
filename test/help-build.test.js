@@ -96,6 +96,11 @@ describe('Hilfe: erzeugte Seiten', () => {
         expect(html).toMatch(new RegExp(`lang="${lang}" hreflang="${lang}" aria-current="page"`));
       });
 
+      it('ist für Suchmaschinen freigegeben und nennt die kanonische Adresse', () => {
+        expect(html).not.toMatch(/name="robots"[^>]*noindex/);
+        expect(html).toContain(`<link rel="canonical" href="https://openfiremap.org${helpUrl(lang, slug)}">`);
+      });
+
       it('lädt nichts von fremden Servern und nutzt keine Inline-Stile oder -Skripte', () => {
         const csp = readCsp(html);
         expect(csp['script-src']).toEqual(["'self'"]);
