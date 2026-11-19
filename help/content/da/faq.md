@@ -92,7 +92,7 @@ Ret den i OpenStreetMap med en gratis konto. Se [Tilføj brandhaner](../contribu
 
 ### Vi er et brandvæsen og vil registrere brandhanerne i vores område. Hvordan gør vi? {#feuerwehr}
 
-Det er bedst at arrangere en øvelsesaften eller en byvandring i hold. Vejledningen [Til brandvæsener](../fire-brigades/) beskriver forberedelse, forløb, sikkerhed og opfølgning.
+Det er bedst at arrangere en øvelsesaften eller en byvandring i hold. En trin-for-trin-vejledning for brandvæsener i Tyskland findes kun på tysk: [Für Feuerwehren](/help/fire-brigades/). Andre steder viser vejledningen [Tilføj brandhaner](../contribute/) værktøjerne.
 
 ### Må jeg kopiere kommunens planer? {#plaene}
 

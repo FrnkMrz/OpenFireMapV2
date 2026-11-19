@@ -92,7 +92,7 @@ Můžete ho opravit v OpenStreetMap. Potřebujete pouze bezplatný účet. Prův
 
 ### Jsme hasičský sbor a chceme zmapovat hydranty v našem rajónu. Jak na to? {#feuerwehr}
 
-Nejlepší je uspořádat cvičební večer nebo obchůzku města v týmech. Průvodce [Pro hasičské sbory](../fire-brigades/) popisuje přípravu, průběh, bezpečnost i následné kroky.
+Nejlepší je uspořádat cvičební večer nebo obchůzku města v týmech. Podrobný návod pro hasičské sbory v Německu existuje jen v němčině: [Für Feuerwehren](/help/fire-brigades/). Jinde ukazuje vhodné nástroje návod [Přidávání hydrantů](../contribute/).
 
 ### Mohu kopírovat plány hydrantů od obce nebo vodáren? {#plaene}
 

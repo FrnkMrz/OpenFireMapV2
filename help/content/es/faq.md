@@ -92,7 +92,7 @@ Puedes corregirlo en OpenStreetMap con una cuenta gratuita. Consulta [Añadir hi
 
 ### Somos un parque de bomberos y queremos registrar los hidrantes de nuestra zona. ¿Cómo lo hacemos? {#feuerwehr}
 
-Lo mejor es organizar una jornada de prácticas o un recorrido por la ciudad en equipos. La guía [Para parques de bomberos](../fire-brigades/) explica la preparación, el desarrollo, la seguridad y el seguimiento.
+Lo mejor es organizar una jornada de prácticas o un recorrido por la ciudad en equipos. Para los bomberos de Alemania hay una guía paso a paso, solo en alemán: [Für Feuerwehren](/help/fire-brigades/). En otros países, la guía [Añadir hidrantes](../contribute/) muestra las herramientas.
 
 ### ¿Puedo copiar planos municipales? {#plaene}
 

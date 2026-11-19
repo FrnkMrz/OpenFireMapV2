@@ -92,7 +92,7 @@ Je kunt die in OpenStreetMap corrigeren met een gratis account. Zie [Brandkranen
 
 ### We zijn een brandweerkorps en willen de brandkranen in ons gebied opnemen. Hoe pakken we dat aan? {#feuerwehr}
 
-Organiseer bij voorkeur een oefenavond of stadswandeling met teams. De gids [Voor brandweerkorpsen](../fire-brigades/) beschrijft voorbereiding, verloop, veiligheid en opvolging.
+Organiseer bij voorkeur een oefenavond of stadswandeling met teams. Voor brandweerkorpsen in Duitsland is er een stapsgewijze gids, alleen in het Duits: [Für Feuerwehren](/help/fire-brigades/). Elders laat de gids [Brandkranen toevoegen](../contribute/) de hulpmiddelen zien.
 
 ### Mag ik gemeentelijke plannen kopiëren? {#plaene}
 

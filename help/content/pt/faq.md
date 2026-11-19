@@ -92,7 +92,7 @@ Pode corrigi-lo no OpenStreetMap com uma conta gratuita. Consulte [Adicionar hid
 
 ### Somos um corpo de bombeiros e queremos registar os hidrantes da nossa zona. Como fazer? {#feuerwehr}
 
-O ideal é organizar uma noite de exercício ou um percurso pela cidade em equipas. O guia [Para os corpos de bombeiros](../fire-brigades/) explica a preparação, o decorrer, a segurança e o acompanhamento.
+O ideal é organizar uma noite de exercício ou um percurso pela cidade em equipas. Para os corpos de bombeiros na Alemanha existe um guia passo a passo, apenas em alemão: [Für Feuerwehren](/help/fire-brigades/). Noutros países, o guia [Adicionar hidrantes](../contribute/) apresenta as ferramentas.
 
 ### Posso copiar plantas municipais? {#plaene}
 
