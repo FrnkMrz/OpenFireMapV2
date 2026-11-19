@@ -212,5 +212,8 @@
   "sheet.source": "© OpenStreetMap contributors (ODbL) · Mapa: Protomaps",
   "sheet.source2": "Datos: OpenFireMap.org · fecha impresa en la hoja",
   "nav.a11y": "Accesibilidad",
-  "faq.all": "Todas las preguntas"
+  "faq.all": "Todas las preguntas",
+  "topics.brigades": "Para los parques de bomberos",
+  "topics.brigades_text": "Comprueba los hidrantes durante un ejercicio o un recorrido por la ciudad",
+  "contrib.cta_brigades": "Guía para parques de bomberos"
 }
