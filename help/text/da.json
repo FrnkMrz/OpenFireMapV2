@@ -161,7 +161,7 @@
   "faq.q4": "Må jeg udskrive planer til mit brandvæsen?",
   "faq.a4": "Ja. Dataene er licenseret under Open Database License. Hver plan skal vise “© OpenStreetMap contributors”. Byplanen tilføjer automatisk denne kreditering.",
   "faq.q5": "Virker kortet offline?",
-  "faq.a5": "Kun delvist. Indlæste områder bliver i hukommelsen et stykke tid. Nye områder og søgning kræver forbindelse. En udskrevet <a href=\"../town-plan/\">byplan</a> er mere pålidelig på farten.",
+  "faq.a5": "Kun delvist. Områder, du har indlæst, gemmes et stykke tid. Nye områder og søgning kræver forbindelse. Et udskrevet bykort er mere pålideligt på farten.",
   "faq.q6": "Er det et officielt brandkort?",
   "faq.a6": "Nej. OpenFireMap er et privat, ikke-kommercielt projekt baseret på OpenStreetMap. Det samarbejder ikke officielt med nogen myndighed eller brandvæsen.",
   "faq.q7": "Hvordan får jeg brandvæsenets lag ind i mit eget kort?",
