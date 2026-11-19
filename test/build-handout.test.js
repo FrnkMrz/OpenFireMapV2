@@ -88,21 +88,23 @@ describe('Handouts: Feuerwehr-Material', () => {
     const read = (path) => readFileSync(new URL(`../handouts/${path}`, import.meta.url), 'utf8');
     const truppkarte = read('feuerwehr-truppkarte/OpenFireMap-Feuerwehr-Truppkarte.md');
     const boegen = read('feuerwehr-boegen/OpenFireMap-Feuerwehr-Erfassungsbogen.md');
+    const leitfaden = read('feuerwehr-leitfaden/OpenFireMap-Feuerwehr-Leitfaden.md');
     const prose = (source) => source.replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '');
 
     it('jeder Handout-Ordner wird beim Website-Build gerendert', () => {
         const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
         const folders = readdirSync(new URL('../handouts/', import.meta.url), { withFileTypes: true })
             .filter((entry) => entry.isDirectory()).map((entry) => entry.name);
-        expect(folders).toEqual(expect.arrayContaining(['feuerwehr-truppkarte', 'feuerwehr-boegen']));
+        expect(folders).toEqual(expect.arrayContaining(['feuerwehr-truppkarte', 'feuerwehr-boegen', 'feuerwehr-leitfaden']));
         for (const folder of folders) expect(pkg.scripts.build, folder).toContain(`handouts/${folder}`);
     });
 
-    it('die (nur deutsche) Hilfe-Seite verlinkt beide PDFs unter dem Namen, den der Build erzeugt', () => {
+    it('die (nur deutsche) Hilfe-Seite verlinkt alle drei PDFs unter dem Namen, den der Build erzeugt', () => {
         for (const lang of ['de']) {
             const page = readFileSync(new URL(`../help/content/${lang}/fire-brigades.md`, import.meta.url), 'utf8');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf');
+            expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Leitfaden.pdf');
         }
     });
 
@@ -130,9 +132,37 @@ describe('Handouts: Feuerwehr-Material', () => {
 
     it('keine Wir-Form außer in der Anschreiben-Vorlage, keine festen Zeitzusagen', () => {
         const [beforeLetter] = boegen.split('## Vorlage: Anschreiben');
-        for (const text of [truppkarte, beforeLetter]) {
+        for (const text of [truppkarte, beforeLetter, leitfaden]) {
             expect(prose(text)).not.toMatch(/\b(wir|uns|unser\w*)\b/i);
             expect(prose(text)).not.toMatch(/(sofort|innerhalb von \d+|nach \d+ (Minuten|Stunden)) (sichtbar|erscheint)/i);
         }
+    });
+
+    it('Leitfaden: Kurzfassung, Checklisten, Wiki-Vorlage, Sicherheit, Bilder vorhanden', () => {
+        const html = renderHandoutHtml(leitfaden);
+        expect(html).toContain('<h2>Kurzfassung für die Wehrführung</h2>');
+        expect(html).toContain('Organised Editing Guidelines');
+        expect(html).toContain('== Hydranten-Rundgang der Feuerwehr Musterstadt ==');
+        expect((html.match(/<div class="check">/g) || []).length).toBeGreaterThanOrEqual(4);
+        expect(html).toContain('Hydranten nicht öffnen');
+        expect(html).toContain('Warnweste');
+        expect(html).toContain('112');
+        expect(html).toContain('#OpenFireMap');
+        const images = [...leitfaden.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1]);
+        expect(images).toHaveLength(3);
+        for (const path of images) expect(() => read(`feuerwehr-leitfaden/${path}`)).not.toThrow();
+    });
+
+    it('Hydrantenjäger setzt den Änderungskommentar selbst: der Hashtag wird nur für den iD-Editor verlangt', () => {
+        const page = readFileSync(new URL('../help/content/de/fire-brigades.md', import.meta.url), 'utf8');
+        // Jeder Satz, der den Hashtag mit dem Kommentar verbindet, muss sich auf den iD-Editor beziehen
+        const sentences = (text) => text.split(/(?<=[.!?])\s+|\n/);
+        for (const text of [truppkarte, leitfaden, page]) {
+            const hashtagRules = sentences(text).filter((s) => s.includes('#OpenFireMap') && /[Kk]ommentar/.test(s));
+            expect(hashtagRules.length).toBeGreaterThan(0);
+            for (const sentence of hashtagRules) expect(sentence).toContain('iD');
+        }
+        expect(sentences('Im Änderungskommentar immer den Hashtag `#OpenFireMap` angeben.')
+            .filter((s) => s.includes('#OpenFireMap') && /[Kk]ommentar/.test(s)).every((s) => s.includes('iD'))).toBe(false);
     });
 });
