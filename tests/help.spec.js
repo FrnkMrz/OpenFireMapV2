@@ -17,7 +17,9 @@ const helpUrl = (lang, page = 'index') => {
     return page === 'index' ? base : `${base}${page}/`;
 };
 const PAGES = HELP_LANGS.map((lang) => [lang, helpUrl(lang)]);
-const ARTICLES = HELP_LANGS.flatMap((lang) => SLUGS.map((slug) => [lang, helpUrl(lang, slug)]));
+// Seiten mit „languages: de“ im Frontmatter gibt es nur auf Deutsch
+const ONLY_DE = ['fire-brigades'];
+const ARTICLES = HELP_LANGS.flatMap((lang) => SLUGS.filter((slug) => lang === HELP_DEFAULT_LANG || !ONLY_DE.includes(slug)).map((slug) => [lang, helpUrl(lang, slug)]));
 const helpLangFor = (lang) => HELP_LANGS.includes(lang) ? lang : (lang === 'de' ? 'de' : 'en');
 const htmlLangFor = (lang) => ({ fl: 'nl-BE', tw: 'zh-Hant' })[lang] || lang;
 

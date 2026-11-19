@@ -92,7 +92,7 @@ You can, in OpenStreetMap. All you need is a free account. The guide with Hydran
 
 ### We are a fire brigade and want to record the hydrants in our area. How do we go about it? {#feuerwehr}
 
-Ideally as a drill evening or a walk through town in teams. Preparation, schedule, safety rules and follow-up are described in the guide [For fire brigades](../fire-brigades/).
+Ideally as a drill evening or a walk through town in teams. A step-by-step guide exists for fire brigades in Germany, in German only: [Für Feuerwehren](/help/fire-brigades/). Elsewhere, the guide [Add hydrants](../contribute/) shows the tools.
 
 ### May I copy hydrant plans from the municipality or water utility? {#plaene}
 

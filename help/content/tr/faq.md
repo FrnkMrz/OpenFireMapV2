@@ -92,7 +92,7 @@ Evet. “© OpenStreetMap contributors” atfı görünür kalmalıdır.
 
 ### İtfaiyeyiz ve bölgemizdeki hidrantları kaydetmek istiyoruz. Nasıl yapabiliriz? {#feuerwehr}
 
-En iyisi ekipler halinde bir tatbikat akşamı veya şehir turu düzenlemektir. [İtfaiye ekipleri için](../fire-brigades/) rehberi hazırlık, uygulama, güvenlik ve takip adımlarını anlatır.
+En iyisi ekipler halinde bir tatbikat akşamı veya şehir turu düzenlemektir. Almanya’daki itfaiye ekipleri için adım adım bir rehber yalnızca Almanca olarak mevcuttur: [Für Feuerwehren](/help/fire-brigades/). Diğer ülkelerde araçları [Hidrant ekleme](../contribute/) rehberi gösterir.
 
 ### Belediye planlarını kopyalayabilir miyim? {#plaene}
 

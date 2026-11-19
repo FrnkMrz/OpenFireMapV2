@@ -18,3 +18,12 @@ Der Sprachumschalter, `hreflang`-Verweise, `lang`-Attribute und die Sprach-URL d
 `help/languages.json` muss dieselben Codes enthalten wie `src/js/lang/`. Für abweichende BCP-47-Bezeichnungen wird `hreflang` hinterlegt, zum Beispiel `fl` → `nl-BE` und `tw` → `zh-Hant`. Für rechts-nach-links geschriebene Sprachen wird `dir: "rtl"` gesetzt. Native Namen sollen in ihrer eigenen Schrift stehen.
 
 Neue Seiten oder Abschnitte müssen in allen aktiven Sprachen dieselben Slugs, Abschnitts-IDs und Reihenfolgen verwenden. So bleiben Seitennavigation, Ankerlinks, Suchmaschinenhinweise und Sprachwechsel passend zueinander.
+
+## Seiten nur auf Deutsch
+
+Eine Seite mit `languages: de` im Frontmatter der deutschen Fassung wird **nicht übersetzt**. Zurzeit gilt das für `fire-brigades.md` („Für Feuerwehren“): Die Anleitung gilt nur für Deutschland (Hinweisschilder nach DIN 4066, Gemeinde und Wasserversorger als Ansprechpartner).
+
+- Keine Datei `help/content/<code>/fire-brigades.md` anlegen. Liegt eine vor, bricht der Build ab.
+- Die Seite zählt in den anderen Sprachen nicht zur Reihenfolge; die übrigen Seiten behalten ihre `order`-Werte aus der deutschen Fassung.
+- Verweise darauf (FAQ-Frage `{#feuerwehr}`, Absatz in `contribute.md`) bleiben in jeder Sprache, zeigen aber absolut auf die deutsche Seite `/help/fire-brigades/` und sagen, dass es sie nur auf Deutsch und für Deutschland gibt (Vorbild: `help/content/en/`).
+- Kachel und Knopf auf der Startseite stehen in `<!--only:de-->…<!--/only-->` und erscheinen nur auf Deutsch. Die Textschlüssel `topics.brigades*` und `contrib.cta_brigades` bleiben trotzdem in jeder Textdatei.

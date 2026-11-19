@@ -98,8 +98,8 @@ describe('Handouts: Feuerwehr-Material', () => {
         for (const folder of folders) expect(pkg.scripts.build, folder).toContain(`handouts/${folder}`);
     });
 
-    it('die Hilfe-Seite verlinkt beide PDFs unter dem Namen, den der Build erzeugt', () => {
-        for (const lang of ['de', 'en']) {
+    it('die (nur deutsche) Hilfe-Seite verlinkt beide PDFs unter dem Namen, den der Build erzeugt', () => {
+        for (const lang of ['de']) {
             const page = readFileSync(new URL(`../help/content/${lang}/fire-brigades.md`, import.meta.url), 'utf8');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf');

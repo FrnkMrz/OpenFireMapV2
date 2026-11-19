@@ -92,7 +92,7 @@ Corrigez-la dans OpenStreetMap avec un compte gratuit. Voir [Ajouter des bornes]
 
 ### Nous sommes un service d’incendie et voulons relever les hydrants de notre secteur. Comment faire ? {#feuerwehr}
 
-Le mieux est d’organiser une soirée d’exercice ou une visite de la ville en équipes. Le guide [Pour les services d’incendie](../fire-brigades/) explique la préparation, le déroulement, la sécurité et le suivi.
+Le mieux est d’organiser une soirée d’exercice ou une visite de la ville en équipes. Un guide pas à pas existe pour les sapeurs-pompiers en Allemagne, uniquement en allemand : [Für Feuerwehren](/help/fire-brigades/). Ailleurs, le guide [Ajouter des bornes](../contribute/) présente les outils.
 
 ### Puis-je copier les plans de la commune ? {#plaene}
 

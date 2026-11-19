@@ -92,7 +92,7 @@ Możesz go poprawić w OpenStreetMap za pomocą bezpłatnego konta. Zobacz [Doda
 
 ### Jesteśmy strażą pożarną i chcemy zinwentaryzować hydranty w naszym rejonie. Jak zacząć? {#feuerwehr}
 
-Najlepiej zorganizować wieczór ćwiczeń lub obchód miasta w zespołach. Przygotowanie, przebieg, bezpieczeństwo i podsumowanie opisuje poradnik [Dla straży pożarnej](../fire-brigades/).
+Najlepiej zorganizować wieczór ćwiczeń lub obchód miasta w zespołach. Dla straży pożarnych w Niemczech istnieje poradnik krok po kroku, tylko po niemiecku: [Für Feuerwehren](/help/fire-brigades/). W innych krajach narzędzia przedstawia poradnik [Dodaj hydranty](../contribute/).
 
 ### Czy mogę kopiować plany gminy? {#plaene}
 

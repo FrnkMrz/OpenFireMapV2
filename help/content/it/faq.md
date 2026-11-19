@@ -92,7 +92,7 @@ Puoi correggerlo in OpenStreetMap con un account gratuito. Vedi [Aggiungere idra
 
 ### Siamo un corpo dei vigili del fuoco e vogliamo censire gli idranti nella nostra zona. Come procediamo? {#feuerwehr}
 
-L’ideale è organizzare una serata di esercitazione o un giro in città in squadre. La guida [Per i vigili del fuoco](../fire-brigades/) spiega preparazione, svolgimento, sicurezza e seguito.
+L’ideale è organizzare una serata di esercitazione o un giro in città in squadre. Per i vigili del fuoco in Germania esiste una guida passo passo, solo in tedesco: [Für Feuerwehren](/help/fire-brigades/). Altrove, la guida [Aggiungere idranti](../contribute/) mostra gli strumenti.
 
 ### Posso copiare piani comunali? {#plaene}
 
