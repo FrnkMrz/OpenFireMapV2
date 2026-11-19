@@ -3,7 +3,7 @@ title: Dostępność
 description: Obsługa OpenFireMap klawiaturą, czytnikiem ekranu, powiększeniem i ograniczeniem ruchu.
 eyebrow: Dostępność
 lead: OpenFireMap ma działać bez myszy, z czytnikiem ekranu i przy dużym powiększeniu. Oto możliwości i znane ograniczenia.
-order: 8
+order: 9
 ---
 
 ## Nasz cel {#ziel}
