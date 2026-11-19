@@ -51,7 +51,7 @@ Im Notfall gilt immer: **112**. OpenFireMap ersetzt keine Einsatzunterlagen.
 
 <div>
 
-- **H** = Hydrant, **100** = Nennweite in Millimetern.
+- **H** = Hydrant, **100** = Nennweite DN 100 der Leitung.
 - **Zahl neben dem senkrechten Strich:** so viele Meter liegt der Hydrant seitlich vom Schild, zu der Seite, auf der die Zahl steht.
 - **Zahl unter dem senkrechten Strich:** so viele Meter liegt er vor dem Schild.
 - Findet ihr ihn dort nicht, im Umkreis suchen. Schilder hängen nicht immer genau, und manche stehen auf der anderen Straßenseite.

@@ -80,7 +80,7 @@ OpenStreetMap beschreibt jedes Objekt mit Merkmalen in der Form `Schlüssel=Wert
 |---|---|---|
 | Hydrant | `emergency=fire_hydrant` | Pflicht für jeden Hydranten |
 | | `fire_hydrant:type=underground` | Unterflurhydrant (auch `pillar` Überflur, `wall` Wand, `pipe` Rohr) |
-| | `fire_hydrant:diameter=80` | Nennweite in mm, wie auf dem Schild |
+| | `fire_hydrant:diameter=80` | Nennweite (DN), wie auf dem Schild |
 | | `fire_hydrant:position=sidewalk` | Lage (auch `lane`, `parking_lot`, `green`) |
 | | `ref=123` | Nummer des Hydranten, wenn vorhanden |
 | | `fire_hydrant:pressure=4` | Druck in bar, nur wenn bekannt |

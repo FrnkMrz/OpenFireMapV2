@@ -80,7 +80,7 @@ OpenStreetMap describes every object with tags in the form `key=value`. The pres
 |---|---|---|
 | Hydrant | `emergency=fire_hydrant` | required for every hydrant |
 | | `fire_hydrant:type=underground` | underground hydrant (also `pillar`, `wall`, `pipe`) |
-| | `fire_hydrant:diameter=80` | nominal diameter in mm, as on the sign |
+| | `fire_hydrant:diameter=80` | nominal size (DN), as on the sign |
 | | `fire_hydrant:position=sidewalk` | position (also `lane`, `parking_lot`, `green`) |
 | | `ref=123` | hydrant number, if there is one |
 | | `fire_hydrant:pressure=4` | pressure in bar, only if known |
