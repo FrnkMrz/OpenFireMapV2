@@ -163,6 +163,11 @@ export function updatePageLanguage() {
     el.classList.toggle('hidden', el.getAttribute('data-legal-lang') !== legalLang);
   });
 
+  // Hilfe gibt es auf Deutsch und Englisch: alle anderen Sprachen führen zur englischen Fassung
+  document.querySelectorAll('[data-help-link]').forEach(el => {
+    el.setAttribute('href', currentLang === 'de' ? '/help/' : '/help/en/');
+  });
+
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('ofm:langchange', { detail: { lang: currentLang } }));
   }

@@ -3,6 +3,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { stripDevOnlyCspSources } from './scripts/strip-dev-csp.mjs';
+import { buildHelpPages, helpPagesPlugin } from './scripts/build-help.mjs';
+
+// Hilfe-Seiten (/help/) vor jedem Lauf aus help/ erzeugen; die erzeugten HTML-Dateien sind die Vite-Einstiege
+const { inputs: helpInputs } = buildHelpPages();
 
 function collectMarkdownFiles(directory, root = directory, files = []) {
   if (!existsSync(directory)) return files;
@@ -104,7 +108,9 @@ export default defineConfig({
         status: fileURLToPath(new URL('./status/index.html', import.meta.url)),
         // Ortsplan (nur per Link, nur am Computer): Assistent und Blatt
         ortsplan: fileURLToPath(new URL('./ortsplan/index.html', import.meta.url)),
-        ortsplanBlatt: fileURLToPath(new URL('./ortsplan/blatt/index.html', import.meta.url))
+        ortsplanBlatt: fileURLToPath(new URL('./ortsplan/blatt/index.html', import.meta.url)),
+        // Hilfe (/help/, /help/en/): aus help/ erzeugt, siehe scripts/build-help.mjs
+        ...helpInputs
       }
     }
   }

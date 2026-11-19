@@ -71,6 +71,8 @@ export const strings = {
     overlay_future_support: "Möchten Sie die Umstellung in Ihrem Kartensystem umsetzen? Ich unterstütze dabei gern.",
     overlay_guide_download: "Leitfaden als PDF herunterladen",
     overlay_future_home: "PMTiles auf der Hauptseite ansehen",
+    help_page_link: "Hilfe & Anleitung",
+    help_page_hint: "Karte, Export, Ortsplan und Hydranten eintragen – Schritt für Schritt erklärt.",
     overlay_page_link: "Overlay & Einbindung",
     overlay_title: "OpenFireMap-Overlay · OpenFireMap.org",
     overlay_back: "Zur Karte",
