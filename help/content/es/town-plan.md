@@ -20,7 +20,7 @@ Selecciona objetos, leyenda e índice de calles. Comprueba que el mapa contiene 
 
 ## Paso 3: diseño {#schritt-3}
 
-:::figure plan-layout frame=plain
+:::figure plan-3 frame=browser
 Diseño del mapa, leyenda e índice.
 :::
 
