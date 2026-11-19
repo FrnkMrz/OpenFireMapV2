@@ -212,5 +212,8 @@
   "sheet.source": "© OpenStreetMap contributors (ODbL) · Mappa: Protomaps",
   "sheet.source2": "Dati: OpenFireMap.org · data sul foglio",
   "nav.a11y": "Accessibilità",
-  "faq.all": "Tutte le domande"
+  "faq.all": "Tutte le domande",
+  "topics.brigades": "Per i vigili del fuoco",
+  "topics.brigades_text": "Controlla gli idranti durante un’esercitazione o un giro in città",
+  "contrib.cta_brigades": "Guida per i vigili del fuoco"
 }
