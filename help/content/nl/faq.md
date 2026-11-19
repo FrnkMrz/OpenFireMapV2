@@ -3,7 +3,7 @@ title: Veelgestelde vragen
 description: Antwoorden over kaart, gegevens, export, stadsplan, bijdragen en project.
 eyebrow: FAQ
 lead: Antwoorden op veelgestelde vragen. Staat die van jou er niet bij, mail info@openfiremap.org.
-order: 9
+order: 10
 ---
 
 ## Kaart en bediening {#karte}
