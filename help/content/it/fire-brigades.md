@@ -31,6 +31,15 @@ Chi coordina pianifica il giro una o due settimane prima:
 Si applicano le regole OSM e il consenso dei genitori. I giovani possono cercare e prendere appunti; un adulto inserisce i dati con il proprio account.
 :::
 
+## Da stampare {#ausdrucken}
+
+| Documento | Per chi | File |
+|---|---|---|
+| **Scheda squadra**: sei passaggi, sicurezza, lettura del cartello e tipi di idrante | ogni squadra, A4 fronte-retro | [Scarica il PDF](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) (in tedesco) |
+| **Scheda di rilevamento, elenco dei problemi** e modello di lettera per comune o acquedotto | squadre e seguito, A4 orizzontale | [Scarica il PDF](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) (in tedesco) |
+
+Sono materiali in prima versione, prima della prova sul campo con un corpo dei vigili del fuoco; per ora sono disponibili solo in tedesco. Commenti e suggerimenti: info@openfiremap.org.
+
 ## Svolgimento dell’esercitazione {#ablauf}
 
 Per 90 minuti: 15 di briefing e dimostrazione, 60 di ricognizione a squadre, 15 per il riepilogo. Una squadra di due o tre persone si divide tra telefono, attenzione al traffico e appunti.
