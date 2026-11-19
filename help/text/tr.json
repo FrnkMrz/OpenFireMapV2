@@ -212,5 +212,8 @@
   "sheet.source": "© OpenStreetMap contributors (ODbL) · Harita: Protomaps",
   "sheet.source2": "Veri: OpenFireMap.org · sayfadaki tarih",
   "nav.a11y": "Erişilebilirlik",
-  "faq.all": "Tüm sorular"
+  "faq.all": "Tüm sorular",
+  "topics.brigades": "İtfaiye ekipleri için",
+  "topics.brigades_text": "Tatbikat veya şehir turu sırasında hidrantları kontrol edin",
+  "contrib.cta_brigades": "İtfaiye ekipleri için rehber"
 }
