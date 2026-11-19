@@ -3,7 +3,7 @@ title: Questions fréquentes
 description: Réponses sur la carte, les données, l’export, les plans de ville, les contributions et le projet.
 eyebrow: FAQ
 lead: Voici les réponses aux questions courantes. Si la vôtre manque, écrivez à info@openfiremap.org.
-order: 9
+order: 10
 ---
 
 ## Carte et commandes {#karte}
