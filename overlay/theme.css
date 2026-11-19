@@ -149,8 +149,8 @@ body.overlay-page {
   .overlay-page .overlay-map { height: 60vh; min-height: 330px; }
 }
 
-/* Der aktive Vektor-Umschalter behält beim Hover seine Aktionsfarbe und den nötigen Kontrast. */
-.overlay-page .bg-blue-600.hover\\:bg-slate-600:hover {
+/* Aktive Ansichten behalten beim Hover eine dunkle Aktionsfläche mit weißer Beschriftung. */
+.overlay-page .bg-blue-600:hover {
   background-color: var(--overlay-signal-deep) !important;
   color: #fff !important;
 }
