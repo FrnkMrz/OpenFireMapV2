@@ -1,0 +1,342 @@
+        <!-- ================= Einstieg ================= -->
+        <section class="hero" aria-labelledby="hero-title">
+            <div class="wrap">
+                <div>
+                    <p class="eyebrow">{{hero.eyebrow}}</p>
+                    <h1 id="hero-title">{{hero.title}} <span class="accent">{{hero.title_accent}}</span></h1>
+                    <p class="lead">{{hero.lead}}</p>
+                    <div class="cta">
+                        <a class="btn btn-primary" href="#schritte">{{hero.cta_start}} <svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+                        <a class="btn btn-ghost" href="#mitmachen">{{hero.cta_contribute}}</a>
+                    </div>
+                    <ul class="facts">
+                        <li><svg aria-hidden="true"><use href="#i-check"/></svg>{{hero.fact_account}}</li>
+                        <li><svg aria-hidden="true"><use href="#i-check"/></svg>{{hero.fact_coverage}}</li>
+                        <li><svg aria-hidden="true"><use href="#i-check"/></svg>{{hero.fact_free}}</li>
+                    </ul>
+                </div>
+
+                <div class="stage" aria-hidden="true">
+                    <div class="browser">
+                        <div class="browser-bar"><i></i><i></i><i></i><span>openfiremap.org/#17/49.45280/11.07700/voyager</span></div>
+                        <img src="{{@img:desktop}}" alt="" width="1440" height="900" fetchpriority="high">
+                    </div>
+                    <div class="phone"><img src="{{@img:mobile}}" alt="" width="780" height="1688" loading="lazy"></div>
+                    <!-- Hinweisschild für einen Unterflurhydranten (DIN 4066), stilisiert -->
+                    <svg class="sign" viewBox="0 0 200 250">
+                        <rect x="4" y="4" width="192" height="242" rx="12" fill="#fff" stroke="#c8102e" stroke-width="12"/>
+                        <text x="100" y="98" text-anchor="middle" class="sign-t" font-size="92">H 80</text>
+                        <path d="M30 140h140M100 140v70" stroke="#c8102e" stroke-width="7" stroke-linecap="round"/>
+                        <text x="62" y="186" text-anchor="middle" class="sign-t" font-size="40">1,5</text>
+                        <text x="140" y="228" text-anchor="middle" class="sign-t" font-size="40">6,2</text>
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= Erste Schritte ================= -->
+        <section class="section section-tight-top" id="schritte" aria-labelledby="schritte-title">
+            <div class="wrap">
+                <div class="section-head">
+                    <p class="eyebrow">{{steps.eyebrow}}</p>
+                    <h2 id="schritte-title">{{steps.title}}</h2>
+                </div>
+                <ol class="steps">
+                    <li class="step">
+                        <span class="step-num">{{steps.label}} 1</span>
+                        <h3>{{steps.s1_title}}</h3>
+                        <p>{{steps.s1_text}}</p>
+                    </li>
+                    <li class="step">
+                        <span class="step-num">{{steps.label}} 2</span>
+                        <h3>{{steps.s2_title}}</h3>
+                        <p>{{steps.s2_text}}</p>
+                    </li>
+                    <li class="step">
+                        <span class="step-num">{{steps.label}} 3</span>
+                        <h3>{{steps.s3_title}}</h3>
+                        <p>{{steps.s3_text}}</p>
+                    </li>
+                </ol>
+
+                <div class="ladder">
+                    <div class="ladder-head">
+                        <h3 id="ladder-title">{{zoom.title}}</h3>
+                        <p>{{zoom.hint}}</p>
+                    </div>
+                    <ol class="ladder-track" aria-labelledby="ladder-title">
+                        <li class="tick"><b><span class="sr-only">{{zoom.level}} </span>11</b><span><strong>{{zoom.z11_title}}</strong>{{zoom.z11_text}}</span></li>
+                        <li class="tick on key"><b><span class="sr-only">{{zoom.level}} </span>12</b><span><strong>{{zoom.z12_title}}</strong>{{zoom.z12_text}}</span></li>
+                        <li class="tick on"><b><span class="sr-only">{{zoom.level}} </span>14</b><span><strong>{{zoom.z14_title}}</strong>{{zoom.z14_text}}</span></li>
+                        <li class="tick on key"><b><span class="sr-only">{{zoom.level}} </span>15</b><span><strong>{{zoom.z15_title}}</strong>{{zoom.z15_text}}</span></li>
+                        <li class="tick on"><b><span class="sr-only">{{zoom.level}} </span>16</b><span><strong>{{zoom.z16_title}}</strong>{{zoom.z16_text}}</span></li>
+                        <li class="tick on key"><b><span class="sr-only">{{zoom.level}} </span>17</b><span><strong>{{zoom.z17_title}}</strong>{{zoom.z17_text}}</span></li>
+                        <li class="tick on key"><b><span class="sr-only">{{zoom.level}} </span>18</b><span><strong>{{zoom.z18_title}}</strong>{{zoom.z18_text}}</span></li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= Oberfläche ================= -->
+        <section class="section tint" id="karte" aria-labelledby="karte-title">
+            <div class="wrap">
+                <div class="section-head">
+                    <p class="eyebrow">{{ui_tour.eyebrow}}</p>
+                    <h2 id="karte-title">{{ui_tour.title}}</h2>
+                    <p class="lead">{{ui_tour.lead}}</p>
+                </div>
+
+                <div class="tabs" role="tablist" aria-label="{{ui_tour.tabs_label}}">
+                    <button type="button" role="tab" id="tab-desktop" aria-selected="true" aria-controls="panel-desktop"><svg aria-hidden="true"><use href="#i-desktop"/></svg>{{ui_tour.tab_desktop}}</button>
+                    <button type="button" role="tab" id="tab-phone" aria-selected="false" aria-controls="panel-phone" tabindex="-1"><svg aria-hidden="true"><use href="#i-phone"/></svg>{{ui_tour.tab_phone}}</button>
+                </div>
+
+                <div class="explorer" id="panel-desktop" role="tabpanel" aria-labelledby="tab-desktop" data-explorer>
+                    <div class="shot">
+                        <div class="browser">
+                            <div class="browser-bar"><i></i><i></i><i></i><span>openfiremap.org</span></div>
+                            <div class="shot-canvas">
+                                <img src="{{@img:desktop}}" alt="{{ui_tour.desktop_alt}}" width="1440" height="900" loading="lazy">
+                                <span class="spot" aria-hidden="true" {{@spot:desktop:search}}>1</span>
+                                <span class="spot" aria-hidden="true" {{@spot:desktop:locate}}>2</span>
+                                <span class="spot" aria-hidden="true" {{@spot:desktop:layers}}>3</span>
+                                <span class="spot" aria-hidden="true" {{@spot:desktop:export}}>4</span>
+                                <span class="spot" aria-hidden="true" {{@spot:desktop:share}}>5</span>
+                                <span class="spot" aria-hidden="true" {{@spot:desktop:marker}}>6</span>
+                                <span class="spot" aria-hidden="true" {{@spot:desktop:status}}>7</span>
+                                <span class="spot" aria-hidden="true" {{@spot:desktop:legal}}>8</span>
+                            </div>
+                        </div>
+                    </div>
+                    <ol class="legend">
+                        <li><button type="button"><span class="n" aria-hidden="true">1</span><span><strong>{{ui_tour.d_search}}</strong><span class="d">{{ui_tour.d_search_text}}</span></span></button></li>
+                        <li><button type="button"><span class="n" aria-hidden="true">2</span><span><strong>{{ui_tour.d_locate}}</strong><span class="d">{{ui_tour.d_locate_text}}</span></span></button></li>
+                        <li><button type="button"><span class="n" aria-hidden="true">3</span><span><strong>{{ui_tour.d_layers}}</strong><span class="d">{{ui_tour.d_layers_text}}</span></span></button></li>
+                        <li><button type="button"><span class="n" aria-hidden="true">4</span><span><strong>{{ui_tour.d_export}}</strong><span class="d">{{ui_tour.d_export_text}}</span></span></button></li>
+                        <li><button type="button"><span class="n" aria-hidden="true">5</span><span><strong>{{ui_tour.d_share}}</strong><span class="d">{{ui_tour.d_share_text}}</span></span></button></li>
+                        <li><button type="button"><span class="n" aria-hidden="true">6</span><span><strong>{{ui_tour.d_marker}}</strong><span class="d">{{ui_tour.d_marker_text}}</span></span></button></li>
+                        <li><button type="button"><span class="n" aria-hidden="true">7</span><span><strong>{{ui_tour.d_status}}</strong><span class="d">{{ui_tour.d_status_text}}</span></span></button></li>
+                        <li><button type="button"><span class="n" aria-hidden="true">8</span><span><strong>{{ui_tour.d_legal}}</strong><span class="d">{{ui_tour.d_legal_text}}</span></span></button></li>
+                    </ol>
+                </div>
+
+                <div class="explorer is-phone" id="panel-phone" role="tabpanel" aria-labelledby="tab-phone" data-explorer hidden>
+                    <div class="shot">
+                        <div class="phone-big">
+                            <div class="shot-canvas">
+                                <img src="{{@img:mobile-menu}}" alt="{{ui_tour.phone_alt}}" width="780" height="1688" loading="lazy">
+                                <span class="spot" aria-hidden="true" {{@spot:mobile:menu}}>1</span>
+                                <span class="spot" aria-hidden="true" {{@spot:mobile:status}}>2</span>
+                                <span class="spot" aria-hidden="true" {{@spot:mobile:layers}}>3</span>
+                                <span class="spot" aria-hidden="true" {{@spot:mobile:share}}>4</span>
+                                <span class="spot" aria-hidden="true" {{@spot:mobile:search}}>5</span>
+                                <span class="spot" aria-hidden="true" {{@spot:mobile:legal}}>6</span>
+                                <span class="spot" aria-hidden="true" {{@spot:mobile:locate}}>7</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <ol class="legend">
+                            <li><button type="button"><span class="n" aria-hidden="true">1</span><span><strong>{{ui_tour.m_menu}}</strong><span class="d">{{ui_tour.m_menu_text}}</span></span></button></li>
+                            <li><button type="button"><span class="n" aria-hidden="true">2</span><span><strong>{{ui_tour.d_status}}</strong><span class="d">{{ui_tour.m_status_text}}</span></span></button></li>
+                            <li><button type="button"><span class="n" aria-hidden="true">3</span><span><strong>{{ui_tour.d_layers}}</strong><span class="d">{{ui_tour.m_layers_text}}</span></span></button></li>
+                            <li><button type="button"><span class="n" aria-hidden="true">4</span><span><strong>{{ui_tour.m_share}}</strong><span class="d">{{ui_tour.m_share_text}}</span></span></button></li>
+                            <li><button type="button"><span class="n" aria-hidden="true">5</span><span><strong>{{ui_tour.d_search}}</strong><span class="d">{{ui_tour.m_search_text}}</span></span></button></li>
+                            <li><button type="button"><span class="n" aria-hidden="true">6</span><span><strong>{{ui_tour.d_legal}}</strong><span class="d">{{ui_tour.m_legal_text}}</span></span></button></li>
+                            <li><button type="button"><span class="n" aria-hidden="true">7</span><span><strong>{{ui_tour.d_locate}}</strong><span class="d">{{ui_tour.m_locate_text}}</span></span></button></li>
+                        </ol>
+                        <p class="note"><svg aria-hidden="true"><use href="#i-info"/></svg><span>{{ui_tour.m_note}}</span></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= Themen ================= -->
+        <section class="section" id="themen" aria-labelledby="themen-title">
+            <div class="wrap">
+                <div class="section-head">
+                    <p class="eyebrow">{{topics.eyebrow}}</p>
+                    <h2 id="themen-title">{{topics.title}}</h2>
+                </div>
+                <ul class="topics">
+                    <li><a class="topic" href="#karte"><span class="ic"><svg aria-hidden="true"><use href="#i-desktop"/></svg></span><h3>{{topics.desktop}}</h3><p>{{topics.desktop_text}}</p></a></li>
+                    <li><a class="topic" href="#karte" data-tab="tab-phone"><span class="ic"><svg aria-hidden="true"><use href="#i-phone"/></svg></span><h3>{{topics.phone}}</h3><p>{{topics.phone_text}}</p></a></li>
+                    <li><a class="topic" href="/symbols/"><span class="ic"><svg aria-hidden="true"><use href="#i-symbols"/></svg></span><h3>{{topics.symbols}}</h3><p>{{topics.symbols_text}}</p></a></li>
+                    <li><a class="topic" href="#ortsplan"><span class="ic"><svg aria-hidden="true"><use href="#i-sheet"/></svg></span><h3>{{topics.plan}} <span class="badge">{{topics.new}}</span></h3><p>{{topics.plan_text}}</p></a></li>
+                    <li><a class="topic" href="/overlay/"><span class="ic"><svg aria-hidden="true"><use href="#i-overlay"/></svg></span><h3>{{topics.overlay}}</h3><p>{{topics.overlay_text}}</p></a></li>
+                    <li><a class="topic" href="#mitmachen"><span class="ic"><svg aria-hidden="true"><use href="#i-hand"/></svg></span><h3>{{topics.contribute}}</h3><p>{{topics.contribute_text}}</p></a></li>
+                    <li><div class="topic is-soon"><span class="ic"><svg aria-hidden="true"><use href="#i-download"/></svg></span><h3>{{topics.export}} <span class="badge muted">{{topics.soon}}</span></h3><p>{{topics.export_text}}</p></div></li>
+                    <li><div class="topic is-soon"><span class="ic"><svg aria-hidden="true"><use href="#i-clock"/></svg></span><h3>{{topics.data}} <span class="badge muted">{{topics.soon}}</span></h3><p>{{topics.data_text}}</p></div></li>
+                    <li><div class="topic is-soon"><span class="ic"><svg aria-hidden="true"><use href="#i-a11y"/></svg></span><h3>{{topics.a11y}} <span class="badge muted">{{topics.soon}}</span></h3><p>{{topics.a11y_text}}</p></div></li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ================= Ortsplan ================= -->
+        <section class="section section-flush-top" id="ortsplan" aria-labelledby="ortsplan-title">
+            <div class="wrap plan">
+                <div class="sheet-wrap" aria-hidden="true">
+                    <!-- Stilisiertes Ortsplan-Blatt im Querformat -->
+                    <svg class="sheet" viewBox="0 0 420 300">
+                        <defs>
+                            <clipPath id="mapclip"><rect x="16" y="16" width="290" height="240"/></clipPath>
+                            <pattern id="blocks" width="34" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(-12)">
+                                <rect width="34" height="26" fill="#f1ece4"/><rect x="3" y="3" width="13" height="9" fill="#e4dccf"/><rect x="19" y="3" width="12" height="9" fill="#e4dccf"/><rect x="3" y="15" width="28" height="8" fill="#e4dccf"/>
+                            </pattern>
+                        </defs>
+                        <rect width="420" height="300" fill="#fff"/>
+                        <rect x="16" y="16" width="290" height="240" fill="url(#blocks)" stroke="#0f1b2a" stroke-width="1.2"/>
+                        <g clip-path="url(#mapclip)">
+                            <path d="M0 170 C80 150 120 190 200 165 S300 120 330 130" stroke="#a9cbe6" stroke-width="18" fill="none"/>
+                            <path d="M40 0 L120 300 M0 90 L330 60 M180 0 L230 300 M0 230 L330 210" stroke="#fff" stroke-width="7" fill="none"/>
+                            <path d="M40 0 L120 300 M0 90 L330 60 M180 0 L230 300 M0 230 L330 210" stroke="#f6c86b" stroke-width="3.5" fill="none"/>
+                            <g fill="#c8102e" stroke="#fff" stroke-width="1.5">
+                                <circle cx="70" cy="86" r="5"/><circle cx="112" cy="126" r="5"/><circle cx="152" cy="78" r="5"/><circle cx="196" cy="118" r="5"/><circle cx="214" cy="198" r="5"/><circle cx="264" cy="70" r="5"/><circle cx="96" cy="214" r="5"/><circle cx="268" cy="156" r="5"/><circle cx="150" cy="228" r="5"/><circle cx="60" cy="150" r="5"/>
+                            </g>
+                            <rect x="226" y="96" width="16" height="12" rx="2" fill="#c8102e" stroke="#fff" stroke-width="1.5"/>
+                            <path d="M140 196l6-6 6 6-6 6z" fill="#0e7a3e" stroke="#fff" stroke-width="1.5"/>
+                        </g>
+                        <g stroke="#0f1b2a" stroke-width=".5" opacity=".35"><path d="M88 16v240M161 16v240M234 16v240M16 76h290M16 136h290M16 196h290"/></g>
+                        <g class="sheet-mono" font-size="7" fill="#4a5868"><text x="50" y="13">A</text><text x="122" y="13">B</text><text x="196" y="13">C</text><text x="268" y="13">D</text><text x="8" y="49">1</text><text x="8" y="109">2</text><text x="8" y="169">3</text><text x="8" y="229">4</text></g>
+                        <g transform="translate(286 30)"><path d="M0 -12l6 16-6-4-6 4z" fill="#0f1b2a"/><text x="0" y="16" text-anchor="middle" class="sheet-d" font-size="9" fill="#0f1b2a">N</text></g>
+                        <g transform="translate(26 240)"><rect width="66" height="8" fill="#fff" opacity=".9"/><path d="M3 5h60" stroke="#0f1b2a" stroke-width="2"/><path d="M3 5h30" stroke="#fff" stroke-width="1"/><text x="3" y="-2" class="sheet-mono" font-size="6" fill="#0f1b2a">0   50  100 m</text></g>
+                        <text x="318" y="34" class="sheet-d" font-size="17" fill="#0f1b2a">{{sheet.title}}</text>
+                        <text x="318" y="46" class="sheet-b" font-size="7.5" fill="#4a5868">{{sheet.subtitle}}</text>
+                        <path d="M318 56h88" stroke="#dbe2e9"/>
+                        <g class="sheet-b" font-size="7.5" fill="#0f1b2a">
+                            <circle cx="322" cy="70" r="4" fill="#c8102e"/><text x="331" y="73">{{sheet.hydrant}}</text>
+                            <rect x="318" y="80" width="8" height="6" rx="1" fill="#c8102e"/><text x="331" y="86">{{sheet.station}}</text>
+                            <path d="M322 94l4 4-4 4-4-4z" fill="#0e7a3e"/><text x="331" y="101">{{sheet.aed}}</text>
+                            <path d="M318 112h88" stroke="#dbe2e9"/>
+                            <text x="318" y="126" font-weight="600" font-size="8">{{sheet.index}}</text>
+                        </g>
+                        <g class="sheet-b" font-size="6.8" fill="#4a5868">
+                            <text x="318" y="139">Augustinerstraße</text><text x="392" y="139">B2</text>
+                            <text x="318" y="150">Hauptmarkt</text><text x="392" y="150">B1</text>
+                            <text x="318" y="161">Karlstraße</text><text x="392" y="161">C1</text>
+                            <text x="318" y="172">Lorenzer Platz</text><text x="392" y="172">C3</text>
+                            <text x="318" y="183">Museumsbrücke</text><text x="392" y="183">C2</text>
+                            <text x="318" y="194">Spitalgasse</text><text x="392" y="194">D2</text>
+                            <text x="318" y="205">Weinmarkt</text><text x="392" y="205">A1</text>
+                        </g>
+                        <text x="16" y="276" class="sheet-b" font-size="6.5" fill="#4a5868">{{sheet.source}}</text>
+                    </svg>
+                </div>
+                <div>
+                    <p class="eyebrow">{{plan.eyebrow}}</p>
+                    <h2 id="ortsplan-title" class="mt-s">{{plan.title}}</h2>
+                    <p class="lead mt-m">{{plan.lead}}</p>
+                    <ol class="plan-steps">
+                        <li><span class="k" aria-hidden="true">1</span><div><strong>{{plan.s1_title}}</strong><p>{{plan.s1_text}}</p></div></li>
+                        <li><span class="k" aria-hidden="true">2</span><div><strong>{{plan.s2_title}}</strong><p>{{plan.s2_text}}</p></div></li>
+                        <li><span class="k" aria-hidden="true">3</span><div><strong>{{plan.s3_title}}</strong><p>{{plan.s3_text}}</p></div></li>
+                    </ol>
+                    <ul class="chips">
+                        <li class="chip"><svg aria-hidden="true"><use href="#i-desktop"/></svg>{{plan.chip_desktop}}</li>
+                        <li class="chip"><svg aria-hidden="true"><use href="#i-map"/></svg>{{plan.chip_germany}}</li>
+                        <li class="chip"><svg aria-hidden="true"><use href="#i-sheet"/></svg>{{plan.chip_formats}}</li>
+                    </ul>
+                    <div class="cta">
+                        <a class="btn btn-primary" href="/ortsplan/">{{plan.cta}} <svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= Mitmachen ================= -->
+        <section class="section contribute" id="mitmachen" aria-labelledby="mitmachen-title">
+            <div class="wrap">
+                <div class="section-head">
+                    <p class="eyebrow">{{contrib.eyebrow}}</p>
+                    <h2 id="mitmachen-title">{{contrib.title}}</h2>
+                    <p class="lead">{{contrib.lead}}</p>
+                </div>
+                <ul class="editors">
+                    <li class="editor featured">
+                        <span class="where"><svg aria-hidden="true"><use href="#i-pin"/></svg>{{contrib.hj_where}}</span>
+                        <h3>Hydrantenjäger</h3>
+                        <p>{{contrib.hj_text}}</p>
+                        <a class="editor-link" href="https://hydrantenjaeger.de/help/">{{contrib.hj_link}} <svg aria-hidden="true"><use href="#i-out"/></svg></a>
+                    </li>
+                    <li class="editor">
+                        <span class="where"><svg aria-hidden="true"><use href="#i-phone"/></svg>{{contrib.sc_where}}</span>
+                        <h3>StreetComplete &amp; Every Door</h3>
+                        <p>{{contrib.sc_text}}</p>
+                        <span class="editor-links"><a class="editor-link" href="https://streetcomplete.app/">StreetComplete <svg aria-hidden="true"><use href="#i-out"/></svg></a> <a class="editor-link" href="https://every-door.app/">Every Door <svg aria-hidden="true"><use href="#i-out"/></svg></a></span>
+                    </li>
+                    <li class="editor">
+                        <span class="where"><svg aria-hidden="true"><use href="#i-globe"/></svg>{{contrib.id_where}}</span>
+                        <h3>{{contrib.id_title}}</h3>
+                        <p>{{contrib.id_text}}</p>
+                        <a class="editor-link" href="https://www.openstreetmap.org/edit">{{contrib.id_link}} <svg aria-hidden="true"><use href="#i-out"/></svg></a>
+                    </li>
+                    <li class="editor">
+                        <span class="where"><svg aria-hidden="true"><use href="#i-wrench"/></svg>{{contrib.josm_where}}</span>
+                        <h3>JOSM &amp; Vespucci</h3>
+                        <p>{{contrib.josm_text}}</p>
+                        <span class="editor-links"><a class="editor-link" href="https://josm.openstreetmap.de/">JOSM <svg aria-hidden="true"><use href="#i-out"/></svg></a> <a class="editor-link" href="https://vespucci.io/">Vespucci <svg aria-hidden="true"><use href="#i-out"/></svg></a></span>
+                    </li>
+                </ul>
+                <div class="contrib-foot">
+                    <figure class="tagcard">
+                        <figcaption class="c"># {{contrib.tag_caption}}</figcaption>
+                        <code><span class="k">emergency</span>=<span class="v">fire_hydrant</span>
+<span class="k">fire_hydrant:type</span>=<span class="v">underground</span>
+<span class="k">fire_hydrant:position</span>=<span class="v">sidewalk</span>
+<span class="k">fire_hydrant:diameter</span>=<span class="v">80</span></code>
+                    </figure>
+                    <ul class="rules">
+                        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>{{contrib.rule_seen}}</span></li>
+                        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>{{contrib.rule_copyright}}</span></li>
+                        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>{{contrib.rule_comment}}</span></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= Gut zu wissen ================= -->
+        <section class="section" aria-labelledby="wissen-title">
+            <div class="wrap">
+                <div class="section-head">
+                    <p class="eyebrow">{{good.eyebrow}}</p>
+                    <h2 id="wissen-title">{{good.title}}</h2>
+                </div>
+                <div class="good">
+                    <div class="alarm">
+                        <span class="big" aria-hidden="true">112</span>
+                        <div>
+                            <h3>{{good.alarm_title}}</h3>
+                            <p>{{good.alarm_text}}</p>
+                        </div>
+                    </div>
+                    <div><h3>{{good.osm_title}}</h3><p>{{good.osm_text}}</p></div>
+                    <div><h3>{{good.fresh_title}}</h3><p>{{good.fresh_text}}</p></div>
+                    <div><h3>{{good.free_title}}</h3><p>{{good.free_text}}</p></div>
+                    <div><h3>{{good.keys_title}}</h3><p>{{good.keys_text}}</p></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= FAQ ================= -->
+        <section class="section section-flush-top" id="faq" aria-labelledby="faq-title">
+            <div class="wrap faq-grid">
+                <div>
+                    <p class="eyebrow">{{faq.eyebrow}}</p>
+                    <h2 id="faq-title" class="mt-s">{{faq.title}}</h2>
+                    <div class="contact">
+                        <h3>{{faq.contact_title}}</h3>
+                        <p>{{faq.contact_text}}</p>
+                        <div class="mail"><a class="addr" id="mail" href="mailto:info@openfiremap.org">info@openfiremap.org</a><button class="copy" id="copy-mail" type="button" data-done="{{faq.copied}}">{{faq.copy}}</button></div>
+                    </div>
+                </div>
+                <div class="faq">
+                    <details open><summary><span>{{faq.q1}}</span><span class="pm" aria-hidden="true"><svg><use href="#i-plus"/></svg></span></summary><p>{{faq.a1}}</p></details>
+                    <details><summary><span>{{faq.q2}}</span><span class="pm" aria-hidden="true"><svg><use href="#i-plus"/></svg></span></summary><p>{{faq.a2}}</p></details>
+                    <details><summary><span>{{faq.q3}}</span><span class="pm" aria-hidden="true"><svg><use href="#i-plus"/></svg></span></summary><p>{{faq.a3}}</p></details>
+                    <details><summary><span>{{faq.q4}}</span><span class="pm" aria-hidden="true"><svg><use href="#i-plus"/></svg></span></summary><p>{{faq.a4}}</p></details>
+                    <details><summary><span>{{faq.q5}}</span><span class="pm" aria-hidden="true"><svg><use href="#i-plus"/></svg></span></summary><p>{{faq.a5}}</p></details>
+                    <details><summary><span>{{faq.q6}}</span><span class="pm" aria-hidden="true"><svg><use href="#i-plus"/></svg></span></summary><p>{{faq.a6}}</p></details>
+                    <details><summary><span>{{faq.q7}}</span><span class="pm" aria-hidden="true"><svg><use href="#i-plus"/></svg></span></summary><p>{{faq.a7}}</p></details>
+                </div>
+            </div>
+        </section>

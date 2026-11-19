@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<!-- Erzeugt von scripts/build-help.mjs aus help/layout.html, help/pages/ und help/text/. Nicht von Hand ändern. -->
+<html lang="{{@lang}}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+    <title>{{meta.title}}</title>
+    <meta name="description" content="{{meta.description}}">
+    <!-- Solange der Hilfe-Bereich im Aufbau ist, nicht in Suchmaschinen aufnehmen -->
+    <meta name="robots" content="noindex">
+    <meta property="og:title" content="{{meta.title}}">
+    <meta property="og:description" content="{{meta.description}}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://openfiremap.org{{@self}}">
+    <link rel="alternate" hreflang="de" href="https://openfiremap.org{{@urlDe}}">
+    <link rel="alternate" hreflang="en" href="https://openfiremap.org{{@urlEn}}">
+    <link rel="alternate" hreflang="x-default" href="https://openfiremap.org{{@urlEn}}">
+
+    <!-- SECURITY: Content Security Policy (CSP). Die Hilfe lädt nichts von fremden Servern (Schriften liegen unter /help/fonts/). -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self';
+        img-src 'self' data:;
+        font-src 'self';
+        connect-src 'self' http://localhost:* ws://localhost:*;
+        base-uri 'self';
+        form-action 'none';
+    ">
+
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-icon-180x180.png">
+    <link rel="preload" href="/help/fonts/barlow-condensed-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/help/fonts/barlow-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/src/help.css">
+    <script type="module" src="/src/js/help/help.js"></script>
+</head>
+
+<body>
+    <a class="skip" href="#inhalt">{{ui.skip}}</a>
+
+    <svg width="0" height="0" class="defs" aria-hidden="true">
+        <defs>
+            <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+            <symbol id="i-out" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+            <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+            <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+            <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+            <symbol id="i-desktop" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 20h6M12 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 18.5h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4L3 6.5v13.5L9 17.5l6 2.5 6-2.5V4l-6 2.5L9 4zM9 4v13.5M15 6.5V20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+            <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+            <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+            <symbol id="i-sheet" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 11h7M9 14.5h7M9 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="i-overlay" viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 7V5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2h-2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+            <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="i-hand" viewBox="0 0 24 24"><path d="M12 21s-7-4.4-7-10.2A4.3 4.3 0 0112 8a4.3 4.3 0 017 2.8C19 16.6 12 21 12 21z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+            <symbol id="i-a11y" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8" fill="currentColor"/><path d="M5 8.5l7 1.5 7-1.5M12 10v4.5l-3 6M12 14.5l3 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+            <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0113 0c0 5-6.5 11-6.5 11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+            <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+            <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 005 5L13 18a2.1 2.1 0 01-3-3l6.5-6.5a4 4 0 01-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+            <symbol id="i-symbols" viewBox="0 0 24 24"><circle cx="7" cy="7" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 13.5l3.5 3.5L7 20.5 3.5 17z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 17h6M17 14v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="i-brand" viewBox="0 0 40 40"><rect x="1.5" y="1.5" width="37" height="37" rx="7" fill="#fff" stroke="#c8102e" stroke-width="3"/><path d="M20 8c4.5 5 8 9 8 13.5A8 8 0 0112 21.5c0-3 1.5-5.2 3.5-7 .3 2.6 1.6 4.2 3.3 4.7C18.3 15 18.7 11.5 20 8z" fill="#c8102e"/><circle cx="20" cy="23.5" r="3" fill="#fff"/></symbol>
+        </defs>
+    </svg>
+
+    <header class="top" id="top">
+        <div class="wrap">
+            <a class="brand" href="{{@home}}">
+                <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
+                <span>OpenFireMap</span> <small>{{ui.brand_help}}</small>
+            </a>
+            <nav class="nav" id="nav" aria-label="{{ui.nav_label}}">
+                <a href="{{@home}}#karte">{{nav.map}}</a>
+                <a href="{{@home}}#ortsplan">{{nav.plan}}</a>
+                <a href="/overlay/">{{nav.overlay}}</a>
+                <a href="{{@home}}#mitmachen">{{nav.contribute}}</a>
+                <a href="{{@home}}#faq">{{nav.faq}}</a>
+            </nav>
+            <div class="top-actions">
+                <div class="lang" role="group" aria-label="{{ui.lang_label}}">
+                    <a href="{{@urlDe}}" lang="de" hreflang="de" {{@curDe}}>DE</a>
+                    <a href="{{@urlEn}}" lang="en" hreflang="en" {{@curEn}}>EN</a>
+                </div>
+                <a class="btn btn-primary btn-small" href="/"><span class="hide-sm">{{ui.to_map}}</span><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="sr-only show-sm">{{ui.to_map}}</span></a>
+                <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="nav" aria-label="{{ui.menu}}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="inhalt" tabindex="-1">
+{{@content}}
+    </main>
+
+    <footer class="foot-area">
+        <div class="wrap">
+            <div class="foot">
+                <div>
+                    <a class="brand" href="{{@home}}">
+                        <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
+                        <span>OpenFireMap</span>
+                    </a>
+                    <p>{{foot.about}}</p>
+                </div>
+                <div>
+                    <h2 class="foot-h">{{foot.help}}</h2>
+                    <ul>
+                        <li><a href="{{@home}}#schritte">{{foot.first_steps}}</a></li>
+                        <li><a href="{{@home}}#karte">{{foot.interface}}</a></li>
+                        <li><a href="{{@home}}#ortsplan">{{nav.plan}}</a></li>
+                        <li><a href="{{@home}}#mitmachen">{{nav.contribute}}</a></li>
+                        <li><a href="{{@home}}#faq">{{nav.faq}}</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h2 class="foot-h">{{foot.project}}</h2>
+                    <ul>
+                        <li><a href="/">{{ui.to_map}}</a></li>
+                        <li><a href="/symbols/">{{foot.symbols}}</a></li>
+                        <li><a href="/status/">{{foot.status}}</a></li>
+                        <li><a href="/overlay/">{{nav.overlay}}</a></li>
+                        <li><a href="https://github.com/FrnkMrz/OpenFireMapV2">GitHub</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h2 class="foot-h">{{foot.legal}}</h2>
+                    <ul>
+                        <li><a href="/?legal=1">{{foot.imprint}}</a></li>
+                        <li><a href="/?legal=1">{{foot.privacy}}</a></li>
+                        <li><a href="/?legal=1">{{foot.licenses}}</a></li>
+                        <li><a href="https://www.openstreetmap.org/copyright">{{foot.osm_license}}</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="foot-bottom">
+                <span>{{foot.attribution}}</span>
+                <span>{{foot.contact}} <a href="mailto:info@openfiremap.org">info@openfiremap.org</a></span>
+            </div>
+        </div>
+    </footer>
+</body>
+
+</html>

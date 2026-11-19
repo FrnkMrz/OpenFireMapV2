@@ -73,6 +73,8 @@ export const strings = {
     overlay_future_support: "Would you like to implement the transition in your mapping system? I’m happy to help.",
     overlay_guide_download: "Download the guide as PDF",
     overlay_future_home: "See PMTiles on the main page",
+    help_page_link: "Help & guide",
+    help_page_hint: "Map, export, town plan and adding hydrants, explained step by step.",
     overlay_page_link: "Overlay & integration",
     overlay_title: "OpenFireMap Overlay · OpenFireMap.org",
     overlay_back: "Back to map",

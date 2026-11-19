@@ -44,3 +44,8 @@ playwright/.cache/
 # iCloud-Konfliktkopien (Repo liegt bewusst in iCloud Drive)
 * 2
 * 2.*
+
+# Hilfe-Seiten: scripts/build-help.mjs erzeugt sie aus help/layout.html, help/pages/ und help/text/
+/help/index.html
+/help/*/index.html
+/help/*/*/index.html

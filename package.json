@@ -15,7 +15,9 @@
     "test:coverage": "vitest run test/ --coverage",
     "lint": "eslint src/**/*.js",
     "i18n:check": "node ./scripts/i18n-check.mjs",
-    "handout:build": "node ./scripts/build-handout.mjs"
+    "handout:build": "node ./scripts/build-handout.mjs",
+    "help:build": "node ./scripts/build-help.mjs",
+    "help:shots": "node ./help/screenshots.mjs"
   },
   "repository": {
     "type": "git",
