@@ -42,6 +42,6 @@ PNG og PDF indeholder kort, titel, målestok, dato og OpenStreetMap-kreditering.
 
 Det valgte område må højst være 10 × 10 km. Vælg lavere detaljeniveau for store områder. Hvis området overskrider grænsen, skal du vælge et mindre udsnit.
 
-## Kreditering {#quelle}
+**Kreditering:** 
 
 Krediteringen “© OpenStreetMap contributors” skal bevares på alle planer.
