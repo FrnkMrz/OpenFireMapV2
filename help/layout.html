@@ -6,12 +6,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-    <title>{{meta.title}}</title>
-    <meta name="description" content="{{meta.description}}">
+    <title>{{@metaTitle}}</title>
+    <meta name="description" content="{{@metaDescription}}">
     <!-- Solange der Hilfe-Bereich im Aufbau ist, nicht in Suchmaschinen aufnehmen -->
     <meta name="robots" content="noindex">
-    <meta property="og:title" content="{{meta.title}}">
-    <meta property="og:description" content="{{meta.description}}">
+    <meta property="og:title" content="{{@metaTitle}}">
+    <meta property="og:description" content="{{@metaDescription}}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://openfiremap.org{{@self}}">
     <link rel="alternate" hreflang="de" href="https://openfiremap.org{{@urlDe}}">
@@ -74,9 +74,10 @@
                 <span>OpenFireMap</span> <small>{{ui.brand_help}}</small>
             </a>
             <nav class="nav" id="nav" aria-label="{{ui.nav_label}}">
-                <a href="{{@home}}#karte">{{nav.map}}</a>
-                <a href="{{@home}}#ortsplan">{{nav.plan}}</a>
-                <a href="/overlay/">{{nav.overlay}}</a>
+                <a href="{{@home}}map/">{{nav.map}}</a>
+                <a href="{{@home}}phone/">{{nav.phone}}</a>
+                <a href="{{@home}}export/">{{nav.export}}</a>
+                <a href="{{@home}}town-plan/">{{nav.plan}}</a>
                 <a href="{{@home}}#mitmachen">{{nav.contribute}}</a>
                 <a href="{{@home}}#faq">{{nav.faq}}</a>
             </nav>
@@ -111,9 +112,12 @@
                     <h2 class="foot-h">{{foot.help}}</h2>
                     <ul>
                         <li><a href="{{@home}}#schritte">{{foot.first_steps}}</a></li>
-                        <li><a href="{{@home}}#karte">{{foot.interface}}</a></li>
-                        <li><a href="{{@home}}#ortsplan">{{nav.plan}}</a></li>
-                        <li><a href="{{@home}}#mitmachen">{{nav.contribute}}</a></li>
+                        <li><a href="{{@home}}map/">{{nav.map}}</a></li>
+                        <li><a href="{{@home}}phone/">{{nav.phone}}</a></li>
+                        <li><a href="{{@home}}layers/">{{nav.layers}}</a></li>
+                        <li><a href="{{@home}}data/">{{nav.data}}</a></li>
+                        <li><a href="{{@home}}export/">{{nav.export}}</a></li>
+                        <li><a href="{{@home}}town-plan/">{{nav.plan}}</a></li>
                         <li><a href="{{@home}}#faq">{{nav.faq}}</a></li>
                     </ul>
                 </div>

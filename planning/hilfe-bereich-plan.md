@@ -1,6 +1,6 @@
 # Plan: Hilfe-Bereich für OpenFireMap
 
-Stand: 19.11.2026 · Status: Etappe 1 (Prototyp) abgenommen, Etappe 2 (Gerüst und Startseite DE/EN) umgesetzt
+Stand: 19.11.2026 · Status: Etappen 1–5 umgesetzt (Prototyp, Gerüst und Startseite, Bildschirmfotos, Anleitungen Karte/Smartphone/Ebenen/Daten/Export/Ortsplan); offen Overlay, Mitmachen, Barrierefreiheit, FAQ-Seite
 
 Vorbild ist die Hilfeseite des Hydrantenjägers (`hydrantenjaeger.de/help/`): dunkles Layout, große Überschrift mit kursivem Akzent, nummerierte Schritte, Typen-Karten, „Gut zu wissen“, FAQ, Kontakt. OpenFireMap bekommt einen eigenen, größeren Hilfe-Bereich mit Unterseiten, der optisch zur selben Familie gehört, aber die OFM-Farben trägt.
 
@@ -83,7 +83,7 @@ Englisch spiegelbildlich (Pfadnamen siehe Entscheidung 1). Jede Seite hat diesel
 ## 5. Technik
 
 - **Eigener Vite-Einstieg** wie `/status/` und `/overlay/`: kein Leaflet, kein Karten-Bundle, eigene CSP, eigene kleine JS-Datei (Hotspots, Navigation, Theme, Suche).
-- **Umgesetzt in Etappe 2:** Startseite und Layout als HTML-Vorlagen mit Text-Schlüsseln (`help/layout.html`, `help/pages/start.html`, `help/text/de.json`/`en.json`), weil die Startseite aus vielen gestalteten Bausteinen besteht. `scripts/build-help.mjs` setzt die Texte ein, schreibt `help/index.html` und `help/en/index.html` (nicht versioniert) und liefert die Vite-Einstiege. Lange Anleitungsseiten (ab Etappe 4) bekommen zusätzlich Markdown, wie unten beschrieben.
+- **Umgesetzt in Etappe 2:** Startseite und Layout als HTML-Vorlagen mit Text-Schlüsseln (`help/layout.html`, `help/pages/start.html`, `help/text/de.json`/`en.json`), weil die Startseite aus vielen gestalteten Bausteinen besteht. `scripts/build-help.mjs` setzt die Texte ein, schreibt `help/index.html` und `help/en/index.html` (nicht versioniert) und liefert die Vite-Einstiege. Lange Anleitungsseiten (ab Etappe 4) kommen aus Markdown (`help/content/<sprache>/<seite>.md`, umgesetzt). Seitennamen in der Adresse sind in allen Sprachen englisch: `/help/map/`, `/help/phone/`, `/help/layers/`, `/help/data/`, `/help/export/`, `/help/town-plan/`.
 - **Inhalte als Markdown** je Sprache (`help/content/de/*.md`, `help/content/en/*.md`) mit Frontmatter (Titel, Beschreibung, Reihenfolge) und wenigen Bausteinen (`:::steps`, `:::tip`, `:::hotspots` …). Ein Build-Skript `scripts/build-help.mjs` (marked ist schon im Projekt, s. Handout) rendert sie in ein gemeinsames HTML-Template; Vite bündelt die Seiten. So pflegen spätere Übersetzer nur Text.
 - **Statische Seiten je Sprache** (kein Umschalten per JS): bessere Auffindbarkeit, `hreflang`, kein Aufflackern, Sprachschalter verlinkt die Gegenstück-Seite.
 - **Vollständigkeitsprüfung** wie `i18n:check`: jede deutsche Seite hat ein englisches Gegenstück mit denselben Abschnitts-IDs und Hotspot-Nummern.
