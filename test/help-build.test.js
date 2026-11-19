@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Marked } from 'marked';
-import { buildHelpPages, helpOutFile, helpUrl, HELP_LANGS, HELP_DEFAULT_LANG, HELP_X_DEFAULT_LANG, jpegSize, listArticles, listHelpLanguages, loadHelpText, parseFrontmatter, renderArticle, renderTemplate } from '../scripts/build-help.mjs';
+import { articleLanguages, buildHelpPages, helpOutFile, stripOtherLanguages, helpUrl, HELP_LANGS, HELP_DEFAULT_LANG, HELP_X_DEFAULT_LANG, jpegSize, listArticles, listHelpLanguages, loadHelpText, parseFrontmatter, renderArticle, renderTemplate } from '../scripts/build-help.mjs';
 
 // Hilfe-Seiten (/help/): Build aus help/ prüfen, ohne Dateien zu schreiben.
 
@@ -21,6 +21,10 @@ function readCsp(html) {
   }
   return csp;
 }
+
+// Sprachen je Anleitung (Frontmatter "languages" der deutschen Fassung, sonst alle)
+const langsOf = (slug) => slug === 'index' ? HELP_LANGS
+  : articleLanguages(parseFrontmatter(readFileSync(resolve(root, `help/content/de/${slug}.md`), 'utf8'), slug).meta, HELP_LANGS);
 
 const tagsOf = (s) => [...String(s).matchAll(/<\/?([a-z]+)\b[^>]*>/g)].map((m) => m[1]).sort();
 const hrefsOf = (s) => [...String(s).matchAll(/href="([^"]*)"/g)].map((m) => m[1]).sort();
@@ -93,7 +97,7 @@ describe('Hilfe: erzeugte Seiten', () => {
     const expected = [];
     for (const lang of HELP_LANGS) {
       expected.push(helpOutFile(lang));
-      for (const slug of slugs) expected.push(helpOutFile(lang, slug));
+      for (const slug of slugs) if (langsOf(slug).includes(lang)) expected.push(helpOutFile(lang, slug));
     }
     expect(Object.keys(pages).sort()).toEqual(expected.sort());
   });
@@ -113,11 +117,16 @@ describe('Hilfe: erzeugte Seiten', () => {
         const htmlLang = info.hreflang || lang;
         const dir = info.dir || (['ar', 'ur'].includes(lang) ? 'rtl' : 'ltr');
         expect(html).toContain(`<html lang="${htmlLang}" dir="${dir}">`);
+        const pageLangs = langsOf(slug);
         for (const alternate of HELP_LANGS) {
           const altInfo = languageCatalog.languages.find((item) => item.code === alternate);
-          expect(html).toContain(`hreflang="${altInfo.hreflang || alternate}" href="https://openfiremap.org${helpUrl(alternate, slug)}"`);
+          const alternateLink = `hreflang="${altInfo.hreflang || alternate}" href="https://openfiremap.org${helpUrl(alternate, slug)}"`;
+          if (pageLangs.includes(alternate)) expect(html).toContain(alternateLink);
+          else expect(html).not.toContain(alternateLink); // Sprachwechsel führt dort zur Startseite
         }
-        expect(html).toContain(`hreflang="x-default" href="https://openfiremap.org${helpUrl(HELP_X_DEFAULT_LANG, slug)}"`);
+        const xDefault = `hreflang="x-default" href="https://openfiremap.org${helpUrl(HELP_X_DEFAULT_LANG, slug)}"`;
+        if (pageLangs.includes(HELP_X_DEFAULT_LANG)) expect(html).toContain(xDefault);
+        else expect(html).not.toContain('hreflang="x-default"');
         expect(html).toContain(`lang="${htmlLang}" hreflang="${htmlLang}" dir="auto" aria-current="page"`);
       });
 
@@ -211,7 +220,7 @@ describe('Hilfe: Anleitungen (Markdown)', () => {
   for (const slug of listArticles(root)) {
     it(`${slug}: gleiche Abschnitte, Bilder und Reihenfolge in allen Sprachen`, () => {
       const de = read('de', slug);
-      for (const lang of HELP_LANGS) {
+      for (const lang of articleLanguages(de.meta, HELP_LANGS)) {
         const other = read(lang, slug);
         expect(ids(other.body), lang).toEqual(ids(de.body));
         expect(figures(other.body), lang).toEqual(figures(de.body));
@@ -219,6 +228,27 @@ describe('Hilfe: Anleitungen (Markdown)', () => {
       }
     });
   }
+
+  it('„Für Feuerwehren“ gibt es nur auf Deutsch und nur für Deutschland', () => {
+    const de = read('de', 'fire-brigades');
+    expect(articleLanguages(de.meta, HELP_LANGS)).toEqual(['de']);
+    expect(de.body).toContain('Gilt nur für Deutschland');
+    for (const lang of HELP_LANGS.filter((code) => code !== 'de')) {
+      expect(existsSync(resolve(root, `help/content/${lang}/fire-brigades.md`)), lang).toBe(false);
+      expect(pages[helpOutFile(lang)], lang).not.toContain('fire-brigades/');
+    }
+    expect(pages[helpOutFile('de')]).toContain('href="/help/fire-brigades/"');
+  });
+
+  it('languages im Frontmatter muss Deutsch enthalten, only-Blöcke gelten nur für die genannten Sprachen', () => {
+    expect(articleLanguages({}, ['de', 'en'])).toEqual(['de', 'en']);
+    expect(articleLanguages({ languages: 'de' }, ['de', 'en'])).toEqual(['de']);
+    expect(() => articleLanguages({ languages: 'en' }, ['de', 'en'])).toThrow(/de/);
+    const tpl = 'a<!--only:de-->B<!--/only-->c<!--only:de, en-->D<!--/only-->';
+    expect(stripOtherLanguages(tpl, 'de')).toBe('aBcD');
+    expect(stripOtherLanguages(tpl, 'en')).toBe('acD');
+    expect(stripOtherLanguages(tpl, 'fr')).toBe('ac');
+  });
 
   it('wandelt Blöcke, Überschriften-IDs und Bilder um', () => {
     const md = '## Titel {#t}\n\n:::tip Hinweis\nText **fett**\n:::\n\n:::figure export spots=png\nUnterschrift\n:::\n';

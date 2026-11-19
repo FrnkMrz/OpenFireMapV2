@@ -15,6 +15,7 @@
 //   {{@lang}}, {{@home}}, {{@content}}, {{@page}}, {{@languageLinks}}, {{@alternates}}
 //   {{@img:desktop}}       Pfad des Bildschirmfotos dieser Sprache (desktop, mobile, mobile-menu)
 //   {{@spot:desktop:search}} data-x/data-y (Prozent) für einen Hotspot
+//   <!--only:de-->…<!--/only-->  erscheint nur in den genannten Sprachen (Komma-Liste), z. B. für Seiten mit languages: de
 //
 // Ausgabe: help/index.html (Standardsprache) und help/<sprache>/index.html (weitere aktive Sprachen).
 // Die erzeugten Dateien sind nicht versioniert (.gitignore); vite.config.mjs ruft buildHelpPages() vor jedem Lauf auf.
@@ -82,9 +83,26 @@ export function listHelpPages(root) {
     .sort();
 }
 
+/** Entfernt Abschnitte <!--only:de,…-->…<!--/only-->, die nicht für diese Sprache gelten (vor dem Einsetzen der Texte). */
+export function stripOtherLanguages(template, lang) {
+  return template.replace(/<!--only:([a-z,\s]+)-->([\s\S]*?)<!--\/only-->/g, (_m, list, inner) =>
+    list.split(',').map((code) => code.trim()).includes(lang) ? inner : '');
+}
+
+/**
+ * Sprachen einer Anleitungsseite: Frontmatter "languages: de" (Komma-Liste) in der deutschen Fassung beschränkt
+ * die Seite auf diese Sprachen (z. B. Inhalte, die nur für Deutschland gelten). Ohne Angabe: alle Hilfe-Sprachen.
+ */
+export function articleLanguages(meta, helpLangs) {
+  if (!meta.languages) return helpLangs;
+  const list = meta.languages.split(',').map((code) => code.trim()).filter(Boolean);
+  if (!list.includes(HELP_DEFAULT_LANG)) throw new Error(`languages: ${meta.languages} muss ${HELP_DEFAULT_LANG} enthalten`);
+  return helpLangs.filter((code) => list.includes(code));
+}
+
 /** Setzt alle Platzhalter ein. Unbekannte Schlüssel sind ein Fehler, damit kein "{{…}}" ausgeliefert wird. */
 export function renderTemplate(template, { text, vars, shots, lang, file }) {
-  return template.replace(/\{\{\s*([@\w.:-]+)\s*\}\}/g, (_m, key) => {
+  return stripOtherLanguages(template, lang).replace(/\{\{\s*([@\w.:-]+)\s*\}\}/g, (_m, key) => {
     if (key.startsWith('@img:')) return `/help/img/${lang}-${key.slice(5)}.jpg`;
     if (key.startsWith('@spot:')) {
       const [, device, id] = key.split(':');
@@ -235,17 +253,18 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
     inputs[`help${lang === HELP_DEFAULT_LANG ? '' : '_' + lang}${page === 'index' ? '' : '_' + page}`] = join(root, out);
   };
 
-  const baseVars = (lang, page) => {
+  const baseVars = (lang, page, pageLangs = helpLangs) => {
     const altLang = lang === HELP_X_DEFAULT_LANG ? HELP_DEFAULT_LANG : HELP_X_DEFAULT_LANG;
+    // Gibt es die Seite in einer Sprache nicht, führt der Sprachwechsel zur Startseite dieser Sprache
     const languageLinks = helpLangs.map((code) => {
       const info = languageByCode[code];
       const current = code === lang ? ' aria-current="page"' : '';
       const htmlLang = info.hreflang || code;
-      return `<li><a href="${helpUrl(code, page)}" lang="${escapeAttr(htmlLang)}" hreflang="${escapeAttr(htmlLang)}" dir="auto"${current}>${escapeAttr(info.name)} <span>${escapeAttr(code.toUpperCase())}</span></a></li>`;
+      return `<li><a href="${helpUrl(code, pageLangs.includes(code) ? page : 'index')}" lang="${escapeAttr(htmlLang)}" hreflang="${escapeAttr(htmlLang)}" dir="auto"${current}>${escapeAttr(info.name)} <span>${escapeAttr(code.toUpperCase())}</span></a></li>`;
     }).join('');
-    const alternates = helpLangs.map((code) =>
+    const alternates = pageLangs.map((code) =>
       `<link rel="alternate" hreflang="${escapeAttr(languageByCode[code].hreflang || code)}" href="https://openfiremap.org${helpUrl(code, page)}">`
-    ).concat(`<link rel="alternate" hreflang="x-default" href="https://openfiremap.org${helpUrl(HELP_X_DEFAULT_LANG, page)}">`).join('\n    ');
+    ).concat(pageLangs.includes(HELP_X_DEFAULT_LANG) ? [`<link rel="alternate" hreflang="x-default" href="https://openfiremap.org${helpUrl(HELP_X_DEFAULT_LANG, page)}">`] : []).join('\n    ');
     const info = languageByCode[lang];
     return {
       lang,
@@ -260,7 +279,7 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
       home: helpUrl(lang),
       altHome: helpUrl(altLang),
       self: helpUrl(lang, page),
-      alt: helpUrl(altLang, page),
+      alt: helpUrl(altLang, pageLangs.includes(altLang) ? page : 'index'),
     };
   };
 
@@ -283,19 +302,28 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
 
   // 2) Anleitungsseiten aus Markdown (help/content/<sprache>/<seite>.md)
   const slugs = listArticles(root);
+  const slugLangs = Object.fromEntries(slugs.map((slug) => {
+    const file = `content/${HELP_DEFAULT_LANG}/${slug}.md`;
+    const { meta } = parseFrontmatter(readFileSync(join(root, 'help', file), 'utf8'), file);
+    return [slug, articleLanguages(meta, helpLangs)];
+  }));
   for (const lang of helpLangs) {
     const text = loadHelpText(root, lang);
-    const articles = slugs.map((slug) => {
+    const articles = slugs.flatMap((slug) => {
       const file = `content/${lang}/${slug}.md`;
       const full = join(root, 'help', file);
+      if (!slugLangs[slug].includes(lang)) {
+        if (existsSync(full)) throw new Error(`${file}: die Seite gibt es nur in ${slugLangs[slug].join(', ')} (Frontmatter languages), Datei entfernen`);
+        return [];
+      }
       if (!existsSync(full)) throw new Error(`${file} fehlt (gibt es auf Deutsch)`);
       const { meta, body } = parseFrontmatter(readFileSync(full, 'utf8'), file);
-      return { slug, file, meta, body };
+      return [{ slug, file, meta, body }];
     }).sort((a, b) => Number(a.meta.order) - Number(b.meta.order));
 
     articles.forEach((a, i) => {
       const { html, toc } = renderArticle(a.body, { lang, shots, root, file: a.file, marked });
-      const vars = baseVars(lang, a.slug);
+      const vars = baseVars(lang, a.slug, slugLangs[a.slug]);
       const prev = articles[i - 1], next = articles[i + 1];
       const pagerLink = (x, cls, label) => x
         ? `<a class="pager-link ${cls}" href="${helpUrl(lang, x.slug)}"><span>${label}</span><strong>${x.meta.title}</strong></a>`

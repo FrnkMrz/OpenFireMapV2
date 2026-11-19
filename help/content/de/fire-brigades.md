@@ -1,10 +1,15 @@
 ---
 title: Für Feuerwehren
-description: So prüft und ergänzt eine Feuerwehr bei einer Übung oder einem Ortsrundgang die Hydranten, Löschwasserstellen und Defibrillatoren ihres Ausrückebereichs in OpenStreetMap.
+description: Für Feuerwehren in Deutschland: So prüft und ergänzt eine Feuerwehr bei einer Übung oder einem Ortsrundgang die Hydranten, Löschwasserstellen und Defibrillatoren ihres Ausrückebereichs in OpenStreetMap.
 eyebrow: Für Feuerwehren
 lead: Ein Übungsabend reicht, um die Hydranten im eigenen Ausrückebereich zu prüfen und fehlende einzutragen. Diese Seite zeigt, wie ihr das vorbereitet, durchführt und nachbereitet – ohne Vorwissen zu OpenStreetMap.
 order: 8
+languages: de
 ---
+
+:::note Gilt nur für Deutschland
+Diese Anleitung richtet sich an Feuerwehren in Deutschland. Hinweisschilder, Abläufe und Ansprechpartner wie Gemeinde und Wasserversorger beziehen sich auf deutsche Verhältnisse. Deshalb gibt es sie nur auf Deutsch.
+:::
 
 ## Warum sich das lohnt {#warum}
 
