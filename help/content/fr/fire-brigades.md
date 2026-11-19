@@ -31,6 +31,15 @@ La personne responsable prépare la tournée une à deux semaines à l’avance 
 Les règles OSM et l’accord parental s’appliquent. Les jeunes peuvent chercher, vérifier et noter ; un adulte ajoute les données avec son propre compte.
 :::
 
+## À imprimer {#ausdrucken}
+
+| Document | Pour qui | Fichier |
+|---|---|---|
+| **Fiche d’équipe** : six étapes, sécurité, lecture du panneau, types d’hydrants | chaque équipe, A4 recto verso | [Télécharger le PDF](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) (en allemand) |
+| **Fiche de relevé, liste des défauts** et modèle de lettre pour la commune ou le service des eaux | équipes et suivi, A4 paysage | [Télécharger le PDF](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) (en allemand) |
+
+Ces documents sont une première version, avant un essai sur le terrain avec un service d’incendie ; ils ne sont disponibles qu’en allemand pour le moment. Vos retours sont les bienvenus à info@openfiremap.org.
+
 ## Déroulement de l’exercice {#ablauf}
 
 Pour 90 minutes : 15 minutes de briefing et démonstration, 60 minutes de tournée par équipes, puis 15 minutes pour faire le point. Une équipe de deux ou trois personnes comprend une personne au téléphone, une personne attentive à la circulation et éventuellement une personne qui prend des notes.
