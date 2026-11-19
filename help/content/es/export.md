@@ -42,6 +42,6 @@ PNG y PDF incluyen el mapa, título, escala, fecha y atribución de OpenStreetMa
 
 El área máxima es de 10 × 10 km. Para zonas grandes, usa menos detalle o selecciona un área menor.
 
-## Atribución {#quelle}
+**Atribución:** 
 
 Conserva en todos los planos el texto “© OpenStreetMap contributors”.
