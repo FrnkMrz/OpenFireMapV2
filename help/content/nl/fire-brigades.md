@@ -31,6 +31,15 @@ De oefenleider plant één of twee weken vooraf:
 De OSM-regels en toestemming van ouders gelden. Jongeren kunnen zoeken, controleren en noteren; een begeleider voert gegevens in met een eigen account.
 :::
 
+## Om af te drukken {#ausdrucken}
+
+| Document | Voor wie | Bestand |
+|---|---|---|
+| **Teamkaart**: zes stappen, veiligheid, het bord lezen en typen brandkranen | elk team, dubbelzijdig A4 | [Download pdf](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) (Duits) |
+| **Registratieformulier, gebrekenlijst** en voorbeeldbrief aan gemeente of waterbedrijf | teams en opvolging, liggend A4 | [Download pdf](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) (Duits) |
+
+Dit is een eerste versie, vóór een praktijktest met een brandweerkorps; voorlopig zijn de documenten alleen in het Duits beschikbaar. Reacties zijn welkom via info@openfiremap.org.
+
 ## Verloop van de oefening {#ablauf}
 
 Voor 90 minuten: 15 minuten uitleg en demonstratie, 60 minuten controle per team, 15 minuten nabespreking. Een team van twee of drie mensen verdeelt telefoon, verkeersveiligheid en notities.
