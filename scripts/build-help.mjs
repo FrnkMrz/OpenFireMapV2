@@ -83,7 +83,12 @@ export function listHelpPages(root) {
 }
 
 /** Setzt alle Platzhalter ein. Unbekannte Schlüssel sind ein Fehler, damit kein "{{…}}" ausgeliefert wird. */
-export function renderTemplate(template, { text, vars, shots, lang, file }) {
+/** Nutzt bis zur Aufnahme lokalisierter Screenshots die englischen Bilder als sichere Vorlage. */
+function helpImageLanguage(root, lang, image) {
+  return root && existsSync(join(root, 'public', 'help', 'img', `${lang}-${image}.jpg`)) ? lang : HELP_X_DEFAULT_LANG;
+}
+
+export function renderTemplate(template, { root, text, vars, shots, lang, file }) {
   return template.replace(/\{\{\s*([@\w.:-]+)\s*\}\}/g, (_m, key) => {
     if (key.startsWith('@img:')) return `/help/img/${helpImageLanguage(root, lang, key.slice(5))}-${key.slice(5)}.jpg`;
     if (key.startsWith('@spot:')) {
