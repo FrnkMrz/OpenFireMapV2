@@ -31,6 +31,15 @@ Osoba prowadząca planuje obchód tydzień lub dwa wcześniej:
 Obowiązują zasady OSM i zgoda rodziców. Młodzież może szukać, sprawdzać i notować, a opiekun dodaje dane z własnego konta.
 :::
 
+## Do wydruku {#ausdrucken}
+
+| Dokument | Dla kogo | Plik |
+|---|---|---|
+| **Karta zespołu**: sześć kroków, bezpieczeństwo, odczyt tabliczki i typy hydrantów | każdy zespół, A4 dwustronnie | [Pobierz PDF](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) (po niemiecku) |
+| **Arkusz ewidencji, lista usterek** i wzór pisma do gminy lub wodociągów | zespoły i późniejsze opracowanie, A4 poziomo | [Pobierz PDF](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) (po niemiecku) |
+
+To pierwsza wersja materiałów, przed testem terenowym ze strażą pożarną; na razie są dostępne tylko po niemiecku. Uwagi i sugestie: info@openfiremap.org.
+
 ## Przebieg ćwiczeń {#ablauf}
 
 Dla 90 minut: 15 minut instruktażu i demonstracji, 60 minut obchodu zespołami, 15 minut podsumowania. Zespół dwu- lub trzyosobowy dzieli się zadaniami: telefon, obserwacja ruchu i notatki.
