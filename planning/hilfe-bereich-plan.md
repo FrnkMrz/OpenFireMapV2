@@ -137,7 +137,7 @@ Seitenpfade in Abschnitt 3 gelten unter `/help/` statt `/hilfe/`. Bis der Bereic
 
 ## 10. To-do für spätere Arbeiten
 
-- [ ] Anleitung für Feuerwehren erstellen, mit der sie Hydranten und weitere relevante Objekte bei einer Übung oder einem Ortsrundgang selbst überprüfen und eintragen können. Mögliche Umsetzung: kurze Schritt-für-Schritt-Anleitung, Erklärvideo und ergänzender Comic. (aufgenommen 19.11.2026)
+- [ ] Anleitung für Feuerwehren erstellen, mit der sie Hydranten und weitere relevante Objekte bei einer Übung oder einem Ortsrundgang selbst überprüfen und eintragen können. Mögliche Umsetzung: kurze Schritt-für-Schritt-Anleitung, Erklärvideo und ergänzender Comic. (aufgenommen 19.11.2026) → Ausgearbeitet in `planning/feuerwehr-anleitung-plan.md`.
 - [x] Hinweisschild auf der Startseite nach Referenzfoto (H 100, 5:4, Feldaufteilung wie das echte Schild) nachgebaut (19.11.2026).
 - [x] Ortsplan-Bild der Startseite nach dem Referenzausdruck „Orts- und Hydrantenplan Schnaittach“ neu gezeichnet (19.11.2026); die schematischen Einstellungen im Assistenten bleiben.
 - [ ] Am echten Smartphone prüfen, ob ein Tipp auf ein Symbol bei Zoom 18 Details öffnet (Emulation: nein).
