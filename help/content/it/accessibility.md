@@ -3,7 +3,7 @@ title: Accessibilità
 description: Usa OpenFireMap con tastiera, lettore di schermo, ingrandimento e movimento ridotto.
 eyebrow: Accessibilità
 lead: OpenFireMap deve funzionare senza mouse, con lettore di schermo e con ingrandimenti elevati. Ecco funzioni e limiti noti.
-order: 8
+order: 9
 ---
 
 ## Il nostro obiettivo {#ziel}
