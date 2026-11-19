@@ -90,6 +90,10 @@ Tak. Na każdym planie musi pozostać widoczna atrybucja „© OpenStreetMap con
 
 Możesz go poprawić w OpenStreetMap za pomocą bezpłatnego konta. Zobacz [Dodawanie hydrantów](../contribute/).
 
+### Jesteśmy strażą pożarną i chcemy zinwentaryzować hydranty w naszym rejonie. Jak zacząć? {#feuerwehr}
+
+Najlepiej zorganizować wieczór ćwiczeń lub obchód miasta w zespołach. Przygotowanie, przebieg, bezpieczeństwo i podsumowanie opisuje poradnik [Dla straży pożarnej](../fire-brigades/).
+
 ### Czy mogę kopiować plany gminy? {#plaene}
 
 Tylko za wyraźną zgodą. Najlepiej dodawać dane sprawdzone osobiście w terenie.
