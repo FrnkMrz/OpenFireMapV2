@@ -31,6 +31,15 @@ La persona responsable planifica el recorrido una o dos semanas antes:
 Se aplican las reglas de OSM y el consentimiento de los padres. Los jóvenes pueden buscar, comprobar y tomar notas; una persona adulta introduce los datos con su propia cuenta.
 :::
 
+## Para imprimir {#ausdrucken}
+
+| Documento | Para quién | Archivo |
+|---|---|---|
+| **Tarjeta del equipo**: seis pasos, seguridad, lectura de la señal y tipos de hidrantes | cada equipo, A4 a doble cara | [Descargar PDF](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) (en alemán) |
+| **Hoja de registro, lista de defectos** y modelo de carta para el municipio o la empresa de agua | equipos y seguimiento, A4 apaisado | [Descargar PDF](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) (en alemán) |
+
+Es una primera versión antes de probar los materiales sobre el terreno con un parque de bomberos; por ahora solo están disponibles en alemán. Agradecemos comentarios en info@openfiremap.org.
+
 ## Desarrollo del ejercicio {#ablauf}
 
 Para 90 minutos: 15 de explicación y demostración, 60 de recorrido por equipos y 15 de puesta en común. En un equipo de dos o tres, una persona usa el teléfono, otra vigila el tráfico y otra toma notas.
