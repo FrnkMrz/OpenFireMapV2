@@ -1,0 +1,26 @@
+        <article class="article">
+            <header class="article-head">
+                <div class="wrap">
+                    <nav class="crumbs" aria-label="{{article.crumbs}}"><a href="{{@home}}">{{ui.brand_help}}</a> <span aria-hidden="true">/</span> <span>{{@title}}</span></nav>
+                    <p class="eyebrow">{{@eyebrow}}</p>
+                    <h1>{{@title}}</h1>
+                    <p class="lead">{{@lead}}</p>
+                </div>
+            </header>
+            <div class="wrap article-grid">
+                <aside class="toc" aria-labelledby="toc-title">
+                    <p class="toc-title" id="toc-title">{{article.toc}}</p>
+                    <ol>{{@toc}}</ol>
+                </aside>
+                <div class="prose">
+{{@body}}
+                </div>
+            </div>
+            <div class="wrap">
+                <nav class="pager" aria-label="{{article.pager}}">{{@pager}}</nav>
+                <div class="article-contact">
+                    <p><strong>{{faq.contact_title}}</strong> {{article.contact}} <a href="mailto:info@openfiremap.org">info@openfiremap.org</a></p>
+                    <a class="btn btn-ghost btn-small" href="{{@home}}#themen">{{article.all_topics}}</a>
+                </div>
+            </div>
+        </article>

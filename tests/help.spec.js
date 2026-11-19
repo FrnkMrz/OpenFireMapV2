@@ -5,14 +5,16 @@ import AxeBuilder from '@axe-core/playwright';
 // Bedienelemente (Tabs, Erklärer, Themenmenü). Die Seiten laden nichts von fremden Servern.
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
+const SLUGS = ['map', 'phone', 'layers', 'data', 'export', 'town-plan'];
 const PAGES = [['de', '/help/'], ['en', '/help/en/']];
+const ARTICLES = SLUGS.flatMap((s) => [['de', `/help/${s}/`], ['en', `/help/en/${s}/`]]);
 
 async function open(page, path) {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     await page.goto(path);
-    await page.waitForFunction(() => document.querySelectorAll('.spot.is-placed').length > 0);
+    await page.waitForFunction(() => !document.querySelector('.spot') || document.querySelectorAll('.spot.is-placed').length > 0);
     await page.evaluate(() => document.fonts.ready);
     return errors;
 }
@@ -118,4 +120,32 @@ test('Karte: „Info & Recht“ verlinkt die Hilfe in der passenden Sprache', as
     await expect(page.locator('[data-help-link]')).toHaveAttribute('href', '/help/');
     await page.goto('/?lang=fr');
     await expect(page.locator('[data-help-link]')).toHaveAttribute('href', '/help/en/');
+});
+
+for (const [lang, path] of ARTICLES) {
+    test(`Anleitung ${path}: ohne Fehler, axe ohne Befund, kein seitliches Scrollen`, async ({ page }) => {
+        const errors = await open(page, path);
+        expect(errors).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.lang)).toBe(lang);
+        // Alle Bilder vorhanden (lazy: einzeln anfordern) und alle Nummern im Bild platziert
+        for (const src of await page.evaluate(() => [...new Set([...document.images].map((i) => i.getAttribute('src')))])) {
+            expect((await page.request.get(src)).status(), src).toBe(200);
+        }
+        expect(await page.locator('.spot:not(.is-placed)').count()).toBe(0);
+        const result = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+        expect(result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual([]);
+        await page.setViewportSize({ width: 320, height: 800 });
+        const [scroll, inner] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+        expect(scroll).toBeLessThanOrEqual(inner);
+    });
+}
+
+test('Anleitung: Inhaltsverzeichnis führt zum Abschnitt, Kopfzeile markiert die Seite', async ({ page }) => {
+    await open(page, '/help/export/');
+    await expect(page.locator('.nav a[aria-current="page"]')).toHaveAttribute('href', '/help/export/');
+    await page.click('.toc a[href="#grenzen"]');
+    await expect(page).toHaveURL(/#grenzen$/);
+    await expect(page.locator('#grenzen')).toBeInViewport();
+    await page.click('.pager-link.next');
+    await expect(page).toHaveURL(/\/help\/town-plan\/$/);
 });

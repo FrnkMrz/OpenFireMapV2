@@ -159,14 +159,14 @@
                     <h2 id="themen-title">{{topics.title}}</h2>
                 </div>
                 <ul class="topics">
-                    <li><a class="topic" href="#karte"><span class="ic"><svg aria-hidden="true"><use href="#i-desktop"/></svg></span><h3>{{topics.desktop}}</h3><p>{{topics.desktop_text}}</p></a></li>
-                    <li><a class="topic" href="#karte" data-tab="tab-phone"><span class="ic"><svg aria-hidden="true"><use href="#i-phone"/></svg></span><h3>{{topics.phone}}</h3><p>{{topics.phone_text}}</p></a></li>
-                    <li><a class="topic" href="/symbols/"><span class="ic"><svg aria-hidden="true"><use href="#i-symbols"/></svg></span><h3>{{topics.symbols}}</h3><p>{{topics.symbols_text}}</p></a></li>
-                    <li><a class="topic" href="#ortsplan"><span class="ic"><svg aria-hidden="true"><use href="#i-sheet"/></svg></span><h3>{{topics.plan}} <span class="badge">{{topics.new}}</span></h3><p>{{topics.plan_text}}</p></a></li>
+                    <li><a class="topic" href="{{@home}}map/"><span class="ic"><svg aria-hidden="true"><use href="#i-desktop"/></svg></span><h3>{{topics.desktop}}</h3><p>{{topics.desktop_text}}</p></a></li>
+                    <li><a class="topic" href="{{@home}}phone/"><span class="ic"><svg aria-hidden="true"><use href="#i-phone"/></svg></span><h3>{{topics.phone}}</h3><p>{{topics.phone_text}}</p></a></li>
+                    <li><a class="topic" href="{{@home}}layers/"><span class="ic"><svg aria-hidden="true"><use href="#i-symbols"/></svg></span><h3>{{topics.symbols}}</h3><p>{{topics.symbols_text}}</p></a></li>
+                    <li><a class="topic" href="{{@home}}town-plan/"><span class="ic"><svg aria-hidden="true"><use href="#i-sheet"/></svg></span><h3>{{topics.plan}} <span class="badge">{{topics.new}}</span></h3><p>{{topics.plan_text}}</p></a></li>
                     <li><a class="topic" href="/overlay/"><span class="ic"><svg aria-hidden="true"><use href="#i-overlay"/></svg></span><h3>{{topics.overlay}}</h3><p>{{topics.overlay_text}}</p></a></li>
                     <li><a class="topic" href="#mitmachen"><span class="ic"><svg aria-hidden="true"><use href="#i-hand"/></svg></span><h3>{{topics.contribute}}</h3><p>{{topics.contribute_text}}</p></a></li>
-                    <li><div class="topic is-soon"><span class="ic"><svg aria-hidden="true"><use href="#i-download"/></svg></span><h3>{{topics.export}} <span class="badge muted">{{topics.soon}}</span></h3><p>{{topics.export_text}}</p></div></li>
-                    <li><div class="topic is-soon"><span class="ic"><svg aria-hidden="true"><use href="#i-clock"/></svg></span><h3>{{topics.data}} <span class="badge muted">{{topics.soon}}</span></h3><p>{{topics.data_text}}</p></div></li>
+                    <li><a class="topic" href="{{@home}}export/"><span class="ic"><svg aria-hidden="true"><use href="#i-download"/></svg></span><h3>{{topics.export}}</h3><p>{{topics.export_text}}</p></a></li>
+                    <li><a class="topic" href="{{@home}}data/"><span class="ic"><svg aria-hidden="true"><use href="#i-clock"/></svg></span><h3>{{topics.data}}</h3><p>{{topics.data_text}}</p></a></li>
                     <li><div class="topic is-soon"><span class="ic"><svg aria-hidden="true"><use href="#i-a11y"/></svg></span><h3>{{topics.a11y}} <span class="badge muted">{{topics.soon}}</span></h3><p>{{topics.a11y_text}}</p></div></li>
                 </ul>
             </div>
@@ -238,6 +238,7 @@
                     </ul>
                     <div class="cta">
                         <a class="btn btn-primary" href="/ortsplan/">{{plan.cta}} <svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+                        <a class="btn btn-ghost" href="{{@home}}town-plan/">{{plan.cta_guide}}</a>
                     </div>
                 </div>
             </div>

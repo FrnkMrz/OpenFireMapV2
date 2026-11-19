@@ -30,18 +30,20 @@ function initHeader() {
   });
 }
 
-export function initExplorer(panel) {
-  const items = [...panel.querySelectorAll('.legend button')];
-  const spots = [...panel.querySelectorAll('.spot')];
-
-  // Lage der Nummern aus data-x/data-y (Prozent). Per CSSOM, weil die CSP keine style-Attribute zulässt.
-  for (const spot of spots) {
+/** Lage der Nummern im Bild aus data-x/data-y (Prozent). Per CSSOM, weil die CSP keine style-Attribute zulässt. */
+export function placeSpots(root = document) {
+  for (const spot of root.querySelectorAll('.spot[data-x]')) {
     const x = Number(spot.dataset.x), y = Number(spot.dataset.y);
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
     spot.style.left = `${Math.min(97, Math.max(3, x))}%`;
     spot.style.top = `${Math.min(97, Math.max(3, y))}%`;
     spot.classList.add('is-placed');
   }
+}
+
+export function initExplorer(panel) {
+  const items = [...panel.querySelectorAll('.legend button')];
+  const spots = [...panel.querySelectorAll('.spot')];
 
   const select = (index) => {
     items.forEach((b, k) => b.setAttribute('aria-pressed', String(k === index)));
@@ -114,7 +116,33 @@ function initCopy() {
   });
 }
 
+/** Inhaltsverzeichnis: den gerade gelesenen Abschnitt markieren */
+function initToc() {
+  const links = [...document.querySelectorAll('.toc a[href^="#"]')];
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  const byId = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
+  const visible = new Set();
+  const update = () => {
+    const first = [...byId.keys()].find((id) => visible.has(id));
+    if (!first) return;
+    for (const [id, a] of byId) {
+      if (id === first) a.setAttribute('aria-current', 'location');
+      else a.removeAttribute('aria-current');
+    }
+  };
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) (e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id));
+    update();
+  }, { rootMargin: '-80px 0px -60% 0px' });
+  for (const id of byId.keys()) {
+    const h = document.getElementById(id);
+    if (h) io.observe(h);
+  }
+}
+
 initHeader();
+placeSpots();
+initToc();
 document.querySelectorAll('[data-explorer]').forEach(initExplorer);
 initTabs();
 initCopy();
