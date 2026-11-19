@@ -112,7 +112,7 @@ export function listArticles(root) {
   return readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => f.replace(/\.md$/, '')).sort();
 }
 
-const escapeAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+const escapeAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /**
  * Wandelt eine Anleitungsseite (Markdown) in HTML. Zusätzlich zu Markdown:
@@ -146,7 +146,8 @@ export function renderArticle(md, { lang, shots, root, file, marked }) {
         return `<span class="spot" aria-hidden="true" data-x="${p.x}" data-y="${p.y}">${i + 1}</span>`;
       }).join('');
       const frame = opts.frame || 'plain';
-      const alt = escapeAttr(inner.trim().replace(/<[^>]+>|[*_`]/g, ''));
+      // Alternativtext = Bildunterschrift ohne Markdown-Zeichen; escapeAttr macht ihn als Attribut sicher
+      const alt = escapeAttr(inner.trim().replace(/[*_`]/g, ''));
       const img = `<div class="shot-canvas"><img src="${imgPath}" alt="${alt}" width="${width}" height="${height}" loading="lazy">${spots}</div>`;
       const framed = frame === 'browser'
         ? `<div class="browser"><div class="browser-bar"><i></i><i></i><i></i><span>openfiremap.org</span></div>${img}</div>`
@@ -163,7 +164,7 @@ export function renderArticle(md, { lang, shots, root, file, marked }) {
 
   let html = marked.parse(src);
   html = html.replace(/<h([23])>([\s\S]*?)\s*\{#([a-z0-9-]+)\}<\/h\1>/g, (_m, level, text, id) => {
-    if (level === '2') toc.push({ id, text: text.replace(/<[^>]+>/g, '') });
+    if (level === '2') toc.push({ id, text });
     return `<h${level} id="${id}">${text}</h${level}>`;
   });
   html = html.replace(/<p><!--block:(\d+)--><\/p>|<!--block:(\d+)-->/g, (_m, a, b) => blocks[Number(a ?? b)]);
@@ -216,7 +217,7 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
 
   // Aktuelle Seite in der Kopf-Navigation markieren
   const markCurrent = (html, self) => html.replace(/(<nav class="nav"[\s\S]*?<\/nav>)/, (nav) =>
-    nav.replace(new RegExp(`<a href="${self.replace(/[/.]/g, '\\$&')}">`), `<a href="${self}" aria-current="page">`));
+    nav.replace(`<a href="${self}">`, `<a href="${self}" aria-current="page">`));
 
   // 1) Seiten aus HTML-Vorlagen (Startseite)
   for (const page of listHelpPages(root)) {
