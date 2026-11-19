@@ -1,0 +1,150 @@
+/* Overlay-Unterseite im gemeinsamen hellen OpenFireMap-Hilfe-Stil. */
+:root {
+  --overlay-paper: #fff;
+  --overlay-mist: #f3f6f9;
+  --overlay-mist-2: #e9eef3;
+  --overlay-line: #dbe2e9;
+  --overlay-ink: #0f1b2a;
+  --overlay-muted: #4a5868;
+  --overlay-signal: #c8102e;
+  --overlay-signal-deep: #9e0b22;
+  --overlay-signal-tint: #fdecef;
+  --overlay-water: #0b5fa5;
+  --overlay-water-tint: #e7f0f9;
+  --overlay-shadow: 0 1px 2px rgba(15, 27, 42, .06), 0 12px 32px -12px rgba(15, 27, 42, .16);
+  color-scheme: light;
+}
+
+body.overlay-page {
+  margin: 0;
+  background: var(--overlay-paper);
+  color: var(--overlay-ink);
+  font-family: Barlow, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.overlay-page h1,
+.overlay-page h2,
+.overlay-page h3 {
+  color: var(--overlay-ink);
+  font-family: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -.005em;
+  text-wrap: balance;
+}
+
+.overlay-page h2 { font-size: clamp(1.65rem, 3.5vw, 2.25rem); }
+.overlay-page h3 { font-size: 1.35rem; }
+.overlay-page a { color: var(--overlay-water); text-underline-offset: 3px; }
+.overlay-page a:hover { color: var(--overlay-ink); }
+.overlay-page :focus-visible {
+  outline: 3px solid var(--overlay-water) !important;
+  outline-offset: 3px;
+}
+
+.overlay-page > main > header {
+  min-height: 68px;
+  padding-block: 8px;
+  border-bottom: 1px solid var(--overlay-line);
+}
+
+.overlay-page > main > header > a {
+  color: var(--overlay-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.overlay-page > main > header > a:hover { color: var(--overlay-water); }
+
+.overlay-intro {
+  position: relative;
+  padding: clamp(22px, 4vw, 42px) 0 12px;
+}
+
+.overlay-intro h1 { margin-top: 4px; }
+.overlay-eyebrow { color: var(--overlay-signal) !important; letter-spacing: .14em; }
+
+/* Tailwind-Struktur bleibt für das Layout erhalten; die Farbflächen folgen dem Hilfe-Theme. */
+.overlay-page .bg-white,
+.overlay-page .bg-slate-900,
+.overlay-page .bg-slate-950 { background-color: var(--overlay-paper) !important; }
+.overlay-page .bg-slate-800 { background-color: var(--overlay-mist) !important; }
+.overlay-page .bg-slate-700 { background-color: var(--overlay-mist-2) !important; }
+.overlay-page .text-white,
+.overlay-page .text-slate-100,
+.overlay-page .text-slate-200 { color: var(--overlay-ink) !important; }
+.overlay-page .text-slate-300,
+.overlay-page .text-slate-400,
+.overlay-page .text-slate-500 { color: var(--overlay-muted) !important; }
+.overlay-page .text-blue-100,
+.overlay-page .text-blue-200,
+.overlay-page .text-blue-300 { color: var(--overlay-water) !important; }
+.overlay-page .text-amber-200,
+.overlay-page .text-amber-300 { color: var(--overlay-signal-deep) !important; }
+.overlay-page .border-slate-700,
+.overlay-page .border-slate-600,
+.overlay-page .border-slate-500 { border-color: var(--overlay-line) !important; }
+.overlay-page .border-blue-400\/20,
+.overlay-page .border-blue-400\/30 { border-color: var(--overlay-water) !important; }
+.overlay-page .border-amber-400 { border-color: var(--overlay-signal) !important; }
+
+.overlay-page .bg-blue-600,
+.overlay-page #download-zip,
+.overlay-page #download-germany,
+.overlay-page .bg-amber-400,
+.overlay-page .bg-emerald-700 {
+  background-color: var(--overlay-signal) !important;
+  color: #fff !important;
+}
+
+.overlay-page .bg-blue-600:hover,
+.overlay-page #download-zip:hover,
+.overlay-page #download-germany:hover,
+.overlay-page .bg-amber-400:hover,
+.overlay-page .bg-emerald-700:hover {
+  background-color: var(--overlay-signal-deep) !important;
+  color: #fff !important;
+}
+
+.overlay-page .bg-amber-300\/10,
+.overlay-page .bg-blue-400\/5 { background-color: var(--overlay-signal-tint) !important; }
+.overlay-page .hover\:bg-slate-800:hover,
+.overlay-page .hover\:bg-slate-700:hover,
+.overlay-page .hover\:bg-slate-600:hover { background-color: var(--overlay-mist-2) !important; }
+.overlay-page .hover\:bg-blue-500:hover,
+.overlay-page .hover\:bg-amber-300:hover { background-color: var(--overlay-signal-deep) !important; }
+.overlay-page .hover\:text-white:hover { color: var(--overlay-ink) !important; }
+
+.overlay-page .shadow-xl,
+.overlay-page .shadow-lg { box-shadow: var(--overlay-shadow) !important; }
+.overlay-page .shadow-amber-950\/30 { --tw-shadow-color: rgba(15, 27, 42, .12) !important; }
+
+.overlay-page select,
+.overlay-page input:not([type="checkbox"]) {
+  color: var(--overlay-ink);
+  border-color: var(--overlay-line);
+}
+
+.overlay-page .overlay-map {
+  border-block: 1px solid var(--overlay-line);
+  background: var(--overlay-mist);
+}
+
+.overlay-page .code-sample {
+  border-color: var(--overlay-line) !important;
+  background: var(--overlay-mist) !important;
+  color: var(--overlay-ink) !important;
+  box-shadow: inset 4px 0 var(--overlay-water);
+}
+
+.overlay-page .code-sample code { color: var(--overlay-ink); }
+.overlay-page .leaflet-control-attribution { font-family: system-ui, sans-serif; }
+
+@media (max-width: 640px) {
+  .overlay-page > main > header { align-items: center; }
+  .overlay-intro { padding-top: 22px; }
+  .overlay-page .overlay-map { height: 60vh; min-height: 330px; }
+}
