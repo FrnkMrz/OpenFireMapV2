@@ -3,7 +3,7 @@ title: Ofte stillede spørgsmål
 description: Svar om kort, data, eksport, byplan og bidrag.
 eyebrow: FAQ
 lead: Her er svar på de mest almindelige spørgsmål. Skriv til info@openfiremap.org, hvis du mangler et svar.
-order: 9
+order: 10
 ---
 
 ## Kort og betjening {#karte}
