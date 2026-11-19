@@ -210,5 +210,7 @@
   "sheet.scale": "Maßstab 1 : 7.500",
   "sheet.index": "Straßenverzeichnis",
   "sheet.source": "© OpenStreetMap-Mitwirkende (ODbL) · Karte: Protomaps",
-  "sheet.source2": "Daten: OpenFireMap.org · Stand siehe Blatt"
+  "sheet.source2": "Daten: OpenFireMap.org · Stand siehe Blatt",
+  "nav.a11y": "Barrierefreiheit",
+  "faq.all": "Alle Fragen"
 }

@@ -5,7 +5,7 @@ import AxeBuilder from '@axe-core/playwright';
 // Bedienelemente (Tabs, Erklärer, Themenmenü). Die Seiten laden nichts von fremden Servern.
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
-const SLUGS = ['map', 'phone', 'layers', 'data', 'export', 'town-plan', 'contribute'];
+const SLUGS = ['map', 'phone', 'layers', 'data', 'export', 'town-plan', 'contribute', 'accessibility', 'faq'];
 const PAGES = [['de', '/help/'], ['en', '/help/en/']];
 const ARTICLES = SLUGS.flatMap((s) => [['de', `/help/${s}/`], ['en', `/help/en/${s}/`]]);
 
