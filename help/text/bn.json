@@ -212,5 +212,8 @@
   "sheet.source": "© OpenStreetMap contributors (ODbL) · মানচিত্র: Protomaps",
   "sheet.source2": "ডেটা: OpenFireMap.org · পাতায় তারিখ",
   "nav.a11y": "অ্যাক্সেসিবিলিটি",
-  "faq.all": "সব প্রশ্ন"
+  "faq.all": "সব প্রশ্ন",
+  "topics.brigades": "দমকল বাহিনীর জন্য",
+  "topics.brigades_text": "মহড়া বা শহর পরিদর্শনের সময় হাইড্র্যান্ট পরীক্ষা করুন",
+  "contrib.cta_brigades": "দমকল বাহিনীর জন্য নির্দেশিকা"
 }
