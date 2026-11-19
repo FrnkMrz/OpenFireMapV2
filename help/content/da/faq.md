@@ -90,6 +90,10 @@ Ja, men krediteringen “© OpenStreetMap contributors” skal være synlig.
 
 Ret den i OpenStreetMap med en gratis konto. Se [Tilføj brandhaner](../contribute/).
 
+### Vi er et brandvæsen og vil registrere brandhanerne i vores område. Hvordan gør vi? {#feuerwehr}
+
+Det er bedst at arrangere en øvelsesaften eller en byvandring i hold. Vejledningen [Til brandvæsener](../fire-brigades/) beskriver forberedelse, forløb, sikkerhed og opfølgning.
+
 ### Må jeg kopiere kommunens planer? {#plaene}
 
 Kun med udtrykkelig tilladelse. Tilføj helst kun det, du selv har set.
