@@ -212,5 +212,8 @@
   "sheet.source": "© OpenStreetMap contributors (ODbL) · Kort: Protomaps",
   "sheet.source2": "Data: OpenFireMap.org · dato på arket",
   "nav.a11y": "Tilgængelighed",
-  "faq.all": "Alle spørgsmål"
+  "faq.all": "Alle spørgsmål",
+  "topics.brigades": "Til brandvæsener",
+  "topics.brigades_text": "Kontrollér brandhaner under en øvelse eller byvandring",
+  "contrib.cta_brigades": "Vejledning til brandvæsener"
 }
