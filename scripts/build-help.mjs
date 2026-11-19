@@ -83,12 +83,18 @@ export function listHelpPages(root) {
 }
 
 /** Setzt alle Platzhalter ein. Unbekannte Schlüssel sind ein Fehler, damit kein "{{…}}" ausgeliefert wird. */
-export function renderTemplate(template, { text, vars, shots, lang, file }) {
+/** Nutzt bis zur Aufnahme lokalisierter Screenshots die englischen Bilder als Vorlage. */
+function helpImageLanguage(root, lang, image) {
+  if (!root) return lang;
+  return existsSync(join(root, 'public', 'help', 'img', `${lang}-${image}.jpg`)) ? lang : HELP_X_DEFAULT_LANG;
+}
+
+export function renderTemplate(template, { root, text, vars, shots, lang, file }) {
   return template.replace(/\{\{\s*([@\w.:-]+)\s*\}\}/g, (_m, key) => {
-    if (key.startsWith('@img:')) return `/help/img/${lang}-${key.slice(5)}.jpg`;
+    if (key.startsWith('@img:')) return `/help/img/${helpImageLanguage(root, lang, key.slice(5))}-${key.slice(5)}.jpg`;
     if (key.startsWith('@spot:')) {
       const [, device, id] = key.split(':');
-      const p = shots?.[lang]?.[device]?.[id];
+      const p = shots?.[lang]?.[device]?.[id] || shots?.[HELP_X_DEFAULT_LANG]?.[device]?.[id];
       if (!p) throw new Error(`${file}: Hotspot ${device}:${id} fehlt in help/shots.json (${lang})`);
       // Als Datenattribute: help.js setzt die Lage per CSSOM (die CSP erlaubt keine style-Attribute)
       return `data-x="${p.x}" data-y="${p.y}"`;
@@ -160,7 +166,8 @@ export function renderArticle(md, { lang, shots, root, file, marked }) {
     if (kind === 'figure') {
       const [name, ...rest] = args.split(/\s+/);
       const opts = Object.fromEntries(rest.map((r) => r.split('=')));
-      const imgPath = `/help/img/${lang}-${name}.jpg`;
+      const imageLang = helpImageLanguage(root, lang, name);
+      const imgPath = `/help/img/${imageLang}-${name}.jpg`;
       const disk = join(root, 'public', imgPath);
       if (!existsSync(disk)) throw new Error(`${file}: Bild ${imgPath} fehlt`);
       const { width, height } = jpegSize(readFileSync(disk));
@@ -168,7 +175,7 @@ export function renderArticle(md, { lang, shots, root, file, marked }) {
       const ids = opts.spots ? opts.spots.split(',') : [];
       const spots = ids.map((id, i) => {
         const set = opts.set || name;
-        const p = shots?.[lang]?.[set]?.[id];
+        const p = shots?.[lang]?.[set]?.[id] || shots?.[HELP_X_DEFAULT_LANG]?.[set]?.[id];
         if (!p) throw new Error(`${file}: Hotspot ${set}:${id} fehlt in help/shots.json (${lang})`);
         return `<span class="spot" aria-hidden="true" data-x="${p.x}" data-y="${p.y}">${i + 1}</span>`;
       }).join('');
@@ -275,7 +282,7 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
     for (const lang of helpLangs) {
       const text = loadHelpText(root, lang);
       const vars = { ...baseVars(lang, page), metaTitle: text['meta.title'], metaDescription: text['meta.description'] };
-      const ctx = { text, shots, lang, file: `pages/${source}.html` };
+      const ctx = { root, text, shots, lang, file: `pages/${source}.html` };
       const content = renderTemplate(body, { ...ctx, vars });
       emit(lang, page, markCurrent(renderTemplate(layout, { ...ctx, file: 'layout.html', vars: { ...vars, content } }), vars.self));
     }
@@ -311,7 +318,7 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
         toc: toc.map((t) => `<li><a href="#${t.id}">${t.text}</a></li>`).join(''),
         pager: pagerLink(prev, 'prev', text['article.prev']) + pagerLink(next, 'next', text['article.next'])
       };
-      const ctx = { text, shots, lang, file: 'article.html' };
+      const ctx = { root, text, shots, lang, file: 'article.html' };
       const content = renderTemplate(articleTpl, { ...ctx, vars: articleVars });
       emit(lang, a.slug, markCurrent(renderTemplate(layout, { ...ctx, file: 'layout.html', vars: { ...articleVars, content } }), vars.self));
     });
