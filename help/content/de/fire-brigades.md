@@ -23,7 +23,7 @@ Ein gemeinsamer Rundgang bringt mehr als das:
 - **Eine Mängelliste** für Gemeinde oder Wasserversorger: fehlende Schilder, zugeparkte oder überwachsene Hydranten.
 
 :::note Keine Einsatzunterlage
-OpenFireMap ist ein freies Projekt und ersetzt keine amtlichen Einsatzunterlagen. Im Notfall: **112**.
+OpenFireMap ist ein freies Projekt und ersetzt keine amtlichen Einsatzunterlagen.
 :::
 
 ## Vorbereitung {#vorbereitung}

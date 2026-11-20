@@ -60,7 +60,7 @@ Trochu přibližte mapu, aby se dotaz zmenšil, a zkuste to za chvíli znovu. Po
 
 ### Jsou data závazná pro zásahy? {#verbindlich}
 
-Ne. OpenFireMap není provozní zdroj. Data mohou být neúplná, zastaralá nebo chybná a nenahrazují informace operačních středisek, obcí ani vodáren. V nouzi vždy nejprve volejte tísňovou linku (v Evropě 112).
+Ne. OpenFireMap není provozní zdroj. Data mohou být neúplná, zastaralá nebo chybná a nenahrazují informace operačních středisek, obcí ani vodáren.
 
 ## Export a plán města {#export}
 
