@@ -61,7 +61,7 @@ env:
 # ==========================================================================================
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
 
@@ -150,7 +150,7 @@ jobs:
 # - Läuft nur, wenn der Build erfolgreich war
 # ==========================================================================================
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Obergrenze für den ganzen Job: deploy-pages wartet selbst bis zu 10 min
