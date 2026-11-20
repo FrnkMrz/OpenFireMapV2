@@ -6,6 +6,7 @@ Handouts sind verteilbare PDF-Leitfäden. Die **Quelle ist Markdown**, das PDF w
 | --- | --- |
 | [`overlay-leitfaden/`](overlay-leitfaden/) | Leitfaden zum Overlay von openfiremap.org: Kachel-URL, PMTiles, Symbole, Datenschutz, Impressum |
 | [`feuerwehr-leitfaden/`](feuerwehr-leitfaden/) | Leitfaden für die Übungsleitung (A4, 7 Seiten): Kurzfassung für die Wehrführung, Checklisten, OSM-Wiki-Vorlage, Hydrantenjäger in Bildern, Ablauf, Nachbereitung |
+| [`feuerwehr-praesentation/`](feuerwehr-praesentation/) | Präsentation für die Einweisung am Übungsabend (12 Folien 16:9, Seitengröße in `style.css`): Karte, Typen, Schild, Hydrantenjäger, sechs Schritte, Mängel, Sicherheit, Ablauf |
 | [`feuerwehr-truppkarte/`](feuerwehr-truppkarte/) | Trupp-Karte für den Hydranten-Rundgang (A4 beidseitig): sechs Schritte, Sicherheit, Hinweisschild, Hydrantentypen |
 | [`feuerwehr-boegen/`](feuerwehr-boegen/) | Erfassungsbogen, Mängelliste und Anschreiben-Vorlage (A4 quer, zum Ausfüllen von Hand) |
 

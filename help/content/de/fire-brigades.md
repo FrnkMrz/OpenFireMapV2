@@ -48,10 +48,11 @@ Für Kinder und Jugendliche gelten die Regeln von OpenStreetMap und das Einverst
 | Was | Für wen | Datei |
 |---|---|---|
 | **Leitfaden für die Übungsleitung**: Kurzfassung für die Wehrführung, Checklisten, Vorlage für das OSM-Wiki, Hydrantenjäger in Bildern, Ablauf, Nachbereitung | Übungsleitung und Wehrführung, A4, 7 Seiten | [PDF herunterladen](/downloads/OpenFireMap-Feuerwehr-Leitfaden.pdf) |
+| **Präsentation** für die Einweisung am Übungsabend: Karte, Hydrantentypen, Schild, Hydrantenjäger, sechs Schritte, Sicherheit, Ablauf | Übungsleitung, zum Zeigen mit Beamer oder Bildschirm, 12 Folien 16:9 | [PDF herunterladen](/downloads/OpenFireMap-Feuerwehr-Praesentation.pdf) |
 | **Trupp-Karte**: sechs Schritte, Sicherheit, Hinweisschild lesen, Hydrantentypen | jeder Trupp, A4 beidseitig | [PDF herunterladen](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) |
 | **Erfassungsbogen, Mängelliste** und Vorlage für das Anschreiben an Gemeinde oder Wasserversorger | jeder Trupp und die Nachbereitung, A4 quer | [PDF herunterladen](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) |
 
-Alle drei Dateien sind ein erster Stand vor dem Praxistest mit einer Feuerwehr. Hinweise, was fehlt oder unklar ist, nehmen wir gern unter info@openfiremap.org entgegen.
+Alle vier Dateien sind ein erster Stand vor dem Praxistest mit einer Feuerwehr. Hinweise, was fehlt oder unklar ist, nehmen wir gern unter info@openfiremap.org entgegen.
 
 ## Ablauf des Übungsabends {#ablauf}
 
