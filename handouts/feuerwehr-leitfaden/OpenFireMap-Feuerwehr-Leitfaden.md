@@ -228,6 +228,8 @@ Hydrantenjäger ist eine Web-App für das Handy. Sie läuft im Browser, nichts m
 
 ### Einweisung in 15 Minuten
 
+Die passenden Folien zum Zeigen stehen als „Präsentation“ auf openfiremap.org/help/fire-brigades/ unter „Zum Ausdrucken“.
+
 1. **Warum:** Wer im Einsatz Wasser sucht, verliert Zeit. Die Karte zeigt nur, was eingetragen ist.
 2. **Sicherheit:** Warnweste, nicht auf der Fahrbahn stehen bleiben, eine Person achtet auf den Verkehr. Hydranten nicht öffnen, Deckel nicht anheben. Private Grundstücke nur mit Erlaubnis.
 3. **Hinweisschild lesen:** H für Hydrant, die Zahl daneben ist die Nennweite (DN). Die Zahlen an den Linien geben an, wie viele Meter der Hydrant seitlich und nach vorn vom Schild entfernt liegt (Rückseite der Trupp-Karte).

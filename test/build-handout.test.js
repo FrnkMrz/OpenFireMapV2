@@ -89,22 +89,24 @@ describe('Handouts: Feuerwehr-Material', () => {
     const truppkarte = read('feuerwehr-truppkarte/OpenFireMap-Feuerwehr-Truppkarte.md');
     const boegen = read('feuerwehr-boegen/OpenFireMap-Feuerwehr-Erfassungsbogen.md');
     const leitfaden = read('feuerwehr-leitfaden/OpenFireMap-Feuerwehr-Leitfaden.md');
+    const praesentation = read('feuerwehr-praesentation/OpenFireMap-Feuerwehr-Praesentation.md');
     const prose = (source) => source.replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '');
 
     it('jeder Handout-Ordner wird beim Website-Build gerendert', () => {
         const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
         const folders = readdirSync(new URL('../handouts/', import.meta.url), { withFileTypes: true })
             .filter((entry) => entry.isDirectory()).map((entry) => entry.name);
-        expect(folders).toEqual(expect.arrayContaining(['feuerwehr-truppkarte', 'feuerwehr-boegen', 'feuerwehr-leitfaden']));
+        expect(folders).toEqual(expect.arrayContaining(['feuerwehr-truppkarte', 'feuerwehr-boegen', 'feuerwehr-leitfaden', 'feuerwehr-praesentation']));
         for (const folder of folders) expect(pkg.scripts.build, folder).toContain(`handouts/${folder}`);
     });
 
-    it('die (nur deutsche) Hilfe-Seite verlinkt alle drei PDFs unter dem Namen, den der Build erzeugt', () => {
+    it('die (nur deutsche) Hilfe-Seite verlinkt alle vier PDFs unter dem Namen, den der Build erzeugt', () => {
         for (const lang of ['de']) {
             const page = readFileSync(new URL(`../help/content/${lang}/fire-brigades.md`, import.meta.url), 'utf8');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Leitfaden.pdf');
+            expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Praesentation.pdf');
         }
     });
 
@@ -132,7 +134,7 @@ describe('Handouts: Feuerwehr-Material', () => {
 
     it('keine Wir-Form außer in der Anschreiben-Vorlage, keine festen Zeitzusagen', () => {
         const [beforeLetter] = boegen.split('## Vorlage: Anschreiben');
-        for (const text of [truppkarte, beforeLetter, leitfaden]) {
+        for (const text of [truppkarte, beforeLetter, leitfaden, praesentation]) {
             expect(prose(text)).not.toMatch(/\b(wir|uns|unser\w*)\b/i);
             expect(prose(text)).not.toMatch(/(sofort|innerhalb von \d+|nach \d+ (Minuten|Stunden)) (sichtbar|erscheint)/i);
         }
@@ -151,6 +153,27 @@ describe('Handouts: Feuerwehr-Material', () => {
         const images = [...leitfaden.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1]);
         expect(images).toHaveLength(3);
         for (const path of images) expect(() => read(`feuerwehr-leitfaden/${path}`)).not.toThrow();
+    });
+
+    it('Präsentation: 10 bis 12 Folien, Sicherheit, Notruf, Mängel getrennt, Bilder vorhanden', () => {
+        const html = renderHandoutHtml(praesentation);
+        // Titelfolie (Kopf) plus je eine Folie pro Überschrift; jede Folie außer der letzten endet mit einem Seitenumbruch
+        const slides = (html.match(/<h2>/g) || []).length + 1;
+        expect(slides).toBeGreaterThanOrEqual(10);
+        expect(slides).toBeLessThanOrEqual(12);
+        expect((html.match(/<div class="pb"><\/div>/g) || []).length).toBe(slides - 1);
+        // Läuft eine Folie über, hat das eingecheckte PDF mehr Seiten als Folien
+        const pdf = readFileSync(new URL('../handouts/feuerwehr-praesentation/OpenFireMap-Feuerwehr-Praesentation.pdf', import.meta.url), 'latin1');
+        expect((pdf.match(/\/Type\s*\/Page[^s]/g) || []).length).toBe(slides);
+        expect(html).toContain('Hydranten nicht öffnen');
+        expect(html).toContain('Warnweste');
+        expect(html).toContain('112');
+        expect(html).toContain('<strong>nicht</strong> in OpenStreetMap');
+        // 16:9-Seite, eine Folie je Seite
+        expect(read('feuerwehr-praesentation/style.css')).toMatch(/@page \{ size: 254mm 142\.875mm;/);
+        const images = [...praesentation.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1]);
+        expect(images.length).toBeGreaterThanOrEqual(5);
+        for (const path of images) expect(() => readFileSync(new URL(`../handouts/feuerwehr-praesentation/${path}`, import.meta.url))).not.toThrow();
     });
 
     it('Hydrantenjäger setzt den Änderungskommentar selbst: der Hashtag wird nur für den iD-Editor verlangt', () => {
