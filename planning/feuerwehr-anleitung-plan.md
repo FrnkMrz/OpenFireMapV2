@@ -62,7 +62,7 @@ Reihenfolge der Umsetzung: D1 → D3 → D2 → D4 → D8 → D7 → D6 → D5 (
 2. **Gebiet festlegen und aufteilen:** Ortsplan des Ausrückebereichs drucken (`/ortsplan/`), Planquadrate auf Trupps verteilen (Richtwert: 1 Trupp je 15–25 Hydranten bzw. je 0,5–1 km² bebautes Gebiet bei 90 Minuten).
 3. **Ist-Stand ansehen:** OpenFireMap bei Zoom 17 öffnen, vorhandene Hydranten zählen; optional CSV-Export als Prüfliste je Planquadrat (`/help/export/`).
 4. **Konten:** Jede/r, der/die einträgt, legt vorher ein eigenes OpenStreetMap-Konto an (Anleitung `/help/contribute/#vorher`). Keine Sammelkonten (OSM-Regeln, Nachvollziehbarkeit). Jugendfeuerwehr: Konto nach Alters- und Einwilligungsregeln; Alternative: Jugendliche erfassen, Betreuer lädt hoch.
-5. **Organisierte Aktivität dokumentieren:** OpenStreetMap verlangt für organisierte Kartierungen eine kurze Beschreibung im OSM-Wiki (Organised Editing Guidelines der OSMF). Vorlage für eine Wiki-Seite mitliefern; einheitlicher Hashtag im Änderungssatz-Kommentar, `#OpenFireMap` (Entscheidung 9.6).
+5. **Organisierte Aktivität dokumentieren:** OpenStreetMap verlangt für organisierte Kartierungen eine kurze Beschreibung im OSM-Wiki (Organised Editing Guidelines der OSMF). Vorlage für eine Wiki-Seite mitliefern; einheitlicher Hashtag im Änderungssatz-Kommentar, `#OpenFireMap`, nur beim iD-Editor (Entscheidung 9.6, Korrektur in Abschnitt 11).
 6. **Material:** Handys geladen (Hydrantenjäger im Browser getestet, Standort/Kompass erlaubt), Powerbank, Warnwesten, Taschenlampe, Trupp-Karte (D3), Erfassungsbogen (D4) als Rückfall, Klemmbrett, ggf. Maßband.
 
 ### 4.3 Durchführung (90 Minuten, Übungsdienst)
@@ -191,4 +191,4 @@ PR mit voller URL, nicht selbst mergen. Keine festen Aktualisierungszeiten versp
 - **E1** Seite „Für Feuerwehren“: live (#196), seit #205/#208 nur Deutsch und nur für Deutschland.
 - **E2** Trupp-Karte und Bögen: live (#197).
 - **E3** Leitfaden für die Übungsleitung (`handouts/feuerwehr-leitfaden/`, 7 Seiten A4): Kurzfassung für die Wehrführung, Checklisten, Vorlage für die OSM-Wiki-Seite, Hydrantenjäger in drei Bildern, Ablauf, Probleme vor Ort, Sicherheit, Nachbereitung. Version 0.9 vor dem Pilot.
-- **Korrektur Hashtag:** Hydrantenjäger setzt den Änderungskommentar fest („… via Hydranten Jäger“), ein Hashtag lässt sich dort nicht eingeben. `#OpenFireMap` wird deshalb nur für den iD-Editor verlangt (Hilfeseite, Trupp-Karte, Leitfaden). Ob Hydrantenjäger einen Hashtag mitschickt, ist eine Entscheidung im Hydrantenjäger-Repo.
+- **Korrektur Hashtag:** Hydrantenjäger setzt den Änderungskommentar fest („… via Hydranten Jäger“), ein Hashtag lässt sich dort nicht eingeben. `#OpenFireMap` wird deshalb nur für den iD-Editor verlangt (Hilfeseite, Trupp-Karte, Leitfaden). Entschieden am 20.11.2026: Hydrantenjäger bekommt keinen Hashtag, es bleibt beim iD-Editor.
