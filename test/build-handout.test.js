@@ -90,23 +90,25 @@ describe('Handouts: Feuerwehr-Material', () => {
     const boegen = read('feuerwehr-boegen/OpenFireMap-Feuerwehr-Erfassungsbogen.md');
     const leitfaden = read('feuerwehr-leitfaden/OpenFireMap-Feuerwehr-Leitfaden.md');
     const praesentation = read('feuerwehr-praesentation/OpenFireMap-Feuerwehr-Praesentation.md');
+    const comic = read('feuerwehr-comic/OpenFireMap-Feuerwehr-Comic.md');
     const prose = (source) => source.replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '');
 
     it('jeder Handout-Ordner wird beim Website-Build gerendert', () => {
         const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
         const folders = readdirSync(new URL('../handouts/', import.meta.url), { withFileTypes: true })
             .filter((entry) => entry.isDirectory()).map((entry) => entry.name);
-        expect(folders).toEqual(expect.arrayContaining(['feuerwehr-truppkarte', 'feuerwehr-boegen', 'feuerwehr-leitfaden', 'feuerwehr-praesentation']));
+        expect(folders).toEqual(expect.arrayContaining(['feuerwehr-truppkarte', 'feuerwehr-boegen', 'feuerwehr-leitfaden', 'feuerwehr-praesentation', 'feuerwehr-comic']));
         for (const folder of folders) expect(pkg.scripts.build, folder).toContain(`handouts/${folder}`);
     });
 
-    it('die (nur deutsche) Hilfe-Seite verlinkt alle vier PDFs unter dem Namen, den der Build erzeugt', () => {
+    it('die (nur deutsche) Hilfe-Seite verlinkt alle fünf PDFs unter dem Namen, den der Build erzeugt', () => {
         for (const lang of ['de']) {
             const page = readFileSync(new URL(`../help/content/${lang}/fire-brigades.md`, import.meta.url), 'utf8');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Leitfaden.pdf');
             expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Praesentation.pdf');
+            expect(page, lang).toContain('/downloads/OpenFireMap-Feuerwehr-Comic.pdf');
         }
     });
 
@@ -134,7 +136,7 @@ describe('Handouts: Feuerwehr-Material', () => {
 
     it('keine Wir-Form außer in der Anschreiben-Vorlage, keine festen Zeitzusagen', () => {
         const [beforeLetter] = boegen.split('## Vorlage: Anschreiben');
-        for (const text of [truppkarte, beforeLetter, leitfaden, praesentation]) {
+        for (const text of [truppkarte, beforeLetter, leitfaden, praesentation, comic]) {
             expect(prose(text)).not.toMatch(/\b(wir|uns|unser\w*)\b/i);
             expect(prose(text)).not.toMatch(/(sofort|innerhalb von \d+|nach \d+ (Minuten|Stunden)) (sichtbar|erscheint)/i);
         }
@@ -174,6 +176,26 @@ describe('Handouts: Feuerwehr-Material', () => {
         const images = [...praesentation.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1]);
         expect(images.length).toBeGreaterThanOrEqual(5);
         for (const path of images) expect(() => readFileSync(new URL(`../handouts/feuerwehr-praesentation/${path}`, import.meta.url))).not.toThrow();
+    });
+
+    it('Comic: Markdown und Bilder passen zum Skript, Text ist echter Text, Vorlesefassung vollständig', async () => {
+        const { PANELS, renderComicMarkdown } = await import('../handouts/feuerwehr-comic/comic.mjs');
+        // Erzeugte Dateien sind aktuell (sonst: node handouts/feuerwehr-comic/comic.mjs)
+        expect(comic).toBe(renderComicMarkdown());
+        for (const panel of PANELS) {
+            expect(read(`feuerwehr-comic/img/panel-${String(panel.id).padStart(2, '0')}.svg`), `Panel ${panel.id}`).toBe(panel.draw());
+        }
+        expect(PANELS.length).toBeGreaterThanOrEqual(8);
+        expect(PANELS.length).toBeLessThanOrEqual(12);
+        const html = renderHandoutHtml(comic);
+        for (const panel of PANELS) {
+            expect(panel.alt.length, `Panel ${panel.id}`).toBeGreaterThan(40);
+            // Sprechblasen stehen als Text im Dokument und in der Vorlesefassung, nicht nur im Bild
+            for (const bubble of panel.bubbles) expect(html.split(bubble.text.replace(/&/g, '&amp;')).length - 1, bubble.text).toBeGreaterThanOrEqual(2);
+            for (const bubble of panel.bubbles) expect(panel.draw()).not.toContain(bubble.text.slice(0, 12));
+        }
+        expect(comic).toContain('CC BY 4.0');
+        expect(comic).toContain('Mängelliste, nicht in die Karte');
     });
 
     it('Hydrantenjäger setzt den Änderungskommentar selbst: der Hashtag wird nur für den iD-Editor verlangt', () => {
