@@ -7,6 +7,7 @@ Handouts sind verteilbare PDF-Leitfäden. Die **Quelle ist Markdown**, das PDF w
 | [`overlay-leitfaden/`](overlay-leitfaden/) | Leitfaden zum Overlay von openfiremap.org: Kachel-URL, PMTiles, Symbole, Datenschutz, Impressum |
 | [`feuerwehr-leitfaden/`](feuerwehr-leitfaden/) | Leitfaden für die Übungsleitung (A4, 7 Seiten): Kurzfassung für die Wehrführung, Checklisten, OSM-Wiki-Vorlage, Hydrantenjäger in Bildern, Ablauf, Nachbereitung |
 | [`feuerwehr-praesentation/`](feuerwehr-praesentation/) | Präsentation für die Einweisung am Übungsabend (12 Folien 16:9, Seitengröße in `style.css`): Karte, Typen, Schild, Hydrantenjäger, sechs Schritte, Mängel, Sicherheit, Ablauf |
+| [`feuerwehr-comic/`](feuerwehr-comic/) | Comic „Der Hydrant, den keiner fand“ (A4, Seite 2 Vorlesefassung). Skript, Zeichnungen und Markdown entstehen aus `comic.mjs`, siehe unten |
 | [`feuerwehr-truppkarte/`](feuerwehr-truppkarte/) | Trupp-Karte für den Hydranten-Rundgang (A4 beidseitig): sechs Schritte, Sicherheit, Hinweisschild, Hydrantentypen |
 | [`feuerwehr-boegen/`](feuerwehr-boegen/) | Erfassungsbogen, Mängelliste und Anschreiben-Vorlage (A4 quer, zum Ausfüllen von Hand) |
 
@@ -52,3 +53,14 @@ Die Bilder zeigen die Live-Seiten. Ändern sich diese, mit `node handouts/overla
 ## Bilder des Feuerwehr-Leitfadens neu aufnehmen
 
 Die drei Bilder zeigen Hydrantenjäger (hydrantenjaeger.de) in der Handy-Ansicht, mit simuliertem Standort und Kompass; die Kamera zeigt ein gezeichnetes Hinweisschild. Es wird nichts hochgeladen, das Skript sperrt die OSM-API. Ändert sich Hydrantenjäger, mit `node handouts/feuerwehr-leitfaden/screenshots.mjs` neu aufnehmen und das PDF neu bauen.
+
+## Comic ändern
+
+Beim Comic sind Markdown-Datei und Bilder erzeugt, nicht von Hand geschrieben. Die einzige Quelle ist das Skript `PANELS` in [`feuerwehr-comic/comic.mjs`](feuerwehr-comic/comic.mjs): Bildbeschreibung (zugleich Alternativtext und Vorlesefassung), Bildtext, Sprechblasen mit Lage in Prozent und die Zeichnung als SVG-Bausteine.
+
+```bash
+node handouts/feuerwehr-comic/comic.mjs              # schreibt img/panel-*.svg und die Markdown-Datei
+npm run handout:build -- handouts/feuerwehr-comic    # baut das PDF
+```
+
+Ein Test prüft, dass Markdown und Bilder zum Skript passen. Sprechblasen und Bildtexte bleiben echter Text über den Bildern, damit sie vorgelesen und übersetzt werden können.
