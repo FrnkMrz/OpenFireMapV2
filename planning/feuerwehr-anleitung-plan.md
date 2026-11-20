@@ -62,7 +62,7 @@ Reihenfolge der Umsetzung: D1 → D3 → D2 → D4 → D8 → D7 → D6 → D5 (
 2. **Gebiet festlegen und aufteilen:** Ortsplan des Ausrückebereichs drucken (`/ortsplan/`), Planquadrate auf Trupps verteilen (Richtwert: 1 Trupp je 15–25 Hydranten bzw. je 0,5–1 km² bebautes Gebiet bei 90 Minuten).
 3. **Ist-Stand ansehen:** OpenFireMap bei Zoom 17 öffnen, vorhandene Hydranten zählen; optional CSV-Export als Prüfliste je Planquadrat (`/help/export/`).
 4. **Konten:** Jede/r, der/die einträgt, legt vorher ein eigenes OpenStreetMap-Konto an (Anleitung `/help/contribute/#vorher`). Keine Sammelkonten (OSM-Regeln, Nachvollziehbarkeit). Jugendfeuerwehr: Konto nach Alters- und Einwilligungsregeln; Alternative: Jugendliche erfassen, Betreuer lädt hoch.
-5. **Organisierte Aktivität dokumentieren:** OpenStreetMap verlangt für organisierte Kartierungen eine kurze Beschreibung im OSM-Wiki (Organised Editing Guidelines der OSMF). Vorlage für eine Wiki-Seite mitliefern; einheitlicher Hashtag im Änderungssatz-Kommentar, `#OpenFireMap` (Entscheidung 9.6).
+5. **Organisierte Aktivität dokumentieren:** OpenStreetMap verlangt für organisierte Kartierungen eine kurze Beschreibung im OSM-Wiki (Organised Editing Guidelines der OSMF). Vorlage für eine Wiki-Seite mitliefern; einheitlicher Hashtag im Änderungssatz-Kommentar, `#OpenFireMap`, nur beim iD-Editor (Entscheidung 9.6, Korrektur in Abschnitt 11).
 6. **Material:** Handys geladen (Hydrantenjäger im Browser getestet, Standort/Kompass erlaubt), Powerbank, Warnwesten, Taschenlampe, Trupp-Karte (D3), Erfassungsbogen (D4) als Rückfall, Klemmbrett, ggf. Maßband.
 
 ### 4.3 Durchführung (90 Minuten, Übungsdienst)
@@ -168,8 +168,8 @@ public/downloads/…                        erzeugte PDFs (Build), wie Overlay-L
 ## 9. Entscheidungen (geklärt 19.11.2026)
 
 1. **Adresse und Titel:** `/help/fire-brigades/`, „Für Feuerwehren“ / „For fire brigades“. ✔
-2. **Hydrantenjäger-Bildschirmfotos:** in E1 keine; E1 verlinkt nur auf `hydrantenjaeger.de/help/`. Vor E2/E3 erneut klären.
-3. **Pilot-Feuerwehr:** offen, vor E3 klären.
+2. **Hydrantenjäger-Bildschirmfotos:** in E1 und E2 keine; im Leitfaden (E3) erlaubt (Entscheidung 19.11.), aufgenommen per `handouts/feuerwehr-leitfaden/screenshots.mjs` mit simuliertem Standort, ohne Upload.
+3. **Pilot-Feuerwehr:** noch offen. E3 erscheint vorher als Version 0.9 (Entscheidung 19.11.), Rückmeldungen fließen in E7 ein.
 4. **Comic:** eigene Vektorzeichnung im Hilfe-Stil.
 5. **Video-Hosting:** selbst gehostet (`<video>` mit MP4/WebM + VTT), keine Plattform.
 6. **Hashtag:** nur `#OpenFireMap` (kein Orts-Hashtag).
@@ -185,3 +185,10 @@ Abschnitt 9 mit mir (eine Frage-Runde), dann setze Etappe E1 um: Seite „Für F
 tests/help.spec.js). Arbeite im eigenen Worktree von main, E2E nur mit der Projekt-Konfiguration auf Port 5173,
 PR mit voller URL, nicht selbst mergen. Keine festen Aktualisierungszeiten versprechen; Overlay nur verlinken.
 ```
+
+## 11. Umsetzungsstand
+
+- **E1** Seite „Für Feuerwehren“: live (#196), seit #205/#208 nur Deutsch und nur für Deutschland.
+- **E2** Trupp-Karte und Bögen: live (#197).
+- **E3** Leitfaden für die Übungsleitung (`handouts/feuerwehr-leitfaden/`, 7 Seiten A4): Kurzfassung für die Wehrführung, Checklisten, Vorlage für die OSM-Wiki-Seite, Hydrantenjäger in drei Bildern, Ablauf, Probleme vor Ort, Sicherheit, Nachbereitung. Version 0.9 vor dem Pilot.
+- **Korrektur Hashtag:** Hydrantenjäger setzt den Änderungskommentar fest („… via Hydranten Jäger“), ein Hashtag lässt sich dort nicht eingeben. `#OpenFireMap` wird deshalb nur für den iD-Editor verlangt (Hilfeseite, Trupp-Karte, Leitfaden). Entschieden am 20.11.2026: Hydrantenjäger bekommt keinen Hashtag, es bleibt beim iD-Editor.

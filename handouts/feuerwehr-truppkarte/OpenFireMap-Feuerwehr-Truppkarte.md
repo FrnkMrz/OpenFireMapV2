@@ -25,7 +25,7 @@ footer: OpenFireMap · Trupp-Karte für den Hydranten-Rundgang · Version 0.9
 
 </div>
 
-Im Änderungskommentar immer den Hashtag `#OpenFireMap` angeben.
+Hydrantenjäger setzt den Änderungskommentar selbst. Wer später am Computer mit dem iD-Editor nachträgt, schreibt `#OpenFireMap` in den Kommentar.
 
 ## Sicherheit
 

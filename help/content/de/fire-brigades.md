@@ -35,7 +35,7 @@ Die Übungsleitung plant am besten ein bis zwei Wochen vorher:
 2. **Gebiet aufteilen.** Den [Ortsplan](../town-plan/) des Ausrückebereichs drucken und die Planquadrate auf die Trupps verteilen, zum Beispiel „Trupp 1: A1 bis C4“. Als grober Richtwert schafft ein Trupp in einer Stunde 15 bis 25 Hydranten, im Neubaugebiet mehr, im Altort mit Suchen weniger.
 3. **Ist-Stand ansehen.** OpenFireMap ab Zoomstufe 17 öffnen und schauen, wo schon Hydranten stehen. Als Prüfliste je Trupp eignet sich ein [CSV-Export](../export/#gpx-csv) des Gebiets.
 4. **Konten anlegen.** Wer eintragen will, legt vorher ein eigenes, kostenloses OpenStreetMap-Konto an ([so geht's](../contribute/#vorher)). Bitte keine gemeinsamen Konten für die ganze Wehr: OpenStreetMap möchte nachvollziehen können, wer was geändert hat.
-5. **Die Aktion beschreiben.** Für gemeinsame, organisierte Kartierungen bittet OpenStreetMap um eine kurze Beschreibung im OSM-Wiki: wer, wo, wann, was ([Richtlinie für organisiertes Bearbeiten](https://osmfoundation.org/wiki/Organised_Editing_Guidelines), englisch). In jeden Änderungskommentar kommt dazu der Hashtag `#OpenFireMap`, dann lassen sich eure Änderungen später leicht finden.
+5. **Die Aktion beschreiben.** Für gemeinsame, organisierte Kartierungen bittet OpenStreetMap um eine kurze Beschreibung im OSM-Wiki: wer, wo, wann, was ([Richtlinie für organisiertes Bearbeiten](https://osmfoundation.org/wiki/Organised_Editing_Guidelines), englisch). Eine fertige Vorlage dafür steht im [Leitfaden für die Übungsleitung](#ausdrucken). Wer mit dem iD-Editor einträgt, schreibt den Hashtag `#OpenFireMap` in den Änderungskommentar. Hydrantenjäger setzt seinen Kommentar selbst, dort ist nichts einzugeben.
 6. **Material bereitlegen.** Geladene Handys mit [Hydrantenjäger](https://hydrantenjaeger.de/) im Browser (Standort und Kompass einmal vorab erlauben), Powerbank, Warnwesten, Taschenlampen, Klemmbrett mit [Trupp-Karte und Bögen](#ausdrucken).
 :::
 
@@ -47,10 +47,11 @@ Für Kinder und Jugendliche gelten die Regeln von OpenStreetMap und das Einverst
 
 | Was | Für wen | Datei |
 |---|---|---|
+| **Leitfaden für die Übungsleitung**: Kurzfassung für die Wehrführung, Checklisten, Vorlage für das OSM-Wiki, Hydrantenjäger in Bildern, Ablauf, Nachbereitung | Übungsleitung und Wehrführung, A4, 7 Seiten | [PDF herunterladen](/downloads/OpenFireMap-Feuerwehr-Leitfaden.pdf) |
 | **Trupp-Karte**: sechs Schritte, Sicherheit, Hinweisschild lesen, Hydrantentypen | jeder Trupp, A4 beidseitig | [PDF herunterladen](/downloads/OpenFireMap-Feuerwehr-Truppkarte.pdf) |
 | **Erfassungsbogen, Mängelliste** und Vorlage für das Anschreiben an Gemeinde oder Wasserversorger | jeder Trupp und die Nachbereitung, A4 quer | [PDF herunterladen](/downloads/OpenFireMap-Feuerwehr-Erfassungsbogen.pdf) |
 
-Beide Dateien sind ein erster Stand vor dem Praxistest mit einer Feuerwehr. Hinweise, was fehlt oder unklar ist, nehmen wir gern unter info@openfiremap.org entgegen.
+Alle drei Dateien sind ein erster Stand vor dem Praxistest mit einer Feuerwehr. Hinweise, was fehlt oder unklar ist, nehmen wir gern unter info@openfiremap.org entgegen.
 
 ## Ablauf des Übungsabends {#ablauf}
 
@@ -106,7 +107,7 @@ Ein bis zwei Personen am Computer brauchen dafür meist eine halbe bis eine Stun
 :::steps
 1. **Prüfen, ob alles angekommen ist.** Neue Einträge erscheinen in OpenFireMap nicht immer sofort. Wie lange es dauert, hängt von den Diensten ab, über die die Karte lädt, eine feste Zeit gibt es nicht. Die Gründe stehen unter [Daten & Aktualität](../data/#verzoegerung).
 2. **Papiernotizen nachtragen**, am einfachsten mit dem [iD-Editor](../contribute/#id).
-3. **Kurzer Qualitätsblick:** doppelte Punkte, Hydranten ohne Typ, Punkte mitten auf einem Dach. Eure eigenen Änderungen findet ihr über euer Profil auf openstreetmap.org oder über den Hashtag `#OpenFireMap`.
+3. **Kurzer Qualitätsblick:** doppelte Punkte, Hydranten ohne Typ, Punkte mitten auf einem Dach. Eure eigenen Änderungen findet ihr über euer Profil auf openstreetmap.org, Einträge aus dem iD-Editor auch über den Hashtag `#OpenFireMap`.
 4. **Mängelliste abschicken** an Gemeinde oder Wasserversorger. Eine Vorlage für das Anschreiben steht in den [Bögen](#ausdrucken).
 5. **Ortsplan neu drucken** und im Gerätehaus aushängen, gern auch für die Fahrzeugmappen. Wie das geht, zeigt die Anleitung [Ortsplan erstellen](../town-plan/).
 :::

@@ -5,6 +5,7 @@ Handouts sind verteilbare PDF-Leitfäden. Die **Quelle ist Markdown**, das PDF w
 | Ordner | Inhalt |
 | --- | --- |
 | [`overlay-leitfaden/`](overlay-leitfaden/) | Leitfaden zum Overlay von openfiremap.org: Kachel-URL, PMTiles, Symbole, Datenschutz, Impressum |
+| [`feuerwehr-leitfaden/`](feuerwehr-leitfaden/) | Leitfaden für die Übungsleitung (A4, 7 Seiten): Kurzfassung für die Wehrführung, Checklisten, OSM-Wiki-Vorlage, Hydrantenjäger in Bildern, Ablauf, Nachbereitung |
 | [`feuerwehr-truppkarte/`](feuerwehr-truppkarte/) | Trupp-Karte für den Hydranten-Rundgang (A4 beidseitig): sechs Schritte, Sicherheit, Hinweisschild, Hydrantentypen |
 | [`feuerwehr-boegen/`](feuerwehr-boegen/) | Erfassungsbogen, Mängelliste und Anschreiben-Vorlage (A4 quer, zum Ausfüllen von Hand) |
 
@@ -46,3 +47,7 @@ Besonderheiten der Markdown-Quelle:
 ## Bilder des Overlay-Leitfadens neu aufnehmen
 
 Die Bilder zeigen die Live-Seiten. Ändern sich diese, mit `node handouts/overlay-leitfaden/screenshots.mjs` neu aufnehmen und das PDF neu bauen.
+
+## Bilder des Feuerwehr-Leitfadens neu aufnehmen
+
+Die drei Bilder zeigen Hydrantenjäger (hydrantenjaeger.de) in der Handy-Ansicht, mit simuliertem Standort und Kompass; die Kamera zeigt ein gezeichnetes Hinweisschild. Es wird nichts hochgeladen, das Skript sperrt die OSM-API. Ändert sich Hydrantenjäger, mit `node handouts/feuerwehr-leitfaden/screenshots.mjs` neu aufnehmen und das PDF neu bauen.

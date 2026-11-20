@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run handout:build -- handouts/overlay-leitfaden handouts/feuerwehr-truppkarte handouts/feuerwehr-boegen && vite build",
+    "build": "npm run handout:build -- handouts/overlay-leitfaden handouts/feuerwehr-truppkarte handouts/feuerwehr-boegen handouts/feuerwehr-leitfaden && vite build",
     "preview": "vite preview",
     "test": "vitest test/",
     "test:ci": "vitest run test/",
