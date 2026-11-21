@@ -354,10 +354,12 @@ a.topic:hover { color: var(--ink); border-color: var(--ink); transform: translat
 .prose pre code { background: none; border: 0; padding: 0; font-size: inherit; overflow-wrap: normal; }
 
 /* Schaubilder (:::diagram): direkt eingebettetes SVG, Farben nur hier, weil die CSP keine Inline-Stile erlaubt.
-   Unter 760 px seitlich verschiebbar statt unlesbar klein. */
+   Ab Tablet-Breite passt sich das SVG der Spalte an (keine Scrollleiste); auf Phones bleibt es 760 px breit
+   und ist seitlich verschiebbar statt unlesbar klein. */
 .diagram { border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); box-shadow: var(--shadow); padding: 12px; overflow-x: auto; }
 .diagram:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
-.diagram svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.diagram svg { display: block; width: 100%; height: auto; }
+@media (max-width: 640px) { .diagram svg { min-width: 760px; } }
 .diagram text { font-family: var(--f-body); font-size: 14px; fill: var(--ink); }
 .diagram .dg-title { font-family: var(--f-display); font-weight: 700; font-size: 17px; letter-spacing: .02em; }
 .diagram .dg-small { font-size: 12.5px; fill: var(--ink-2); }
