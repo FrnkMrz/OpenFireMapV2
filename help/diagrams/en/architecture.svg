@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" width="960" height="600">
+  <defs>
+    <marker id="arch-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="dg-head" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="arch-head-water" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="dg-head-water" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+
+  <!-- GitHub -->
+  <rect class="dg-box" x="320" y="16" width="320" height="104" rx="12"/>
+  <text class="dg-title" x="340" y="44">GitHub</text>
+  <text x="340" y="68">Source code (public, MIT licence)</text>
+  <text x="340" y="88">Actions: check, test, build</text>
+  <text x="340" y="108">Pages: serves the web app</text>
+
+  <!-- Browser -->
+  <rect class="dg-core" x="320" y="190" width="320" height="180" rx="14"/>
+  <text class="dg-title" x="340" y="220">Your browser</text>
+  <text x="340" y="246">OpenFireMap app (JavaScript)</text>
+  <text x="340" y="268">Leaflet draws map and symbols</text>
+  <text x="340" y="290">PMTiles reader, Overpass queries</text>
+  <text x="340" y="312">Local cache (IndexedDB)</text>
+  <text x="340" y="334">Service worker (app shell only)</text>
+  <text class="dg-small" x="340" y="358">no own server, no accounts</text>
+
+  <!-- Base maps -->
+  <rect class="dg-box" x="16" y="170" width="240" height="220" rx="12"/>
+  <text class="dg-title" x="34" y="198">Base maps</text>
+  <text x="34" y="224">CARTO (default, light, dark)</text>
+  <text x="34" y="246">OpenStreetMap, OSM.de</text>
+  <text x="34" y="268">OpenTopoMap</text>
+  <text x="34" y="290">Esri World Imagery</text>
+  <text x="34" y="312">BayernAtlas (map, aerial)</text>
+  <text class="dg-small" x="34" y="340">Raster tiles,</text>
+  <text class="dg-small" x="34" y="358">straight from the provider</text>
+
+  <!-- Overpass -->
+  <rect class="dg-box" x="704" y="150" width="240" height="84" rx="12"/>
+  <text class="dg-title" x="722" y="178">Overpass API</text>
+  <text x="722" y="202">4 public servers</text>
+  <text class="dg-small" x="722" y="222">Live changes, rest of world</text>
+
+  <!-- Nominatim -->
+  <rect class="dg-box" x="704" y="248" width="240" height="64" rx="12"/>
+  <text class="dg-title" x="722" y="276">Nominatim</text>
+  <text class="dg-small" x="722" y="298">Place search (geocoding)</text>
+
+  <!-- Cloudflare -->
+  <rect class="dg-water" x="704" y="326" width="240" height="98" rx="12"/>
+  <text class="dg-title" x="722" y="354">Cloudflare</text>
+  <text x="722" y="378">R2 storage + edge cache</text>
+  <text class="dg-small" x="722" y="398">pipeline.openfiremap.org</text>
+  <text class="dg-small" x="722" y="414">PMTiles, metadata.json</text>
+
+  <!-- Pipeline -->
+  <rect class="dg-group" x="16" y="456" width="928" height="128" rx="14"/>
+  <text class="dg-label" x="34" y="478">DATA PIPELINE (automatic)</text>
+  <rect class="dg-green" x="34" y="492" width="200" height="74" rx="10"/>
+  <text class="dg-title" x="50" y="520">OpenStreetMap</text>
+  <text class="dg-small" x="50" y="542">data from all mappers</text>
+  <rect class="dg-box" x="280" y="492" width="200" height="74" rx="10"/>
+  <text class="dg-title" x="296" y="520">Geofabrik</text>
+  <text class="dg-small" x="296" y="542">Country extracts (.osm.pbf)</text>
+  <rect class="dg-box" x="526" y="492" width="200" height="74" rx="10"/>
+  <text class="dg-title" x="542" y="520">Build</text>
+  <text class="dg-small" x="542" y="542">osmium + tippecanoe</text>
+
+  <!-- Linien -->
+  <path class="dg-line" d="M480 120V186" marker-end="url(#arch-head)"/>
+  <text class="dg-label" x="490" y="160">HTML, JS, CSS</text>
+
+  <path class="dg-line" d="M256 280H316" marker-end="url(#arch-head)"/>
+  <path class="dg-line" d="M704 192H660V230H644" marker-end="url(#arch-head)"/>
+  <path class="dg-line" d="M704 280H644" marker-end="url(#arch-head)"/>
+  <path class="dg-line-water" d="M704 360H660V330H644" marker-end="url(#arch-head-water)"/>
+
+  <path class="dg-line" d="M234 529H276" marker-end="url(#arch-head)"/>
+  <path class="dg-line" d="M480 529H522" marker-end="url(#arch-head)"/>
+  <path class="dg-line-water" d="M726 529H824V428" marker-end="url(#arch-head-water)"/>
+  <text class="dg-label" x="834" y="490">Upload</text>
+</svg>

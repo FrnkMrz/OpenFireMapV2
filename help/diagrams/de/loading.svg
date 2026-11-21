@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" width="960" height="330">
+  <defs>
+    <marker id="load-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="dg-head" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="load-head-water" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="dg-head-water" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+
+  <rect class="dg-core" x="16" y="40" width="160" height="96" rx="12"/>
+  <text class="dg-title" x="32" y="68">1 Karte bewegt</text>
+  <text class="dg-small" x="32" y="92">400 ms Ruhe abwarten,</text>
+  <text class="dg-small" x="32" y="110">alte Anfrage abbrechen</text>
+
+  <rect class="dg-box" x="208" y="40" width="168" height="96" rx="12"/>
+  <text class="dg-title" x="224" y="68">2 Pipeline-Gebiet?</text>
+  <text class="dg-small" x="224" y="92">DACHLiLu-Umriss oder</text>
+  <text class="dg-small" x="224" y="110">Länder laut Manifest</text>
+
+  <rect class="dg-water" x="408" y="40" width="168" height="96" rx="12"/>
+  <text class="dg-title" x="424" y="68">3 PMTiles lesen</text>
+  <text class="dg-small" x="424" y="92">2–6 Kacheln (z14)</text>
+  <text class="dg-small" x="424" y="110">per HTTP-Range</text>
+
+  <rect class="dg-water" x="608" y="40" width="160" height="96" rx="12"/>
+  <text class="dg-title" x="624" y="68">4 Zeichnen</text>
+  <text class="dg-small" x="624" y="92">sofort; Rand drumherum</text>
+  <text class="dg-small" x="624" y="110">lädt im Hintergrund</text>
+
+  <rect class="dg-green" x="800" y="40" width="144" height="96" rx="12"/>
+  <text class="dg-title" x="816" y="68">5 Live-Delta</text>
+  <text class="dg-small" x="816" y="92">Overpass newer:</text>
+  <text class="dg-small" x="816" y="110">seit Datenstand</text>
+
+  <rect class="dg-box" x="208" y="214" width="368" height="96" rx="12"/>
+  <text class="dg-title" x="224" y="242">Overpass API (Ausweichweg)</text>
+  <text class="dg-small" x="224" y="266">4 Server in zufälliger Reihenfolge, je einmal;</text>
+  <text class="dg-small" x="224" y="284">bei 429, 5xx oder Zeitüberschreitung Pause</text>
+  <text class="dg-small" x="224" y="302">für diesen Server, weiter zum nächsten</text>
+
+  <rect class="dg-box" x="608" y="214" width="160" height="96" rx="12"/>
+  <text class="dg-title" x="624" y="242">Zeichnen</text>
+  <text class="dg-small" x="624" y="266">und im Browser</text>
+  <text class="dg-small" x="624" y="284">zwischenspeichern</text>
+
+  <path class="dg-line" d="M176 88H204" marker-end="url(#load-head)"/>
+  <path class="dg-line-water" d="M376 88H404" marker-end="url(#load-head-water)"/>
+  <text class="dg-label" x="381" y="80">ja</text>
+  <path class="dg-line-water" d="M576 88H604" marker-end="url(#load-head-water)"/>
+  <path class="dg-line-water" d="M768 88H796" marker-end="url(#load-head-water)"/>
+  <path class="dg-line" d="M292 136V210" marker-end="url(#load-head)"/>
+  <text class="dg-label" x="302" y="172">nein</text>
+  <path class="dg-line" d="M492 136V176H400V210" marker-end="url(#load-head)"/>
+  <text class="dg-label" x="502" y="166">Fehler oder Datei passt nicht</text>
+  <path class="dg-line" d="M576 262H604" marker-end="url(#load-head)"/>
+</svg>

@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // Hilfe-Bereich: Barrierefreiheit, Darstellung auf schmalen Bildschirmen und die kleinen
 // Bedienelemente (Tabs, Erklärer, Themenmenü). Die Seiten laden nichts von fremden Servern.
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'];
-const SLUGS = ['map', 'phone', 'layers', 'data', 'export', 'town-plan', 'contribute', 'fire-brigades', 'accessibility', 'faq'];
+const SLUGS = ['map', 'phone', 'layers', 'data', 'export', 'town-plan', 'contribute', 'fire-brigades', 'accessibility', 'faq', 'technology'];
 const HELP_DEFAULT_LANG = 'de';
 const HELP_LANGS = readdirSync(resolve(process.cwd(), 'help', 'text'))
     .filter((file) => file.endsWith('.json'))
@@ -17,9 +17,10 @@ const helpUrl = (lang, page = 'index') => {
     return page === 'index' ? base : `${base}${page}/`;
 };
 const PAGES = HELP_LANGS.map((lang) => [lang, helpUrl(lang)]);
-// Seiten mit „languages: de“ im Frontmatter gibt es nur auf Deutsch
-const ONLY_DE = ['fire-brigades'];
-const ARTICLES = HELP_LANGS.flatMap((lang) => SLUGS.filter((slug) => lang === HELP_DEFAULT_LANG || !ONLY_DE.includes(slug)).map((slug) => [lang, helpUrl(lang, slug)]));
+// Seiten mit „languages: …“ im Frontmatter gibt es nur in diesen Sprachen (z. B. Feuerwehren nur Deutsch, Technik Deutsch und Englisch)
+const ARTICLES = HELP_LANGS.flatMap((lang) => SLUGS
+    .filter((slug) => existsSync(resolve(process.cwd(), 'help', 'content', lang, `${slug}.md`)))
+    .map((slug) => [lang, helpUrl(lang, slug)]));
 const helpLangFor = (lang) => HELP_LANGS.includes(lang) ? lang : (lang === 'de' ? 'de' : 'en');
 const htmlLangFor = (lang) => ({ fl: 'nl-BE', tw: 'zh-Hant' })[lang] || lang;
 
