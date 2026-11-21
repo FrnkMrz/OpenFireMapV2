@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" width="960" height="330">
+  <defs>
+    <marker id="load-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="dg-head" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="load-head-water" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="dg-head-water" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+
+  <rect class="dg-core" x="16" y="40" width="160" height="96" rx="12"/>
+  <text class="dg-title" x="32" y="68">1 Map moved</text>
+  <text class="dg-small" x="32" y="92">wait 400 ms of rest,</text>
+  <text class="dg-small" x="32" y="110">cancel old request</text>
+
+  <rect class="dg-box" x="208" y="40" width="168" height="96" rx="12"/>
+  <text class="dg-title" x="224" y="68">2 Pipeline area?</text>
+  <text class="dg-small" x="224" y="92">DACHLiLu outline or</text>
+  <text class="dg-small" x="224" y="110">countries in manifest</text>
+
+  <rect class="dg-water" x="408" y="40" width="168" height="96" rx="12"/>
+  <text class="dg-title" x="424" y="68">3 Read PMTiles</text>
+  <text class="dg-small" x="424" y="92">2–6 tiles (z14)</text>
+  <text class="dg-small" x="424" y="110">via HTTP range</text>
+
+  <rect class="dg-water" x="608" y="40" width="160" height="96" rx="12"/>
+  <text class="dg-title" x="624" y="68">4 Draw</text>
+  <text class="dg-small" x="624" y="92">at once; the margin</text>
+  <text class="dg-small" x="624" y="110">loads in background</text>
+
+  <rect class="dg-green" x="800" y="40" width="144" height="96" rx="12"/>
+  <text class="dg-title" x="816" y="68">5 Live-Delta</text>
+  <text class="dg-small" x="816" y="92">Overpass newer:</text>
+  <text class="dg-small" x="816" y="110">since data date</text>
+
+  <rect class="dg-box" x="208" y="214" width="368" height="96" rx="12"/>
+  <text class="dg-title" x="224" y="242">Overpass API (fallback)</text>
+  <text class="dg-small" x="224" y="266">4 servers in random order, each once;</text>
+  <text class="dg-small" x="224" y="284">on 429, 5xx or timeout, that server</text>
+  <text class="dg-small" x="224" y="302">pauses and the next one is tried</text>
+
+  <rect class="dg-box" x="608" y="214" width="160" height="96" rx="12"/>
+  <text class="dg-title" x="624" y="242">Draw</text>
+  <text class="dg-small" x="624" y="266">and store in the</text>
+  <text class="dg-small" x="624" y="284">browser cache</text>
+
+  <path class="dg-line" d="M176 88H204" marker-end="url(#load-head)"/>
+  <path class="dg-line-water" d="M376 88H404" marker-end="url(#load-head-water)"/>
+  <text class="dg-label" x="379" y="80">yes</text>
+  <path class="dg-line-water" d="M576 88H604" marker-end="url(#load-head-water)"/>
+  <path class="dg-line-water" d="M768 88H796" marker-end="url(#load-head-water)"/>
+  <path class="dg-line" d="M292 136V210" marker-end="url(#load-head)"/>
+  <text class="dg-label" x="302" y="172">no</text>
+  <path class="dg-line" d="M492 136V176H400V210" marker-end="url(#load-head)"/>
+  <text class="dg-label" x="502" y="166">error or file does not fit</text>
+  <path class="dg-line" d="M576 262H604" marker-end="url(#load-head)"/>
+</svg>

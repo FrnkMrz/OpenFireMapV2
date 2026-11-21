@@ -173,6 +173,10 @@ const escapeAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;
  *   Bildunterschrift
  *   :::                          Bildschirmfoto mit nummerierten Markierungen aus help/shots.json (<sprache>.<bild> bzw. <sprache>.<set>)
  *   :::steps                     die folgende nummerierte Liste als Schrittfolge
+ *   :::diagram name
+ *   Bildunterschrift
+ *   :::                          Schaubild help/diagrams/<sprache>/<name>.svg, direkt eingebettet (Texte bleiben Text);
+ *                                Farben nur über Klassen aus help.css, weil die CSP keine Inline-Stile erlaubt
  */
 export function renderArticle(md, { lang, shots, root, file, marked }) {
   const toc = [];
@@ -209,6 +213,17 @@ export function renderArticle(md, { lang, shots, root, file, marked }) {
     if (['tip', 'note', 'warn'].includes(kind)) {
       const title = args ? `<p class="callout-title">${marked.parseInline(args)}</p>` : '';
       return hold(`<aside class="callout callout-${kind}">${title}${marked.parse(inner)}</aside>`);
+    }
+    if (kind === 'diagram') {
+      const name = args;
+      const disk = join(root, 'help', 'diagrams', lang, `${name}.svg`);
+      if (!/^[a-z0-9-]+$/.test(name) || !existsSync(disk)) throw new Error(`${file}: Schaubild help/diagrams/${lang}/${name}.svg fehlt`);
+      const svg = readFileSync(disk, 'utf8').trim();
+      if (!svg.startsWith('<svg') || /\sstyle=|<style|<script|\son[a-z]+=/i.test(svg)) throw new Error(`${file}: Schaubild ${name}.svg darf keine Stile, Skripte oder Ereignis-Attribute enthalten`);
+      const caption = marked.parseInline(inner.trim());
+      const label = escapeAttr(inner.trim().replace(/[*_`]/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1'));
+      // Breites Bild: am Handy seitlich verschiebbar, darum per Tastatur erreichbar (tabindex) und benannt
+      return hold(`<figure class="fig fig-diagram"><div class="diagram" tabindex="0" role="img" aria-label="${label}">${svg.replace('<svg', '<svg aria-hidden="true" focusable="false"')}</div><figcaption>${caption}</figcaption></figure>`);
     }
     if (kind === 'steps') return hold(`<div class="md-steps">${marked.parse(inner)}</div>`);
     throw new Error(`${file}: unbekannter Block :::${kind}`);
