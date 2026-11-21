@@ -11,7 +11,7 @@ order: 11
 OpenFireMap is a pure web app. There is **no application server of its own**, no database of user data and no accounts. Your browser loads the app from GitHub Pages and fetches everything else directly from the services involved: map images from the map providers, fire service objects as prepared tiles from Cloudflare or live from Overpass, search results from Nominatim.
 
 :::diagram architecture
-How OpenFireMap is built: the web app runs in the browser and talks directly to map providers, Overpass, Nominatim and the Cloudflare storage. Each night the data pipeline builds the tiles for Cloudflare from OpenStreetMap.
+How OpenFireMap is built: the web app runs in the browser and talks directly to map providers, Overpass, Nominatim and the Cloudflare storage. The data pipeline builds the tiles for Cloudflare from OpenStreetMap.
 :::
 
 | Building block | Technology | Job |
@@ -104,7 +104,7 @@ OpenFireMap knows four public Overpass servers and tries them in random order, e
 
 ## The data pipeline {#pipeline}
 
-The prepared tiles come from an automatic pipeline that runs each night on a machine of the project. Its code lives in a separate, non-public repository. The flow:
+The prepared tiles come from an automatic pipeline of the project. Its code lives in a separate, non-public repository. The flow:
 
 :::steps
 1. **Download:** the current country extracts from [Geofabrik](https://download.geofabrik.de/) in `.osm.pbf` format, several gigabytes in total.
@@ -115,13 +115,13 @@ The prepared tiles come from an automatic pipeline that runs each night on a mac
 6. **Publish:** upload to Cloudflare R2, then the description files, and finally a targeted purge of the Cloudflare cache.
 :::
 
-The steps run in Docker containers. Monitoring reports when a run fails or does not happen.
+| Area | File |
+|---|---|
+| DACHLiLu | one shared file |
+| 40 European countries | one file per country, with a time stamp in the name |
+| Town plan base map (Germany) | separate file, built with [Planetiler](https://github.com/onthegomap/planetiler) |
 
-| Area | File | Schedule |
-|---|---|---|
-| DACHLiLu | one shared file | usually daily |
-| 40 European countries | one file per country, with a time stamp in the name | usually weekly, spread over the week |
-| Town plan base map (Germany) | separate file, built with [Planetiler](https://github.com/onthegomap/planetiler) | less often, as needed |
+How current the data is in each area is explained under [Data & freshness](../data/#aktualitaet).
 
 ### Public description files {#metadaten}
 

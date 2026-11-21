@@ -12,7 +12,7 @@ languages: de, en
 OpenFireMap ist eine reine Web-App. Es gibt **keinen eigenen Anwendungsserver**, keine Datenbank mit Nutzerdaten und keine Konten. Dein Browser lädt die App von GitHub Pages und holt sich alles Weitere direkt bei den beteiligten Diensten: Kartenbilder bei den Kartenanbietern, Feuerwehr-Objekte als vorbereitete Kacheln von Cloudflare oder live von Overpass, Suchergebnisse von Nominatim.
 
 :::diagram architecture
-Aufbau von OpenFireMap: Die Web-App läuft im Browser und spricht Kartenanbieter, Overpass, Nominatim und den Cloudflare-Speicher direkt an. Die Datenpipeline baut nachts aus OpenStreetMap die Kacheln für Cloudflare.
+Aufbau von OpenFireMap: Die Web-App läuft im Browser und spricht Kartenanbieter, Overpass, Nominatim und den Cloudflare-Speicher direkt an. Die Datenpipeline baut aus OpenStreetMap die Kacheln für Cloudflare.
 :::
 
 | Baustein | Technik | Aufgabe |
@@ -105,7 +105,7 @@ OpenFireMap kennt vier öffentliche Overpass-Server und probiert sie in zufälli
 
 ## Die Datenpipeline {#pipeline}
 
-Die vorbereiteten Kacheln entstehen in einer automatischen Pipeline, die nachts auf einem eigenen Rechner des Projekts läuft. Ihr Code liegt in einem eigenen, nicht öffentlichen Repository. Der Ablauf:
+Die vorbereiteten Kacheln entstehen in einer automatischen Pipeline des Projekts. Ihr Code liegt in einem eigenen, nicht öffentlichen Repository. Der Ablauf:
 
 :::steps
 1. **Herunterladen:** Die aktuellen Länderauszüge von [Geofabrik](https://download.geofabrik.de/) im Format `.osm.pbf`, zusammen mehrere Gigabyte.
@@ -116,13 +116,13 @@ Die vorbereiteten Kacheln entstehen in einer automatischen Pipeline, die nachts 
 6. **Veröffentlichen:** Upload nach Cloudflare R2, danach die Beschreibungsdateien und zuletzt ein gezieltes Leeren des Cloudflare-Caches.
 :::
 
-Die Schritte laufen in Docker-Containern. Eine Überwachung meldet, wenn ein Lauf fehlschlägt oder ausbleibt.
+| Gebiet | Datei |
+|---|---|
+| DACHLiLu | eine gemeinsame Datei |
+| 40 Länder Europas | eine Datei je Land, mit Zeitstempel im Namen |
+| Ortsplan-Basiskarte (Deutschland) | eigene Datei, mit [Planetiler](https://github.com/onthegomap/planetiler) gebaut |
 
-| Gebiet | Datei | Rhythmus |
-|---|---|---|
-| DACHLiLu | eine gemeinsame Datei | in der Regel täglich |
-| 40 Länder Europas | eine Datei je Land, mit Zeitstempel im Namen | in der Regel wöchentlich, über die Woche verteilt |
-| Ortsplan-Basiskarte (Deutschland) | eigene Datei, mit [Planetiler](https://github.com/onthegomap/planetiler) gebaut | seltener, nach Bedarf |
+Wie aktuell die Daten in welchem Gebiet sind, steht unter [Daten & Aktualität](../data/#aktualitaet).
 
 ### Öffentliche Beschreibungsdateien {#metadaten}
 

@@ -52,7 +52,7 @@
 
   <!-- Pipeline -->
   <rect class="dg-group" x="16" y="456" width="928" height="128" rx="14"/>
-  <text class="dg-label" x="34" y="478">DATENPIPELINE (nachts, automatisch)</text>
+  <text class="dg-label" x="34" y="478">DATENPIPELINE (automatisch)</text>
   <rect class="dg-green" x="34" y="492" width="200" height="74" rx="10"/>
   <text class="dg-title" x="50" y="520">OpenStreetMap</text>
   <text class="dg-small" x="50" y="542">die Daten aller Mappenden</text>
