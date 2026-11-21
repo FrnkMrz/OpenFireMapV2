@@ -562,10 +562,17 @@ export async function exportAsGPX() {
   }
 }
 
-function escapeCSV(val) {
+/**
+ * Ein CSV-Feld in Anführungszeichen. Schutz gegen Formel-Injection (OWASP „CSV Injection“): OSM-Werte stammen von
+ * Dritten; beginnt ein Wert mit = + - @ oder Tab/Zeilenumbruch, würden Excel und LibreOffice ihn als Formel ausführen
+ * (z. B. name="=HYPERLINK(…)"). Solchen Werten wird ein Apostroph vorangestellt. Reine Zahlen wie negative Koordinaten
+ * („-3.70379“) bleiben unverändert, damit sie als Zahl lesbar bleiben.
+ */
+export function escapeCSV(val) {
   if (val === null || val === undefined) return '""';
-  const str = String(val).replace(/"/g, '""');
-  return `"${str}"`;
+  let str = String(val);
+  if (/^[=+\-@\t\r]/.test(str) && !/^[+-]?\d+(?:[.,]\d+)?$/.test(str)) str = `'${str}`;
+  return `"${str.replace(/"/g, '""')}"`;
 }
 
 /**
