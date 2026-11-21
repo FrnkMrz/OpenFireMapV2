@@ -60,7 +60,7 @@ Zoom in a little so the query gets smaller, and try again shortly. If all server
 
 ### Is the data binding for operations? {#verbindlich}
 
-No. OpenFireMap is not an operational resource. The data may be incomplete, outdated or wrong and does not replace information from dispatch centres, municipalities or water utilities. In an emergency, always call your emergency number first (112 in Europe).
+No. OpenFireMap is not an operational resource. The data may be incomplete, outdated or wrong and does not replace information from dispatch centres, municipalities or water utilities.
 
 ## Export and town plan {#export}
 

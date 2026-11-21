@@ -90,5 +90,5 @@ OpenFireMap není offline mapa. Oblasti z mezipaměti zůstávají chvíli vidit
 Mimo země s připravenými dlaždicemi se vše načítá přes Overpass. Pokud je server zaneprázdněný, OpenFireMap automaticky zkusí další; zpráva dole ukazuje, co se děje. Pokud to nepomůže, trochu mapu přibližte, aby se dotaz zmenšil, a zkuste to za chvíli znovu. Pokud přetížení hlásí všechny servery, problém je na straně Overpassu. Pak nezbývá než načíst mapu později.
 
 :::warn Nejde o provozní zdroj
-Kvalita dat závisí na záznamech v OpenStreetMap. Mohou být neúplná, zastaralá nebo chybná a nenahrazují informace operačních středisek ani vodáren. V nouzi vždy volejte tísňovou linku (v Evropě 112).
+Kvalita dat závisí na záznamech v OpenStreetMap. Mohou být neúplná, zastaralá nebo chybná a nenahrazují informace operačních středisek ani vodáren.
 :::

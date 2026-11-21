@@ -90,5 +90,5 @@ OpenFireMap is not an offline map. Areas from the cache stay visible for a while
 Outside the prepared countries, everything comes through Overpass. If a server is busy, OpenFireMap automatically tries the next; the message at the bottom shows what is happening. If that does not help, zoom in a little so the query gets smaller, and try again shortly. If all servers report overload, the bottleneck is Overpass itself. Then the only option is to reload later.
 
 :::warn Not an operational resource
-The data is only as good as the entries in OpenStreetMap. It may be incomplete, outdated or wrong and does not replace information from dispatch centres or water utilities. In an emergency, always call your emergency number (112 in Europe).
+The data is only as good as the entries in OpenStreetMap. It may be incomplete, outdated or wrong and does not replace information from dispatch centres or water utilities.
 :::
