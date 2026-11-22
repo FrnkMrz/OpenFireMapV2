@@ -132,10 +132,20 @@ test('Sprachwechsel führt zur Gegenseite', async ({ page }) => {
 });
 
 test('Karte: „Info & Recht“ verlinkt die Hilfe in der passenden Sprache', async ({ page }) => {
+    // Es gibt zwei Hilfe-Links: im Dialog „Info & Recht“ und im mobilen Menü (#mobile-open-help).
+    // Jeder wird einzeln geprüft, weil toHaveAttribute nur bei genau einem Element greift.
+    const helpLinks = (page) => [
+        page.locator('#legal-modal [data-help-link]'),
+        page.locator('#mobile-open-help'),
+    ];
     await page.goto('/?lang=de');
-    await expect(page.locator('[data-help-link]')).toHaveAttribute('href', '/help/');
+    for (const link of helpLinks(page)) {
+        await expect(link).toHaveAttribute('href', '/help/');
+    }
     await page.goto('/?lang=fr');
-    await expect(page.locator('[data-help-link]')).toHaveAttribute('href', helpUrl(helpLangFor('fr')));
+    for (const link of helpLinks(page)) {
+        await expect(link).toHaveAttribute('href', helpUrl(helpLangFor('fr')));
+    }
 });
 
 for (const [lang, path] of ARTICLES) {
