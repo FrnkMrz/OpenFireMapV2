@@ -324,8 +324,8 @@ body {
     }
 
     .basemap-unavailable-alert {
-        top: auto;
-        bottom: 92px;
+        top: 76px;
+        bottom: auto;
         align-items: stretch;
         flex-direction: column;
         gap: 8px;

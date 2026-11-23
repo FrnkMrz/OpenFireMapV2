@@ -38,6 +38,7 @@ function showBasemapUnavailableAlert() {
     button.type = 'button';
     button.textContent = t('basemap_choose_layer');
     button.addEventListener('click', () => {
+        hideBasemapUnavailableAlert();
         document.getElementById('layer-btn-trigger')?.click();
     });
 
