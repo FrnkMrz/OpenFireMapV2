@@ -90,5 +90,5 @@ OpenFireMap ist keine Offline-Karte. Gebiete aus dem Cache bleiben eine Zeit lan
 Außerhalb der vorbereiteten Länder kommt alles über Overpass. Ist ein Server überlastet, versucht OpenFireMap von selbst den nächsten; die Meldung unten zeigt, was gerade passiert. Hilft das nicht, zoome etwas weiter hinein, damit die Abfrage kleiner wird, und versuche es nach kurzer Zeit erneut. Melden alle Server Überlastung, ist das ein Engpass bei Overpass selbst. Dann hilft nur, später erneut zu laden.
 
 :::warn Keine Einsatzgrundlage
-Die Daten sind so gut wie die Einträge in OpenStreetMap. Sie können unvollständig, veraltet oder falsch sein und ersetzen keine Unterlagen der Leitstelle oder des Wasserversorgers. Im Notfall immer den Notruf 112 wählen.
+Die Daten sind so gut wie die Einträge in OpenStreetMap. Sie können unvollständig, veraltet oder falsch sein und ersetzen keine Unterlagen der Leitstelle oder des Wasserversorgers.
 :::

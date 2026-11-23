@@ -58,5 +58,5 @@ OpenFireMap n’est pas une carte hors ligne. Les zones en cache peuvent rester 
 Zoomez pour réduire la requête et réessayez un peu plus tard. Si tous les serveurs Overpass sont surchargés, il faut patienter.
 
 :::warn Pas un outil opérationnel
-Les données peuvent être incomplètes, anciennes ou erronées. Elles ne remplacent pas les informations des services de secours ou des distributeurs d’eau. En urgence, appelez le numéro d’urgence local (112 en Europe).
+Les données peuvent être incomplètes, anciennes ou erronées. Elles ne remplacent pas les informations des services de secours ou des distributeurs d’eau.
 :::

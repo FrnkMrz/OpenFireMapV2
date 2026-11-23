@@ -60,7 +60,7 @@ Zoome etwas weiter hinein, damit die Abfrage kleiner wird, und versuche es nach 
 
 ### Sind die Daten für den Einsatz verbindlich? {#verbindlich}
 
-Nein. OpenFireMap ist keine Einsatzgrundlage. Die Daten können unvollständig, veraltet oder falsch sein und ersetzen keine Unterlagen der Leitstelle, der Gemeinde oder des Wasserversorgers. Im Notfall immer zuerst den Notruf 112.
+Nein. OpenFireMap ist keine Einsatzgrundlage. Die Daten können unvollständig, veraltet oder falsch sein und ersetzen keine Unterlagen der Leitstelle, der Gemeinde oder des Wasserversorgers.
 
 ## Export und Ortsplan {#export}
 

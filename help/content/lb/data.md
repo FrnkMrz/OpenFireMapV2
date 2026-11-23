@@ -42,5 +42,5 @@ OpenFireMap ass keng Offlinekaart. Nei Beräicher a Sich brauchen Netzwierk. Oun
 ## Wann et laang dauert {#laden}
 Zoomt méi no, fir d'Ufro ze verkleineren, a probéiert et méi spéit nach eng Kéier.
 :::warn Keen Asazdokument
-D'Donnéeë kënne feelen, al oder falsch sinn a ersetzen net d'Leitzentral oder Waasserversuerger. Am Noutfall d'Noutnummer uruffen (112 an Europa).
+D'Donnéeë kënne feelen, al oder falsch sinn a ersetzen net d'Leitzentral oder Waasserversuerger.
 :::
