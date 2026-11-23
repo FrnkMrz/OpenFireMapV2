@@ -22,6 +22,10 @@ import { getHydrantMarkerType, getWaterMarkerKind } from "./marker-symbols.js";
 import { jsPDF } from "jspdf";
 import { applyPrintTone } from "./print-tone.js";
 
+// Größte Canvas-Seite und größte Fläche für doppelte Auflösung (Safari/iOS-Grenze 4096 × 4096)
+const EXPORT_MAX_SIDE_PX = 14000;
+const EXPORT_MAX_HIDPI_AREA_PX = 4096 * 4096;
+
 const OSM_DATA_ATTRIBUTION = "© OpenStreetMap contributors (ODbL; https://www.openstreetmap.org/copyright)";
 
 /**
@@ -757,6 +761,20 @@ const lon2tile = (lon, z) => ((lon + 180) / 360) * worldSize(z);
  * Erzeugt ein Canvas mit der Karte, Overlays, Titel etc.
  * Gibt { canvas, filename, targetZoom } zurück.
  */
+/**
+ * Pixeldichte des Export-Canvas: 2, wenn die Ebene hochaufgelöste Kacheln anbietet ({r} → @2x, CARTO) und der
+ * doppelte Canvas in jedem Browser sicher machbar ist, sonst 1. Grenze ist die Fläche (Safari/iOS: 16,7 Mio. Pixel)
+ * und die Seitenlänge (14000 px wie beim normalen Export).
+ */
+export function getExportPixelRatio(layerConf, width, height) {
+  if (!layerConf?.url?.includes("{r}")) return 1;
+  const w = width * 2;
+  const h = height * 2;
+  if (w > EXPORT_MAX_SIDE_PX || h > EXPORT_MAX_SIDE_PX) return 1;
+  if (w * h > EXPORT_MAX_HIDPI_AREA_PX) return 1;
+  return 2;
+}
+
 async function generateMapCanvas() {
   console.log("=== EXPORT RENDER START ===");
 
@@ -949,7 +967,7 @@ async function generateMapCanvas() {
       6378137) /
     (256 * Math.pow(2, targetZoom));
 
-  if (totalWidth > 14000 || totalHeight > 14000)
+  if (totalWidth > EXPORT_MAX_SIDE_PX || totalHeight > EXPORT_MAX_SIDE_PX)
     throw new Error(t("too_large") + " (>14000px)");
 
   // 5. CANVAS
@@ -958,13 +976,19 @@ async function generateMapCanvas() {
   // Kurzer Timeout, damit das UI den Status aktualisieren kann, bevor der Main Thread blockiert
   await new Promise(resolve => setTimeout(resolve, 50));
 
+  // Doppelte Auflösung (@2x-Kacheln), wenn die Ebene sie anbietet und der Canvas klein genug bleibt.
+  // Gezeichnet wird weiter in logischen Pixeln (ctx.scale), Kacheln, Marker und Schrift werden dadurch schärfer.
+  const layerConf = Config.layers[State.activeLayerKey];
+  const pixelRatio = getExportPixelRatio(layerConf, totalWidth, totalHeight);
+
   const canvas = document.createElement("canvas");
-  canvas.width = totalWidth;
-  canvas.height = totalHeight;
+  canvas.width = totalWidth * pixelRatio;
+  canvas.height = totalHeight * pixelRatio;
   const ctx = canvas.getContext("2d");
+  ctx.scale(pixelRatio, pixelRatio);
 
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, totalWidth, totalHeight);
 
   // 6. KACHELN LADEN
   setStatus(`${t("loading_tiles")} (Z${targetZoom})...`);
@@ -994,7 +1018,6 @@ async function generateMapCanvas() {
       while (active < CONCURRENCY && tileQueue.length > 0) {
         const item = tileQueue.shift();
         active++;
-        const layerConf = Config.layers[State.activeLayerKey];
         const subdomains = Array.isArray(layerConf?.subdomains) && layerConf.subdomains.length > 0
           ? layerConf.subdomains
           : ["a", "b", "c"];
@@ -1006,14 +1029,14 @@ async function generateMapCanvas() {
             .replace("{z}", item.z)
             .replace("{x}", item.x)
             .replace("{y}", item.y)
-            .replace("{r}", "");
+            .replace("{r}", pixelRatio === 2 ? "@2x" : "");
         } else {
           // Layer ohne Subdomains, z.B. ArcGIS Satellite
           url = layerConf.url
             .replace("{z}", item.z)
             .replace("{x}", item.x)
             .replace("{y}", item.y)
-            .replace("{r}", "");
+            .replace("{r}", pixelRatio === 2 ? "@2x" : "");
         }
 
         // Caching für Tiles nicht nötig für Export
@@ -1048,11 +1071,19 @@ async function generateMapCanvas() {
     // Pixel-Offset auf der Karte + Margin
     const px = (r.x - startTileX) * 256 + margin;
     const py = (r.y - startTileY) * 256 + mapTop;
-    ctx.drawImage(r.img, px, py);
+    ctx.drawImage(r.img, px, py, 256, 256);
   });
 
   // Druckkurve: nur die Kacheln, vor Grenzen und Markern (deren Farben bleiben unverändert)
-  applyPrintTone(ctx, margin, mapTop, mapWidth, mapHeight, Config.exportPrintTone?.[State.activeLayerKey]);
+  // getImageData arbeitet in Geräte-Pixeln, darum der Bereich mal pixelRatio
+  applyPrintTone(
+    ctx,
+    margin * pixelRatio,
+    mapTop * pixelRatio,
+    mapWidth * pixelRatio,
+    mapHeight * pixelRatio,
+    Config.exportPrintTone?.[State.activeLayerKey],
+  );
 
   // 8. OVERLAYS ZEICHNEN
   setStatus(t("render_infra"));
@@ -1144,7 +1175,7 @@ async function generateMapCanvas() {
   const dateLocale = localeMap[getLang()] || "en-US";
   const dateStr = now.toLocaleDateString(dateLocale, { year: "numeric", month: "long" });
   ctx.fillText(
-    `${t("legend_date")}: ${dateStr} | ${t("legend_res")}: Zoom ${targetZoom} (~${mPerPx.toFixed(2)} m/px)`,
+    `${t("legend_date")}: ${dateStr} | ${t("legend_res")}: Zoom ${targetZoom} (~${(mPerPx / pixelRatio).toFixed(2)} m/px)`,
     centerX,
     margin + 95,
   );
@@ -1275,7 +1306,7 @@ export async function exportAsPDF() {
 
     // 3. Canvas als Bild hinzufügen
     // toDataURL ist synchron und kann bei riesigen Canvas blocken, aber jsPDF braucht es.
-    const imgData = canvas.toDataURL("image/jpeg", 0.85); // JPEG für kleinere PDF-Größe
+    const imgData = canvas.toDataURL("image/jpeg", 0.92); // JPEG für kleinere PDF-Größe; 0,92 hält feine Linien und Schrift sauber
     pdf.addImage(imgData, "JPEG", x, y, renderW, renderH);
 
     // 4. Speichern
