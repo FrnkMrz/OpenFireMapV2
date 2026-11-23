@@ -51,8 +51,8 @@
     "fflate": "^0.8.3",
     "jspdf": "^4.2.0",
     "leaflet": "^1.9.4",
-    "maplibre-gl": "^6.18.0",
-    "pbf": "^5.1.2",
+    "maplibre-gl": "^6.19.0",
+    "pbf": "^5.2.0",
     "pmtiles": "^4.5.0"
   },
   "overrides": {
