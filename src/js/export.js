@@ -20,6 +20,7 @@ import { rectSizeKm, isRectWithinKm, clampOffsetToKm } from "./geometry.js";
 import { cancelSelectionMode } from "./map.js";
 import { getHydrantMarkerType, getWaterMarkerKind } from "./marker-symbols.js";
 import { jsPDF } from "jspdf";
+import { applyPrintTone } from "./print-tone.js";
 
 const OSM_DATA_ATTRIBUTION = "© OpenStreetMap contributors (ODbL; https://www.openstreetmap.org/copyright)";
 
@@ -1049,6 +1050,9 @@ async function generateMapCanvas() {
     const py = (r.y - startTileY) * 256 + mapTop;
     ctx.drawImage(r.img, px, py);
   });
+
+  // Druckkurve: nur die Kacheln, vor Grenzen und Markern (deren Farben bleiben unverändert)
+  applyPrintTone(ctx, margin, mapTop, mapWidth, mapHeight, Config.exportPrintTone?.[State.activeLayerKey]);
 
   // 8. OVERLAYS ZEICHNEN
   setStatus(t("render_infra"));

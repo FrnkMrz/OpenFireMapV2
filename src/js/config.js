@@ -239,6 +239,22 @@ export const Config = {
    * Gilt für Auswahl (Rechteck ziehen, Ausschnitt übernehmen) und beim Export selbst für alle Formate.
    */
   exportMaxSideKm: 10,
+
+  /**
+   * Druckkurve für PNG/PDF-Export je Hintergrundkarte (siehe print-tone.js). Die Bildschirmkarten sind für Papier zu blass.
+   * - blackPoint: Tonwert, der schwarz wird (je höher, desto kräftiger)
+   * - whitePoint: Hintergrundfarbe der Ebene je Kanal [r, g, b]; wird reines Papierweiß
+   * - gamma: > 1 dunkelt helle Töne ab (Gebäude, Straßenränder)
+   * Ebenen ohne Eintrag bleiben unverändert (Satellit/Luftbild, Dark, Topo und Bayern sind schon kontrastreich).
+   * Abgestimmt am 23.11.2026 an Nürnberg Altstadt, Zoom 18.
+   */
+  exportPrintTone: {
+    voyager: { blackPoint: 100, whitePoint: [250, 246, 240], gamma: 1.9 },
+    positron: { blackPoint: 100, whitePoint: [246, 246, 245], gamma: 1.9 },
+    osm: { blackPoint: 40, whitePoint: [255, 255, 255], gamma: 1.4 },
+    osmde: { blackPoint: 40, whitePoint: [255, 255, 255], gamma: 1.4 },
+  },
+
   rasterExport: {
     manifestUrl: import.meta.env.VITE_RASTER_MANIFEST_URL?.trim() || 'https://raster-pilot.openfiremap.org/manifest.json',
     minZoom: 12,
