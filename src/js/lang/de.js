@@ -26,6 +26,8 @@ export const strings = {
     selection_cancelled: "Auswahl abgebrochen",
     locate_title: "Mein Standort",
     layers_title: "Karte wechseln",
+    basemap_unavailable: "Der Kartenhintergrund ist möglicherweise nicht verfügbar. Du kannst einen anderen Hintergrund wählen.",
+    basemap_choose_layer: "Hintergrund wählen",
     export_title: "Export",
     bg_header: "Hintergrund",
     layer_std: "Standard (Voyager)",

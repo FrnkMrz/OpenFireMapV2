@@ -276,12 +276,61 @@ body {
     border: 1px solid rgba(96, 165, 250, 0.45);
 }
 
+.basemap-unavailable-alert {
+    position: fixed;
+    top: 76px;
+    left: 50%;
+    z-index: 3900;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: max-content;
+    max-width: min(34rem, calc(100vw - 2rem));
+    padding: 12px 14px;
+    transform: translateX(-50%);
+    border: 1px solid rgba(248, 113, 113, 0.55);
+    border-radius: 14px;
+    background: rgba(127, 29, 29, 0.96);
+    color: #fef2f2;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.basemap-unavailable-alert p {
+    margin: 0;
+}
+
+.basemap-unavailable-alert button {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    border: 1px solid rgba(254, 242, 242, 0.55);
+    border-radius: 9px;
+    color: #fff;
+    font-weight: 700;
+}
+
+.basemap-unavailable-alert button:hover,
+.basemap-unavailable-alert button:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
+}
+
 @media (max-width: 768px) {
     #notification-box {
         top: 76px;
         font-size: 12px;
         padding: 8px 14px;
         max-width: calc(100vw - 2rem);
+    }
+
+    .basemap-unavailable-alert {
+        top: auto;
+        bottom: 92px;
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+        width: calc(100vw - 2rem);
+        font-size: 13px;
     }
 }
 
