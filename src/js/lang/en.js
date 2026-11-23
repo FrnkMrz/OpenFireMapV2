@@ -26,6 +26,8 @@ export const strings = {
     selection_cancelled: "Selection cancelled",
     locate_title: "My Location",
     layers_title: "Switch Map Layer",
+    basemap_unavailable: "The map background may be unavailable. You can choose another background.",
+    basemap_choose_layer: "Choose background",
     export_title: "Export",
     bg_header: "Background",
     layer_std: "Standard (Voyager)",

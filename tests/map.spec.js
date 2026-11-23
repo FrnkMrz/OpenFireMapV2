@@ -36,6 +36,30 @@ test('Layer-Menü öffnet und schließt', async ({ page }) => {
     await expect(layerMenu).toHaveClass(/hidden/);
 });
 
+test('wiederholte Kachelausfälle öffnen die manuelle Hintergrundwahl', async ({ page }) => {
+    await gotoReady(page, '/?lang=de#14/49.555/11.35/voyager');
+
+    await page.evaluate(() => {
+        const layer = Object.values(window.State.map._layers).find(candidate => candidate instanceof window.L.TileLayer);
+        for (const x of [100, 101, 102]) layer.fire('tileerror', { coords: { z: 14, x, y: 200 } });
+    });
+
+    const alert = page.locator('#basemap-unavailable-alert');
+    await expect(alert).toContainText('Der Kartenhintergrund ist möglicherweise nicht verfügbar');
+    await alert.getByRole('button', { name: 'Hintergrund wählen' }).click();
+    await expect(alert).toHaveCount(0);
+    await expect(page.locator('#layer-menu')).not.toHaveClass(/hidden/);
+
+    await page.locator('#btn-osm').click();
+    await expect.poll(() => page.evaluate(() => window.State.activeLayerKey)).toBe('osm');
+
+    await page.evaluate(() => {
+        const layer = Object.values(window.State.map._layers).find(candidate => candidate instanceof window.L.TileLayer);
+        for (const x of [200, 201, 202]) layer.fire('tileerror', { coords: { z: 14, x, y: 200 } });
+    });
+    await expect(alert).toContainText('Der Kartenhintergrund ist möglicherweise nicht verfügbar');
+});
+
 test('Export-Menü öffnet und schließt', async ({ page }) => {
     await gotoReady(page);
 

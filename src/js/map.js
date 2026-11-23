@@ -14,6 +14,37 @@ import { showNotification, announceStatus } from './ui.js';
 import { createHydrantDownloadStatus } from './hydrant-download-status.js';
 import { updateDataStatus, setDeltaRetryHandler } from './data-status.js';
 import { getHydrantMarkerType, getMarkerSvg, getWaterMarkerKind } from './marker-symbols.js';
+import { DEFAULT_BASEMAP_TILE_ERROR_CONFIG, monitorTileErrors } from './tile-error-monitor.js';
+
+let activeBaseTileLayer = null;
+let stopActiveBaseTileMonitor = null;
+
+function hideBasemapUnavailableAlert() {
+    document.getElementById('basemap-unavailable-alert')?.remove();
+}
+
+function showBasemapUnavailableAlert() {
+    hideBasemapUnavailableAlert();
+
+    const alert = document.createElement('div');
+    alert.id = 'basemap-unavailable-alert';
+    alert.className = 'basemap-unavailable-alert';
+    alert.setAttribute('role', 'alert');
+
+    const message = document.createElement('p');
+    message.textContent = t('basemap_unavailable');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = t('basemap_choose_layer');
+    button.addEventListener('click', () => {
+        hideBasemapUnavailableAlert();
+        document.getElementById('layer-btn-trigger')?.click();
+    });
+
+    alert.append(message, button);
+    document.body.appendChild(alert);
+}
 
 // ---------------------------------------------------------------------------
 // Permalink — URL-Hash Hilfsfunktionen
@@ -734,6 +765,9 @@ export function initMapLogic() {
 
 export function setBaseLayer(key) {
     State.activeLayerKey = key;
+    hideBasemapUnavailableAlert();
+    stopActiveBaseTileMonitor?.();
+    stopActiveBaseTileMonitor = null;
     State.map.eachLayer(layer => {
         if (layer instanceof L.TileLayer) State.map.removeLayer(layer);
     });
@@ -742,7 +776,14 @@ export function setBaseLayer(key) {
     if (conf.subdomains) options.subdomains = conf.subdomains;
     if (conf.maxNativeZoom) options.maxNativeZoom = conf.maxNativeZoom;
 
-    L.tileLayer(conf.url, options).addTo(State.map);
+    activeBaseTileLayer = L.tileLayer(conf.url, options);
+    const tileLayer = activeBaseTileLayer;
+    stopActiveBaseTileMonitor = monitorTileErrors(tileLayer, {
+        ...DEFAULT_BASEMAP_TILE_ERROR_CONFIG,
+        isActive: () => State.activeLayerKey === key && activeBaseTileLayer === tileLayer,
+        onUnavailable: showBasemapUnavailableAlert,
+    });
+    tileLayer.addTo(State.map);
 
     document.querySelectorAll('.layer-btn').forEach(btn => {
         btn.classList.remove('active');
