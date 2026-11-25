@@ -65,7 +65,8 @@ body.overlay-page {
 }
 
 .overlay-intro h1 { margin-top: 4px; }
-.overlay-eyebrow { color: var(--overlay-signal) !important; letter-spacing: .14em; }
+/* Kein eigener Zeichenabstand: tracking-widest (0.1em) am Element gilt, wie vor Tailwind v4 (dort schlug die Utility diese Regel). */
+.overlay-eyebrow { color: var(--overlay-signal) !important; }
 
 /* Tailwind-Struktur bleibt für das Layout erhalten; die Farbflächen folgen dem Hilfe-Theme. */
 .overlay-page .bg-white,

@@ -13,16 +13,15 @@ updates:
       # auch bei Major-Versionen (einzelne PRs scheitern bei npm ci mit ERESOLVE).
       vitest:
         patterns: ["vitest", "@vitest/*"]
+      # tailwindcss und @tailwindcss/vite erscheinen in gleicher Version: nur gemeinsam aktualisieren.
+      tailwind:
+        patterns: ["tailwindcss", "@tailwindcss/*"]
       runtime:
         dependency-type: production
         update-types: [minor, patch]
       tooling:
         dependency-type: development
         update-types: [minor, patch]
-    ignore:
-      # Tailwind 4 ist eine größere Umstellung (Konfiguration, Klassen) und läuft als eigenes Vorhaben.
-      - dependency-name: tailwindcss
-        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /

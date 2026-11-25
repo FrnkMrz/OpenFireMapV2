@@ -2,6 +2,7 @@ import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, sta
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 import { stripDevOnlyCspSources } from './scripts/strip-dev-csp.mjs';
 import { buildHelpPages, helpPagesPlugin } from './scripts/build-help.mjs';
 
@@ -87,7 +88,8 @@ function ortsplanDevData() {
 }
 
 export default defineConfig({
-  plugins: [preserveRepositoryDocumentation(), stripDevOnlyCsp(), ortsplanDevData(), helpPagesPlugin()],
+  // Tailwind CSS v4 als Vite-Plugin (ersetzt PostCSS-Konfiguration mit tailwindcss und autoprefixer)
+  plugins: [tailwindcss(), preserveRepositoryDocumentation(), stripDevOnlyCsp(), ortsplanDevData(), helpPagesPlugin()],
   // Required for GitHub Pages if the repo is not at root domain,
   // but usually './' works best for relative paths.
   base: './',

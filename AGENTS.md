@@ -11,7 +11,7 @@ OpenFireMapV2 is a client-side interactive web map for fire-service-related obje
 - **Vanilla JavaScript** (ES modules, no framework)
 - **Vite** for bundling/dev server (builds to `docs/`)
 - **Leaflet** for map rendering (npm dependency)
-- **Tailwind CSS** v3
+- **Tailwind CSS** v4 (`@tailwindcss/vite`, configured in CSS: `src/input.css`, `src/tailwind-v3-theme.css`)
 - **Vitest** for unit tests, **Playwright** for e2e tests
 - **OpenStreetMap / Overpass API / Nominatim** for geodata
 - No backend — fully client-side, deployed via GitHub Pages

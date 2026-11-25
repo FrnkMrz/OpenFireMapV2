@@ -1,23 +1,55 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind CSS v4. source(none): keine automatische Suche im ganzen Projekt (docs/, tools/, planning/ …),
+   sondern nur die Dateien, die schon die v3-Konfiguration (content) erfasst hat. */
+@import 'tailwindcss' source(none);
+@import './tailwind-v3-theme.css';
 
-/* ... HIER DARUNTER DEIN KOMPLETTER ALTER CSS CODE AUS main.css ... */
+@source "../index.html";
+@source "../symbols/**/*.html";
+@source "../overlay/**/*.html";
+@source "./**/*.{html,js,mjs,css}";
+
+/* Verhalten wie unter Tailwind v3 beibehalten (Preflight-Unterschiede von v4):
+   - Standard-Rahmenfarbe war gray-200, in v4 ist sie currentColor.
+   - Platzhaltertext war gray-400, in v4 ist er die Textfarbe mit 50 % Deckkraft.
+   - Buttons hatten den Zeiger-Cursor, in v4 den Standard-Cursor. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 /* ==========================================================================
    DATEI: assets/css/style.css
    ZWECK: Design und Layout für OpenFireMap
    ========================================================================== */
 
-/* Grundeinstellungen */
-body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    /* Keine Scrollbalken auf der Hauptseite */
-    font-family: sans-serif;
-    background: #0f172a;
-    /* Dunkelblau als Fallback */
+/* Grundeinstellungen.
+   In @layer base, damit Utility-Klassen am <body> (z. B. bg-white auf /overlay/) wie unter v3 gewinnen:
+   In v4 liegen die Utilities in einem Cascade-Layer, ungelayertes CSS würde sie sonst immer schlagen. */
+@layer base {
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        /* Keine Scrollbalken auf der Hauptseite */
+        font-family: sans-serif;
+        background: #0f172a;
+        /* Dunkelblau als Fallback */
+    }
 }
 
 /* Der Container für die Karte */

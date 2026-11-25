@@ -65,17 +65,17 @@
         <div id="notification-live-status" class="sr-only" role="status"></div>
         <div id="notification-live-alert" class="sr-only" role="alert"></div>
 
-        <div id="desktop-controls" class="absolute top-5 left-5 z-[1000] flex gap-3">
+        <div id="desktop-controls" class="absolute top-5 left-5 z-1000 flex gap-3">
 
             <div
                 class="flex glass-panel rounded-2xl shadow-2xl p-1 border border-white/5 focus-within:ring-2 focus-within:ring-blue-500">
                 <label for="search-input" class="sr-only" data-i18n="search_placeholder">Ort suchen</label>
 
                 <input type="text" id="search-input" data-i18n-placeholder="search_placeholder"
-                    class="bg-transparent px-4 py-2 text-sm text-white outline-none focus:ring-0 w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-400">
+                    class="bg-transparent px-4 py-2 text-sm text-white outline-hidden focus:ring-0 w-48 focus:w-72 transition-all duration-500 placeholder:text-slate-400">
 
                 <button id="search-btn" data-i18n-aria-label="aria_search" aria-label="Suchen"
-                    class="p-2 text-slate-400 hover:text-white transition-colors focus:outline-none focus:text-white rounded-xl">
+                    class="p-2 text-slate-400 hover:text-white transition-colors focus:outline-hidden focus:text-white rounded-xl">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                         viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -85,7 +85,7 @@
             </div>
 
             <button id="locate-btn" data-i18n-title="locate_title" data-i18n-aria-label="aria_locate" aria-label="Meinen Standort bestimmen"
-                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-emerald-400 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-emerald-500">
                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -97,7 +97,7 @@
 
             <button id="layer-btn-trigger" data-i18n-title="layers_title" aria-expanded="false"
                 aria-controls="layer-menu" data-i18n-aria-label="menu_layers_open" aria-label="Kartenebenen-Menü öffnen"
-                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                 <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -107,7 +107,7 @@
 
             <button id="export-btn-trigger" data-i18n-title="export_title" aria-haspopup="dialog" aria-expanded="false"
                 aria-controls="export-menu" data-i18n-aria-label="menu_export_open" aria-label="Export-Menü öffnen"
-                class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="glass-panel p-3 rounded-2xl text-blue-400 hover:text-blue-300 shadow-2xl transition-all border border-blue-500/20 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
 
                 <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
@@ -118,7 +118,7 @@
 
             <!-- NEU: Teilen-Button (Permalink) -->
             <button id="share-btn-trigger" data-i18n-title="share_map" data-i18n-aria-label="share_map" aria-label="Kartenansicht teilen"
-                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="glass-panel p-3 rounded-2xl text-slate-400 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                 <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
@@ -131,9 +131,9 @@
              - Kein Search, kein Export
              - Locate + Burger-Menü
              ========================================================= -->
-        <div id="mobile-controls" class="hidden md:hidden absolute top-5 left-5 z-[1200] flex gap-3">
+        <div id="mobile-controls" class="hidden md:hidden absolute top-5 left-5 z-1200 flex gap-3">
             <button id="mobile-locate-btn" data-i18n-aria-label="aria_locate" aria-label="Meinen Standort bestimmen"
-                class="glass-panel p-3 rounded-2xl text-slate-200 hover:text-emerald-300 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                class="glass-panel p-3 rounded-2xl text-slate-200 hover:text-emerald-300 shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-emerald-500">
                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -145,7 +145,7 @@
 
             <button id="mobile-burger-btn" aria-expanded="false" aria-controls="mobile-menu"
                 data-i18n-aria-label="aria_mobile_menu" aria-label="Menü öffnen"
-                class="glass-panel p-3 rounded-2xl text-slate-200 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="glass-panel p-3 rounded-2xl text-slate-200 hover:text-white shadow-2xl transition-all border border-white/10 active:scale-95 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -154,38 +154,38 @@
         </div>
 
         <div id="mobile-menu"
-            class="hidden md:hidden absolute top-[74px] left-5 z-[2500] w-[260px] glass-panel rounded-2xl p-3 shadow-2xl text-white border border-white/10"
+            class="hidden md:hidden absolute top-[74px] left-5 z-2500 w-[260px] glass-panel rounded-2xl p-3 shadow-2xl text-white border border-white/10"
             role="group" aria-labelledby="mobile-burger-btn" tabindex="-1">
             <div class="flex flex-col gap-2">
                 <button id="mobile-open-layers" type="button"
-                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="menu_layers_label">Layer</span>
                 </button>
 
                 <!-- NEU: Teilen im Side-Menu -->
                 <button id="mobile-open-share" type="button"
-                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="share_map">Kartenansicht teilen</span>
                 </button>
 
                 <button id="mobile-open-search"
-                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="menu_search">Suche</span>
                 </button>
 
                 <a id="mobile-open-symbols" href="/symbols/"
-                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-center">
                     <span data-i18n="symbols_page_link">Kartenzeichen</span>
                 </a>
 
                 <!-- Direkter Link zur Hilfeseite. data-help-link: i18n.js setzt das Ziel je Sprache (/help/ bzw. /help/<sprache>/). -->
                 <a id="mobile-open-help" href="/help/" data-help-link
-                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-center">
                     <span data-i18n="help_page_link">Hilfe &amp; Anleitung</span>
                 </a>
 
                 <button id="mobile-open-legal" type="button"
-                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-semibold border border-white/10 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="legal_btn">Info & Recht</span>
                 </button>
 
@@ -195,7 +195,7 @@
                             Lokaler Cache
                         </label>
                         <select id="mobile-cache-duration-select" data-cache-duration-select
-                            class="bg-slate-800 text-white text-xs rounded-lg px-2 py-1.5 border border-white/10 focus:outline-none focus:border-blue-500 cursor-pointer shrink-0">
+                            class="bg-slate-800 text-white text-xs rounded-lg px-2 py-1.5 border border-white/10 focus:outline-hidden focus:border-blue-500 cursor-pointer shrink-0">
                             <option value="0" data-i18n="cache_off">Aus</option>
                             <option value="1" data-i18n="cache_1h">1 Stunde</option>
                             <option value="24" data-i18n="cache_1d">1 Tag</option>
@@ -207,15 +207,15 @@
                 </section>
 
                 <button id="mobile-close-menu" type="button"
-                    class="w-full bg-slate-900/40 hover:bg-slate-900/60 py-2.5 rounded-xl text-xs font-semibold border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full bg-slate-900/40 hover:bg-slate-900/60 py-2.5 rounded-xl text-xs font-semibold border border-white/10 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                     <span data-i18n="menu_close">Schließen</span>
                 </button>
             </div>
         </div>
 
-        <div class="absolute bottom-8 left-5 z-[1000]">
+        <div class="absolute bottom-8 left-5 z-1000">
             <button id="btn-legal-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="legal-modal"
-                class="glass-panel p-1.5 rounded-xl text-slate-400 hover:text-white shadow-xl transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="glass-panel p-1.5 rounded-xl text-slate-400 hover:text-white shadow-xl transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -235,7 +235,7 @@
                         class="text-green-400 transition-colors duration-200">AKTUELL</span></div>
                 <div id="data-info-row" class="justify-between items-center gap-2 pt-1.5 mt-1.5 border-t border-white/5 font-sans">
                     <button id="data-info-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="data-info-popover"
-                        class="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 focus:outline-none focus:underline cursor-pointer">
+                        class="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 focus:outline-hidden focus:underline cursor-pointer">
                         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -255,7 +255,7 @@
                         <span data-i18n="data_info_title">Datenstand & Herkunft</span>
                     </h4>
                     <button id="data-info-close-btn" type="button" data-i18n-aria-label="menu_close" aria-label="Schließen"
-                        class="text-slate-400 hover:text-white p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">✕</button>
+                        class="text-slate-400 hover:text-white p-1 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500">✕</button>
                 </div>
 
                 <div class="space-y-2.5 text-xs leading-relaxed">
@@ -274,9 +274,10 @@
                         <div class="text-slate-400 font-semibold" data-i18n="data_live_sync_label">Live-Aktualisierung (Overpass)</div>
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <div id="data-info-delta-val" class="text-green-400 font-medium">–</div>
+                            <!-- flex statt inline-flex (im Flex-Container gleichwertig): In Tailwind v4 steht inline-flex im CSS nach hidden und würde den Knopf immer zeigen -->
                             <button id="data-info-delta-retry" type="button"
                                 data-i18n-aria-label="data_sync_retry" data-i18n-title="data_sync_retry"
-                                class="hidden inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer">
+                                class="hidden flex items-center justify-center w-7 h-7 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold focus:outline-hidden focus:ring-2 focus:ring-blue-300 cursor-pointer">
                                 <span aria-hidden="true">↻</span>
                             </button>
                         </div>
@@ -292,9 +293,9 @@
 
                 <div class="pt-1 flex justify-between items-center gap-3">
                     <a id="data-info-status-link" href="/status/" data-i18n="pipeline_status_link"
-                        class="text-xs text-blue-400 hover:text-blue-300 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Pipeline-Status</a>
+                        class="text-xs text-blue-400 hover:text-blue-300 hover:underline focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">Pipeline-Status</a>
                     <button id="data-info-legal-link" type="button"
-                        class="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 focus:outline-none cursor-pointer">
+                        class="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 focus:outline-hidden cursor-pointer">
                         <span data-i18n="data_info_more_link">Mehr in Info & Recht →</span>
                     </button>
                 </div>
@@ -305,7 +306,7 @@
 
 
         <!-- Mobile Search Modal -->
-        <div id="mobile-search-modal" class="md:hidden hidden fixed inset-0 z-[3500]">
+        <div id="mobile-search-modal" class="md:hidden hidden fixed inset-0 z-3500">
             <div id="mobile-search-backdrop" class="absolute inset-0 bg-black/50"></div>
 
             <div
@@ -313,7 +314,7 @@
                 <div class="flex items-center justify-between mb-3">
                     <div class="text-sm font-semibold" data-i18n="menu_search">Suche</div>
                     <button id="mobile-search-close" data-i18n-aria-label="aria_search_close" aria-label="Suche schließen"
-                        class="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500">✕</button>
+                        class="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 focus:outline-hidden focus:ring-2 focus:ring-blue-500">✕</button>
                 </div>
 
                 <div class="flex gap-2">
@@ -330,7 +331,7 @@
 
 
         <div id="layer-menu" role="group" aria-labelledby="layer-menu-title" tabindex="-1"
-            class="hidden absolute top-20 left-28 z-[1001] w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
+            class="hidden absolute top-20 left-28 z-1001 w-64 glass-panel rounded-2xl p-4 shadow-2xl text-white border border-white/10">
             <h3 id="layer-menu-title" class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 text-center"
                 data-i18n="bg_header">Hintergrund</h3>
             <div class="grid grid-cols-1 gap-1">
@@ -392,21 +393,21 @@
         </div>
 
         <div id="export-menu" role="dialog" aria-labelledby="export-title" aria-modal="true" tabindex="-1"
-            class="hidden absolute top-20 left-5 z-[1001] w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
+            class="hidden absolute top-20 left-5 z-1001 w-80 glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
 
             <div id="export-setup" class="space-y-5">
                 <div class="flex justify-between items-center">
                     <h3 id="export-title" class="font-bold text-lg" data-i18n="export_header">Export</h3>
                     <button id="export-close-btn"
-                        class="text-slate-400 hover:text-white text-2xl leading-none rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="text-slate-400 hover:text-white text-2xl leading-none rounded-lg px-2 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                         data-i18n-aria-label="menu_close" aria-label="Schließen">&times;</button>
                 </div>
 
                 <!-- 1. Format-Vorlage (jetzt ganz oben) -->
-                <div class="space-y-2">
+                <div>
                     <label class="text-xs uppercase font-bold text-slate-400 tracking-wider"
                         data-i18n="format_label">Format</label>
-                    <div class="grid grid-cols-3 gap-2" role="group" data-i18n-aria-label="aria_format_group" aria-label="Format auswählen">
+                    <div class="mt-2 grid grid-cols-3 gap-2" role="group" data-i18n-aria-label="aria_format_group" aria-label="Format auswählen">
                         <button id="fmt-free" aria-pressed="true"
                             class="fmt-btn bg-white/10 p-2 rounded-xl text-xs font-bold border border-blue-400/50 text-blue-300 active"
                             data-i18n="fmt_free">FREI</button>
@@ -433,10 +434,10 @@
                     data-i18n="area_fixed">Fixiert ✓</div>
 
                 <!-- 3. Detail-Grad -->
-                <div class="space-y-2">
+                <div>
                     <label class="text-xs uppercase font-bold text-slate-400 tracking-wider"
                         data-i18n="zoom_label">Zoom</label>
-                    <div class="grid grid-cols-4 gap-2" role="group" data-i18n-aria-label="aria_zoom_group" aria-label="Zoomstufe auswählen">
+                    <div class="mt-2 grid grid-cols-4 gap-2" role="group" data-i18n-aria-label="aria_zoom_group" aria-label="Zoomstufe auswählen">
                         <button id="zoom-15" aria-pressed="false"
                             class="zoom-btn bg-white/5 p-2 rounded-xl text-xs font-bold border border-white/10 hover:bg-white/10">15</button>
                         <button id="zoom-16" aria-pressed="false"
@@ -491,29 +492,29 @@
 
         <!-- NEU: Bestätigungs-Dialog für Titel -->
         <div id="export-title-modal" role="dialog" aria-modal="true" aria-labelledby="export-confirm-header" tabindex="-1"
-            class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1002] w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
+            class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-1002 w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl text-white border border-white/10">
             <h3 id="export-confirm-header" class="font-bold text-lg mb-2" data-i18n="export_confirm_header">Titel bestätigen</h3>
             <p class="text-sm text-slate-400 mb-4" data-i18n="export_confirm_text">Bitte passe den Titel für den Plan
                 an:</p>
 
             <input type="text" id="export-confirm-title"
-                class="w-full bg-slate-800/50 text-white rounded-xl px-3 py-2 border border-white/10 text-lg font-semibold focus:outline-none focus:border-blue-500 transition-colors mb-6"
+                class="w-full bg-slate-800/50 text-white rounded-xl px-3 py-2 border border-white/10 text-lg font-semibold focus:outline-hidden focus:border-blue-500 transition-colors mb-6"
                 data-i18n-placeholder="export_title_loading" placeholder="Lade Ortsnamen …" autocomplete="off">
 
             <div class="grid grid-cols-2 gap-3">
                 <button id="export-confirm-cancel" data-i18n="export_confirm_cancel"
-                    class="py-2 rounded-xl text-sm font-bold border border-white/10 hover:bg-white/10 text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="py-2 rounded-xl text-sm font-bold border border-white/10 hover:bg-white/10 text-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                     Abbrechen
                 </button>
                 <button id="export-confirm-ok" data-i18n="export_confirm_ok"
-                    class="py-2 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="py-2 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                     Erstellen
                 </button>
             </div>
         </div>
 
         <div id="legal-modal" role="dialog" aria-modal="true" aria-labelledby="legal-title" tabindex="-1"
-            class="hidden absolute bottom-20 left-5 z-[2000] w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
+            class="hidden absolute bottom-20 left-5 z-2000 w-80 glass-panel rounded-3xl p-5 text-slate-300 shadow-2xl border border-white/10 max-h-[60vh] flex flex-col">
             <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-3 shrink-0">
                 <h2 id="legal-title" class="text-lg font-bold text-white flex items-center gap-2">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none"
@@ -524,7 +525,7 @@
                     <span data-i18n="legal_title">Rechtliches</span>
                 </h2>
                 <button id="legal-close-btn" data-i18n-aria-label="menu_close" aria-label="Schließen"
-                    class="text-slate-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:text-white rounded-lg p-1">
+                    class="text-slate-400 hover:text-white transition-colors focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:text-white rounded-lg p-1">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                         viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -538,15 +539,15 @@
                 <!-- Hilfe-Bereich (/help/): href setzt i18n.js je nach Sprache (/help/ bzw. /help/en/) -->
                 <section class="rounded-xl border border-blue-400/20 bg-blue-400/5 p-3">
                     <h3 class="text-sm font-bold text-white mb-1">
-                        <a href="/help/" data-help-link class="text-blue-300 hover:text-blue-200 underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm" data-i18n="help_page_link">Hilfe &amp; Anleitung</a>
+                        <a href="/help/" data-help-link class="text-blue-300 hover:text-blue-200 underline underline-offset-4 focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs" data-i18n="help_page_link">Hilfe &amp; Anleitung</a>
                     </h3>
                     <p class="text-slate-300" data-i18n="help_page_hint">Karte, Export, Ortsplan und Hydranten eintragen – Schritt für Schritt erklärt.</p>
                 </section>
 
                 <section class="rounded-xl border border-blue-400/20 bg-blue-400/5 p-3">
                     <h3 class="text-sm font-bold text-white mb-1" data-i18n="symbols_title">Kartenzeichen & OSM-Tags</h3>
-                    <a href="/symbols/" class="text-blue-300 hover:text-blue-200 underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm" data-i18n="symbols_page_link">Kartenzeichen ansehen</a>
-                <a href="/overlay/" class="ml-3 text-blue-300 hover:text-blue-200 underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm" data-i18n="overlay_page_link">Overlay & Einbindung</a>
+                    <a href="/symbols/" class="text-blue-300 hover:text-blue-200 underline underline-offset-4 focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs" data-i18n="symbols_page_link">Kartenzeichen ansehen</a>
+                <a href="/overlay/" class="ml-3 text-blue-300 hover:text-blue-200 underline underline-offset-4 focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs" data-i18n="overlay_page_link">Overlay & Einbindung</a>
                 </section>
 
                 <!-- Einstellungen -->
@@ -555,7 +556,7 @@
                     <div class="flex items-center justify-between gap-2">
                         <label for="cache-duration-select" class="text-slate-400 leading-tight" data-i18n="cache_duration">Lokaler Cache</label>
                         <select id="cache-duration-select" data-cache-duration-select
-                            class="bg-slate-800 text-white text-xs rounded-lg px-2 py-1.5 border border-white/10 focus:outline-none focus:border-blue-500 cursor-pointer shrink-0">
+                            class="bg-slate-800 text-white text-xs rounded-lg px-2 py-1.5 border border-white/10 focus:outline-hidden focus:border-blue-500 cursor-pointer shrink-0">
                             <option value="0" data-i18n="cache_off">Aus</option>
                             <option value="1" data-i18n="cache_1h">1 Stunde</option>
                             <option value="24" data-i18n="cache_1d">1 Tag</option>
@@ -576,7 +577,7 @@
                         Deutschland<br><br>
                         Kontakt:<br>
                         Telefon: +499153/9229501<br>
-                        E-Mail: <a href="mailto:info@openfiremap.org" class="text-blue-300 underline underline-offset-2 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">info@openfiremap.org</a>
+                        E-Mail: <a href="mailto:info@openfiremap.org" class="text-blue-300 underline underline-offset-2 hover:text-blue-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">info@openfiremap.org</a>
                     </p>
                     <div id="email-availability-notice" data-expires-at="2026-11-19T19:34:01Z" class="mt-1 text-xs text-slate-400" hidden>
                         <span data-legal-lang="de" lang="de">Die E-Mail-Adresse war vorübergehend nicht erreichbar. Sie funktioniert jetzt wieder.</span>
@@ -652,7 +653,7 @@
                     <p class="leading-relaxed text-slate-400">
                         <strong>Ihre Rechte:</strong> Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch
                         (Art. 15–21 DSGVO) sowie Beschwerde bei einer Datenschutz-Aufsichtsbehörde. Kontakt:
-                        <a href="mailto:info@openfiremap.org" class="text-blue-300 underline underline-offset-2 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">info@openfiremap.org</a>
+                        <a href="mailto:info@openfiremap.org" class="text-blue-300 underline underline-offset-2 hover:text-blue-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">info@openfiremap.org</a>
                     </p>
                 </section>
 
@@ -724,7 +725,7 @@
                     <p class="leading-relaxed text-slate-400">
                         <strong>Your rights:</strong> access, rectification, erasure, restriction, objection
                         (Art. 15–21 GDPR) and the right to lodge a complaint with a data protection authority. Contact:
-                        <a href="mailto:info@openfiremap.org" class="text-blue-300 underline underline-offset-2 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">info@openfiremap.org</a>
+                        <a href="mailto:info@openfiremap.org" class="text-blue-300 underline underline-offset-2 hover:text-blue-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">info@openfiremap.org</a>
                     </p>
                 </section>
 
@@ -734,13 +735,13 @@
                         <li>
                             <strong>Kartendaten:</strong> &copy; <a href="https://www.openstreetmap.org/copyright"
                                 target="_blank" rel="noopener noreferrer"
-                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">OpenStreetMap</a>-Mitwirkende
+                                class="focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">OpenStreetMap</a>-Mitwirkende
                             (ODbL).
                         </li>
                         <li>
                             <strong>Kartenstil (Standard/Dark/Hell):</strong> &copy; <a
                                 href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer"
-                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">CARTO</a>.
+                                class="focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">CARTO</a>.
                         </li>
                         <li>
                             <strong>Satellitenbilder:</strong> Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA,
@@ -750,29 +751,29 @@
                             <strong>Topographische Karte:</strong> Daten &copy; OpenStreetMap-Mitwirkende, SRTM |
                             Darstellung &copy; <a href="http://opentopomap.org" target="_blank"
                                 rel="noopener noreferrer"
-                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">OpenTopoMap</a>
+                                class="focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">OpenTopoMap</a>
                             (CC-BY-SA).
                         </li>
                         <li>
                             <strong>BayernAtlas (Karte & Luftbild):</strong> &copy; <a
                                 href="https://www.geodaten.bayern.de/bayernatlas-info/grundlagen/impressum.html" target="_blank"
                                 rel="noopener noreferrer"
-                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Bayerische Vermessungsverwaltung</a>.
+                                class="focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">Bayerische Vermessungsverwaltung</a>.
                         </li>
                         <li>
                             <strong>Ortsplan (Hintergrundkarte):</strong> Daten &copy; OpenStreetMap-Mitwirkende (ODbL),
                             aufbereitet mit <a href="https://protomaps.com/" target="_blank" rel="noopener noreferrer"
-                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Protomaps</a>;
+                                class="focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">Protomaps</a>;
                             Schrift Noto Sans (SIL Open Font License 1.1).
                         </li>
                         <li>
                             <strong>Software-Bibliotheken:</strong> <a href="https://leafletjs.com/" target="_blank"
                                 rel="noopener noreferrer"
-                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Leaflet</a>, <a
+                                class="focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">Leaflet</a>, <a
                                 href="https://tailwindcss.com/" target="_blank" rel="noopener noreferrer"
-                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Tailwind CSS</a>, <a
+                                class="focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">Tailwind CSS</a>, <a
                                 href="https://maplibre.org/" target="_blank" rel="noopener noreferrer"
-                                class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">MapLibre GL JS</a> (Ortsplan).
+                                class="focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">MapLibre GL JS</a> (Ortsplan).
                         </li>
                     </ul>
                 </section>
@@ -782,11 +783,11 @@
                     <p class="leading-relaxed text-slate-400">
                         Projekt auf GitHub: <a href="https://github.com/FrnkMrz/OpenFireMapV2" target="_blank"
                             rel="noopener noreferrer"
-                            class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">https://github.com/FrnkMrz/OpenFireMapV2</a>
+                            class="focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">https://github.com/FrnkMrz/OpenFireMapV2</a>
                     </p>
                     <p class="leading-relaxed text-slate-400 mt-2">
                         <a href="/status/" data-i18n="pipeline_status_link"
-                            class="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-sm">Pipeline-Status</a>
+                            class="focus:outline-hidden focus:ring-2 focus:ring-blue-500 rounded-xs">Pipeline-Status</a>
                     </p>
                     <div id="app-version" class="text-xs text-slate-400 mt-2 font-mono"></div>
                 </section>
