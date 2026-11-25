@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - **Overlay-Dokumentation berichtigt:** der Ausschnitts-ZIP-Download liegt auf `/overlay/`, nicht im Exportdialog der Hauptkarte; die Raster-PNGs enthalten gemeinsam gerenderte OFM-Symbole, während die Einzelschalter zur Vektordemo gehören.
 
 ### Behoben
+- **Export: keine hellen Linien mehr an den Kachelgrenzen** (PNG und PDF): Lag der Kartenausschnitt nicht auf ganzen Pixeln (z. B. bei „Sichtbaren Ausschnitt übernehmen“ oder einem gezogenen Rechteck), zeichnete der Export die Kacheln mit gebrochenem Versatz. Der Browser glättete dann beide Kacheln an jeder Kante, der weiße Untergrund schien durch, alle 256 px erschien eine helle Zeile bzw. Spalte (im Satellitenbild Helligkeit 162 statt 85, bei hellen Grundkarten kaum sichtbar). Der Kachel-Ursprung liegt jetzt auf ganzen Geräte-Pixeln, bei einfacher und doppelter Pixeldichte (`snapTileOrigin` in `export.js`, verschiebt höchstens ein halbes Geräte-Pixel; Marker und Grenzen nutzen denselben Ursprung). Im Browser an Satellit, Voyager (@2x) und OSM Deutschland nachgemessen. Test: `test/export-tile-seams.test.js` (Canvas-Attrappe rechnet die Deckung jeder Geräte-Spalte und -Zeile aus).
 - **CSV-Export gegen Formel-Einschleusung geschützt** (PR 223): Werte aus OSM, die mit `=`, `+`, `-`, `@`, Tabulator oder Zeilenumbruch beginnen, bekommen im CSV-Export ein vorangestelltes `'`, damit Tabellenprogramme sie nicht als Formel ausführen. Zahlen wie `-12,5` bleiben unverändert. Test: `test/export-csv-escape.test.js`.
 
 ## [v0.11.0] - 2026-11-10
