@@ -792,6 +792,34 @@ export function getExportPixelRatio(layerConf, width, height) {
   return 2;
 }
 
+/**
+ * Legt den Kachel-Ursprung des Exports auf ganze Geräte-Pixel (1/(256·pixelRatio) Kachel).
+ *
+ * Liegt eine Kachelkante zwischen zwei Geräte-Pixeln, glättet der Canvas beide Kacheln an dieser Kante: jede deckt
+ * das Grenzpixel nur anteilig, der weiße Untergrund scheint durch (bei 0,5 px Versatz rund 25 %, eine dunkle Zeile
+ * mit Helligkeit 85 wird 170). Rand und Kopfzeile sind ganzzahlig, also reicht es, den Ursprung einzurasten.
+ * Die Verschiebung beträgt höchstens ein halbes Geräte-Pixel; Marker und Grenzen nutzen denselben Ursprung.
+ * @param {number} startTile Kachel-Koordinate (Fließkommazahl) der linken bzw. oberen Kartenkante
+ * @param {number} pixelRatio 1 oder 2
+ * @returns {number}
+ */
+export function snapTileOrigin(startTile, pixelRatio) {
+  const step = 256 * pixelRatio;
+  return Math.round(startTile * step) / step;
+}
+
+/**
+ * Zeichnet die geladenen Kacheln ({x, y, img}) in logischen Pixeln (Canvas ist mit ctx.scale(pixelRatio) skaliert).
+ * left/top: linke obere Ecke der Karte auf dem Canvas.
+ */
+export function drawExportTiles(ctx, tiles, { startTileX, startTileY, left, top }) {
+  for (const r of tiles) {
+    const px = (r.x - startTileX) * 256 + left;
+    const py = (r.y - startTileY) * 256 + top;
+    ctx.drawImage(r.img, px, py, 256, 256);
+  }
+}
+
 async function generateMapCanvas() {
   console.log("=== EXPORT RENDER START ===");
 
@@ -965,9 +993,14 @@ async function generateMapCanvas() {
   const centerTileX = (lon2tile(nw.lng, targetZoom) + lon2tile(se.lng, targetZoom)) / 2;
   const centerTileY = (lat2tile(nw.lat, targetZoom) + lat2tile(se.lat, targetZoom)) / 2;
 
-  // Der exakte logische Kachel-Startpunkt dieses Canvas-Ausschnitts (als Fließkommazahl)
-  const startTileX = centerTileX - (mapWidth / 256) / 2;
-  const startTileY = centerTileY - (mapHeight / 256) / 2;
+  // Doppelte Auflösung (@2x-Kacheln), wenn die Ebene sie anbietet und der Canvas klein genug bleibt.
+  // Gezeichnet wird weiter in logischen Pixeln (ctx.scale), Kacheln, Marker und Schrift werden dadurch schärfer.
+  const layerConf = Config.layers[State.activeLayerKey];
+  const pixelRatio = getExportPixelRatio(layerConf, totalWidth, totalHeight);
+
+  // Logischer Kachel-Startpunkt dieses Canvas-Ausschnitts, auf ganze Geräte-Pixel gelegt (sonst helle Nähte, s. snapTileOrigin)
+  const startTileX = snapTileOrigin(centerTileX - (mapWidth / 256) / 2, pixelRatio);
+  const startTileY = snapTileOrigin(centerTileY - (mapHeight / 256) / 2, pixelRatio);
   const endTileX = startTileX + (mapWidth / 256);
   const endTileY = startTileY + (mapHeight / 256);
 
@@ -992,11 +1025,6 @@ async function generateMapCanvas() {
 
   // Kurzer Timeout, damit das UI den Status aktualisieren kann, bevor der Main Thread blockiert
   await new Promise(resolve => setTimeout(resolve, 50));
-
-  // Doppelte Auflösung (@2x-Kacheln), wenn die Ebene sie anbietet und der Canvas klein genug bleibt.
-  // Gezeichnet wird weiter in logischen Pixeln (ctx.scale), Kacheln, Marker und Schrift werden dadurch schärfer.
-  const layerConf = Config.layers[State.activeLayerKey];
-  const pixelRatio = getExportPixelRatio(layerConf, totalWidth, totalHeight);
 
   const canvas = document.createElement("canvas");
   canvas.width = totalWidth * pixelRatio;
@@ -1084,12 +1112,7 @@ async function generateMapCanvas() {
   ctx.clip(); 
 
   // 7. ZEICHNEN (Tiles)
-  results.forEach((r) => {
-    // Pixel-Offset auf der Karte + Margin
-    const px = (r.x - startTileX) * 256 + margin;
-    const py = (r.y - startTileY) * 256 + mapTop;
-    ctx.drawImage(r.img, px, py, 256, 256);
-  });
+  drawExportTiles(ctx, results, { startTileX, startTileY, left: margin, top: mapTop });
 
   // Druckkurve (und ggf. S/W): nur die Kacheln, vor Grenzen und Markern (deren Farben bleiben unverändert)
   // getImageData arbeitet in Geräte-Pixeln, darum der Bereich mal pixelRatio
