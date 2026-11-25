@@ -46,6 +46,8 @@ Der Dateiname enthält Datum, Uhrzeit, Detailgrad und Titel, zum Beispiel `2026-
 
 :::tip Gut lesbare Pläne
 Stelle vor dem Export den Hintergrund **Druck (Hell)** ein. Die Symbole heben sich dann am besten ab, und der Ausdruck braucht weniger Farbe. **Topographisch** geht bis Detailgrad 17.
+
+Druckst du schwarz-weiß, zum Beispiel auf einem Laserdrucker, stelle unter **Grundkarte** auf **S/W**. Die Karte kommt dann in kräftigen Grautönen, Gebäude und Straßenränder bleiben erkennbar, und die Symbole bleiben farbig. Luftbilder werden nur in Graustufen umgewandelt.
 :::
 
 ## GPX und CSV {#gpx-csv}

@@ -46,6 +46,8 @@ The file name contains date, time, detail level and title, for example `2026-11-
 
 :::tip Readable plans
 Switch to the **Print (Light)** background before exporting. The symbols then stand out best and printing uses less ink. **Topographic** goes up to detail level 17.
+
+If you print in black and white, for example on a laser printer, set **Base map** to **B/W**. The map then comes out in strong greys, buildings and road edges stay visible, and the symbols stay in colour. Aerial imagery is only converted to greyscale.
 :::
 
 ## GPX and CSV {#gpx-csv}

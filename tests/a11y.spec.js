@@ -207,6 +207,19 @@ test.describe('Menü- und Karten-Struktur', () => {
         await expect(menu.locator('button[aria-pressed="true"]')).toHaveCount(1);
     });
 
+    test('Grundkarte Farbe/S-W im Export ist eine Gruppe aus Buttons mit aria-pressed', async ({ page }) => {
+        await gotoReady(page);
+        const group = page.locator('#export-menu [role="group"]:has(#color-bw)');
+        await expect(group).toHaveAttribute('aria-label', /.+/);
+        await expect(page.locator('#color-color')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#color-bw')).toHaveAttribute('aria-pressed', 'false');
+        await jsClick(page, '#export-btn-trigger');
+        await page.locator('#color-bw').click();
+        await expect(page.locator('#color-bw')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#color-color')).toHaveAttribute('aria-pressed', 'false');
+        await expect(group.locator('button[aria-pressed="true"]')).toHaveCount(1);
+    });
+
     test('Das mobile Menü ist eine Gruppe ohne Menü-Rollen', async ({ browser }) => {
         const context = await browser.newContext({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
         const page = await context.newPage();

@@ -20,7 +20,7 @@ import { rectSizeKm, isRectWithinKm, clampOffsetToKm } from "./geometry.js";
 import { cancelSelectionMode } from "./map.js";
 import { getHydrantMarkerType, getWaterMarkerKind } from "./marker-symbols.js";
 import { jsPDF } from "jspdf";
-import { applyPrintTone } from "./print-tone.js";
+import { applyPrintTone, monochromeToneFor } from "./print-tone.js";
 
 // Größte Canvas-Seite und größte Fläche für doppelte Auflösung (Safari/iOS-Grenze 4096 × 4096)
 const EXPORT_MAX_SIDE_PX = 14000;
@@ -250,6 +250,23 @@ export function setExportFormat(fmt) {
     btn.setAttribute("aria-pressed", "true");
   }
   clearSelection();
+}
+
+/**
+ * Grundkarte farbig ('color') oder in Graustufen ('bw') für PNG/PDF. Nur State + UI (Schaltergruppe mit aria-pressed).
+ */
+export function setExportColorMode(mode) {
+  if (mode !== "color" && mode !== "bw") return;
+  State.exportColorMode = mode;
+  document.querySelectorAll(".color-btn").forEach((b) => {
+    const on = b.id === `color-${mode}`;
+    b.classList.toggle("active", on);
+    b.classList.toggle("text-blue-300", on);
+    b.classList.toggle("border-blue-400/50", on);
+    b.classList.toggle("bg-white/10", on);
+    b.classList.toggle("bg-white/5", !on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
 }
 
 /**
@@ -1074,7 +1091,7 @@ async function generateMapCanvas() {
     ctx.drawImage(r.img, px, py, 256, 256);
   });
 
-  // Druckkurve: nur die Kacheln, vor Grenzen und Markern (deren Farben bleiben unverändert)
+  // Druckkurve (und ggf. S/W): nur die Kacheln, vor Grenzen und Markern (deren Farben bleiben unverändert)
   // getImageData arbeitet in Geräte-Pixeln, darum der Bereich mal pixelRatio
   applyPrintTone(
     ctx,
@@ -1083,6 +1100,7 @@ async function generateMapCanvas() {
     mapWidth * pixelRatio,
     mapHeight * pixelRatio,
     Config.exportPrintTone?.[State.activeLayerKey],
+    State.exportColorMode === "bw" ? monochromeToneFor(Config.exportMonochrome, State.activeLayerKey) : null,
   );
 
   // 8. OVERLAYS ZEICHNEN

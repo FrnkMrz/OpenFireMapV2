@@ -255,6 +255,27 @@ export const Config = {
     osmde: { blackPoint: 40, whitePoint: [255, 255, 255], gamma: 1.4 },
   },
 
+  /**
+   * Schwarz-Weiß-Druck (Export-Schalter „S/W“, siehe print-tone.js): Kurve auf die Leuchtdichte nach der Farbkurve.
+   * - blackPoint/whitePoint: Grauwerte, die schwarz bzw. Papierweiß werden (whitePoint < 255 spart Toner bei
+   *   fast weißen Flächen)
+   * - gamma: > 1 dunkelt mittlere Töne ab (Gebäude, Wasser, Grünflächen bleiben unterscheidbar)
+   * - invertLayers: dunkle Ebenen, deren Helligkeit umgekehrt wird (heller Hintergrund statt schwarzer Fläche)
+   * - layerOverrides: eigene Werte je Ebene. Luftbilder bleiben neutral (die Kurve würde sie fast schwarz machen).
+   * Gilt für alle Ebenen. Symbole, Grenzen und Texte bleiben farbig.
+   * Abgestimmt am 25.11.2026 an Nürnberg Altstadt, Zoom 17 (Voyager, OSM Deutschland, Dark, Satellit).
+   */
+  exportMonochrome: {
+    blackPoint: 20,
+    whitePoint: 250,
+    gamma: 1.8,
+    invertLayers: ["dark"],
+    layerOverrides: {
+      satellite: { blackPoint: 0, whitePoint: 255, gamma: 1 },
+      bayern_dop: { blackPoint: 0, whitePoint: 255, gamma: 1 },
+    },
+  },
+
   rasterExport: {
     manifestUrl: import.meta.env.VITE_RASTER_MANIFEST_URL?.trim() || 'https://raster-pilot.openfiremap.org/manifest.json',
     minZoom: 12,

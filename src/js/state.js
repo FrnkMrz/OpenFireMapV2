@@ -71,6 +71,7 @@ export const State = {
     // Hier merken wir uns, was der Nutzer im Export-Menü eingestellt hat.
     exportFormat: 'free',       // 'free' (Frei), 'a4l' (DIN A4 Quer), 'a4p' (DIN A4 Hoch)
     exportZoomLevel: 18,        // Wie scharf soll das Bild sein? (Zoom 18 = sehr scharf)
+    exportColorMode: 'color',   // Grundkarte im PNG/PDF: 'color' (farbig) oder 'bw' (Graustufen für Laserdrucker)
 
     // --- AUSWAHL WERKZEUG ---
     // Alles was passiert, wenn man auf "Ausschnitt wählen" klickt.

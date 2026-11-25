@@ -449,6 +449,21 @@
                     </div>
                 </div>
 
+                <!-- 3b. Grundkarte farbig oder S/W (nur PNG/PDF) -->
+                <div>
+                    <label class="text-xs uppercase font-bold text-slate-400 tracking-wider"
+                        data-i18n="color_label">Grundkarte (PNG/PDF)</label>
+                    <div class="mt-2 grid grid-cols-2 gap-2" role="group" data-i18n-aria-label="aria_color_group" aria-label="Farbe der Grundkarte auswählen">
+                        <button id="color-color" aria-pressed="true"
+                            class="color-btn bg-white/10 p-2 rounded-xl text-xs font-bold border border-blue-400/50 text-blue-300 active"
+                            data-i18n="color_color">FARBE</button>
+                        <button id="color-bw" aria-pressed="false"
+                            class="color-btn bg-white/5 p-2 rounded-xl text-xs font-bold border border-white/10 hover:bg-white/10"
+                            data-i18n="color_bw" data-i18n-title="color_bw_title"
+                            title="Grundkarte in Graustufen mit hohem Kontrast, z. B. für Laserdrucker. Symbole bleiben farbig.">S/W</button>
+                    </div>
+                </div>
+
                 <!-- 4. Hydrantenplan PNG -->
                 <button id="png-btn"
                     class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg">
