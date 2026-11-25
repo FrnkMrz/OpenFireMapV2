@@ -777,6 +777,11 @@ export function setupUI() {
         addClick(`zoom-${z}`, async () => { const m = await getExport(); m.setExportZoom(z); });
     });
 
+    // 5b. Grundkarte farbig oder S/W — lazy
+    ['color', 'bw'].forEach(mode => {
+        addClick(`color-${mode}`, async () => { const m = await getExport(); m.setExportColorMode(mode); });
+    });
+
     // 6. Export-Aktionen & Bestätigungs-Dialog
     addClick('select-btn', async () => { const m = await getExport(); m.startSelection(); });
     addClick('select-view-btn', async () => { const m = await getExport(); m.useViewAsSelection(); });
