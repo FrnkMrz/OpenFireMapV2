@@ -1135,7 +1135,7 @@ function generateTooltip(tags, clusterMembers) {
 
         html += `<div class="text-xs font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
         for (const [key, val] of Object.entries(safeTags)) {
-            html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 break-words">${escapeHtml(val)}</div>`;
+            html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 wrap-break-word">${escapeHtml(val)}</div>`;
         }
         return html + `</div></div>`;
     }
@@ -1146,7 +1146,7 @@ function generateTooltip(tags, clusterMembers) {
     clusterMembers.forEach((member, i) => {
         const safeTags = member.tags || {};
         const displayName = escapeHtml(safeTags.name || t('details_hydrant'));
-        html += `<div class="text-xs bg-white/5 rounded p-1"><div class="font-bold text-slate-300 mb-1 border-b border-white/10 pb-0.5">${i + 1}. ${displayName}</div>`;
+        html += `<div class="text-xs bg-white/5 rounded-sm p-1"><div class="font-bold text-slate-300 mb-1 border-b border-white/10 pb-0.5">${i + 1}. ${displayName}</div>`;
         
         if (safeTags['fire_hydrant:style']?.toLowerCase() === 'wsh') {
             html += `<div class="text-xs text-orange-400 font-bold mb-1 pb-1 border-b border-white/10 italic">${escapeHtml(t('wsh_hint') || "Württembergischer Schachthydrant")}</div>`;
@@ -1154,7 +1154,7 @@ function generateTooltip(tags, clusterMembers) {
         
         html += `<div class="font-mono grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">`;
         for (const [key, val] of Object.entries(safeTags)) {
-            html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 break-words">${escapeHtml(val)}</div>`;
+            html += `<div class="text-slate-400 text-right">${escapeHtml(key)}:</div><div class="text-slate-200 wrap-break-word">${escapeHtml(val)}</div>`;
         }
         html += `</div></div>`;
     });
