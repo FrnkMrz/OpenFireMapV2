@@ -107,7 +107,7 @@ OpenFireMap knows four public Overpass servers and tries them in random order, e
 The prepared tiles come from an automatic pipeline of the project. Its code lives in a separate, non-public repository. The flow:
 
 :::steps
-1. **Download:** the current country extracts from [Geofabrik](https://download.geofabrik.de/) in `.osm.pbf` format, several gigabytes in total.
+1. **Update:** the country extracts from [Geofabrik](https://download.geofabrik.de/) in `.osm.pbf` format. For DACHLiLu the pipeline does not download them again each time (several gigabytes in total); it applies only Geofabrik's daily change files with [pyosmium](https://osmcode.org/pyosmium/). If a file is missing or damaged, or no change files arrive any more, it downloads the full extract. The 40 European countries are still downloaded in full.
 2. **Filter:** [Osmium](https://osmcode.org/osmium-tool/) extracts only the fire service objects and municipal boundaries.
 3. **Prepare:** a Python program turns them into GeoJSON per layer, with OSM type and ID on every object (for the live delta) and the data date from the PBF header.
 4. **Build tiles:** [Tippecanoe](https://github.com/felt/tippecanoe) creates vector tiles up to zoom 14 and writes them as one PMTiles file.
@@ -218,7 +218,7 @@ The legal details are in the [privacy policy](/?legal=1).
 - Source code: [github.com/FrnkMrz/OpenFireMapV2](https://github.com/FrnkMrz/OpenFireMapV2), bugs and wishes as an [issue](https://github.com/FrnkMrz/OpenFireMapV2/issues)
 - Version history: [CHANGELOG](https://github.com/FrnkMrz/OpenFireMapV2/blob/main/CHANGELOG.md)
 - Data: [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL), extracts from [Geofabrik](https://download.geofabrik.de/)
-- Formats and tools: [PMTiles](https://github.com/protomaps/PMTiles), [Tippecanoe](https://github.com/felt/tippecanoe), [Osmium](https://osmcode.org/osmium-tool/), [Planetiler](https://github.com/onthegomap/planetiler)
+- Formats and tools: [PMTiles](https://github.com/protomaps/PMTiles), [Tippecanoe](https://github.com/felt/tippecanoe), [Osmium](https://osmcode.org/osmium-tool/), [pyosmium](https://osmcode.org/pyosmium/), [Planetiler](https://github.com/onthegomap/planetiler)
 - Services: [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API), [Nominatim](https://nominatim.org/), [Cloudflare R2](https://www.cloudflare.com/developer-platform/products/r2/), [GitHub Pages](https://pages.github.com/)
 - Libraries: [Leaflet](https://leafletjs.com/), [MapLibre GL JS](https://maplibre.org/), [jsPDF](https://github.com/parallax/jsPDF), [Vite](https://vite.dev/), [Tailwind CSS](https://tailwindcss.com/)
 - Data status: [status page](/status/)
