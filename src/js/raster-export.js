@@ -4,6 +4,9 @@ import { Config } from './config.js';
 
 export class RasterExportError extends Error {}
 
+// Gültige Archivnamen im manifest.json (auch von der Overlay-Seite verwendet)
+export const RASTER_ARCHIVE_NAME = /^(germany|dachlilu)-[0-9a-f]{64}\.pmtiles$/;
+
 function tileX(lon, z) {
   return (lon + 180) / 360 * 2 ** z;
 }
@@ -43,7 +46,7 @@ async function openRasterArchive(manifestUrl, signal) {
   const response = await fetch(url, { cache: 'no-store', redirect: 'error', signal });
   if (!response.ok) throw new RasterExportError('raster_zip_unavailable');
   const manifest = await response.json();
-  if (manifest?.schema_version !== 1 || !/^germany-[0-9a-f]{64}\.pmtiles$/.test(manifest.file) ||
+  if (manifest?.schema_version !== 1 || !RASTER_ARCHIVE_NAME.test(manifest.file) ||
       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(manifest.published_at)) {
     throw new RasterExportError('raster_zip_unavailable');
   }

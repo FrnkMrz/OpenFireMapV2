@@ -4,7 +4,7 @@ import { fetchPipelineData, fetchPipelineBoundaries } from './pipeline.js';
 import { getMarkerSvg, getHydrantMarkerType, getWaterMarkerKind } from './marker-symbols.js';
 import { initI18n, updatePageLanguage, setLang, getLang, t } from './i18n.js';
 import { isRectWithinKm } from './geometry.js';
-import { buildRasterZip } from './raster-export.js';
+import { buildRasterZip, RASTER_ARCHIVE_NAME } from './raster-export.js';
 
 // Rollhofen, Gemeinde Neunkirchen am Sand
 const center = [49.54224, 11.340026];
@@ -68,7 +68,7 @@ async function loadRasterManifest() {
     const response = await fetch(manifestUrl, { cache: 'no-store', redirect: 'error' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const manifest = await response.json();
-    if (manifest?.schema_version !== 1 || !/^germany-[0-9a-f]{64}\.pmtiles$/.test(manifest.file) ||
+    if (manifest?.schema_version !== 1 || !RASTER_ARCHIVE_NAME.test(manifest.file) ||
         !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(manifest.published_at)) {
       throw new Error('Invalid raster manifest');
     }

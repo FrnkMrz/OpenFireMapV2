@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
 import { zxyToTileId } from 'pmtiles';
-import { buildRasterZip, planRasterTiles } from '../src/js/raster-export.js';
+import { buildRasterZip, planRasterTiles, RASTER_ARCHIVE_NAME } from '../src/js/raster-export.js';
 
 vi.mock('../src/js/config.js', () => ({
   Config: { rasterExport: {
@@ -25,7 +25,7 @@ function varint(value) {
   return [...bytes, value];
 }
 
-function serveTestArchive(tile) {
+function serveTestArchive(tile, file = archiveKey) {
   const directory = Uint8Array.from([1, ...varint(zxyToTileId(tile.z, tile.x, tile.y)), 1, png.length, 1]);
   const tileOffset = 127 + directory.length;
   const data = new Uint8Array(tileOffset + png.length);
@@ -42,7 +42,7 @@ function serveTestArchive(tile) {
   return vi.fn((url, request) => {
     if (String(url).endsWith('/manifest.json')) {
       return Promise.resolve(Response.json({
-        schema_version: 1, file: archiveKey, published_at: '2026-11-09T12:00:00Z',
+        schema_version: 1, file, published_at: '2026-11-09T12:00:00Z',
       }));
     }
     const range = new Headers(request.headers).get('range');
@@ -75,6 +75,40 @@ describe('Rasterexport', () => {
     expect(strFromU8(files['ATTRIBUTION.txt'])).toContain('© OpenStreetMap contributors');
     expect(progress).toHaveBeenLastCalledWith(selected.length, selected.length);
     expect(fetch.mock.calls).toHaveLength(3);
+  });
+
+  it.each([
+    ['germany', `germany-${'a'.repeat(64)}.pmtiles`],
+    ['dachlilu', `dachlilu-${'0123456789abcdef'.repeat(4)}.pmtiles`],
+  ])('akzeptiert den Archivnamen mit Präfix %s und lädt das Archiv unter diesem Namen', async (_, file) => {
+    const tile = planRasterTiles(area, 12, 15, 2000).find(({ z }) => z === 15);
+    vi.stubGlobal('location', new URL('https://openfiremap.org'));
+    const fetch = serveTestArchive(tile, file);
+    vi.stubGlobal('fetch', fetch);
+
+    expect(RASTER_ARCHIVE_NAME.test(file)).toBe(true);
+    const zip = await buildRasterZip(area, 15, new AbortController(), vi.fn());
+    const files = unzipSync(new Uint8Array(await zip.arrayBuffer()));
+    expect(JSON.parse(strFromU8(files['selection.json'])).source).toBe(file);
+    expect(String(fetch.mock.calls[1][0])).toBe(`https://raster.example/${file}`);
+  });
+
+  it.each([
+    ['fremdes Präfix', `austria-${'a'.repeat(64)}.pmtiles`],
+    ['germany mit 63 Hex-Zeichen', `germany-${'a'.repeat(63)}.pmtiles`],
+    ['dachlilu mit 63 Hex-Zeichen', `dachlilu-${'a'.repeat(63)}.pmtiles`],
+    ['Großbuchstaben', `dachlilu-${'A'.repeat(64)}.pmtiles`],
+    ['Pfad davor', `../dachlilu-${'a'.repeat(64)}.pmtiles`],
+    ['Unterordner', `x/germany-${'a'.repeat(64)}.pmtiles`],
+    ['Anhang', `dachlilu-${'a'.repeat(64)}.pmtiles.bak`],
+  ])('lehnt einen ungültigen Archivnamen ab (%s), ohne das Archiv anzufragen', async (_, file) => {
+    vi.stubGlobal('location', new URL('https://openfiremap.org'));
+    const fetch = serveTestArchive({ z: 12, x: 0, y: 0 }, file);
+    vi.stubGlobal('fetch', fetch);
+
+    expect(RASTER_ARCHIVE_NAME.test(file)).toBe(false);
+    await expect(buildRasterZip(area, 15, new AbortController(), vi.fn())).rejects.toThrow('raster_zip_unavailable');
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it('verwirft eine zu große Auswahl vor jeglichem Netzwerkzugriff', async () => {
