@@ -27,6 +27,8 @@ Wer neue Tags auswertet, ergänzt sie in `public/taginfo.json` und passt `data_u
 
 Für die vorberechnete Pipeline werden regionale OSM-PBF-Extrakte von [Geofabrik](https://download.geofabrik.de/) verarbeitet. Die Extrakte werden gefiltert, zu relevanten Objektarten verarbeitet und als PMTiles veröffentlicht.
 
+Die fünf DACHLiLu-Auszüge hält die Pipeline seit November 2026 mit [pyosmium](https://osmcode.org/pyosmium/) über die täglichen Änderungsdateien (Replikations-Diffs) von Geofabrik aktuell, statt sie jedes Mal komplett neu zu laden. Komplett geladen wird ein Auszug nur noch, wenn er fehlt, beschädigt ist oder keine Änderungsdateien mehr kommen. Die Auszüge der 40 Europa-Länder werden weiterhin komplett geladen.
+
 Geofabrik ist damit eine Quelle für den Pipeline-Build, nicht eine zweite unabhängige Kartendatenbank. Die zugrunde liegenden Daten bleiben OpenStreetMap-Daten.
 
 ## Overpass

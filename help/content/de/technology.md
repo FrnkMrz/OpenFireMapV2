@@ -108,7 +108,7 @@ OpenFireMap kennt vier öffentliche Overpass-Server und probiert sie in zufälli
 Die vorbereiteten Kacheln entstehen in einer automatischen Pipeline des Projekts. Ihr Code liegt in einem eigenen, nicht öffentlichen Repository. Der Ablauf:
 
 :::steps
-1. **Herunterladen:** Die aktuellen Länderauszüge von [Geofabrik](https://download.geofabrik.de/) im Format `.osm.pbf`, zusammen mehrere Gigabyte.
+1. **Aktualisieren:** Die Länderauszüge von [Geofabrik](https://download.geofabrik.de/) im Format `.osm.pbf`. Für DACHLiLu lädt die Pipeline sie nicht jedes Mal neu (zusammen mehrere Gigabyte), sondern spielt mit [pyosmium](https://osmcode.org/pyosmium/) nur die täglichen Änderungsdateien von Geofabrik ein. Fehlt eine Datei, ist sie beschädigt oder kommen keine Änderungsdateien mehr, lädt sie den Auszug komplett. Die 40 Länder Europas lädt sie weiterhin komplett herunter.
 2. **Filtern:** [Osmium](https://osmcode.org/osmium-tool/) zieht nur die Feuerwehr-Objekte und Gemeindegrenzen heraus.
 3. **Aufbereiten:** Ein Python-Programm macht daraus je Ebene GeoJSON, mit OSM-Typ und -ID an jedem Objekt (für das Live-Delta) und dem Datenstand aus dem PBF-Kopf.
 4. **Kacheln bauen:** [Tippecanoe](https://github.com/felt/tippecanoe) erzeugt daraus Vektorkacheln bis Zoom 14 und schreibt sie als eine PMTiles-Datei.
@@ -219,7 +219,7 @@ Die rechtlichen Einzelheiten stehen in der [Datenschutzerklärung](/?legal=1).
 - Quellcode: [github.com/FrnkMrz/OpenFireMapV2](https://github.com/FrnkMrz/OpenFireMapV2), Fehler und Wünsche als [Issue](https://github.com/FrnkMrz/OpenFireMapV2/issues)
 - Versionsverlauf: [CHANGELOG](https://github.com/FrnkMrz/OpenFireMapV2/blob/main/CHANGELOG.md)
 - Daten: [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL), Auszüge von [Geofabrik](https://download.geofabrik.de/)
-- Formate und Werkzeuge: [PMTiles](https://github.com/protomaps/PMTiles), [Tippecanoe](https://github.com/felt/tippecanoe), [Osmium](https://osmcode.org/osmium-tool/), [Planetiler](https://github.com/onthegomap/planetiler)
+- Formate und Werkzeuge: [PMTiles](https://github.com/protomaps/PMTiles), [Tippecanoe](https://github.com/felt/tippecanoe), [Osmium](https://osmcode.org/osmium-tool/), [pyosmium](https://osmcode.org/pyosmium/), [Planetiler](https://github.com/onthegomap/planetiler)
 - Dienste: [Overpass API](https://wiki.openstreetmap.org/wiki/DE:Overpass_API), [Nominatim](https://nominatim.org/), [Cloudflare R2](https://www.cloudflare.com/developer-platform/products/r2/), [GitHub Pages](https://pages.github.com/)
 - Bibliotheken: [Leaflet](https://leafletjs.com/), [MapLibre GL JS](https://maplibre.org/), [jsPDF](https://github.com/parallax/jsPDF), [Vite](https://vite.dev/), [Tailwind CSS](https://tailwindcss.com/)
 - Status der Daten: [Statusseite](/status/)
