@@ -44,7 +44,7 @@ Aus [OpenStreetMap](https://www.openstreetmap.org/). Freiwillige, oft Feuerwehrl
 
 ### Warum lädt die Karte in Deutschland schneller als anderswo? {#schneller}
 
-Für Deutschland, Österreich, die Schweiz, Liechtenstein, Luxemburg und 40 weitere Länder Europas bereitet OpenFireMap die Daten vorab als Kacheln auf. Überall sonst kommen sie direkt über die Overpass API. Das hängt von der Auslastung dieser öffentlichen Server ab. Mehr unter [Daten & Aktualität](../data/#ladeweg).
+Für Deutschland, Österreich, die Schweiz, Liechtenstein, Luxemburg, 40 weitere Länder Europas sowie Japan, Taiwan, Malaysia, Singapur und Brunei bereitet OpenFireMap die Daten vorab als Kacheln auf. Überall sonst kommen sie direkt über die Overpass API. Das hängt von der Auslastung dieser öffentlichen Server ab. Mehr unter [Daten & Aktualität](../data/#ladeweg).
 
 ### Wann erscheint mein neu eingetragener Hydrant? {#neu}
 

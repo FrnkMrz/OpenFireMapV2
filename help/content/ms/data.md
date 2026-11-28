@@ -14,7 +14,7 @@ Pili bomba, titik air, balai bomba dan defibrilator ditambah oleh komuniti [Open
 
 Bergantung pada kawasan, peta menggunakan salah satu daripada dua cara:
 
-- **Jubin sedia:** Untuk Jerman, Austria, Switzerland, Liechtenstein, Luxembourg dan 40 negara Eropah lain, OpenFireMap membina jubin daripada ekstrak negara OpenStreetMap (Geofabrik) terlebih dahulu. Jubin dihoskan pada Cloudflare dan dihantar melalui cachenya. Pelayar hanya mengambil beberapa jubin yang diperlukan oleh paparan.
+- **Jubin sedia:** Untuk Jerman, Austria, Switzerland, Liechtenstein, Luxembourg, 40 negara Eropah lain serta Jepun, Taiwan, Malaysia, Singapura dan Brunei, OpenFireMap membina jubin daripada ekstrak negara OpenStreetMap (Geofabrik) terlebih dahulu. Jubin dihoskan pada Cloudflare dan dihantar melalui cachenya. Pelayar hanya mengambil beberapa jubin yang diperlukan oleh paparan.
 - **Overpass API:** Di tempat lain, OpenFireMap meminta pelayan Overpass awam secara terus untuk kawasan kelihatan dan margin di sekelilingnya.
 
 :::note Mengapa lebih pantas di Jerman dan Eropah?
@@ -38,7 +38,8 @@ OpenFireMap mengetahui empat pelayan Overpass dan mencubanya dalam susunan rawak
 | Kawasan | Data asas | Entri baharu dan berubah |
 |---|---|---|
 | Jerman, Austria, Switzerland, Liechtenstein, Luxembourg | jubin sedia, biasanya dibina semula setiap hari | diminta daripada Overpass |
-| 40 negara Eropah lain | jubin sedia, biasanya dibina semula setiap minggu | diminta daripada Overpass selagi data asas tidak lebih 10 hari |
+| 40 negara Eropah lain | jubin sedia, biasanya dibina semula setiap minggu (sesetengah negara setiap hari) | diminta daripada Overpass selagi data asas tidak lebih 10 hari |
+| Jepun, Taiwan, Malaysia, Singapura, Brunei | jubin sedia, biasanya dibina semula setiap hari | diminta daripada Overpass selagi data asas tidak lebih 10 hari |
 | seluruh dunia yang lain | keadaan pelayan Overpass | pada setiap pertanyaan |
 
 Selepas memuatkan jubin sedia, OpenFireMap meminta di latar belakang semua perubahan pada paparan sejak tarikh data asas lalu menambahkannya pada peta.

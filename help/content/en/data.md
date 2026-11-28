@@ -14,7 +14,7 @@ Hydrants, water points, fire stations and defibrillators are added by the [OpenS
 
 Depending on the area, the map uses one of two ways:
 
-- **Prepared tiles:** for Germany, Austria, Switzerland, Liechtenstein and Luxembourg plus 40 more European countries, OpenFireMap builds data tiles in advance from the OpenStreetMap country extracts (Geofabrik). They are hosted at Cloudflare and delivered through its cache. Your browser fetches only the few tiles the view needs.
+- **Prepared tiles:** for Germany, Austria, Switzerland, Liechtenstein and Luxembourg plus 40 more European countries, and for Japan, Taiwan, Malaysia, Singapore and Brunei, OpenFireMap builds data tiles in advance from the OpenStreetMap country extracts (Geofabrik). They are hosted at Cloudflare and delivered through its cache. Your browser fetches only the few tiles the view needs.
 - **Overpass API:** everywhere else, OpenFireMap queries a public Overpass server directly, for the visible area plus a margin around it.
 
 :::note Why it is faster in Germany and Europe
@@ -38,7 +38,8 @@ OpenFireMap knows four Overpass servers and tries them in random order. If one d
 | Area | Base data | New and changed entries |
 |---|---|---|
 | Germany, Austria, Switzerland, Liechtenstein, Luxembourg | prepared tiles, usually rebuilt daily | requested from Overpass |
-| 40 more European countries | prepared tiles, usually rebuilt weekly | requested from Overpass as long as the base data is at most 10 days old |
+| 40 more European countries | prepared tiles, usually rebuilt weekly, some countries daily | requested from Overpass as long as the base data is at most 10 days old |
+| Japan, Taiwan, Malaysia, Singapore, Brunei | prepared tiles, usually rebuilt daily | requested from Overpass as long as the base data is at most 10 days old |
 | rest of the world | state of the Overpass server | with every query |
 
 After loading the prepared tiles, OpenFireMap asks in the background for everything that has changed in the view since the base data date and adds it to the map.

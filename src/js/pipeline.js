@@ -405,10 +405,22 @@ export function isPipelineEligible(bounds, zoom) {
 }
 
 /**
+ * `roughBounds` als Liste von Rechtecken. Erlaubt auch die frühere Form mit einem einzelnen Rechteck; null, wenn nichts
+ * Brauchbares eingetragen ist (dann gibt es keinen Vorfilter).
+ * @param {unknown} rb
+ * @returns {number[][]|null}
+ */
+export function roughBoundsList(rb) {
+  if (!Array.isArray(rb) || rb.length === 0) return null;
+  const list = Array.isArray(rb[0]) ? rb : [rb];
+  return list.every((b) => Array.isArray(b) && b.length === 4 && b.every(Number.isFinite)) ? list : null;
+}
+
+/**
  * Wartet (höchstens `manifestTimeoutMs`) auf Manifest und Abdeckung der Europa-Erweiterung, BEVOR die Eignung eines
  * Ausschnitts entschieden wird. Ohne das fiele der allererste Abruf nach dem Start (Start-Ort in Europa) auf Overpass
  * zurück, weil die Daten beim ersten Prüfen noch laden: bei überlasteten Overpass-Servern ein langes Warten, obwohl
- * die Länder-Dateien bereitstehen. Kein Warten für Ausschnitte in DACHLiLu, grob außerhalb Europas (`roughBounds`), bei zu kleinem Zoom, bei ausgeschaltetem
+ * die Länder-Dateien bereitstehen. Kein Warten für Ausschnitte in DACHLiLu, grob außerhalb aller Länder (`roughBounds`), bei zu kleinem Zoom, bei ausgeschaltetem
  * Schalter, wenn die Daten schon da sind und nach einem Fehler innerhalb der Wartezeit (`manifestRetryMs`).
  * @param {L.LatLngBounds|Object} bounds
  * @param {number} zoom
@@ -420,9 +432,10 @@ export function ensureEuropeReady(bounds, zoom) {
   if (!eu?.enabled) return null;
   const effectiveZoom = typeof zoom === 'number' ? zoom : 14;
   if (effectiveZoom < (eu.minZoom ?? 12)) return null;
-  // Grob außerhalb Europas (zum Beispiel Nordamerika): kein Warten, kein Zugriff auf pipeline.openfiremap.org
+  // Grob außerhalb aller Länder (zum Beispiel Nordamerika): kein Warten, kein Zugriff auf pipeline.openfiremap.org
   const rect = viewportRect(bounds);
-  if (rect && Array.isArray(eu.roughBounds) && !rectIntersectsBounds(rect, eu.roughBounds)) return null;
+  const rough = roughBoundsList(eu.roughBounds);
+  if (rect && rough && !rough.some((b) => rectIntersectsBounds(rect, b))) return null;
   if (getEuropeData().manifest) return null;                       // vorhanden (auch ein älterer Stand; Auffrischen läuft im Hintergrund)
   if (isDachliluEligible(bounds, effectiveZoom)) return null;      // DACHLiLu braucht Europa nicht
   return loadEuropeData();

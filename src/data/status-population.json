@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "note": "Einwohner je Land bzw. Gebiet des Geofabrik-Auszugs, in Millionen. Quellen: Eurostat (demo_pjan und demo_r_d2jan, Stand 1. Januar 2025), Weltbank (SP.POP.TOTL, 2025) für Gebiete außerhalb von Eurostat, NISRA (Nordirland, Mitte 2024: 1.927.900). Wo der Auszug anders zugeschnitten ist als die Statistik, steht die Anpassung bei `sources`. Abgerufen am 20.10.2026.",
+    "note": "Einwohner je Land bzw. Gebiet des Geofabrik-Auszugs, in Millionen. Quellen: Eurostat (demo_pjan und demo_r_d2jan, Stand 1. Januar 2025), Weltbank (SP.POP.TOTL, 2025) für Gebiete außerhalb von Eurostat, NISRA (Nordirland, Mitte 2024: 1.927.900). Wo der Auszug anders zugeschnitten ist als die Statistik, steht die Anpassung bei `sources`. Abgerufen am 20.10.2026, Asien am 28.11.2026 (Weltbank; Taiwan: Innenministerium, Melderegister Ende 2025).",
     "unit": "Millionen Einwohner"
   },
   "populationM": {
@@ -48,7 +48,10 @@
     "slovakia": 5.419451,
     "slovenia": 2.13085,
     "spain": 46.869431,
-    "sweden": 10.58771
+    "sweden": 10.58771,
+    "japan": 123.366734,
+    "taiwan": 23.299132,
+    "malaysia-singapore-brunei": 42.555343
   },
   "sources": {
     "germany": "Eurostat demo_pjan, 1.1.2025",
@@ -95,6 +98,9 @@
     "slovakia": "Eurostat demo_pjan, 1.1.2025",
     "slovenia": "Eurostat demo_pjan, 1.1.2025",
     "spain": "Eurostat ES minus ES70 (Kanaren), 1.1.2025; der Auszug umfasst die Kanaren nicht",
-    "sweden": "Eurostat demo_pjan, 1.1.2025"
+    "sweden": "Eurostat demo_pjan, 1.1.2025",
+    "japan": "Weltbank SP.POP.TOTL, 2025",
+    "taiwan": "Innenministerium Taiwan (Melderegister), Stand Ende 2025: 23.299.132; nicht in der Weltbank-Reihe",
+    "malaysia-singapore-brunei": "Weltbank SP.POP.TOTL, 2025, Summe Malaysia (35.977.838), Singapur (6.111.175) und Brunei (466.330), wie der Auszug"
   }
 }

@@ -79,7 +79,7 @@ test.describe('Pipeline-Statusseite', () => {
         await open(page);
         const card = page.locator('#st-cadence');
         await expect(card).toContainText('Täglich geprüft');
-        await expect(card).toContainText('Einmal pro Woche');
+        await expect(card).toContainText('Täglich oder wöchentlich');
         await expect(card).toContainText('Deutschland, Österreich, Schweiz, Luxemburg, Liechtenstein');
         const dach = card.locator('article').first();
         const eu = card.locator('article').nth(1);
@@ -88,7 +88,7 @@ test.describe('Pipeline-Statusseite', () => {
         await expect(eu).toContainText('18.10.2026 01:00');                   // älteste Länder-Datei
         await page.click('.st-lang button[data-lang="en"]');
         await expect(card).toContainText('Checked daily');
-        await expect(card).toContainText('Once a week');
+        await expect(card).toContainText('Daily or weekly');
         await expect(dach).toContainText('Oct 19, 2026 05:59');
     });
 

@@ -182,16 +182,16 @@ describe('data-status.js', () => {
       expect(document.getElementById('data-info-hint').textContent).toBe(t('data_info_hint'));
     });
 
-    it('Länder-Dateien (Europa): Herkunft Europa, wöchentlicher Auszug, ältester Stand, passender Hinweis', () => {
+    it('Länder-Dateien (Europa und Asien): Herkunft Länder-Kacheln, Länderauszug ohne festen Takt, ältester Stand, passender Hinweis', () => {
       updateDataStatus({ source: 'pipeline', sourceScope: 'europe', baseTimestamp: '2026-10-03T12:00:00Z', deltaStatus: 'disabled', loadPhase: 'ready' });
       const source = document.getElementById('data-info-source-val').textContent;
-      expect(source).toBe('Europa-Vektorkacheln (Cloudflare Edge)');
+      expect(source).toBe('Länder-Vektorkacheln (Cloudflare Edge)');
       expect(source).not.toContain('DACHLiLu');
       expect(document.getElementById('data-info-base-val').textContent).toContain('03.10.2026, 12:00 UTC (vor 7 T.)');
-      expect(document.getElementById('data-info-base-sub').textContent).toBe('Wöchentlicher Länderauszug (ältester Stand der beteiligten Länder)');
+      expect(document.getElementById('data-info-base-sub').textContent).toBe('Länderauszug (ältester Stand der beteiligten Länder)');
       const hint = document.getElementById('data-info-hint');
       expect(hint.getAttribute('data-i18n')).toBe('data_info_hint_europe');
-      expect(hint.textContent).toContain('Wöchentliche');
+      expect(hint.textContent).toContain('wöchentlich oder täglich');
       expect(document.getElementById('data-status').innerText).toBe('Stand: vor 7 T.');
     });
 
@@ -207,9 +207,9 @@ describe('data-status.js', () => {
       updateDataStatus({ source: 'pipeline', sourceScope: 'europe', baseTimestamp: '2026-10-03T12:00:00Z', deltaStatus: 'disabled', loadPhase: 'ready' });
       await setLang('en');
       renderDataStatus();
-      expect(document.getElementById('data-info-source-val').textContent).toBe('Europe vector tiles (Cloudflare Edge)');
-      expect(document.getElementById('data-info-base-sub').textContent).toBe('Weekly country extract (oldest state of the countries involved)');
-      expect(document.getElementById('data-info-hint').textContent).toContain('Weekly Geofabrik extracts per country');
+      expect(document.getElementById('data-info-source-val').textContent).toBe('Country vector tiles (Cloudflare Edge)');
+      expect(document.getElementById('data-info-base-sub').textContent).toBe('Country extract (oldest state of the countries involved)');
+      expect(document.getElementById('data-info-hint').textContent).toContain('Geofabrik extracts per country (updated weekly or daily)');
       updateDataStatus({ sourceScope: 'dachlilu' });
       expect(document.getElementById('data-info-source-val').textContent).toBe('DACHLiLu vector tiles (Cloudflare Edge)');
       expect(document.getElementById('data-info-base-sub').textContent).toBe('Daily country extract');

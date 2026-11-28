@@ -19,7 +19,7 @@ How OpenFireMap is built: the web app runs in the browser and talks directly to 
 | Web app | JavaScript (ES modules, no framework), [Vite](https://vite.dev/), [Leaflet](https://leafletjs.com/), [Tailwind CSS](https://tailwindcss.com/) | map, symbols, controls, export |
 | Hosting | [GitHub Pages](https://pages.github.com/) | serves HTML, JavaScript and CSS |
 | Fire service data | [OpenStreetMap](https://www.openstreetmap.org/), prepared as [PMTiles](https://docs.protomaps.com/pmtiles/) | hydrants, water points, stations, defibrillators, municipal boundaries |
-| Data delivery | [Cloudflare R2](https://www.cloudflare.com/developer-platform/products/r2/) with edge cache | prepared tiles for 45 countries |
+| Data delivery | [Cloudflare R2](https://www.cloudflare.com/developer-platform/products/r2/) with edge cache | prepared tiles for 48 countries and territories |
 | Live data | [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) | changes since the data date, rest of the world |
 | Search | [Nominatim](https://nominatim.org/) | find places and addresses |
 | Town plan | [MapLibre GL JS](https://maplibre.org/), [Protomaps](https://protomaps.com/) base map | print-ready plan in the browser |
@@ -75,7 +75,7 @@ How a map area loads: inside the pipeline area the app reads the prepared tiles,
 :::
 
 :::steps
-1. **Check the area:** is the view in Germany, Austria, Switzerland, Liechtenstein or Luxembourg (DACHLiLu), or in one of the 40 European countries whose file is listed in the manifest? Rough rectangles pre-filter, simplified country outlines decide.
+1. **Check the area:** is the view in Germany, Austria, Switzerland, Liechtenstein or Luxembourg (DACHLiLu), or in one of the 40 European countries or in Japan, Taiwan or Malaysia-Singapore-Brunei, whose file is listed in the manifest? Rough rectangles pre-filter, simplified country outlines decide.
 2. **Read tiles:** a PMTiles file is one big archive of vector tiles. The browser first reads the directory and then uses **HTTP range requests** to fetch only the bytes of the 2 to 6 tiles the view needs. Tiles are built up to zoom 14 and scaled up beyond that.
 3. **Draw at once:** the visible area appears as soon as its tiles arrive. A margin around it loads in the background, so small moves need no new request.
 4. **Live delta:** the tiles have a data date (`osm_data_until`). For everything changed in OpenStreetMap since then, the app asks Overpass with `newer:` and replaces or adds objects by OSM type and ID.
@@ -118,7 +118,7 @@ The prepared tiles come from an automatic pipeline of the project. Its code live
 | Area | File |
 |---|---|
 | DACHLiLu | one shared file |
-| 40 European countries | one file per country, with a time stamp in the name |
+| 40 European countries, Japan, Taiwan, Malaysia-Singapore-Brunei | one file per country, with a time stamp in the name |
 | Town plan base map (Germany) | separate file, built with [Planetiler](https://github.com/onthegomap/planetiler) |
 
 How current the data is in each area is explained under [Data & freshness](../data/#aktualitaet).
@@ -128,7 +128,7 @@ How current the data is in each area is explained under [Data & freshness](../da
 Anyone can read two files; they steer the app:
 
 - [`metadata.json`](https://pipeline.openfiremap.org/metadata.json): data date (`osm_data_until`), build time (`generated_at`), object counts and extract ages for DACHLiLu. The app appends the build time to the tile address (`?v=…`), so after a new build nobody gets old tiles from a cache.
-- [`eu/regions.json`](https://pipeline.openfiremap.org/eu/regions.json): the manifest of European countries with file name, rectangle, data date and object counts per country. The app reads it strictly: a file name must match its country exactly, otherwise the entry is ignored.
+- [`eu/regions.json`](https://pipeline.openfiremap.org/eu/regions.json): the manifest of the countries outside DACHLiLu (Europe and Asia; the name dates from the start) with file name, rectangle, data date and object counts per country. The app reads it strictly: a file name must match its country exactly, otherwise the entry is ignored.
 
 ### Several countries in one view {#europa}
 
