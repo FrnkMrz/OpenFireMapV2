@@ -14,7 +14,7 @@ Hydranten, Löschwasserstellen, Feuerwachen und Defibrillatoren trägt die Gemei
 
 Je nach Gebiet nutzt die Karte einen von zwei Wegen:
 
-- **Vorbereitete Kacheln:** Für Deutschland, Österreich, die Schweiz, Liechtenstein und Luxemburg sowie 40 weitere Länder Europas baut OpenFireMap aus den Länderauszügen von OpenStreetMap (Geofabrik) vorab Datenkacheln. Sie liegen bei Cloudflare und werden über dessen Zwischenspeicher ausgeliefert. Der Browser holt nur die wenigen Kacheln, die der Ausschnitt braucht.
+- **Vorbereitete Kacheln:** Für Deutschland, Österreich, die Schweiz, Liechtenstein und Luxemburg sowie 40 weitere Länder Europas, für Japan, Taiwan, Malaysia, Singapur und Brunei baut OpenFireMap aus den Länderauszügen von OpenStreetMap (Geofabrik) vorab Datenkacheln. Sie liegen bei Cloudflare und werden über dessen Zwischenspeicher ausgeliefert. Der Browser holt nur die wenigen Kacheln, die der Ausschnitt braucht.
 - **Overpass API:** Überall sonst fragt OpenFireMap die Daten direkt bei einem öffentlichen Overpass-Server ab, für den sichtbaren Ausschnitt und einen Rand drumherum.
 
 :::note Warum es in Deutschland und Europa schneller geht
@@ -38,7 +38,8 @@ OpenFireMap kennt vier Overpass-Server und probiert sie in zufälliger Reihenfol
 | Gebiet | Basis-Datenstand | Neue und geänderte Einträge |
 |---|---|---|
 | Deutschland, Österreich, Schweiz, Liechtenstein, Luxemburg | vorbereitete Kacheln, in der Regel täglich neu | über Overpass nachgefragt |
-| 40 weitere Länder Europas | vorbereitete Kacheln, in der Regel wöchentlich neu | über Overpass nachgefragt, solange der Stand höchstens 10 Tage alt ist |
+| 40 weitere Länder Europas | vorbereitete Kacheln, in der Regel wöchentlich neu, einzelne Länder täglich | über Overpass nachgefragt, solange der Stand höchstens 10 Tage alt ist |
+| Japan, Taiwan, Malaysia, Singapur, Brunei | vorbereitete Kacheln, in der Regel täglich neu | über Overpass nachgefragt, solange der Stand höchstens 10 Tage alt ist |
 | übrige Welt | Stand des Overpass-Servers | mit jeder Abfrage |
 
 Nach dem Laden der vorbereiteten Kacheln fragt OpenFireMap im Hintergrund nach allem, was sich seit dem Basis-Datenstand im Ausschnitt geändert hat, und ergänzt die Karte damit.

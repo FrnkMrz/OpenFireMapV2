@@ -44,7 +44,7 @@ Daripada [OpenStreetMap](https://www.openstreetmap.org/). Sukarelawan, selalunya
 
 ### Mengapa peta lebih pantas dimuatkan di Jerman? {#schneller}
 
-Data untuk Jerman, Austria, Switzerland, Liechtenstein, Luxembourg dan 40 negara Eropah lain disediakan terlebih dahulu sebagai jubin. Di tempat lain, ia datang terus melalui Overpass API, bergantung pada kesibukan pelayan awam. Lihat [Data & kesegaran](../data/#ladeweg).
+Data untuk Jerman, Austria, Switzerland, Liechtenstein, Luxembourg, 40 negara Eropah lain serta Jepun, Taiwan, Malaysia, Singapura dan Brunei disediakan terlebih dahulu sebagai jubin. Di tempat lain, ia datang terus melalui Overpass API, bergantung pada kesibukan pelayan awam. Lihat [Data & kesegaran](../data/#ladeweg).
 
 ### Bilakah pili baharu saya muncul? {#neu}
 

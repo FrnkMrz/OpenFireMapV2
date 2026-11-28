@@ -49,6 +49,7 @@ describe('Auslieferungszustand', () => {
     expect(SHIPPED_EUROPE_CONFIG.manifestPath).toBe('eu/regions.json');
     expect(SHIPPED_EUROPE_CONFIG.minZoom).toBe(12);
     expect(SHIPPED_EUROPE_CONFIG.roughBounds).toHaveLength(4);
+    for (const b of SHIPPED_EUROPE_CONFIG.roughBounds) expect(b).toHaveLength(4);
     for (const key of ['manifestTimeoutMs', 'manifestTtlMs', 'manifestRetryMs', 'ringPlanTimeoutMs']) {
       expect(Number.isFinite(SHIPPED_EUROPE_CONFIG[key]) && SHIPPED_EUROPE_CONFIG[key] > 0, key).toBe(true);
     }
@@ -276,21 +277,32 @@ describe('Generierte Abdeckung (src/js/coverage/europe.js)', () => {
   const all = () => ({ manifest: parseManifest(rawManifest(ALL_IDS)), coverage: EUROPE_COVERAGE, regionBounds: EUROPE_REGION_BOUNDS });
   const ids = (r) => r.sources.map((s) => s.id);
 
-  it('Aufbau: geschlossene Ringe, 40 Länder mit gültigen Rechtecken, keine DACHLiLu-Länder', () => {
+  it('Aufbau: geschlossene Ringe, 43 Länder (40 Europa, 3 Asien) mit gültigen Rechtecken, keine DACHLiLu-Länder', () => {
     expect(EUROPE_COVERAGE.length).toBeGreaterThanOrEqual(1);
     for (const ring of EUROPE_COVERAGE) {
       expect(ring.length).toBeGreaterThanOrEqual(4);
       expect(ring[0]).toEqual(ring[ring.length - 1]);
     }
-    expect(ALL_IDS).toHaveLength(40);
+    expect(ALL_IDS).toHaveLength(43);
     expect(ALL_IDS.every((id) => isValidBounds(EUROPE_REGION_BOUNDS[id]))).toBe(true);
     for (const dach of ['germany', 'austria', 'switzerland', 'luxembourg', 'liechtenstein']) expect(ALL_IDS).not.toContain(dach);
     for (const excluded of ['russia', 'ukraine', 'belarus', 'turkey', 'georgia']) expect(ALL_IDS).not.toContain(excluded);
   });
 
+  it('Asien: Tokio, Taipeh, Singapur und Kuala Lumpur sind geeignet, Seoul, Shanghai und Jakarta nicht', () => {
+    setEuropeStateForTests({ manifest: parseManifest(rawManifest(ALL_IDS)), coverage: EUROPE_COVERAGE, regionBounds: EUROPE_REGION_BOUNDS, loadedAt: Date.now() });
+    for (const [lat, lon] of [[35.68, 139.77], [25.03, 121.57], [1.29, 103.85], [3.14, 101.69]]) expect(isEuropeEligible(vp(lat, lon), 15), `${lat},${lon}`).toBe(true);
+    for (const [lat, lon] of [[37.57, 126.98], [31.23, 121.47], [-6.2, 106.85]]) expect(isEuropeEligible(vp(lat, lon), 15), `${lat},${lon}`).toBe(false);
+    // ohne den Japan-Eintrag im Manifest: Tokio über Overpass
+    setEuropeStateForTests({ manifest: parseManifest(rawManifest(ALL_IDS.filter((id) => id !== 'japan'))), coverage: EUROPE_COVERAGE, regionBounds: EUROPE_REGION_BOUNDS, loadedAt: Date.now() });
+    expect(isEuropeEligible(vp(35.68, 139.77), 15)).toBe(false);
+    expect(isEuropeEligible(vp(25.03, 121.57), 15)).toBe(true);
+  });
+
   it('jedes Land-Rechteck enthält seinen Hauptort', () => {
     const places = { netherlands: [52.37, 4.90], france: [48.86, 2.35], malta: [35.90, 14.51], iceland: [64.15, -21.94],
-      azores: [37.74, -25.67], cyprus: [35.17, 33.37], 'great-britain': [51.51, -0.13], norway: [59.91, 10.75], greece: [37.98, 23.73] };
+      azores: [37.74, -25.67], cyprus: [35.17, 33.37], 'great-britain': [51.51, -0.13], norway: [59.91, 10.75], greece: [37.98, 23.73],
+      japan: [35.68, 139.77], taiwan: [25.03, 121.57], 'malaysia-singapore-brunei': [1.29, 103.85] };
     for (const [id, [lat, lon]] of Object.entries(places)) {
       const [w, s, e, n] = EUROPE_REGION_BOUNDS[id];
       expect(lon >= w && lon <= e && lat >= s && lat <= n, id).toBe(true);

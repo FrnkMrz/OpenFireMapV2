@@ -20,7 +20,7 @@ Aufbau von OpenFireMap: Die Web-App läuft im Browser und spricht Kartenanbieter
 | Web-App | JavaScript (ES-Module, ohne Framework), [Vite](https://vite.dev/), [Leaflet](https://leafletjs.com/), [Tailwind CSS](https://tailwindcss.com/) | Karte, Symbole, Bedienung, Export |
 | Hosting | [GitHub Pages](https://pages.github.com/) | liefert HTML, JavaScript und CSS aus |
 | Feuerwehr-Daten | [OpenStreetMap](https://www.openstreetmap.org/), aufbereitet als [PMTiles](https://docs.protomaps.com/pmtiles/) | Hydranten, Wasserstellen, Wachen, Defibrillatoren, Gemeindegrenzen |
-| Datenauslieferung | [Cloudflare R2](https://www.cloudflare.com/developer-platform/products/r2/) mit Edge-Cache | vorbereitete Kacheln für 45 Länder |
+| Datenauslieferung | [Cloudflare R2](https://www.cloudflare.com/developer-platform/products/r2/) mit Edge-Cache | vorbereitete Kacheln für 48 Länder und Gebiete |
 | Live-Daten | [Overpass API](https://wiki.openstreetmap.org/wiki/DE:Overpass_API) | Änderungen seit dem Datenstand, übrige Welt |
 | Suche | [Nominatim](https://nominatim.org/) | Orte und Adressen finden |
 | Ortsplan | [MapLibre GL JS](https://maplibre.org/), [Protomaps](https://protomaps.com/)-Basiskarte | druckfertiger Plan im Browser |
@@ -76,7 +76,7 @@ Ladeweg eines Kartenausschnitts: Liegt er im Pipeline-Gebiet, liest die App die 
 :::
 
 :::steps
-1. **Gebiet prüfen:** Liegt der Ausschnitt in Deutschland, Österreich, der Schweiz, Liechtenstein oder Luxemburg (DACHLiLu) oder in einem der 40 Europa-Länder, deren Datei im Manifest steht? Grobe Rechtecke filtern vor, vereinfachte Länderumrisse entscheiden.
+1. **Gebiet prüfen:** Liegt der Ausschnitt in Deutschland, Österreich, der Schweiz, Liechtenstein oder Luxemburg (DACHLiLu) oder in einem der 40 Europa-Länder oder in Japan, Taiwan oder Malaysia-Singapur-Brunei, deren Datei im Manifest steht? Grobe Rechtecke filtern vor, vereinfachte Länderumrisse entscheiden.
 2. **Kacheln lesen:** Eine PMTiles-Datei ist ein einziges großes Archiv aus Vektorkacheln. Der Browser liest zuerst das Verzeichnis und dann mit **HTTP-Range-Anfragen** nur die Bytes der 2 bis 6 Kacheln, die der Ausschnitt braucht. Die Kacheln sind bis Zoom 14 gebaut, darüber werden sie vergrößert.
 3. **Sofort zeichnen:** Der sichtbare Ausschnitt erscheint, sobald seine Kacheln da sind. Ein Rand drumherum lädt im Hintergrund nach, damit kleine Verschiebungen keine neue Anfrage brauchen.
 4. **Live-Delta:** Die Kacheln haben einen Datenstand (`osm_data_until`). Für alles, was danach in OpenStreetMap geändert wurde, fragt die App Overpass mit `newer:` und ersetzt oder ergänzt Objekte per OSM-Typ und -ID.
@@ -119,7 +119,7 @@ Die vorbereiteten Kacheln entstehen in einer automatischen Pipeline des Projekts
 | Gebiet | Datei |
 |---|---|
 | DACHLiLu | eine gemeinsame Datei |
-| 40 Länder Europas | eine Datei je Land, mit Zeitstempel im Namen |
+| 40 Länder Europas, Japan, Taiwan, Malaysia-Singapur-Brunei | eine Datei je Land, mit Zeitstempel im Namen |
 | Ortsplan-Basiskarte (Deutschland) | eigene Datei, mit [Planetiler](https://github.com/onthegomap/planetiler) gebaut |
 
 Wie aktuell die Daten in welchem Gebiet sind, steht unter [Daten & Aktualität](../data/#aktualitaet).
@@ -129,7 +129,7 @@ Wie aktuell die Daten in welchem Gebiet sind, steht unter [Daten & Aktualität](
 Zwei Dateien kann jeder lesen, sie steuern die App:
 
 - [`metadata.json`](https://pipeline.openfiremap.org/metadata.json): Datenstand (`osm_data_until`), Bauzeit (`generated_at`), Objektzahlen und Alter der Auszüge für DACHLiLu. Die App hängt den Bauzeitpunkt an die Kachel-Adresse (`?v=…`), so lädt nach einem neuen Bau niemand alte Kacheln aus einem Zwischenspeicher.
-- [`eu/regions.json`](https://pipeline.openfiremap.org/eu/regions.json): das Manifest der Europa-Länder mit Dateiname, Rechteck, Datenstand und Objektzahlen je Land. Die App liest es streng: Ein Dateiname muss genau zum Land passen, sonst wird der Eintrag ignoriert.
+- [`eu/regions.json`](https://pipeline.openfiremap.org/eu/regions.json): das Manifest der Länder außerhalb von DACHLiLu (Europa und Asien, Name aus der Anfangszeit) mit Dateiname, Rechteck, Datenstand und Objektzahlen je Land. Die App liest es streng: Ein Dateiname muss genau zum Land passen, sonst wird der Eintrag ignoriert.
 
 ### Mehrere Länder in einem Ausschnitt {#europa}
 

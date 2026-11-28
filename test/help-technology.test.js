@@ -29,11 +29,15 @@ describe('Hilfe: Technik & Aufbau', () => {
 
   it('Zahlen im Text passen zur Konfiguration', () => {
     const countries = Object.keys(EUROPE_REGION_BOUNDS).length;
+    // Asien-Auszüge (seit 28.11.2026) laufen über dasselbe Manifest, zählen im Text aber nicht als Europa-Länder
+    const asia = ['japan', 'taiwan', 'malaysia-singapore-brunei'].filter((id) => id in EUROPE_REGION_BOUNDS);
+    const europe = countries - asia.length;
     const appLanguages = readdirSync(resolve(root, 'src/js/lang')).filter((f) => f.endsWith('.js')).length;
     const endpoints = Config.overpassEndpoints.length;
     for (const lang of langs) {
       const { body } = read(lang);
-      expect(body, lang).toContain(`${countries} ${lang === 'de' ? 'Europa-Länder' : 'European countries'}`);
+      expect(body, lang).toContain(`${europe} ${lang === 'de' ? 'Europa-Länder' : 'European countries'}`);
+      for (const name of ['Japan', 'Taiwan']) expect(body, lang).toContain(name);
       expect(body, lang).toContain(`${countries + 5} ${lang === 'de' ? 'Länder' : 'countries'}`);
       expect(body, lang).toContain(`${Config.exportMaxSideKm} km`);
       expect(body, lang).toContain(`${appLanguages} ${lang === 'de' ? 'Sprachen' : 'languages'}`);

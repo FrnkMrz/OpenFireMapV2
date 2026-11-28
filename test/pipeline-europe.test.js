@@ -18,7 +18,7 @@ vi.mock('@mapbox/vector-tile', () => ({
 import { Config } from '../src/js/config.js';
 import {
   isPipelineEligible, ensureEuropeReady, fetchPipelinePmtiles, fetchPipelineBoundaries, fetchPipelineData, boundaryLineSignature, getVectorTile, getPipelineOsmDataUntil,
-  getPipelineGeneratedAt, clearPipelineCache, waitForPendingBuffers, PmtilesCoverageMismatch
+  getPipelineGeneratedAt, clearPipelineCache, waitForPendingBuffers, PmtilesCoverageMismatch, roughBoundsList
 } from '../src/js/pipeline.js';
 import { parseManifest, setEuropeStateForTests, loadEuropeData } from '../src/js/europe.js';
 import { EUROPE_COVERAGE, EUROPE_REGION_BOUNDS, EUROPE_REGION_OUTLINES } from '../src/js/coverage/europe.js';
@@ -941,6 +941,8 @@ describe('Daten nachladen über die Eignungsprüfung', () => {
     Config.pipeline.europe.enabled = true;
     await ensureEuropeReady(vp(40.71, -74.0), 16);                    // New York: grob außerhalb Europas
     await ensureEuropeReady(vp(-33.87, 151.21), 16);                  // Sydney
+    await ensureEuropeReady(vp(14.6, 120.98), 16);                    // Manila: zwischen den Asien-Rechtecken
+    await ensureEuropeReady(vp(-6.2, 106.85), 16);                    // Jakarta
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(manifestRequests).toBe(0);
     setEuropeStateForTests({ manifest: manifestFor({ netherlands: {} }), coverage: EUROPE_COVERAGE, regionBounds: EUROPE_REGION_BOUNDS, loadedAt: Date.now() - 3600000 });
@@ -948,17 +950,27 @@ describe('Daten nachladen über die Eignungsprüfung', () => {
     expect(manifestRequests).toBe(0);
   });
 
-  it('ensureEuropeReady: Europa selbst wartet (Azoren, Zypern, Spitzbergen-Rand, Island), jedes Länder-Rechteck liegt in roughBounds', async () => {
-    const [w, so, e, n] = Config.pipeline.europe.roughBounds;
+  it('ensureEuropeReady: die Länder selbst warten (Azoren, Zypern, Island, Tokio, Taipeh, Singapur), jedes Länder-Rechteck liegt in einem roughBounds-Rechteck', async () => {
+    const rough = roughBoundsList(Config.pipeline.europe.roughBounds);
+    expect(rough.length).toBe(4);
     for (const [id, [bw, bs, be, bn]] of Object.entries(EUROPE_REGION_BOUNDS)) {
-      expect(bw >= w && bs >= so && be <= e && bn <= n, `${id} ragt aus roughBounds heraus`).toBe(true);
+      const inside = rough.some(([w, so, e, n]) => bw >= w && bs >= so && be <= e && bn <= n);
+      expect(inside, `${id} ragt aus roughBounds heraus`).toBe(true);
     }
-    for (const spot of [vp(37.74, -25.67), vp(35.17, 33.36), vp(64.15, -21.94), vp(52.37, 4.9)]) {
+    for (const id of ['japan', 'taiwan', 'malaysia-singapore-brunei']) expect(EUROPE_REGION_BOUNDS[id], id).toBeDefined();
+    for (const spot of [vp(37.74, -25.67), vp(35.17, 33.36), vp(64.15, -21.94), vp(52.37, 4.9),
+      vp(35.68, 139.77), vp(25.03, 121.57), vp(1.29, 103.85), vp(26.21, 127.68)]) {
       setEuropeStateForTests();
       manifestRequests = 0;
       await ensureEuropeReady(spot, 16);
       expect(manifestRequests, JSON.stringify(spot)).toBe(1);
     }
+  });
+
+  it('roughBoundsList: Liste, einzelnes Rechteck (frühere Form) oder nichts Brauchbares', () => {
+    expect(roughBoundsList([[1, 2, 3, 4], [5, 6, 7, 8]])).toEqual([[1, 2, 3, 4], [5, 6, 7, 8]]);
+    expect(roughBoundsList([-32, 29, 36, 82])).toEqual([[-32, 29, 36, 82]]);
+    for (const bad of [undefined, null, [], [1, 2, 3], [[1, 2, 3, 4], [1, 2]], [[1, 2, 'x', 4]]]) expect(roughBoundsList(bad), JSON.stringify(bad)).toBeNull();
   });
 
   it('ensureEuropeReady: ein Fehler lässt den Abruf nicht hängen, und innerhalb der Wartezeit gibt es keinen zweiten Versuch', async () => {

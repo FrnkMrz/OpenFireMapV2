@@ -137,9 +137,10 @@ describe('echte, generierte Umrisse', () => {
     'malta': [35.9, 14.51], 'moldova': [47.01, 28.86], 'monaco': [43.74, 7.42], 'montenegro': [42.44, 19.26],
     'netherlands': [52.37, 4.9], 'norway': [59.91, 10.75], 'poland': [52.23, 21.01], 'portugal': [38.72, -9.14],
     'romania': [44.43, 26.1], 'serbia': [44.79, 20.45], 'slovakia': [48.15, 17.11], 'slovenia': [46.06, 14.51],
-    'spain': [40.42, -3.7], 'sweden': [59.33, 18.07]
+    'spain': [40.42, -3.7], 'sweden': [59.33, 18.07],
+    'japan': [35.68, 139.77], 'taiwan': [25.03, 121.57], 'malaysia-singapore-brunei': [1.29, 103.85]
   };
-  it('jedes der 40 Länder wird an einem Ort in seinem Gebiet als nötig erkannt', () => {
+  it('jedes der 43 Länder wird an einem Ort in seinem Gebiet als nötig erkannt', () => {
     expect(Object.keys(CITIES).sort()).toEqual([...ALL_IDS].sort());
     for (const [id, [lat, lon]] of Object.entries(CITIES)) {
       expect(needs(lat, lon, 0.01), id).toContain(id);

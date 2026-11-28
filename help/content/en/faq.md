@@ -44,7 +44,7 @@ From [OpenStreetMap](https://www.openstreetmap.org/). Volunteers, often local fi
 
 ### Why does the map load faster in Germany than elsewhere? {#schneller}
 
-For Germany, Austria, Switzerland, Liechtenstein, Luxembourg and 40 more European countries, OpenFireMap prepares the data in advance as tiles. Everywhere else it comes directly through the Overpass API, which depends on how busy these public servers are. More under [Data & freshness](../data/#ladeweg).
+For Germany, Austria, Switzerland, Liechtenstein, Luxembourg, 40 more European countries and Japan, Taiwan, Malaysia, Singapore and Brunei, OpenFireMap prepares the data in advance as tiles. Everywhere else it comes directly through the Overpass API, which depends on how busy these public servers are. More under [Data & freshness](../data/#ladeweg).
 
 ### When will my new hydrant appear? {#neu}
 

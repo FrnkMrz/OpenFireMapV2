@@ -34,7 +34,8 @@ export const COUNTRY_EN = {
   'isle-of-man': 'Isle of Man', italy: 'Italy', kosovo: 'Kosovo', latvia: 'Latvia', lithuania: 'Lithuania', malta: 'Malta',
   macedonia: 'North Macedonia', moldova: 'Moldova', monaco: 'Monaco', montenegro: 'Montenegro', netherlands: 'Netherlands',
   norway: 'Norway', poland: 'Poland', portugal: 'Portugal', romania: 'Romania', serbia: 'Serbia', slovakia: 'Slovakia',
-  slovenia: 'Slovenia', spain: 'Spain', sweden: 'Sweden'
+  slovenia: 'Slovenia', spain: 'Spain', sweden: 'Sweden',
+  japan: 'Japan', taiwan: 'Taiwan', 'malaysia-singapore-brunei': 'Malaysia, Singapore and Brunei'
 };
 
 /** Landesname in der gewählten Sprache; unbekannte Länder behalten den Namen aus dem Manifest. */
@@ -67,8 +68,8 @@ export const TEXTS = {
     cad_title: 'So oft werden die Karten aktualisiert',
     cad_dach_t: 'Deutschland, Österreich, Schweiz, Luxemburg, Liechtenstein', cad_dach_pill: 'Täglich geprüft',
     cad_dach_d: 'Gemeinsamer Build (DACHLiLu): Er wird täglich geprüft und neu gebaut, sobald Geofabrik neue Daten bereitstellt.',
-    cad_eu_t: 'Übrige europäische Länder', cad_eu_pill: 'Einmal pro Woche',
-    cad_eu_d: 'Jedes Land wird einzeln gebaut, einmal pro Woche an einem festen Wochentag. Eine Karte kann deshalb bis zu etwa einer Woche alt sein.',
+    cad_eu_t: 'Übrige Länder in Europa und Asien', cad_eu_pill: 'Täglich oder wöchentlich',
+    cad_eu_d: 'Jedes Land wird einzeln gebaut: mit Tagesdiffs jede Nacht, sonst einmal pro Woche an einem festen Wochentag. Eine Karte kann deshalb bis zu etwa einer Woche alt sein.',
     cad_last: 'Letzter Lauf (Veröffentlichung, UTC)', cad_oldest: 'Älteste Karte (Upload, UTC)', cad_count: 'Länder und Gebiete',
     def_osm_t: 'OSM-Datenstand', def_osm_d: 'Zeitpunkt, bis zu dem Änderungen aus OpenStreetMap im Geofabrik-Auszug enthalten sind.',
     def_up_t: 'Upload', def_up_d: 'Zeitpunkt, an dem die fertige Karte nach Cloudflare R2 hochgeladen wurde. Der Verzug ist die Zeit dazwischen.',
@@ -126,8 +127,8 @@ export const TEXTS = {
     cad_title: 'How often the maps are updated',
     cad_dach_t: 'Germany, Austria, Switzerland, Luxembourg, Liechtenstein', cad_dach_pill: 'Checked daily',
     cad_dach_d: 'Shared build (DACHLiLu): checked daily and rebuilt as soon as Geofabrik provides new data.',
-    cad_eu_t: 'Other European countries', cad_eu_pill: 'Once a week',
-    cad_eu_d: 'Each country is built on its own, once a week on a fixed weekday. A map can therefore be up to about a week old.',
+    cad_eu_t: 'Other countries in Europe and Asia', cad_eu_pill: 'Daily or weekly',
+    cad_eu_d: 'Each country is built on its own: every night with daily diffs, otherwise once a week on a fixed weekday. A map can therefore be up to about a week old.',
     cad_last: 'Last run (publication, UTC)', cad_oldest: 'Oldest map (upload, UTC)', cad_count: 'Countries and regions',
     def_osm_t: 'OSM data state', def_osm_d: 'Point in time up to which OpenStreetMap changes are contained in the Geofabrik extract.',
     def_up_t: 'Upload', def_up_d: 'Point in time when the finished map was uploaded to Cloudflare R2. The delay is the time in between.',
