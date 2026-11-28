@@ -64,10 +64,11 @@ describe('Handout: Overlay-Leitfaden', () => {
         expect(html).toContain('ausschließlich um <strong>openfiremap.org</strong>');
     });
 
-    it('verweist auf PMTiles als Zielweg und nennt keine Länderliste für das Overlay', () => {
+    it('verweist auf PMTiles als Zielweg und nennt nur das veröffentlichte Gebiet', () => {
         expect(html).toContain('PMTiles');
         expect(html).toContain('Zielweg');
-        expect(source).not.toMatch(/Italien|Schweiz/);
+        expect(source).toContain('Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein');
+        expect(source).not.toMatch(/Italien/);
     });
 
     it('verwendet keine Wir-Form (Ich-Form als Privatperson), außer wenn Gesprächspartner gemeint sind', () => {

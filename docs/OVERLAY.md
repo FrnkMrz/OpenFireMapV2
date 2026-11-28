@@ -2,6 +2,8 @@
 
 Die eigenständige Seite liegt unter `/overlay/` und wird als Vite-Einstieg aus `overlay/index.html` gebaut. `src/js/overlay-page.js` verwendet Leaflet, die vorhandenen OFM-Symbole und die Pipeline-PMTiles für die Vektordemo. `src/js/raster-export.js` stellt die ZIP-Erzeugung für die Ausschnittsauswahl bereit.
 
+Das Raster-Overlay deckt Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein (DACHLiLu) ab, Zoomstufen 12–18. Stand 28.11.2026 ist das Archiv rund 5,3 GB groß und enthält rund 3,1 Millionen Kacheln.
+
 ## Lokale Entwicklung und Veröffentlichung
 
 Für die Rasterdemo und den ZIP-Download die Seite lokal über den freigegebenen Entwicklungs-Origin aufrufen:
@@ -14,7 +16,7 @@ npm run dev -- --host localhost --port 5173
 
 Der Einbindungsleitfaden liegt als Markdown unter `handouts/overlay-leitfaden/`. `npm run build` rendert daraus mit Playwright/Chromium das PDF und veröffentlicht es unter `/downloads/OpenFireMap-Overlay-Leitfaden.pdf`. Inhaltliche Änderungen am Leitfaden werden in der Markdown-Datei vorgenommen; der Pages-Build erzeugt die Download-Datei bei jedem Website-Build neu.
 
-Die Demo liest `schema_version`, `file` und `published_at` aus `manifest.json`. Der versionsgebundene Archivname darf nicht fest in die Seite eingetragen werden. Die Dateigröße für den Deutschland-Download kommt aus `Content-Length`; falls der Server sie nicht liefert, zeigt die Seite „Dateigröße nicht ermittelt“.
+Die Demo liest `schema_version`, `file` und `published_at` aus `manifest.json`. Der versionsgebundene Archivname darf nicht fest in die Seite eingetragen werden. Die Dateigröße für den Archiv-Download kommt aus `Content-Length`; falls der Server sie nicht liefert, zeigt die Seite „Dateigröße nicht ermittelt“.
 
 ## Voraussetzungen für Browserzugriffe
 

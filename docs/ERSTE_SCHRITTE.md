@@ -30,7 +30,7 @@ Die Karte lädt nur für den aktuellen Ausschnitt relevante Daten. In DACHLiLu u
 - **PDF** für einen druckbaren Plan
 - **GPX** für sichtbare Punkte in GPS-Anwendungen
 - **CSV** für weitere Auswertung, zum Beispiel in Tabellenprogrammen
-- **Feuerwehr-Overlay als ZIP** für abgedeckte Gebiete in Deutschland: transparente Rasterkacheln für die Einbindung in andere Kartenprogramme. Die verfügbare Zoomstufe wird vor dem Download gewählt.
+- **Feuerwehr-Overlay als ZIP** für abgedeckte Gebiete in Deutschland, Österreich, der Schweiz, Luxemburg und Liechtenstein: transparente Rasterkacheln für die Einbindung in andere Kartenprogramme. Die verfügbare Zoomstufe wird vor dem Download gewählt.
 
 Vor einem großen Export sollte der Ausschnitt sinnvoll eingegrenzt werden. Die Anwendung begrenzt große Bereiche, um Browser-Abstürze und unnötig große Dateien zu vermeiden.
 
@@ -49,7 +49,7 @@ Die vorhandenen Kacheln werden als Ganzes exportiert. An den Rändern kann eine
 Kachel daher über das Rechteck hinausragen. Für größere Flächen wähle eine
 niedrigere Zoomstufe oder exportiere mehrere kleinere Ausschnitte.
 
-Unter [OpenFireMap-Overlay](https://openfiremap.org/overlay/) findest du zusätzlich eine interaktive Raster- und Vektordemo, den Download des Deutschland-Archivs und Beispiele zur Einbindung in Leaflet oder MapLibre. Das Rasterarchiv umfasst Deutschland in den Zoomstufen 12–18; die Rasterdatei fasst die sichtbaren Feuerwehrinhalte zusammen und bietet keine einzelnen Ebenenschalter. Für fremde Websites kann eine eigene CORS-Freigabe nötig sein.
+Unter [OpenFireMap-Overlay](https://openfiremap.org/overlay/) findest du zusätzlich eine interaktive Raster- und Vektordemo, den Download des DACHLiLu-Archivs und Beispiele zur Einbindung in Leaflet oder MapLibre. Das Rasterarchiv umfasst Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein in den Zoomstufen 12–18; die Rasterdatei fasst die sichtbaren Feuerwehrinhalte zusammen und bietet keine einzelnen Ebenenschalter. Für fremde Websites kann eine eigene CORS-Freigabe nötig sein.
 
 ## Mobile Nutzung
 
