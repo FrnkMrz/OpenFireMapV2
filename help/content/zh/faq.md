@@ -64,6 +64,6 @@ Overpass 处理后显示，缓存或服务器负载可能延迟；删除要等�
 ### 是否收费？ {#kosten}
 免费，无账户或广告。代码在[GitHub](https://github.com/FrnkMrz/OpenFireMapV2)采用 MIT 许可证。
 ### 会保存个人数据吗？ {#datenschutz}
-设置和地图数据存储在浏览器中，搜索会访问外部服务。[隐私政策](/?legal=1)。
+设置和地图数据存储在浏览器中，搜索会访问外部服务。[隐私政策](/datenschutz/#en)。
 ### 如何联系？ {#kontakt}
 联系[info@openfiremap.org](mailto:info@openfiremap.org)或[GitHub](https://github.com/FrnkMrz/OpenFireMapV2/issues)。

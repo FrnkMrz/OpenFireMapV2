@@ -114,7 +114,7 @@ Gratis. Tidak perlu akun, tidak ada iklan atau langganan. Kode sumber berlisensi
 
 ### Data apa yang disimpan OpenFireMap tentang saya? {#datenschutz}
 
-Peta berjalan di browser. Hanya pengaturan seperti bahasa dan cache, tampilan peta terakhir, pengaturan peta kota, dan data peta yang pernah dimuat yang disimpan di sana. Browser menghubungi layanan eksternal untuk pencarian, ubin peta, dan data. Detailnya ada di [kebijakan privasi](/?legal=1).
+Peta berjalan di browser. Hanya pengaturan seperti bahasa dan cache, tampilan peta terakhir, pengaturan peta kota, dan data peta yang pernah dimuat yang disimpan di sana. Browser menghubungi layanan eksternal untuk pencarian, ubin peta, dan data. Detailnya ada di [kebijakan privasi](/datenschutz/#en).
 
 ### Bagaimana menghubungi Anda? {#kontakt}
 

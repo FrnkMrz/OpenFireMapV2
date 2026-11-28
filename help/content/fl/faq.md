@@ -114,7 +114,7 @@ Niets. Geen account, advertenties of abonnement. De code staat op [GitHub](https
 
 ### Welke gegevens bewaart OpenFireMap over mij? {#datenschutz}
 
-De kaart draait in je browser. Instellingen, laatste kaartbeeld en cache worden lokaal bewaard. Zie het [privacybeleid](/?legal=1).
+De kaart draait in je browser. Instellingen, laatste kaartbeeld en cache worden lokaal bewaard. Zie het [privacybeleid](/datenschutz/#en).
 
 ### Hoe kan ik jullie bereiken? {#kontakt}
 

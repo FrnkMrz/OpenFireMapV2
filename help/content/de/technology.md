@@ -203,9 +203,9 @@ OpenFireMap setzt keine Cookies und nutzt kein Tracking und keine Statistikdiens
 | Kartenanbieter | beim Anzeigen | Kachel-Koordinaten der gewählten Ebene |
 | Cloudflare | im Pipeline-Gebiet | Kachel-Bereiche der PMTiles-Dateien |
 | Overpass | Live-Delta, übrige Welt, Export | Rechteck des Ausschnitts |
-| Nominatim | nur beim Suchen | dein Suchbegriff |
+| Nominatim | beim Suchen, beim Titelvorschlag für Export und Ortsplan | dein Suchbegriff bzw. die Mitte des Ausschnitts |
 
-Die rechtlichen Einzelheiten stehen in der [Datenschutzerklärung](/?legal=1).
+Die rechtlichen Einzelheiten stehen in der [Datenschutzerklärung](/datenschutz/).
 
 ## Qualität und Auslieferung {#qualitaet}
 

@@ -114,7 +114,7 @@ Nothing. There is no account, no advertising and no subscription. The source cod
 
 ### What data does OpenFireMap store about me? {#datenschutz}
 
-The map runs in your browser. Only settings such as language and cache, the last map view, the town plan settings and map data you have loaded are stored there. For search, map tiles and data your browser contacts external services. The details are in the [privacy policy](/?legal=1).
+The map runs in your browser. Only settings such as language and cache, the last map view, the town plan settings and map data you have loaded are stored there. For search, map tiles and data your browser contacts external services. The details are in the [privacy policy](/datenschutz/#en).
 
 ### How can I reach you? {#kontakt}
 

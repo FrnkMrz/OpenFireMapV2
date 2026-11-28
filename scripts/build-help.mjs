@@ -291,6 +291,8 @@ export function buildHelpPages({ root = defaultRoot, write = true } = {}) {
     return {
       lang,
       htmlLang: info.hreflang || lang,
+      // Impressum/Datenschutz: Deutsch oben, alle anderen Sprachen zur englischen Fassung
+      legalHash: lang === 'de' ? '' : '#en',
       dir: info.dir || (['ar', 'ur'].includes(lang) ? 'rtl' : 'ltr'),
       altLang,
       langShort: lang.toUpperCase(),

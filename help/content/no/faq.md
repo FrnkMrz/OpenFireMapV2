@@ -114,7 +114,7 @@ Ingenting. Ingen konto, annonser eller abonnement. Kildekoden ligger på [GitHub
 
 ### Hvilke data om meg lagrer OpenFireMap? {#datenschutz}
 
-Kartet kjører i nettleseren. Bare innstillinger som språk og hurtigbuffer, siste kartvisning, bykartinnstillinger og kartdata du har lastet inn, lagres der. Søk, kartfliser og data kontakter eksterne tjenester. Detaljer står i [personvernerklæringen](/?legal=1).
+Kartet kjører i nettleseren. Bare innstillinger som språk og hurtigbuffer, siste kartvisning, bykartinnstillinger og kartdata du har lastet inn, lagres der. Søk, kartfliser og data kontakter eksterne tjenester. Detaljer står i [personvernerklæringen](/datenschutz/#en).
 
 ### Hvordan får jeg kontakt med dere? {#kontakt}
 

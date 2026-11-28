@@ -114,7 +114,7 @@ Hayır. OpenFireMap, OpenStreetMap tabanlı özel ve ticari olmayan bir projedir
 
 ### OpenFireMap hakkımda hangi verileri saklar? {#datenschutz}
 
-Harita tarayıcınızda çalışır. Ayarlar, son görünüm ve önbellek yerel olarak tutulur. [Gizlilik politikası](/?legal=1).
+Harita tarayıcınızda çalışır. Ayarlar, son görünüm ve önbellek yerel olarak tutulur. [Gizlilik politikası](/datenschutz/#en).
 
 ### Size nasıl ulaşabilirim? {#kontakt}
 

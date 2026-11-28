@@ -114,7 +114,7 @@ Nichts. Es gibt kein Konto, keine Werbung und kein Abo. Der Quellcode steht unte
 
 ### Welche Daten speichert OpenFireMap über mich? {#datenschutz}
 
-Die Karte läuft in deinem Browser. Gespeichert werden dort nur Einstellungen wie Sprache und Cache, der zuletzt angesehene Ausschnitt, die Einstellungen des Ortsplans und bereits geladene Kartendaten. Für Suche, Kartenkacheln und Daten fragt der Browser externe Dienste an. Die Einzelheiten stehen in der [Datenschutzerklärung](/?legal=1).
+Die Karte läuft in deinem Browser. Gespeichert werden dort nur Einstellungen wie Sprache und Cache, der zuletzt angesehene Ausschnitt, die Einstellungen des Ortsplans und bereits geladene Kartendaten. Für Suche, Kartenkacheln und Daten fragt der Browser externe Dienste an. Die Einzelheiten stehen in der [Datenschutzerklärung](/datenschutz/).
 
 ### Wie erreiche ich euch? {#kontakt}
 

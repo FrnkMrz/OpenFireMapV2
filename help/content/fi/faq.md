@@ -114,7 +114,7 @@ Ei mitään. Tiliä, mainoksia tai tilausta ei tarvita. Lähdekoodi on MIT-lisen
 
 ### Mitä tietoja OpenFireMap tallentaa minusta? {#datenschutz}
 
-Kartta toimii selaimessasi. Sinne tallentuvat vain asetukset, kuten kieli ja välimuisti, viimeisin karttanäkymä, kaupunkikartan asetukset ja ladatut karttatiedot. Haku, karttatiilet ja kohdetiedot vaativat yhteyden ulkoisiin palveluihin. Lisätiedot ovat [tietosuojaselosteessa](/?legal=1).
+Kartta toimii selaimessasi. Sinne tallentuvat vain asetukset, kuten kieli ja välimuisti, viimeisin karttanäkymä, kaupunkikartan asetukset ja ladatut karttatiedot. Haku, karttatiilet ja kohdetiedot vaativat yhteyden ulkoisiin palveluihin. Lisätiedot ovat [tietosuojaselosteessa](/datenschutz/#en).
 
 ### Miten saan yhteyden teihin? {#kontakt}
 

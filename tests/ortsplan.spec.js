@@ -64,8 +64,9 @@ test('Impressum und Datenschutz sind von den Ortsplan-Seiten erreichbar und nenn
     await page.route(MANIFEST, (route) => route.fulfill({ status: 404, body: '' }));
     await page.goto('/ortsplan/');
     await page.getByRole('link', { name: 'Impressum und Datenschutz' }).click();
-    await expect(page).toHaveURL(/legal=1/);
-    const modal = page.locator('#legal-modal');
-    await expect(modal).toBeVisible();
-    await expect(modal.locator('section[lang="de"]').filter({ hasText: 'localStorage' })).toContainText('Ortsplan');
+    await expect(page).toHaveURL(/\/datenschutz\/$/);
+    await expect(page.locator('h1').first()).toHaveText('Datenschutzerklärung');
+    await expect(page.locator('section[aria-labelledby="privacy-de"]')).toContainText('ofm_ortsplan_wizard');
+    await expect(page.locator('section[aria-labelledby="privacy-de"]')).toContainText('Ortsplan');
+    await expect(page.locator('a[href="/impressum/"]').first()).toBeVisible();
 });

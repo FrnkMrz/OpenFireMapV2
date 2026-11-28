@@ -114,7 +114,7 @@ Nic. Nie wymaga konta, nie ma reklam ani abonamentu. Kod jest na [GitHubie](http
 
 ### Jakie dane OpenFireMap przechowuje o mnie? {#datenschutz}
 
-Mapa działa w przeglądarce. Ustawienia, ostatni widok i pamięć danych są zapisywane lokalnie. Zobacz [politykę prywatności](/?legal=1).
+Mapa działa w przeglądarce. Ustawienia, ostatni widok i pamięć danych są zapisywane lokalnie. Zobacz [politykę prywatności](/datenschutz/#en).
 
 ### Jak się z Wami skontaktować? {#kontakt}
 

@@ -114,7 +114,7 @@ Không. Không cần tài khoản, không quảng cáo, không thuê bao. Mã ng
 
 ### OpenFireMap lưu dữ liệu nào về tôi? {#datenschutz}
 
-Bản đồ chạy trong trình duyệt. Chỉ lưu các cài đặt như ngôn ngữ và bộ nhớ đệm, chế độ xem gần nhất, cài đặt bản đồ thành phố và dữ liệu bản đồ đã tải. Trình duyệt liên hệ dịch vụ ngoài để tìm kiếm, tải ô bản đồ và dữ liệu. Xem [chính sách quyền riêng tư](/?legal=1).
+Bản đồ chạy trong trình duyệt. Chỉ lưu các cài đặt như ngôn ngữ và bộ nhớ đệm, chế độ xem gần nhất, cài đặt bản đồ thành phố và dữ liệu bản đồ đã tải. Trình duyệt liên hệ dịch vụ ngoài để tìm kiếm, tải ô bản đồ và dữ liệu. Xem [chính sách quyền riêng tư](/datenschutz/#en).
 
 ### Liên hệ với bạn bằng cách nào? {#kontakt}
 

@@ -114,7 +114,7 @@ Intet. Der er ingen konto, annoncer eller abonnement. Koden findes på [GitHub](
 
 ### Hvilke data gemmes om mig? {#datenschutz}
 
-Kortet kører i browseren. Indstillinger, seneste kortvisning og cache gemmes lokalt. Se [privatlivspolitikken](/?legal=1).
+Kortet kører i browseren. Indstillinger, seneste kortvisning og cache gemmes lokalt. Se [privatlivspolitikken](/datenschutz/#en).
 
 ### Hvordan kontakter jeg jer? {#kontakt}
 
