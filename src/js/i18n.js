@@ -163,6 +163,10 @@ export function updatePageLanguage() {
   document.querySelectorAll('[data-legal-lang]').forEach(el => {
     el.classList.toggle('hidden', el.getAttribute('data-legal-lang') !== legalLang);
   });
+  // Impressum und Datenschutz (/impressum/, /datenschutz/): Deutsch oben, alle anderen Sprachen springen zur englischen Fassung (#en)
+  document.querySelectorAll('[data-legal-href]').forEach(el => {
+    el.setAttribute('href', el.getAttribute('data-legal-href') + (legalLang === 'en' ? '#en' : ''));
+  });
 
   // Bei übersetzter Hilfe zur passenden Seite führen, sonst auf Deutsch bzw. Englisch zurückfallen.
   const helpLinks = [...document.querySelectorAll('[data-help-link]')];

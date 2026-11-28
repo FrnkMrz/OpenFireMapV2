@@ -114,7 +114,7 @@ Nic. Bez účtu, reklamy a předplatného. Zdrojový kód je pod licencí MIT na
 
 ### Jaká data o mně OpenFireMap ukládá? {#datenschutz}
 
-Mapa běží ve vašem prohlížeči. Ukládají se tam jen nastavení, například jazyk a mezipaměť, poslední zobrazení mapy, nastavení plánu města a načtená data mapy. Při vyhledávání a načítání mapových dlaždic a dat prohlížeč kontaktuje externí služby. Podrobnosti najdete v [zásadách ochrany soukromí](/?legal=1).
+Mapa běží ve vašem prohlížeči. Ukládají se tam jen nastavení, například jazyk a mezipaměť, poslední zobrazení mapy, nastavení plánu města a načtená data mapy. Při vyhledávání a načítání mapových dlaždic a dat prohlížeč kontaktuje externí služby. Podrobnosti najdete v [zásadách ochrany soukromí](/datenschutz/#en).
 
 ### Jak vás mohu kontaktovat? {#kontakt}
 

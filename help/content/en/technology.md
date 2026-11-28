@@ -202,9 +202,9 @@ OpenFireMap sets no cookies and uses no tracking or analytics. Because the app r
 | Map providers | while displaying | tile coordinates of the chosen layer |
 | Cloudflare | in the pipeline area | byte ranges of the PMTiles files |
 | Overpass | live delta, rest of world, export | rectangle of the view |
-| Nominatim | only when searching | your search term |
+| Nominatim | when searching, for the suggested export and town plan title | your search term or the centre of the map area |
 
-The legal details are in the [privacy policy](/?legal=1).
+The legal details are in the [privacy policy](/datenschutz/#en).
 
 ## Quality and delivery {#qualitaet}
 

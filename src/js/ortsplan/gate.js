@@ -26,6 +26,7 @@ const TEXTS = {
     nobasemap: ["Basiskarte noch nicht verfügbar", "Die Hintergrundkarte für den Ortsplan ist noch nicht veröffentlicht. Bitte später noch einmal versuchen."],
     back: "Zur Karte",
     legal: "Impressum und Datenschutz",
+    legalHref: "/datenschutz/",
   },
   en: {
     phone: ["Please open on a computer", "The town plan can only be created in a browser on a computer or tablet, not on a smartphone."],
@@ -33,6 +34,7 @@ const TEXTS = {
     nobasemap: ["Base map not available yet", "The background map for the town plan has not been published yet. Please try again later."],
     back: "Back to the map",
     legal: "Legal notice and privacy",
+    legalHref: "/datenschutz/#en",
   },
 };
 
@@ -51,7 +53,7 @@ export function showNotice(reason, doc = document) {
   const h = doc.createElement("h1"); h.textContent = title;
   const p = doc.createElement("p"); p.textContent = text;
   const a = doc.createElement("a"); a.href = "/"; a.textContent = `← ${t.back}`;
-  const legal = doc.createElement("p"); const la = doc.createElement("a"); la.href = "/?legal=1"; la.textContent = t.legal; legal.append(la);
+  const legal = doc.createElement("p"); const la = doc.createElement("a"); la.href = t.legalHref; la.textContent = t.legal; legal.append(la);
   box.append(h, p, a, legal);
   box.hidden = false;
   for (const el of doc.querySelectorAll("[data-ortsplan-app]")) el.hidden = true;

@@ -108,6 +108,9 @@ export default defineConfig({
         symbols: fileURLToPath(new URL('./symbols/index.html', import.meta.url)),
         overlay: fileURLToPath(new URL('./overlay/index.html', import.meta.url)),
         status: fileURLToPath(new URL('./status/index.html', import.meta.url)),
+        // Impressum und Datenschutz: statische Seiten ohne Skript (Stil src/legal.css)
+        impressum: fileURLToPath(new URL('./impressum/index.html', import.meta.url)),
+        datenschutz: fileURLToPath(new URL('./datenschutz/index.html', import.meta.url)),
         // Ortsplan (nur per Link, nur am Computer): Assistent und Blatt
         ortsplan: fileURLToPath(new URL('./ortsplan/index.html', import.meta.url)),
         ortsplanBlatt: fileURLToPath(new URL('./ortsplan/blatt/index.html', import.meta.url)),

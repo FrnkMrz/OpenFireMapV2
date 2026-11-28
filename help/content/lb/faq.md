@@ -64,6 +64,6 @@ Nee, e privaten, net-kommerzielle Projet op Basis vun OSM.
 ### Wat kascht et? {#kosten}
 Näischt. Kee Kont a keng Reklammen. Code op [GitHub](https://github.com/FrnkMrz/OpenFireMapV2) ënner MIT-Lizenz.
 ### Wéi eng Donnéeë ginn iwwer mech gespäichert? {#datenschutz}
-Astellunge bleiwen am Browser; Sich a Kaarte benotzen extern Servicer. [Dateschutz](/?legal=1).
+Astellunge bleiwen am Browser; Sich a Kaarte benotzen extern Servicer. [Dateschutz](/datenschutz/#en).
 ### Wéi erreechen ech Iech? {#kontakt}
 [info@openfiremap.org](mailto:info@openfiremap.org) oder [GitHub-Issue](https://github.com/FrnkMrz/OpenFireMapV2/issues).

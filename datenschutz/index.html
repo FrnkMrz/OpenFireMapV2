@@ -1,0 +1,321 @@
+<!doctype html>
+<!--
+  Datenschutzerklärung für openfiremap.org, Deutsch und Englisch auf einer Seite (Englisch unter #en).
+  Statische Seite ohne Skript, lädt nichts von fremden Servern (CSP unten, Stil in src/legal.css).
+
+  Jede Aussage beschreibt den Code mit Stand 28.11.2026. Wer am Datenfluss etwas ändert (neuer Host im Browser, neue
+  Kartenebene, neuer Speicherschlüssel, andere Speicherdauer, Standort, Upload), muss diese Seite im selben PR mitändern.
+  Quellen im Code:
+   - Hosting: .github/workflows/pages.yml (GitHub Pages, public/CNAME openfiremap.org). Der Kartenausschnitt steht im
+     Adressteil nach "#" (map.js, Permalink) und geht nicht an den Server; der Ortsplan nutzt ?-Parameter
+     (src/js/ortsplan/wizard.js, blatt.js), die GitHub Pages beim Aufruf erhält.
+   - Browser-Speicher: localStorage ofm_lang (i18n.js), ofm_status_lang (status/status.js), ofm_cache_hours (ui.js,
+     cache.js), ofm_ep_health_v1 (api.js, Config.performance.endpointDemoteMs = 2 min), ofm_ortsplan_wizard (ortsplan/
+     wizard.js, ohne Ort und Texte); IndexedDB OFM_DB (cache.js, getCachePolicy: Dauern je Datenart); Service Worker
+     public/sw.js (nur eigene Dateien). Keine Cookies im Code.
+   - Standort: ui.js locateUser() (nur auf Knopfdruck, Punkt 25 s, Linie zum nächsten Hydranten, nichts gespeichert).
+   - Hosts im Browser: CSP in index.html, overlay/, status/, ortsplan/, ortsplan/blatt/, symbols/, help/layout.html;
+     Kartenebenen Config.layers (Start: voyager = CARTO, state.js), Overpass Config.overpassEndpoints, Nominatim
+     api.js geocodeNominatim(), export.js fetchLocationTitle() (Aufruf ui.js beim Titel-Dialog), ortsplan/wizard.js
+     (reverse), Pipeline Config.pipeline.url, Raster Config.rasterExport.manifestUrl und overlay/index.html.
+   - Teilen: map.js (Web Share API bzw. Zwischenablage).
+   - Kachelserver tiles.openfiremap.org: Worker im privaten Pipeline-Repo (Statistik über Cloudflare Analytics Engine,
+     Felder wie im Abschnitt beschrieben, Client-Schlüssel = gekürzter SHA-256 aus IP, UTC-Tag und geheimem Salz).
+-->
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; base-uri 'self'; form-action 'none'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>Datenschutz – OpenFireMap.org</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png" />
+    <link rel="stylesheet" href="/src/legal.css" />
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="/">← OpenFireMap.org</a>
+      <p class="language-switch"><a href="#en" lang="en">English version</a> · <a href="/impressum/">Impressum</a></p>
+
+      <section class="legal-card" aria-labelledby="privacy-de">
+        <h1 id="privacy-de">Datenschutzerklärung</h1>
+
+        <h2>Verantwortlicher</h2>
+        <p>
+          Frank März, Kersbacher Weg 3, 91220 Schnaittach, Deutschland, E-Mail:
+          <a href="mailto:info@openfiremap.org">info@openfiremap.org</a> (siehe <a href="/impressum/">Impressum</a>).
+        </p>
+
+        <h2>Kurz gesagt</h2>
+        <ul>
+          <li>Keine Benutzerkonten, keine Cookies, kein Tracking, keine Werbung, keine Analyse-Werkzeuge.</li>
+          <li>Ihr Standort wird nur auf Knopfdruck abgefragt, nur in Ihrem Browser verwendet und nicht gespeichert.</li>
+          <li>Karten und Feuerwehr-Daten lädt Ihr Browser direkt bei den unten genannten Diensten. Diese erhalten dabei Ihre IP-Adresse und den angezeigten Kartenausschnitt.</li>
+          <li>Export und Ortsplan entstehen in Ihrem Browser. Es wird nichts hochgeladen.</li>
+        </ul>
+
+        <h2>1. Aufruf der Webseite und Hosting</h2>
+        <p>
+          Alle Seiten von openfiremap.org (Karte, Hilfe, Kartenzeichen, Overlay, Statusseite, Ortsplan, diese Seite)
+          liegen bei GitHub Pages (GitHub, Inc., USA). Beim Aufruf verarbeitet GitHub technisch bedingt Ihre
+          IP-Adresse, Browserangaben, die aufgerufene Adresse und die Uhrzeit, um die Seite auszuliefern und vor
+          Angriffen zu schützen. Einen eigenen Server mit Nutzerdaten gibt es für diese Webseite nicht.
+        </p>
+        <p>
+          Der Kartenausschnitt steht in der Adresse hinter dem Zeichen „#“ (zum Beispiel <code>#17/49.55/11.36/voyager</code>).
+          Diesen Teil sendet der Browser nicht an den Server. Beim Ortsplan stehen die gewählten Einstellungen, die
+          Kartenmitte und eingegebene Texte (Ortsname, Überschrift) dagegen in der Adresse hinter „?“; diesen Teil
+          erhält GitHub beim Aufruf. Geben Sie dort deshalb keine personenbezogenen Angaben ein.
+        </p>
+        <p>
+          Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer sicheren, funktionierenden
+          Webseite).
+        </p>
+
+        <h2>2. Speicherung auf Ihrem Gerät</h2>
+        <p>Die Webseite setzt keine Cookies. Im Browser speichert sie:</p>
+        <ul>
+          <li>im localStorage die Sprache der Karte (<code>ofm_lang</code>) und der Statusseite (<code>ofm_status_lang</code>) sowie die gewählte Cache-Dauer (<code>ofm_cache_hours</code>), bis Sie sie ändern oder löschen;</li>
+          <li>im localStorage, welche Overpass-Server zuletzt nicht geantwortet haben (<code>ofm_ep_health_v1</code>, nur Serveradresse und Zeitpunkt), damit sie nach einem Neuladen nicht zuerst gefragt werden; die Angabe wird nach 2 Minuten nicht mehr beachtet;</li>
+          <li>im localStorage die zuletzt gewählten Ortsplan-Einstellungen (<code>ofm_ortsplan_wizard</code>: Papier, Maßstab, Anordnung u. a., ohne Ort und ohne Texte);</li>
+          <li>in der IndexedDB (<code>OFM_DB</code>) bereits geladene Kartendaten aus OpenStreetMap für die Gegenden, die Sie angesehen haben, damit die Karte schneller lädt und öffentliche Server geschont werden. Wie lange sie verwendet werden, legt die Einstellung „Lokaler Cache“ fest (Aus, 1 Stunde bis 30 Tage). Ohne eigene Einstellung sind es je nach Datenart 2 bis 30 Tage, als Ersatz bei fehlender Verbindung länger (Gemeindegrenzen bis 120 Tage). Ein Eintrag bleibt gespeichert, bis dieselbe Gegend neu geladen wird oder Sie die Websitedaten löschen. Mit „Aus“ wird nichts mehr gelesen oder geschrieben;</li>
+          <li>über den Service Worker im Browser-Cache die Startseite und die Programmdateien dieser Webseite (Skripte, Stile, Schriften), damit sie schneller startet. Kartenbilder und Daten anderer Dienste legt er nicht ab.</li>
+        </ul>
+        <p>
+          Diese Daten verlassen Ihr Gerät nicht. Sie lassen sich über die Browser-Einstellungen („Websitedaten
+          löschen“) entfernen. Rechtsgrundlage ist § 25 Abs. 2 Nr. 2 TDDDG (für den gewünschten Dienst unbedingt
+          erforderlich).
+        </p>
+
+        <h2>3. Standort</h2>
+        <p>
+          Nur wenn Sie den Ortungsknopf antippen, fragt der Browser über seinen Systemdialog nach der Erlaubnis. Die
+          Position wird nur in Ihrem Browser verwendet: Die Karte springt dorthin und zeigt 25 Sekunden lang einen Punkt
+          und eine Linie zum nächsten Hydranten. Die Position geht an keinen Server von OpenFireMap und wird nicht
+          gespeichert. Wie bei jedem Kartenausschnitt lädt der Browser danach Kartenbilder und Daten für diese Gegend
+          von den Diensten in Abschnitt 4 und 5; diese erhalten dabei den Kartenausschnitt, nicht Ihre genaue
+          Position. Rechtsgrundlage ist Ihre Erlaubnis im Browser (Art. 6 Abs. 1 lit. a DSGVO); Sie können sie in den
+          Browser-Einstellungen jederzeit zurücknehmen.
+        </p>
+
+        <h2>4. Kartenbilder</h2>
+        <p>
+          Die Hintergrundkarte lädt Ihr Browser direkt vom Server der gewählten Kartenebene. Dabei werden technisch
+          bedingt Ihre IP-Adresse, Browserangaben und der angezeigte Kartenausschnitt übertragen:
+        </p>
+        <ul>
+          <li><strong>CARTO</strong> (CartoDB Inc., USA; basemaps.cartocdn.com): Ebenen „Standard (Voyager)“ (beim Start voreingestellt), „Druck (Hell)“ und „Nacht (Dunkel)“, außerdem die Karte der Overlay-Seite;</li>
+          <li><strong>Esri</strong> (Esri Inc., USA; server.arcgisonline.com): Ebene „Satellit (Esri)“;</li>
+          <li><strong>OpenTopoMap</strong> (opentopomap.org): Ebene „Topographisch (OSM)“;</li>
+          <li><strong>OpenStreetMap Foundation</strong> (Vereinigtes Königreich; tile.openstreetmap.org): Ebene „OSM (Intl)“ und Overlay-Seite;</li>
+          <li><strong>FOSSGIS e.V.</strong> (Deutschland; tile.openstreetmap.de): Ebene „OSM (DE Style)“;</li>
+          <li><strong>Bayerische Vermessungsverwaltung</strong> (Deutschland; bayernwolke.de): Ebenen „BayernAtlas“ und „Bayern Luftbild“.</li>
+        </ul>
+        <p>
+          Beim Export (PNG, PDF) lädt der Browser die Kartenbilder der gewählten Ebene ebenso direkt vom jeweiligen
+          Server. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer funktionierenden
+          Karte). Es gelten zusätzlich die Datenschutzhinweise der Anbieter.
+        </p>
+
+        <h2>5. Feuerwehr-Daten</h2>
+        <p>
+          Hydranten, Wachen, Löschwasserstellen, Defibrillatoren und Grenzen lädt Ihr Browser direkt von diesen
+          Diensten. Dabei werden technisch bedingt Ihre IP-Adresse, Browserangaben und der angefragte Kartenausschnitt
+          übertragen:
+        </p>
+        <ul>
+          <li><strong>pipeline.openfiremap.org</strong> (Speicher bei Cloudflare, Inc., USA): vorberechnete Daten für die Karte, Datenstand für die Statusseite, Hintergrundkarte und Daten des Ortsplans. Der Browser fragt dort nur die Teile der Dateien ab, die zum Ausschnitt gehören;</li>
+          <li><strong>raster-pilot.openfiremap.org</strong> (Speicher bei Cloudflare, Inc., USA): Feuerwehr-Kacheln für die Overlay-Seite und für den Export als Raster-ZIP;</li>
+          <li><strong>Overpass API</strong> (overpass-api.de, betrieben vom FOSSGIS e.V., Deutschland; Ausweichserver overpass.kumi.systems, Kumi Systems, Österreich): Abruf der Daten, wenn keine vorberechneten Daten verfügbar sind, und Abgleich der vorberechneten Daten mit den neuesten Änderungen im angezeigten Ausschnitt.</li>
+        </ul>
+        <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer funktionierenden Karte).</p>
+
+        <h2>6. Ortssuche und Ortsnamen</h2>
+        <p>
+          Für die Ortssuche sendet Ihr Browser den eingegebenen Suchbegriff und die Spracheinstellung des Browsers an
+          Nominatim (nominatim.openstreetmap.org, OpenStreetMap Foundation, Vereinigtes Königreich). Für den
+          vorgeschlagenen Titel beim Export und den Ortsnamen im Ortsplan sendet er die Mitte des Ausschnitts dorthin.
+          Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Für die Dienste der OpenStreetMap Foundation gilt zusätzlich
+          deren
+          <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener noreferrer">Datenschutzerklärung</a>.
+        </p>
+
+        <h2>7. Export, Ortsplan und Teilen</h2>
+        <p>
+          PNG, PDF, GPX, CSV, Raster-ZIP und der Ortsplan entstehen vollständig in Ihrem Browser; es wird nichts
+          hochgeladen. Die Daten dafür kommen von den Diensten in Abschnitt 4 bis 6, die Schriften des Ortsplans von
+          dieser Webseite. Der Knopf „Kartenansicht teilen“ gibt einen Link mit dem Kartenausschnitt an den Teilen-Dialog Ihres
+          Geräts oder in die Zwischenablage; wohin er geht, entscheiden Sie.
+        </p>
+
+        <h2>8. Kachelserver für Einbindungen (tiles.openfiremap.org)</h2>
+        <p>
+          Die Karte auf dieser Webseite verwendet ihn nicht. Er ist relevant, wenn Sie eine fremde Karte aufrufen, die
+          das Overlay von OpenFireMap einbindet, oder die Adresse selbst abrufen. Der Dienst läuft bei Cloudflare
+          (Cloudflare, Inc., USA). Beim Abruf werden technisch bedingt Ihre IP-Adresse, Browserangaben und die
+          angefragte Kachel an Cloudflare übertragen. Es werden keine Anfrageprotokolle mit Koordinaten oder
+          IP-Adressen geführt. Zur Messung der Auslastung gibt es eine Statistik ohne Koordinaten und ohne Pfade. Je
+          Anfrage erfasst sie Art, Methode und Status der Anfrage, Zoomstufe, Dauer, Antwortgröße, ob die Kachel Daten
+          enthält, Cache-Treffer, Land, die Kennung der Kacheldatei sowie eine täglich wechselnde, pseudonyme Kennung.
+          Diese wird mit einem geheimen Zusatzwert aus der IP-Adresse berechnet und lässt sich ohne ihn nicht auf die
+          IP-Adresse zurückrechnen. Die Statistik wird etwa drei Monate gespeichert. Rechtsgrundlage ist Art. 6 Abs. 1
+          lit. f DSGVO (berechtigtes Interesse am stabilen und sicheren Betrieb des Dienstes).
+        </p>
+
+        <h2>9. Übermittlung in Drittländer</h2>
+        <p>
+          GitHub, Cloudflare, CARTO und Esri sitzen in den USA. Bei ihnen findet eine Übermittlung in die USA statt,
+          bei CARTO schon mit der beim Start voreingestellten Karte, bei Esri nur, wenn Sie die Ebene „Satellit (Esri)“ wählen.
+          GitHub und Cloudflare sind nach dem EU-US Data Privacy Framework zertifiziert. Die OpenStreetMap Foundation
+          sitzt im Vereinigten Königreich, für das ein Angemessenheitsbeschluss der EU gilt.
+        </p>
+
+        <h2>10. Ihre Rechte</h2>
+        <p>
+          Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
+          Datenübertragbarkeit und Widerspruch (Art. 15 bis 21 DSGVO) sowie das Recht, eine Einwilligung jederzeit für
+          die Zukunft zu widerrufen. Wenden Sie sich dafür an die oben genannte E-Mail-Adresse. Sie können sich bei
+          einer Datenschutz-Aufsichtsbehörde beschweren, zuständig ist das Bayerische Landesamt für
+          Datenschutzaufsicht (BayLDA), Promenade 18, 91522 Ansbach.
+        </p>
+      </section>
+
+      <section class="legal-card" id="en" lang="en" aria-labelledby="privacy-en">
+        <h1 id="privacy-en">Privacy policy</h1>
+        <p class="legal-meta">The German version above is authoritative.</p>
+
+        <h2>Controller</h2>
+        <p>
+          Frank März, Kersbacher Weg 3, 91220 Schnaittach, Germany, email:
+          <a href="mailto:info@openfiremap.org">info@openfiremap.org</a> (see <a href="/impressum/#en">legal notice</a>).
+        </p>
+
+        <h2>In short</h2>
+        <ul>
+          <li>No user accounts, no cookies, no tracking, no ads, no analytics tools.</li>
+          <li>Your location is requested only when you tap the button, used only in your browser and not stored.</li>
+          <li>Your browser loads maps and fire service data directly from the services listed below. They receive your IP address and the visible map area.</li>
+          <li>Export and town plan are created in your browser. Nothing is uploaded.</li>
+        </ul>
+
+        <h2>1. Using the website and hosting</h2>
+        <p>
+          All pages of openfiremap.org (map, help, map symbols, overlay, status page, town plan, this page) are hosted
+          on GitHub Pages (GitHub, Inc., USA). When you open a page, GitHub processes your IP address, browser details,
+          the requested address and the time, as technically required to deliver the page and protect it against
+          attacks. There is no own server holding user data for this website.
+        </p>
+        <p>
+          The map area is part of the address after the "#" sign (for example <code>#17/49.55/11.36/voyager</code>).
+          Browsers do not send this part to the server. For the town plan, however, the chosen settings, the map centre
+          and any text you enter (place name, heading) are part of the address after "?"; GitHub receives this part
+          when the page is opened. Please do not enter personal data there.
+        </p>
+        <p>Legal basis: Art. 6(1)(f) GDPR (legitimate interest in a secure, working website).</p>
+
+        <h2>2. Storage on your device</h2>
+        <p>The website sets no cookies. In your browser it stores:</p>
+        <ul>
+          <li>in localStorage the language of the map (<code>ofm_lang</code>) and of the status page (<code>ofm_status_lang</code>) and the chosen cache duration (<code>ofm_cache_hours</code>), until you change or delete them;</li>
+          <li>in localStorage which Overpass servers recently did not respond (<code>ofm_ep_health_v1</code>, only server address and time), so that they are not asked first after a reload; the entry is ignored after 2 minutes;</li>
+          <li>in localStorage the town plan settings you chose last (<code>ofm_ortsplan_wizard</code>: paper, scale, layout etc., without place and without texts);</li>
+          <li>in IndexedDB (<code>OFM_DB</code>) map data from OpenStreetMap already loaded for the areas you viewed, so the map loads faster and public servers are spared. How long it is used depends on the "Local cache" setting (off, 1 hour to 30 days). Without your own setting it is 2 to 30 days depending on the kind of data, and longer as a fallback without a connection (municipal boundaries up to 120 days). An entry stays stored until the same area is loaded again or you clear the site data. With "off" nothing is read or written any more;</li>
+          <li>via the service worker, the start page and the program files of this website (scripts, styles, fonts) in the browser cache, so it starts faster. It does not store map images or data from other services.</li>
+        </ul>
+        <p>
+          This data does not leave your device. You can remove it in your browser settings ("clear site data"). Legal
+          basis: § 25(2) no. 2 TDDDG (strictly necessary for the requested service).
+        </p>
+
+        <h2>3. Location</h2>
+        <p>
+          Only when you tap the locate button does your browser ask for permission through its system dialog. The
+          position is used only in your browser: the map moves there and shows a dot and a line to the nearest hydrant
+          for 25 seconds. The position is not sent to any OpenFireMap server and is not stored. As with any map area,
+          your browser then loads map images and data for this area from the services in sections 4 and 5; they receive
+          the map area, not your exact position. Legal basis: your permission in the browser (Art. 6(1)(a) GDPR); you
+          can withdraw it in your browser settings at any time.
+        </p>
+
+        <h2>4. Map images</h2>
+        <p>
+          Your browser loads the background map directly from the server of the selected map layer. This technically
+          transmits your IP address, browser details and the visible map area:
+        </p>
+        <ul>
+          <li><strong>CARTO</strong> (CartoDB Inc., USA; basemaps.cartocdn.com): layers "Standard (Voyager)" (preselected at start), "Print (Light)" and "Night (Dark)", and the map on the overlay page;</li>
+          <li><strong>Esri</strong> (Esri Inc., USA; server.arcgisonline.com): layer "Satellite (Esri)";</li>
+          <li><strong>OpenTopoMap</strong> (opentopomap.org): layer "Topographic (OSM)";</li>
+          <li><strong>OpenStreetMap Foundation</strong> (United Kingdom; tile.openstreetmap.org): layer "OSM (Intl)" and overlay page;</li>
+          <li><strong>FOSSGIS e.V.</strong> (Germany; tile.openstreetmap.de): layer "OSM (DE Style)";</li>
+          <li><strong>Bavarian Surveying Administration</strong> (Germany; bayernwolke.de): layers "Bavaria Base" and "Bavaria Aerial".</li>
+        </ul>
+        <p>
+          For an export (PNG, PDF) your browser likewise loads the map images of the selected layer directly from the
+          respective server. Legal basis: Art. 6(1)(f) GDPR (legitimate interest in a working map). The privacy policies
+          of the providers also apply.
+        </p>
+
+        <h2>5. Fire service data</h2>
+        <p>
+          Your browser loads hydrants, stations, water points, defibrillators and boundaries directly from these
+          services. This technically transmits your IP address, browser details and the requested map area:
+        </p>
+        <ul>
+          <li><strong>pipeline.openfiremap.org</strong> (storage at Cloudflare, Inc., USA): pre-computed data for the map, data status for the status page, base map and data of the town plan. The browser requests only the parts of the files that belong to the map area;</li>
+          <li><strong>raster-pilot.openfiremap.org</strong> (storage at Cloudflare, Inc., USA): fire service tiles for the overlay page and for the raster ZIP export;</li>
+          <li><strong>Overpass API</strong> (overpass-api.de, operated by FOSSGIS e.V., Germany; fallback server overpass.kumi.systems, Kumi Systems, Austria): data when no pre-computed data is available, and matching the pre-computed data against the latest changes in the visible area.</li>
+        </ul>
+        <p>Legal basis: Art. 6(1)(f) GDPR (legitimate interest in a working map).</p>
+
+        <h2>6. Place search and place names</h2>
+        <p>
+          For the place search your browser sends the search term you entered and its language setting to Nominatim
+          (nominatim.openstreetmap.org, OpenStreetMap Foundation, United Kingdom). For the suggested export title and the
+          place name in the town plan it sends the centre of the map area there. Legal basis: Art. 6(1)(f) GDPR. For the
+          services of the OpenStreetMap Foundation its
+          <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener noreferrer">privacy policy</a>
+          also applies.
+        </p>
+
+        <h2>7. Export, town plan and sharing</h2>
+        <p>
+          PNG, PDF, GPX, CSV, raster ZIP and the town plan are created entirely in your browser; nothing is uploaded.
+          The data for them comes from the services in sections 4 to 6, the town plan fonts from this website. The
+          "Share Map View" button passes a link with the map area to your device's share dialog or to the clipboard; you decide
+          where it goes.
+        </p>
+
+        <h2>8. Tile server for embedding (tiles.openfiremap.org)</h2>
+        <p>
+          The map on this website does not use it. It matters if you open a third-party map that embeds the OpenFireMap
+          overlay, or call the address yourself. The service runs at Cloudflare (Cloudflare, Inc., USA). For technical
+          reasons your IP address, browser details and the requested tile are transmitted to Cloudflare. No request logs
+          containing coordinates or IP addresses are kept. To measure load there is a statistic without coordinates and
+          without paths. Per request it records the kind, method and status of the request, zoom level, duration,
+          response size, whether the tile contains data, cache hit, country, the identifier of the tile file and a daily
+          changing pseudonymous identifier. The identifier is computed from the IP address with a secret additional
+          value and cannot be traced back to the IP address without it. The statistic is kept for about three months.
+          Legal basis: Art. 6(1)(f) GDPR (legitimate interest in the stable and secure operation of the service).
+        </p>
+
+        <h2>9. Transfers to third countries</h2>
+        <p>
+          GitHub, Cloudflare, CARTO and Esri are based in the USA. Data is transferred to the USA with them: for CARTO
+          already with the map preselected at start, for Esri only if you choose the layer "Satellite (Esri)". GitHub and
+          Cloudflare are certified under the EU-US Data Privacy Framework. The OpenStreetMap Foundation is based in the
+          United Kingdom, which is covered by an EU adequacy decision.
+        </p>
+
+        <h2>10. Your rights</h2>
+        <p>
+          You have the right of access, rectification, erasure, restriction of processing, data portability and
+          objection (Art. 15 to 21 GDPR), and you may withdraw consent at any time with effect for the future. Contact
+          the email address above. You may lodge a complaint with a data protection authority; the competent authority
+          is the Bavarian Data Protection Authority (BayLDA), Promenade 18, 91522 Ansbach, Germany.
+        </p>
+      </section>
+      <p class="legal-meta">Stand / As of: 28.11.2026</p>
+    </main>
+  </body>
+</html>

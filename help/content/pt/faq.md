@@ -114,7 +114,7 @@ Nada. Não há conta, anúncios nem subscrição. O código está no [GitHub](ht
 
 ### Que dados o OpenFireMap guarda sobre mim? {#datenschutz}
 
-O mapa funciona no navegador. Definições, última vista e cache são guardadas localmente. Consulte a [política de privacidade](/?legal=1).
+O mapa funciona no navegador. Definições, última vista e cache são guardadas localmente. Consulte a [política de privacidade](/datenschutz/#en).
 
 ### Como posso contactar-vos? {#kontakt}
 

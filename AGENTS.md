@@ -91,6 +91,7 @@ GitHub Actions workflow (`.github/workflows/pages.yml`) runs on push to `main`:
 ## Key Architecture Notes
 
 - **Bootstrap order** (`app.js`): i18n → UI → wait for `window.L` (Leaflet via CDN/vendor) → `initMapLogic()` → lazy-import `export.js`
+- **Impressum & Datenschutz** (`impressum/index.html`, `datenschutz/index.html`, Stil `src/legal.css`): statische Seiten ohne Skript, Deutsch oben, Englisch unter `#en`, eigene CSP. Der Kopfkommentar der Datenschutzerklärung nennt die Code-Stellen jeder Aussage: Wer den Datenfluss ändert (neuer Host im Browser, neue Kartenebene, neuer Speicherschlüssel, andere Speicherdauer), passt die Seite im selben PR an. Links mit `data-legal-href` bekommen in `i18n.js` außer bei Deutsch `#en`; aus der Karte und dem Ortsplan öffnen sie einen neuen Tab.
 - **Mobile UI** (`mobile-ui.js`): loaded as an IIFE script tag, not imported. Detects mobile via `pointer: coarse` / touch / `window.innerWidth < 1370`, hides desktop controls, proxies actions by calling `.click()` on hidden desktop buttons — no logic is duplicated
 - **State** (`state.js`): single mutable singleton; all modules share it via import. Key fields: `map`, `markerLayer`, `cachedElements`, `isFetchingData`, `isFetchingBoundaries`, `pendingBufferFetches`, `activeFetchBounds`, `activeLayerKey`, `exportFormat`, `selection`
 - **Permalink**: URL hash format `#zoom/lat/lon/layer` (e.g. `#17/48.12345/9.56789/topo`), updated debounced on map move

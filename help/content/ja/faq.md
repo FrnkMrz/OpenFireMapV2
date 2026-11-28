@@ -64,6 +64,6 @@ PDFを100%または実際のサイズで印刷し、用紙に合わせる設定�
 ### 料金は？ {#kosten}
 無料で、広告もアカウントも不要です。コードは[GitHub](https://github.com/FrnkMrz/OpenFireMapV2)でMITライセンス公開しています。
 ### 個人情報は保存されますか？ {#datenschutz}
-設定や地図データはブラウザー内に保存されます。検索などでは外部サービスに接続します。[プライバシー](/?legal=1)。
+設定や地図データはブラウザー内に保存されます。検索などでは外部サービスに接続します。[プライバシー](/datenschutz/#en)。
 ### 問い合わせ先は？ {#kontakt}
 [info@openfiremap.org](mailto:info@openfiremap.org)または[GitHub](https://github.com/FrnkMrz/OpenFireMapV2/issues)へ。

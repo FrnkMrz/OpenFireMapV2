@@ -294,7 +294,7 @@ Zum Ausprobieren genügt die Kachel-URL vom Anfang. Wenn Sie das Overlay dauerha
 
 ## Datenschutz beim Kachelabruf
 
-Der Kachelserver läuft bei Cloudflare (Cloudflare, Inc., USA). Beim Abruf verarbeitet Cloudflare technisch bedingt die IP-Adresse und die angefragte Kachel. Ich führe keine Anfrageprotokolle mit Koordinaten oder IP-Adressen. Für die Lastmessung gibt es eine Statistik ohne Koordinaten und Pfade, mit einer täglich wechselnden, pseudonymen Kennung statt der IP-Adresse (Speicherdauer etwa drei Monate). Verantwortlich ist der im Impressum genannte Betreiber. Die vollständige Datenschutzerklärung steht auf openfiremap.org unter „Info & Recht“.
+Der Kachelserver läuft bei Cloudflare (Cloudflare, Inc., USA). Beim Abruf verarbeitet Cloudflare technisch bedingt die IP-Adresse und die angefragte Kachel. Ich führe keine Anfrageprotokolle mit Koordinaten oder IP-Adressen. Für die Lastmessung gibt es eine Statistik ohne Koordinaten und Pfade, mit einer täglich wechselnden, pseudonymen Kennung statt der IP-Adresse (Speicherdauer etwa drei Monate). Verantwortlich ist der im Impressum genannte Betreiber. Die vollständige Datenschutzerklärung steht unter [openfiremap.org/datenschutz/](https://openfiremap.org/datenschutz/).
 
 ## Glossar
 

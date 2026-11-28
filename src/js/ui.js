@@ -844,7 +844,7 @@ export function setupUI() {
         close: closeDataInfoPopover
     });
 
-    // Direktlink aus den Ortsplan-Seiten: /?legal=1 öffnet „Info & Recht“ (Impressum, Datenschutz); die Adresse bleibt unverändert
+    // Direktlink (Hilfe-Fußzeile „Lizenzen“, ältere Links): /?legal=1 öffnet „Info & Recht“; Impressum und Datenschutz sind eigene Seiten (/impressum/, /datenschutz/)
     if (new URLSearchParams(location.search).get('legal') === '1') toggleLegalModal();
 }
 

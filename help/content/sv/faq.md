@@ -114,7 +114,7 @@ Ingenting. Inget konto, inga annonser och ingen prenumeration. Källkoden finns 
 
 ### Vilka data om mig sparar OpenFireMap? {#datenschutz}
 
-Kartan körs i webbläsaren. Där sparas bara inställningar som språk och cache, den senaste kartvyn, stadsplaninställningar och kartdata du har läst in. Sökning, kartplattor och data kontaktar externa tjänster. Se [integritetspolicyn](/?legal=1).
+Kartan körs i webbläsaren. Där sparas bara inställningar som språk och cache, den senaste kartvyn, stadsplaninställningar och kartdata du har läst in. Sökning, kartplattor och data kontaktar externa tjänster. Se [integritetspolicyn](/datenschutz/#en).
 
 ### Hur kontaktar jag er? {#kontakt}
 

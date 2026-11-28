@@ -114,7 +114,7 @@ Tiada kos. Tiada akaun, iklan atau langganan. Kod sumber tersedia di [GitHub](ht
 
 ### Apakah data tentang saya yang disimpan OpenFireMap? {#datenschutz}
 
-Peta berjalan dalam pelayar anda. Hanya tetapan seperti bahasa dan cache, paparan peta terakhir, tetapan pelan bandar dan data peta yang dimuat disimpan di situ. Carian, jubin peta dan data menghubungi perkhidmatan luar. Butiran ada dalam [dasar privasi](/?legal=1).
+Peta berjalan dalam pelayar anda. Hanya tetapan seperti bahasa dan cache, paparan peta terakhir, tetapan pelan bandar dan data peta yang dimuat disimpan di situ. Carian, jubin peta dan data menghubungi perkhidmatan luar. Butiran ada dalam [dasar privasi](/datenschutz/#en).
 
 ### Bagaimana menghubungi anda? {#kontakt}
 
