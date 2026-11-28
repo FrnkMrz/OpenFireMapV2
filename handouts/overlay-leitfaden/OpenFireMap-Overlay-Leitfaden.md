@@ -1,8 +1,8 @@
 ---
 title: OpenFireMap Overlay
 subtitle: Leitfaden zur Einbindung der transparenten Feuerwehr-Kartenebene von openfiremap.org
-meta: Stand 15. November 2026 · Version 1.0 · Gebiet: Deutschland · Status: Testbetrieb
-footer: OpenFireMap Overlay – Leitfaden · Stand 15. November 2026 · Version 1.0
+meta: Stand 28. November 2026 · Version 1.1 · Gebiet: DACHLiLu · Status: Testbetrieb
+footer: OpenFireMap Overlay – Leitfaden · Stand 28. November 2026 · Version 1.1
 ---
 
 ## Auf einen Blick
@@ -24,7 +24,7 @@ Beschreibung der Ebene (TileJSON): `https://tiles.openfiremap.org/hytiles.json`
 | Format | PNG mit Transparenz, 256 × 256 Pixel |
 | Kachelschema | XYZ („Slippy Map“), Web Mercator (EPSG:3857) |
 | Zoomstufen | 12 bis 18 |
-| Abdeckung | Deutschland. Weitere Gebiete sind bei Interesse möglich (siehe „Was ich unterstütze“). |
+| Abdeckung | Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein (kurz DACHLiLu). Weitere Gebiete sind bei Interesse möglich (siehe „Was ich unterstütze“). |
 | Aktualisierung | wöchentlich. Die URL bleibt dabei immer gleich, am Client muss nichts geändert werden. |
 | Transport | ausschließlich verschlüsselt über **HTTPS** |
 | Quellenangabe | © OpenStreetMap contributors (Lizenz ODbL), bitte sichtbar auf der Karte angeben |
@@ -70,7 +70,7 @@ Beide Wege liefern dieselbe Kartenebene. Ein Archivwechsel erfordert bei keinem 
 
 ### Die Overlay-Seite
 
-Unter [openfiremap.org/overlay](https://openfiremap.org/overlay/) können Sie das Overlay direkt ansehen. Die Demo (Beispiel Rollhofen) zeigt, **wie die Ebene über einer Grundkarte gerendert wird**. Sie schaltet zwischen dem veröffentlichten Raster-Overlay für Deutschland und den OFM-Einzelebenen um: Hydranten, Löschwasserstellen, Feuerwachen, Defibrillatoren und Verwaltungsgrenzen.
+Unter [openfiremap.org/overlay](https://openfiremap.org/overlay/) können Sie das Overlay direkt ansehen. Die Demo (Beispiel Rollhofen) zeigt, **wie die Ebene über einer Grundkarte gerendert wird**. Sie schaltet zwischen dem veröffentlichten Raster-Overlay für DACHLiLu und den OFM-Einzelebenen um: Hydranten, Löschwasserstellen, Feuerwachen, Defibrillatoren und Verwaltungsgrenzen.
 
 Dort können Sie außerdem einen Kartenausschnitt als PNG-ZIP laden, das PMTiles-Archiv herunterladen und die Einbindung in Leaflet und MapLibre nachlesen.
 
@@ -82,7 +82,7 @@ Unter [openfiremap.org/symbols](https://openfiremap.org/symbols/) sehen Sie **al
 
 ![Die Seite Kartenzeichen und OSM-Tags auf openfiremap.org mit den Hydrantensymbolen](img/kartenzeichen.jpg)
 
-> **Sie verwenden andere Symbole?** Bitte sprechen Sie mich an. Vielleicht lässt sich etwas einrichten. **Bevorzugt ist, dass Sie die Darstellung selbst umsetzen.** Dafür kann ich die PMTiles-Datei mit den Vektordaten bereitstellen; Gebiet und Umfang besprechen wir gemeinsam. Aus den OSM-Tags der Symbolseite zeichnen Sie dann Ihr eigenes Symbolset. Das Raster-Overlay mit den fertigen Symbolen gibt es vorerst nur für Deutschland.
+> **Sie verwenden andere Symbole?** Bitte sprechen Sie mich an. Vielleicht lässt sich etwas einrichten. **Bevorzugt ist, dass Sie die Darstellung selbst umsetzen.** Dafür kann ich die PMTiles-Datei mit den Vektordaten bereitstellen; Gebiet und Umfang besprechen wir gemeinsam. Aus den OSM-Tags der Symbolseite zeichnen Sie dann Ihr eigenes Symbolset. Das Raster-Overlay mit den fertigen Symbolen gibt es vorerst nur für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein.
 
 ## Weg 1: Klassische Kachel-URL
 
@@ -149,7 +149,7 @@ Ob der Dienst antwortet, zeigt ein einzelner Abruf (Kachel in Nürnberg). Erwart
 curl -I https://tiles.openfiremap.org/hytiles/16/34784/22380.png
 ```
 
-- **Die Kachel bleibt leer:** Zoomstufe 12–18 und Gebiet (Deutschland) prüfen. Leere Kacheln sind kein Fehler.
+- **Die Kachel bleibt leer:** Zoomstufe 12–18 und Gebiet (DACHLiLu) prüfen. Leere Kacheln sind kein Fehler.
 - **404:** Der Pfad muss genau `/hytiles/{z}/{x}/{y}.png` lauten, einschließlich der Endung `.png`.
 - **CORS-Fehler oder „Failed to fetch“:** betrifft nur Skriptzugriffe im Browser. Bitte die Website-Herkunft melden, damit sie freigeschaltet wird.
 
@@ -172,7 +172,7 @@ PMTiles ist ein offenes Format (Protomaps): **eine einzige Datei** enthält alle
 
 | Eigenschaft | Wert |
 | --- | --- |
-| Inhalt | Raster-PMTiles mit transparenten PNG-Kacheln, Deutschland, Zoomstufen 12 bis 18, rund 4,4 GB |
+| Inhalt | Raster-PMTiles mit transparenten PNG-Kacheln, Deutschland, Österreich, Schweiz, Luxemburg und Liechtenstein, Zoomstufen 12 bis 18, rund 5,3 GB (Stand 28. November 2026) |
 | Aktueller Verweis | Das Manifest `https://raster-pilot.openfiremap.org/manifest.json` zeigt immer auf das aktuelle Archiv. Der Dateiname ist versionsgebunden: **nie fest eintragen**, immer zuerst das Manifest lesen. |
 | Download | Das Archiv lässt sich auf [openfiremap.org/overlay](https://openfiremap.org/overlay/) herunterladen. Dort gibt es auch eine Demo und einen Ausschnitts-Download. |
 
@@ -217,7 +217,7 @@ Archiv herunterladen und auf einem Server oder Cloud-Speicher mit **HTTPS** und 
 
 ### Heute unterstützt
 
-- Klassische XYZ-Kachel-URL, HTTPS, nur Deutschland, Zoom 12–18, transparentes PNG
+- Klassische XYZ-Kachel-URL, HTTPS, nur DACHLiLu, Zoom 12–18, transparentes PNG
 - TileJSON-Beschreibung der Ebene
 - PMTiles-Archiv als Download und per Range-Abruf, Beispiele für Leaflet und MapLibre
 - Overlay-Seite mit Demo, Ausschnitts-ZIP (PNG-Kacheln mit `ATTRIBUTION.txt`) und Archiv-Download
@@ -271,7 +271,7 @@ Nein. Die URL bleibt gleich. Beim PMTiles-Weg liest Ihr Client zuerst das Manife
 Die Daten stehen unter der ODbL, die Software unter der MIT-Lizenz. Beide gelten unter ihren Bedingungen, zum Beispiel mit Quellenangabe (siehe „Quellenangabe und Lizenzen“). Das ist keine Rechtsberatung. Meinen Kachelserver betreibe ich ohne Verfügbarkeitszusage. Für einen verlässlichen Betrieb ist das eigene Hosting der PMTiles-Datei der bessere Weg.
 
 **Gibt es das Overlay auch für andere Länder?**
-Das Raster-Overlay gibt es vorerst nur für Deutschland. Wenn jemand Interesse hat, kann ich gern etwas basteln.
+Das Raster-Overlay gibt es vorerst nur für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein. Wenn jemand Interesse hat, kann ich gern etwas basteln.
 
 **Kann ich eigene Symbole oder eine andere Darstellung bekommen?**
 Bitte melden Sie sich. Bevorzugt zeichnen Sie die Symbole selbst aus den PMTiles-Vektordaten. Wenn das für Sie nicht geht, schauen wir, was sich einrichten lässt.

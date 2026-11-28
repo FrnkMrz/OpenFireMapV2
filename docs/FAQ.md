@@ -26,7 +26,7 @@ Der [Ortsplan](https://openfiremap.org/ortsplan/) ist ein eigenständiges Werkze
 
 ## Wo kann ich Feuerwehr-Rasterkacheln herunterladen?
 
-Auf der [Overlay-Seite](https://openfiremap.org/overlay/) kannst du den sichtbaren Ausschnitt übernehmen oder ein Rechteck zeichnen und die transparenten Feuerwehr-PNG-Kacheln als ZIP laden. Dort gibt es auch das vollständige Deutschland-PMTiles-Archiv und Beispiele zum Einbinden in Leaflet und MapLibre. Das Ausschnittsarchiv enthält `ATTRIBUTION.txt` und `selection.json`. Der Download ist auf die veröffentlichte Rasterabdeckung und verfügbaren Zoomstufen begrenzt; das Overlay ist keine weltweite Basiskarte.
+Auf der [Overlay-Seite](https://openfiremap.org/overlay/) kannst du den sichtbaren Ausschnitt übernehmen oder ein Rechteck zeichnen und die transparenten Feuerwehr-PNG-Kacheln als ZIP laden. Dort gibt es auch das vollständige PMTiles-Archiv für Deutschland, Österreich, die Schweiz, Luxemburg und Liechtenstein und Beispiele zum Einbinden in Leaflet und MapLibre. Das Ausschnittsarchiv enthält `ATTRIBUTION.txt` und `selection.json`. Der Download ist auf die veröffentlichte Rasterabdeckung und verfügbaren Zoomstufen begrenzt; das Overlay ist keine weltweite Basiskarte.
 
 Die Raster-PNGs sind fertig gerenderte Bilder. Hydranten, Feuerwachen und andere sichtbare OFM-Inhalte sind gemeinsam darin enthalten und lassen sich in diesem Rasterprodukt nicht einzeln ein- oder ausschalten. Die Einzelschalter auf der Overlay-Seite steuern die separate Vektordemo.
 
